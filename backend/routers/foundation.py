@@ -123,21 +123,28 @@ async def submit_contact(data: ContactMessageCreate):
     from database import db
     msg = {**data.model_dump(), "id": gen_id(), "created_at": now_iso(), "read": False}
     await db.contact_messages.insert_one(msg)
-    # Optionally subscribe to newsletter
+    # Optionally subscribe to newsletter (and welcome if it's a new subscription)
+    sent_welcome = False
     if data.newsletter_opt_in:
-        await db.newsletter_subscribers.update_one(
-            {"email": data.email.lower()},
-            {
-                "$setOnInsert": {
-                    "id": gen_id(),
-                    "email": data.email.lower(),
-                    "name": f"{data.first_name} {data.last_name or ''}".strip(),
-                    "created_at": now_iso(),
-                    "active": True,
-                }
-            },
-            upsert=True,
-        )
+        existing_sub = await db.newsletter_subscribers.find_one({"email": data.email.lower()})
+        if not existing_sub:
+            await db.newsletter_subscribers.insert_one({
+                "id": gen_id(),
+                "email": data.email.lower(),
+                "name": f"{data.first_name} {data.last_name or ''}".strip(),
+                "created_at": now_iso(),
+                "active": True,
+            })
+            try:
+                subj, html, text = newsletter_welcome(name=data.first_name)
+                await send_email(
+                    to=data.email, subject=subj, html=html, text=text,
+                    template_name="newsletter_welcome",
+                    metadata={"source": "contact_form_opt_in"},
+                )
+                sent_welcome = True
+            except Exception as e:
+                logger.error(f"newsletter welcome (contact opt-in) failed: {e}")
     msg.pop("_id", None)
     # Fire-and-forget emails (notify admin + auto-reply to sender)
     try:
@@ -160,7 +167,11 @@ async def submit_contact(data: ContactMessageCreate):
         )
     except Exception as e:
         logger.error(f"contact email failed: {e}")
-    return {"success": True, "message": "Thank you for reaching out. We'll be in touch soon."}
+    return {
+        "success": True,
+        "message": "Thank you for reaching out. We'll be in touch soon.",
+        "subscribed": sent_welcome,
+    }
 
 
 @router.get("/contact/messages")

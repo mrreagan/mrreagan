@@ -42,12 +42,57 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Image generation**: Gemini Nano Banana (gemini-3.1-flash-image-preview) via emergentintegrations + EMERGENT_LLM_KEY. Images saved to `/app/backend/static/products/<slug>.png` and served by FastAPI StaticFiles mounted at `/api/static/*`. 49/50 generated cleanly on first pass; 1 (`claim-your-birthright-hoodie-forest`) regenerated successfully.
 - **Admin Products UI** at `/admin/products` (ADMIN_ROLES protected): list/search/filter (all/merch/material), create via slide-in drawer (full ProductCreate form incl. workshop linking for materials), edit (PUT with ProductUpdate subset), delete with confirm. Image URL field accepts both external URLs and `/api/static/products/...` paths with live preview.
 
+## Iteration 3 — Email + auth + waitlist + AI regen (Feb 2026)
+**Resend transactional email (dry-run fallback)**:
+- `utils/mailer.py` thin async wrapper. When `RESEND_API_KEY` is blank OR `EMAIL_DRY_RUN=true`, queues emails to `db.outbound_emails` for inspection instead of sending.
+- 8 brand-styled HTML templates: order_receipt, workshop_confirmation, waitlist_promotion, password_reset, qa_reply_notification, workshop_reminder, contact_autoreply, contact_admin_notify, newsletter_welcome (inline CSS, table layout, Cormorant Georgia serif fallback for max email-client compat).
+- `utils/calendar_qr.py` builds .ics files + QR PNGs attached to workshop confirmations.
+- `utils/scheduler.py` APScheduler runs `_send_workshop_reminders` every 30 min (window: workshops starting 23.5h-24.5h from now, paid registrations not yet reminded).
+
+**Password reset**:
+- `POST /api/auth/request-password-reset` — always returns success (no enumeration); creates 1h-expiry token in `db.password_reset_tokens` and emails reset link.
+- `POST /api/auth/reset-password` — validates token, updates bcrypt hash, marks token used + invalidates all other outstanding tokens for the user.
+- Frontend: `/forgot-password` + `/reset-password?token=...` pages, "Forgot your password?" link on Login.
+
+**Registration cancel + waitlist auto-promotion**:
+- `DELETE /api/registrations/{id}` — participant self-service (must be owner, not checked-in). Marks cancelled + emails first non-notified waitlister.
+- `POST /api/registrations/{id}/release` — admin/facilitator manual seat release with same promotion path.
+- `POST /api/registrations/promote-waitlist/{workshop_id}` — manual trigger.
+- Frontend: "Cancel registration" button on Dashboard upcoming cards; "Release seat" button on FacilitatorDashboard participant rows.
+
+**Side-effect emails wired in**:
+- Stripe `_create_registration_from_txn` → workshop_confirmation w/ .ics + QR.
+- Stripe `_create_order_from_txn` → order_receipt.
+- Discussions `create_discussion` w/ parent_id + facilitator/admin role → qa_reply_notification (and auto-marks question answered).
+- Contact form → contact_admin_notify (to support@birthright.live) + contact_autoreply (to sender, reply-to support@); optional newsletter_welcome on new opt-in.
+- Newsletter signup → newsletter_welcome.
+
+**Admin tooling**:
+- `GET /api/admin/email-log` — combined sent + queued list with `real_send_enabled` flag.
+- AdminDashboard `Email log` tab (4th tab) with status pills + dry-run banner.
+- AdminProducts edit drawer: "Regenerate mockup with AI" section (prompt textarea + button) calling new `POST /api/products/{id}/regenerate-image` (admin only, uses EMERGENT_LLM_KEY + Nano Banana, saves to `/api/static/products/<slug>.png`).
+
+**Env additions** (`/app/backend/.env`):
+- `RESEND_API_KEY=` (blank for now)
+- `SENDER_EMAIL=hello@birthright.live`
+- `REPLY_TO_EMAIL=support@birthright.live`
+- `ADMIN_NOTIFY_EMAIL=support@birthright.live`
+- `PUBLIC_APP_URL=https://birthright.live`
+- `EMAIL_DRY_RUN=true`
+
+**Test status**: 16/16 iteration-3 backend tests pass + all frontend flows verified (`/app/test_reports/iteration_3.json`).
+
 ## Phase 2 — Backlog (P0/P1)
-- **P0**: True WebSocket real-time chat; Email notifications (Resend) for registration/payment/Q&A reply
+- **P0 (DONE in Iter 3)**: Email infrastructure via Resend (currently dry-run; flip `EMAIL_DRY_RUN=false` + add `RESEND_API_KEY` to go live)
+- **P0**: True WebSocket real-time chat (currently polling-based)
 - **P0**: Partner roles — facilitator partners, merchandise partners, community/service partners
-- **P1**: Photos & resources library per workshop; Workshop FAQ admin UI; Admin CRUD UIs for workshops/products/foundation content (currently API-only); SMS check-in reminders (Twilio)
+- **P1**: Domain verification for `birthright.live` on Resend (DNS records — user action, takes 5 min)
+- **P1**: Photos & resources library per workshop; Workshop FAQ admin UI; Admin CRUD UIs for workshops/foundation content (products UI already shipped)
+- **P1**: SMS check-in reminders (Twilio)
 - **P1**: Sponsor recognition wall page; sponsorship upgrade flow (Amethyst → Ruby etc.)
 - **P1**: Stripe webhook signature verification hardening; admin self-demotion guard
+- **P1**: Image upload widget on Admin Products (alongside the regen button)
+- **P2**: Inbound email parsing (e.g., reply-to-create-support-request); admin email-resend button on log rows; bulk product CSV import
 - **P2**: Multi-language (en/es); Native mobile app; Advanced analytics dashboard; Refund / cancellation flow
 
 ## Test credentials
