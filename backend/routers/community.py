@@ -59,8 +59,8 @@ async def list_discussions(
     from database import db
     if not await _ensure_workshop_access(db, workshop_id, user):
         raise HTTPException(status_code=403, detail="Not enrolled in this workshop")
-    query = {"workshop_id": workshop_id}
-    if is_question is not None:
+    query: dict = {"workshop_id": workshop_id}
+    if is_question in (True, False):
         query["is_question"] = is_question
     items = await db.discussions.find(query, {"_id": 0}).sort("created_at", 1).to_list(1000)
     # Filter private: only author + facilitator + admin can see private ones

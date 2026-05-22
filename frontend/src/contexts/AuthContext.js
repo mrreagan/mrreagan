@@ -31,8 +31,9 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try {
       await api.post("/auth/logout");
-    } catch {
-      // best-effort
+    } catch (error) {
+      // Server-side logout is best-effort; we still clear local user state below
+      console.warn("Logout request failed (clearing local session anyway):", error?.message || error);
     }
     setUser(null);
   }, []);

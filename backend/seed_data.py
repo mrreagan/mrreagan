@@ -8,8 +8,10 @@ def _iso(dt: datetime) -> str:
     return dt.isoformat()
 
 
-def _seed_user(email, first, last, role, bio="", avatar_url="", slug=None, credentials=None):
-    """Build one user document."""
+def _seed_user(email: str, name: tuple, role: str, profile: dict = None) -> dict:
+    """Build one user document. `name` is (first, last); `profile` carries optional fields."""
+    profile = profile or {}
+    first, last = name
     return {
         "id": gen_id(),
         "email": email,
@@ -18,10 +20,10 @@ def _seed_user(email, first, last, role, bio="", avatar_url="", slug=None, crede
         "last_name": last,
         "phone": "",
         "role": role,
-        "bio": bio,
-        "avatar_url": avatar_url,
-        "facilitator_slug": slug,
-        "credentials": credentials,
+        "bio": profile.get("bio", ""),
+        "avatar_url": profile.get("avatar_url", ""),
+        "facilitator_slug": profile.get("slug"),
+        "credentials": profile.get("credentials"),
         "created_at": now_iso(),
     }
 
@@ -29,17 +31,29 @@ def _seed_user(email, first, last, role, bio="", avatar_url="", slug=None, crede
 # ---- USERS ----
 def _build_seed_users():
     return [
-        _seed_user("admin@birthright.org", "Birthright", "Admin", "admin",
-                   bio="Founding administrator of the Birthright Foundation."),
-        _seed_user("elena@birthright.org", "Elena", "Hartwell", "facilitator",
-                   bio="Elena is a licensed therapist with over fifteen years guiding individuals and families through attachment work. She believes secure bonds are restorative, not aspirational.",
-                   avatar_url="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600",
-                   slug="elena-hartwell", credentials="LMFT, EFT-Certified"),
-        _seed_user("marcus@birthright.org", "Marcus", "Okafor", "facilitator",
-                   bio="Marcus weaves contemplative practice with relational science to help groups recover what was always theirs: the right to belong.",
-                   avatar_url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600",
-                   slug="marcus-okafor", credentials="PhD Psychology, Group Facilitator"),
-        _seed_user("demo@birthright.org", "Sam", "Rivera", "participant"),
+        _seed_user(
+            "admin@birthright.org", ("Birthright", "Admin"), "admin",
+            {"bio": "Founding administrator of the Birthright Foundation."},
+        ),
+        _seed_user(
+            "elena@birthright.org", ("Elena", "Hartwell"), "facilitator",
+            {
+                "bio": "Elena is a licensed therapist with over fifteen years guiding individuals and families through attachment work. She believes secure bonds are restorative, not aspirational.",
+                "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600",
+                "slug": "elena-hartwell",
+                "credentials": "LMFT, EFT-Certified",
+            },
+        ),
+        _seed_user(
+            "marcus@birthright.org", ("Marcus", "Okafor"), "facilitator",
+            {
+                "bio": "Marcus weaves contemplative practice with relational science to help groups recover what was always theirs: the right to belong.",
+                "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600",
+                "slug": "marcus-okafor",
+                "credentials": "PhD Psychology, Group Facilitator",
+            },
+        ),
+        _seed_user("demo@birthright.org", ("Sam", "Rivera"), "participant"),
     ]
 
 

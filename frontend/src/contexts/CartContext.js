@@ -3,12 +3,30 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 const CartContext = createContext(null);
 const STORAGE_KEY = "br_cart";
 
-// Cart contents are non-sensitive (no PII, no tokens). sessionStorage clears on browser close,
-// reducing surface for cross-tab snooping while preserving in-tab UX.
+// Cart contents are non-sensitive (no PII, no auth tokens) — just product references and quantities.
+// We sanitize on read to reject any unexpected fields that could leak via XSS.
+const ALLOWED_FIELDS = ["product_id", "name", "price", "image_url", "quantity"];
+
+const sanitizeItem = (raw) => {
+  if (!raw || typeof raw !== "object") return null;
+  const item = {};
+  for (const key of ALLOWED_FIELDS) {
+    item[key] = raw[key];
+  }
+  if (typeof item.product_id !== "string" || !item.product_id) return null;
+  if (typeof item.name !== "string") item.name = String(item.name || "");
+  item.price = Number(item.price) || 0;
+  item.quantity = Math.max(1, parseInt(item.quantity, 10) || 1);
+  item.image_url = typeof item.image_url === "string" ? item.image_url : "";
+  return item;
+};
+
 const readStorage = () => {
   try {
     const stored = sessionStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const parsed = stored ? JSON.parse(stored) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(sanitizeItem).filter(Boolean);
   } catch {
     return [];
   }
