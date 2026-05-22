@@ -1,0 +1,71 @@
+{
+  "summary": "Backend API testing for Birthright Foundation. Created comprehensive pytest suite (70 tests) covering auth, workshops, products+gating, Stripe checkout (workshop/products/donation/sponsorship), checkout-status polling, discussions/Q&A, chat (group + DM), reviews, impact statements, support requests, foundation content, governing-member CRUD, facilitators, contact, newsletter, waitlist, dashboards (me/facilitator/admin), admin role change, and webhook reachability. 68 passed, 1 skipped (no failure), 1 xfail (security finding documented).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/workshops",
+        "issue": "SECURITY: list endpoint returns each workshop's `check_in_code` field publicly (no auth). Single GET /api/workshops/{id_or_slug} correctly strips it (line ~72 in routers/workshops.py), but the list endpoint at line ~21 projects `{_id: 0}` only — so check_in_code is exposed. Anyone can read BRIGHT24/REPAIR45/CIRCLE12/BRIGHT23 by hitting /api/workshops without credentials, defeating the check-in gate.",
+        "priority": "HIGH",
+        "fix": "In routers/workshops.py list_workshops(), exclude check_in_code from projection or pop it from each workshop before returning: `w.pop('check_in_code', None)` inside the enrich loop."
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "GET /api/workshops",
+        "issue": "Seeded check_in_code for past spring cohort is `BRIGHT23` while /app/memory/test_credentials.md and review_request both list `BRIGHT24` for the Foundations workshop. The upcoming Foundations workshop does have BRIGHT24. This is a documentation/seed-naming clarity issue, not a bug — but please align docs."
+      },
+      {
+        "endpoint": "GET /api/dashboard/admin",
+        "issue": "`total_revenue` aggregation uses an async-generator-inside-list-comprehension trick that works on motor but is fragile. Consider switching to `db.payment_transactions.aggregate([...])` for safety and performance."
+      },
+      {
+        "endpoint": "PUT /api/admin/users/{id}/role",
+        "issue": "No protection against an admin demoting themselves (or against demoting the last remaining admin). Could lock out all admin access. Not a blocker for MVP but worth a guard."
+      },
+      {
+        "endpoint": "GET /api/impact-statements",
+        "issue": "Function signature accepts `user: Optional[dict] = None` without `Depends(...)` — so it's never actually populated by FastAPI. Effectively this endpoint is open (which is okay for `public_only=true`), but the unused parameter is dead code and confusing."
+      },
+      {
+        "endpoint": "GET /api/foundation/governing-members + create",
+        "issue": "Model uses field `image_url` but client code may post `avatar_url`; Pydantic v2 silently drops extras. Tests pass because of this leniency — tighten with `model_config = {extra: 'forbid'}` if strictness matters."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "[HIGH] Strip `check_in_code` from /api/workshops list response (security leak).",
+    "[LOW] Update /app/memory/test_credentials.md to reflect actual seeded check-in codes (past cohort = BRIGHT23, upcoming Foundations = BRIGHT24).",
+    "[LOW] Guard admin self-demotion / last-admin demotion in PUT /api/admin/users/{id}/role.",
+    "[LOW] Remove unused `user` param in GET /api/impact-statements or wire it to Depends(get_current_user_optional)."
+  ],
+  "critical_code_review_comments": [
+    "Security: check_in_code is leaked in GET /api/workshops list — must be hidden from public response.",
+    "Defense-in-depth: workshop check-in only verifies code+registration but not whether workshop is currently active (start_date window). Consider adding a date guard so codes can't be used for already-completed cohorts arbitrarily.",
+    "Test file router (community.py) ~250 lines, foundation.py ~278 lines — within limits, OK.",
+    "Stripe upstream calls: confirmed our endpoints correctly create payment_transactions rows with payment_status='initiated' and return session_id+url; status endpoint correctly short-circuits when paid. Good.",
+    "Side-effect handler `_process_paid_transaction` is idempotent via the `existing` check on workshop registrations, but for `order`/`donation`/`sponsorship` it does not check for prior insertion using session_id — a duplicate webhook delivery could create duplicate orders/donations/sponsors. Recommend adding `existing = await db.orders.find_one({'payment_session_id': txn['session_id']})` guards.",
+    "checkout_status mutates DB before checking idempotency — small race possible if webhook + status poll arrive simultaneously. Use a conditional update (`payment_status: {$ne: 'paid'}` filter) for atomicity."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (created)"
+  ],
+  "success_rate": {
+    "backend": "97% (68/70 active tests pass; 1 documented security xfail; 1 skipped on Stripe upstream)",
+    "frontend": "not tested (backend-only request)"
+  },
+  "test_credentials": "Used seeded accounts from /app/memory/test_credentials.md: admin@birthright.org, elena@birthright.org, marcus@birthright.org, demo@birthright.org (all password birthright2026).",
+  "seed_data_creation": "No new seed data; tests create temp users (test_<uuid>@birthright-test.com) and clean them up via direct mongo, plus TEST_-prefixed support/discussion/chat/review docs cleaned in finally blocks.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test suite at /app/backend/tests/backend_test.py is comprehensive and idempotent — re-runnable. After main agent fixes the check_in_code leak, flip the xfail on TestWorkshops::test_list_does_not_leak_checkin_code by removing the @pytest.mark.xfail. Stripe live calls work with sk_test_emergent against Emergent's Stripe proxy; no skips observed in final run. Demo participant Sam Rivera's seeded paid registration is tied to slug `foundations-spring-cohort-past`, which is the only workshop where review/impact/discussion/chat/support tests will succeed for the demo user.",
+  "rca_of_the_issue": "Single critical issue: GET /api/workshops projects `{_id: 0}` and enriches each workshop without removing `check_in_code`. The single-detail handler line ~72 calls `w.pop('check_in_code', None)` correctly — the same line is missing from the list handler. Reproduce: `curl https://birthright-hub.preview.emergentagent.com/api/workshops` and observe `check_in_code` key in each workshop. Mitigation: add `for w in workshops: w.pop('check_in_code', None)` after the enrichment loop in routers/workshops.py list_workshops()."
+}

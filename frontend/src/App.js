@@ -1,51 +1,123 @@
-import { useEffect } from "react";
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
+
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { CartProvider } from "./contexts/CartContext";
+import Layout from "./components/Layout";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Mission from "./pages/Mission";
+import Governance from "./pages/Governance";
+import Education from "./pages/Education";
+import Contact from "./pages/Contact";
+import Workshops from "./pages/Workshops";
+import WorkshopDetail from "./pages/WorkshopDetail";
+import Shop from "./pages/Shop";
+import ProductDetail from "./pages/ProductDetail";
+import Cart from "./pages/Cart";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import WorkshopHub from "./pages/WorkshopHub";
+import Sponsorship from "./pages/Sponsorship";
+import Facilitators from "./pages/Facilitators";
+import FacilitatorProfile from "./pages/FacilitatorProfile";
+import FacilitatorDashboard from "./pages/FacilitatorDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import Profile from "./pages/Profile";
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+function ProtectedRoute({ children, roles }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="container-page py-20">Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />;
+  return children;
+}
 
+function AppRoutes() {
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/mission" element={<Mission />} />
+      <Route path="/governance" element={<Governance />} />
+      <Route path="/education" element={<Education />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/workshops" element={<Workshops />} />
+      <Route path="/workshops/:slug" element={<WorkshopDetail />} />
+      <Route path="/shop" element={<Shop />} />
+      <Route path="/shop/:id" element={<ProductDetail />} />
+      <Route path="/cart" element={<Cart />} />
+      <Route path="/checkout/success" element={<CheckoutSuccess />} />
+      <Route path="/sponsorship" element={<Sponsorship />} />
+      <Route path="/facilitators" element={<Facilitators />} />
+      <Route path="/facilitators/:slug" element={<FacilitatorProfile />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/workshops/:id"
+        element={
+          <ProtectedRoute>
+            <WorkshopHub />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/facilitator"
+        element={
+          <ProtectedRoute roles={["facilitator", "admin"]}>
+            <FacilitatorDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute roles={["admin"]}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
-};
+}
 
 function App() {
   return (
     <div className="App">
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
+        <AuthProvider>
+          <CartProvider>
+            <Toaster position="top-right" richColors closeButton />
+            <Layout>
+              <AppRoutes />
+            </Layout>
+          </CartProvider>
+        </AuthProvider>
       </BrowserRouter>
     </div>
   );
