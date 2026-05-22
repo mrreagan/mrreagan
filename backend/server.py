@@ -12,7 +12,7 @@ import logging
 
 from database import db, client  # single source of truth for MongoDB
 
-app = FastAPI(title="Birthright API", version="1.2.0")
+app = FastAPI(title="Birthright API", version="1.3.0")
 api_router = APIRouter(prefix="/api")
 
 # Serve product mockup images & other static assets at /api/static/*
@@ -26,7 +26,7 @@ async def root():
     return {
         "name": "Birthright Foundation API",
         "motto": "Secure Bonds > Thrive",
-        "version": "1.2.0",
+        "version": "1.3.0",
     }
 
 

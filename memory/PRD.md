@@ -80,7 +80,31 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - `PUBLIC_APP_URL=https://birthright.live`
 - `EMAIL_DRY_RUN=true`
 
-**Test status**: 16/16 iteration-3 backend tests pass + all frontend flows verified (`/app/test_reports/iteration_3.json`).
+**Test status**: 25/25 iteration-4 backend tests pass (`/app/test_reports/iteration_4.json`); frontend self-verified via screenshots.
+
+## Iteration 4 — Workshop CRUD + photo galleries (Feb 2026)
+**Admin/Facilitator workshop management** (`/admin/workshops`):
+- List, search, status filter (all/draft/upcoming/in-progress/completed/cancelled), create/edit drawer.
+- `POST /workshops/{id}/duplicate` — clones a workshop into a new draft, dates shifted +30 days, new auto-generated check-in code, slug suffixed `-copy` (with `-copy-2` fallback on collision).
+- `POST /workshops/{id}/cancel` — full pipeline: refunds all paid registrations via `stripe.Refund.create` against the original `payment_intent`, marks each registration cancelled with refund metadata, emails every registrant with the new `workshop_cancelled` template (includes refund amount + status), then flips workshop status. Seeded `payment_session_id='seed_demo'` short-circuits to status='manual' to avoid Stripe errors.
+- `GET /workshops/{id}/revenue` — paid_count, cancelled_count, checked_in_count, gross/refunded/net.
+- Hardened: `check_in_code` now auto-generated server-side via `_gen_check_in_code()` (6-char unambiguous alphanumeric) — never accepted from client. Facilitators auto-assign themselves as the workshop's facilitator on create.
+
+**Workshop photo galleries** (new `Photos` tab in WorkshopHub):
+- `POST /workshop-photos/{workshop_id}` multipart — paid attendees + workshop facilitator + admin allowed. Pillow pipeline strips EXIF, normalizes orientation, resizes to 1600px max, generates 400px thumb, saves as JPEG to `/app/backend/static/workshop_photos/<workshop_id>/<photo_id>.jpg`. Served at `/api/static/workshop_photos/...`. Participant uploads → status='pending'; facilitator/admin uploads → auto-approved. 8MB cap (pre-check via Content-Length, hard check after read).
+- `GET /workshop-photos/{workshop_id}` — public list, defaults to approved only.
+- `GET /workshop-photos` — cross-workshop pending queue (admin all; facilitator scoped to their workshops; participant 403).
+- `POST /workshop-photos/{photo_id}/approve` and `/reject` (with reason) — facilitator-of-workshop or admin.
+- `DELETE /workshop-photos/{photo_id}` — uploader can delete own pending/rejected; admin can delete any.
+- Frontend: `/admin/photos` cross-workshop moderation queue; PhotosTab upload widget + status chip on pending uploads + approved photo grid.
+
+**New email template**:
+- `workshop_cancelled` — context-aware refund language (succeeded vs pending vs manual).
+
+**Misc**:
+- Bumped to `v1.3.0` (API root + FastAPI app version).
+- Added "Manage workshops" + "Photo queue" quick-action buttons on FacilitatorDashboard.
+- Added "Photo Moderation" quick-action card on AdminDashboard overview.
 
 ## Phase 2 — Backlog (P0/P1)
 - **P0 (DONE in Iter 3)**: Email infrastructure via Resend (currently dry-run; flip `EMAIL_DRY_RUN=false` + add `RESEND_API_KEY` to go live)

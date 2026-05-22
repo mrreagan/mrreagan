@@ -71,6 +71,11 @@ async def upload_photo(
     if file.content_type not in ALLOWED_MIME:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}")
 
+    # Cheap pre-check: trust Content-Length header so we reject oversize uploads without buffering.
+    declared_size = getattr(file, "size", None)
+    if declared_size is not None and declared_size > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 8 MB)")
+
     raw = await file.read()
     if len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File too large (max 8 MB)")
