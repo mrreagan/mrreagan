@@ -1,0 +1,86 @@
+{
+  "theme": "Light",
+  "archetype": "1 (Organic & Earthy)",
+  "brand_name": "birthright",
+  "motto": "SECURE BONDS > THRIVE",
+  "colors": {
+    "background": "#FAF8F5",
+    "surface": "#FFFFFF",
+    "primary": "#476B6B",
+    "primary_hover": "#3A5858",
+    "accent": "#C9A961",
+    "accent_hover": "#B39552",
+    "text_primary": "#1A2424",
+    "text_secondary": "#5C6B6B",
+    "border": "#E5E1D8",
+    "success": "#2E5C46",
+    "error": "#9E3C3C"
+  },
+  "typography": {
+    "heading_font": "Cormorant Garamond, serif",
+    "body_font": "Work Sans, sans-serif",
+    "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-none text-[#1A2424]",
+    "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight text-[#1A2424]",
+    "h3": "text-xl sm:text-2xl tracking-tight text-[#1A2424]",
+    "body": "text-base leading-relaxed text-[#5C6B6B]",
+    "labels": "uppercase text-xs tracking-[0.2em] font-medium text-[#C9A961]"
+  },
+  "layout_and_spacing": {
+    "generous_padding": "p-8 md:p-12 lg:p-16",
+    "container_borders": "border border-[#E5E1D8] p-6 lg:p-8 rounded-2xl",
+    "marketing_grid": "grid grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-8 lg:gap-12",
+    "dashboard_grid": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+    "corner_radius": "rounded-2xl"
+  },
+  "surface_strategies": {
+    "header": "backdrop-blur-xl bg-[#FAF8F5]/80 border-b border-[#E5E1D8]/50 shadow-sm",
+    "cards_marketing": "bg-white border border-[#E5E1D8] shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl",
+    "cards_dashboard": "bg-white border border-[#E5E1D8] rounded-xl p-6",
+    "buttons_primary": "bg-[#476B6B] hover:bg-[#3A5858] text-white px-8 py-3 rounded-full font-medium transition-colors",
+    "buttons_secondary": "border border-[#476B6B] text-[#476B6B] hover:bg-[#FAF8F5] px-8 py-3 rounded-full font-medium transition-colors"
+  },
+  "components_instructions": {
+    "marketing": "Use pure HTML/Tailwind for marketing grids (Tetris layout). Implement bento blocks with generous padding and asymmetry.",
+    "dashboard": "Use Shadcn UI components for complex interactions (Tables, Modals, Forms). Override default Shadcn rounded classes with `rounded-xl` and use flat borders rather than heavy shadows.",
+    "forms": "Use customized Shadcn forms for registration/checkout. Inputs must have `focus:ring-2 focus:ring-[#C9A961] focus:border-[#C9A961] bg-white`.",
+    "icons": "Use lucide-react with strokeWidth={1.5} for a premium, delicate feel."
+  },
+  "motion_and_interaction": {
+    "hover_states": "All cards should slightly lift `-translate-y-1` on hover. Buttons should smoothly shift background color.",
+    "page_transitions": "Fade-in entrance animations for main content blocks."
+  },
+  "image_urls": {
+    "logo": {
+      "url": "https://customer-assets.emergentagent.com/job_c61b4345-eef4-4783-a5af-85e8af10eaf3/artifacts/s0oix25k_image.png",
+      "description": "Brand Logo (interlocking circles teal/gold with flame)",
+      "category": "header, footer"
+    },
+    "hero_background": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/c61b4345-eef4-4783-a5af-85e8af10eaf3/images/10154eafef8a2623b8b4e86a0d0a8065334110989eba28a8c99077e78f19d1fa.png",
+      "description": "Abstract organic background with teal and gold gradients, soft lighting",
+      "category": "marketing hero"
+    },
+    "merch_mockup": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/c61b4345-eef4-4783-a5af-85e8af10eaf3/images/e3d5c6c34812540dae684ddca4f08b92336b9c1179c86b15e14d67ef8d2c3098.png",
+      "description": "Minimalist mockups of wellness merchandise (journal, mug, tote)",
+      "category": "storefront"
+    },
+    "workshop_community_1": {
+      "url": "https://images.unsplash.com/photo-1634155938686-24a26c55d71a",
+      "description": "A group of people sitting in a therapy/workshop circle",
+      "category": "workshop advertising, community"
+    },
+    "workshop_community_2": {
+      "url": "https://images.unsplash.com/photo-1655337690436-98778f38d613",
+      "description": "A diverse group of individuals engaging in a workshop setting",
+      "category": "testimonials, participant impact"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Install and configure Work Sans and Cormorant Garamond fonts from Google Fonts.",
+    "Implement the marketing pages using the Tetris Grid bento layouts. Avoid generic centered symmetric layouts.",
+    "The application acts as a hybrid platform: Marketing/Storefront features should feel editorial and premium, while the Dashboard/Participant features should feel calm, clear, and highly usable.",
+    "Ensure high contrast on text. No pure #000000; use the deep teal/gray (#1A2424) for primary text.",
+    "Implement test IDs (`data-testid`) on all interactive and informational elements."
+  ]
+}
