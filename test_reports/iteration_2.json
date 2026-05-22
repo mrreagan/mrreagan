@@ -1,0 +1,49 @@
+{
+  "summary": "Iteration 2 — Tested the new 50 AI-generated merch products + Admin Products CRUD UI for Birthright Foundation. Backend: 13/13 product tests passed (counts, filtering, static image serving, admin CRUD, RBAC, slug field). Frontend: Admin /admin/products fully functional (list 60, search, filter, drawer create/edit/delete with confirm, toasts, workshop dropdown reveal); /shop renders 56 merch cards with Inside-Out Work Tee visible; non-admin (demo) correctly redirected to /dashboard.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/products/{id}", "issue": "ProductUpdate does not include `type` or `workshop_id`. Frontend correctly omits these on edit, but the constraint is implicit. Consider documenting or returning 400 if a client sends them. Currently they are silently ignored."},
+      {"endpoint": "POST /api/products", "issue": "If workshop_id is provided for type='merch', it is stored as-is (no validation that workshop_id is null/empty for merch). Low risk but worth tightening."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/shop card grid", "issues": ["Product cards on /shop have no per-card data-testid (e.g. shop-product-<id>) — only the page-level data-testid='shop-page' exists. Add testids for cards & 'Add' buttons to ease future automated regression. Not user-facing."]},
+      {"screen": "/admin/products", "issues": ["Confirm dialog uses native window.confirm; a shadcn AlertDialog would be more consistent with the rest of the design system, but functionally correct."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_products_iter2.py",
+    "/app/test_reports/pytest/iter2_products.xml"
+  ],
+  "action_items": [
+    "[OPTIONAL] Add per-card data-testid on /shop (Shop.jsx) for cards and 'Add' buttons to improve testability.",
+    "[OPTIONAL] Validate workshop_id is null on POST /api/products when type='merch'.",
+    "[OPTIONAL] Replace window.confirm in AdminProducts delete flow with shadcn AlertDialog for visual consistency."
+  ],
+  "critical_code_review_comments": [
+    "Auth: products router correctly uses require_roles('admin') on POST/PUT/DELETE; tests confirmed 401 with no token and 403 for participant role.",
+    "Static mount at /api/static is correctly placed BEFORE include_router so /api/static/products/<slug>.png is served from FastAPI StaticFiles (verified content-type image/png, >1KB payload).",
+    "AdminProducts.jsx is 438 lines — borderline; consider splitting ProductFormDrawer into its own file for cleaner separation.",
+    "AdminProducts.jsx submit() correctly differentiates POST vs PUT bodies (PUT excludes type/workshop_id which align with ProductUpdate model).",
+    "Frontend handles edit/create idempotently — reloads list via load() after save; delete uses optimistic local state update.",
+    "GET /api/products has no pagination; 60 items is fine, but if catalog grows beyond a few hundred, add limit/skip + count.",
+    "Slug field is persisted on the 50 new products (verified via test_new_products_have_slug). Migration script's idempotency claim looks correct."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_products_iter2.py (created)"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 iter-2 product tests passed)",
+    "frontend": "100% (all admin CRUD flows + shop render + RBAC redirect verified)"
+  },
+  "test_credentials": "Used admin@birthright.org / birthright2026 and demo@birthright.org / birthright2026 (per /app/memory/test_credentials.md).",
+  "seed_data_creation": "No persistent seed data created. Test product 'TEST_UI_Product_AB' was created via UI and deleted in the same flow. Backend tests create+delete TEST_-prefixed products within each test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration-2 product tests live at /app/backend/tests/test_products_iter2.py and pass independently. Old comprehensive suite is at /app/backend/tests/backend_test.py (still valid). Static image URL pattern: /api/static/products/<slug>.png. The Inside-Out Work Tee slug used in tests is 'inside-out-work-tee-cream'. Admin product UI testids prefix: 'admin-product-' (e.g. admin-product-new-button, admin-product-form-*, admin-product-row-<id>, admin-product-edit-<id>, admin-product-delete-<id>). Shop product cards do NOT yet have per-card testids — flag for future addition.",
+  "rca_of_the_issue": "No bugs identified in this iteration. All 13 backend assertions pass; all 10 frontend admin flows pass; non-admin redirect verified."
+}

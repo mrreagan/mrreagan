@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from fastapi import FastAPI, APIRouter, Request
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 import logging
 
@@ -13,6 +14,11 @@ from database import db, client  # single source of truth for MongoDB
 
 app = FastAPI(title="Birthright API", version="1.0.0")
 api_router = APIRouter(prefix="/api")
+
+# Serve product mockup images & other static assets at /api/static/*
+STATIC_DIR = Path(__file__).parent / "static"
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/api/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @api_router.get("/")

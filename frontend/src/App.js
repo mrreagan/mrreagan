@@ -29,6 +29,7 @@ import Facilitators from "./pages/Facilitators";
 import FacilitatorProfile from "./pages/FacilitatorProfile";
 import FacilitatorDashboard from "./pages/FacilitatorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminProducts from "./pages/AdminProducts";
 import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children, roles }) {
@@ -100,6 +101,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/products"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminProducts />
           </ProtectedRoute>
         }
       />
