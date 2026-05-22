@@ -71,7 +71,7 @@ class WorkshopCreate(BaseModel):
     image_url: Optional[str] = ""
     materials_included: List[str] = []
     faq: List[dict] = []
-    check_in_code: str
+    check_in_code: Optional[str] = None  # auto-generated server-side if omitted
     status: Literal["draft", "upcoming", "in_progress", "completed", "cancelled"] = "upcoming"
 
 
@@ -307,3 +307,28 @@ class ContactMessageCreate(BaseModel):
 class NewsletterSubscribe(BaseModel):
     email: EmailStr
     name: Optional[str] = ""
+
+
+# ============ WORKSHOP PHOTOS ============
+class WorkshopPhotoCreate(BaseModel):
+    caption: Optional[str] = ""
+
+
+class WorkshopPhoto(BaseModel):
+    id: str
+    workshop_id: str
+    uploader_id: str
+    uploader_name: str
+    uploader_role: str
+    image_url: str
+    thumb_url: Optional[str] = None
+    caption: str = ""
+    status: Literal["pending", "approved", "rejected"] = "pending"
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    created_at: str
+
+
+class PhotoModerationAction(BaseModel):
+    reason: Optional[str] = None

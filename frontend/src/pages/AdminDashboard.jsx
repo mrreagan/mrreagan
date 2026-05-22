@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../lib/api";
 import { Link } from "react-router-dom";
-import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem } from "lucide-react";
+import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 // ---------- Stat card ----------
@@ -54,8 +54,9 @@ function QuickActionCard({ to, icon: Icon, title, description }) {
 function OverviewTab() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5" data-testid="admin-overview">
-      <QuickActionCard to="/admin/workshops" icon={Calendar} title="Manage Workshops" description="Create, edit, schedule" />
+      <QuickActionCard to="/admin/workshops" icon={Calendar} title="Manage Workshops" description="Create, edit, cancel, duplicate" />
       <QuickActionCard to="/admin/products" icon={ShoppingBag} title="Manage Products" description="Merch and workshop materials" />
+      <QuickActionCard to="/admin/photos" icon={Camera} title="Photo Moderation" description="Approve participant uploads" />
       <QuickActionCard to="/admin/content" icon={Heart} title="Foundation Content" description="Mission, about, governance" />
     </div>
   );

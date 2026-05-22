@@ -287,6 +287,11 @@ export default function FacilitatorDashboard() {
       <h1 className="editorial-h1 mt-2">Your workshops</h1>
       <div className="divider-flame" />
 
+      <div className="flex flex-wrap gap-3 mt-4" data-testid="fac-quick-actions">
+        <Link to="/admin/workshops" className="btn-outline text-sm" data-testid="fac-link-workshops">Manage workshops</Link>
+        <Link to="/admin/photos" className="btn-outline text-sm" data-testid="fac-link-photos">Photo queue</Link>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
         <aside className="lg:col-span-1 space-y-2" data-testid="fac-workshop-list">
           {workshops.map((w) => (

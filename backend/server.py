@@ -44,6 +44,7 @@ from routers.checkout import router as checkout_router, stripe_webhook
 from routers.community import router as community_router
 from routers.foundation import router as foundation_router
 from routers.registrations import router as registrations_router
+from routers.workshop_photos import router as workshop_photos_router
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -53,6 +54,7 @@ api_router.include_router(checkout_router)
 api_router.include_router(community_router)
 api_router.include_router(foundation_router)
 api_router.include_router(registrations_router)
+api_router.include_router(workshop_photos_router)
 
 
 @api_router.post("/webhook/stripe")

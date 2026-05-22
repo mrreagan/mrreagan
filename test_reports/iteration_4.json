@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 4 backend tests complete and ALL GREEN (25/25). Covers: workshop create (server-side check_in_code generation, facilitator self-assign override), duplicate (admin OK, foreign-facilitator 403, new code, slug -copy, status=draft, dates shifted), cancel (workshop status, registration refund metadata with seed_demo → status='manual', workshop_cancelled email queued in db.outbound_emails, second cancel → 400), revenue (admin OK, foreign-facilitator 403, anonymous 401/403), photo upload (paid participant pending, facilitator/admin auto-approved, unpaid registered + stranger 403, >8MB 413, non-image 400), photo list (anonymous gets only approved), cross-workshop pending queue (admin all, facilitator scoped, participant 403), approve/reject moderation, delete rules (uploader can delete own non-approved, cannot delete own approved, admin can delete any), static image serve returns 200 image/jpeg. Frontend smoke: /admin/workshops route is reachable and renders; deeper interactive flows (drawer open, duplicate/cancel/revenue buttons, /admin/photos, WorkshopHub Photos tab) were inconclusive in Playwright because the test session cookie wasn't surviving cross-page navigation reliably — main agent should self-verify those UI flows in the browser.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter4_workshops_photos.py",
+    "/app/test_reports/pytest/iter4_results.xml"
+  ],
+  "action_items": [
+    "Main agent: visually verify /admin/workshops drawer (new + edit modes, facilitator dropdown visible only for admin, slug disabled in edit, check_in_code read-only in edit), duplicate confirm/toast, cancel window.prompt 'CANCEL' flow with refund toast, revenue modal numbers, and /admin/photos approve/reject UI.",
+    "Main agent: visually verify WorkshopHub Photos tab — upload with caption, 'Awaiting review' chip on participant pending photo, approved grid, rejection reason display."
+  ],
+  "critical_code_review_comments": [
+    "workshops.py: _gen_check_in_code() always overrides client value on create (good — never editable). Facilitator create_workshop forces facilitator_id=self (good).",
+    "duplicate_workshop: shifts start/end/early_bird_until by +30 days, generates new check_in_code, slug collision handled via -copy-N. Facilitator-on-other 403 enforced.",
+    "cancel_workshop: seed_demo session shortcut to status='manual' is correct (no real Stripe). Email queued per registrant with template='workshop_cancelled' and metadata.workshop_id/registration_id. Idempotency: 400 on already-cancelled. Order of writes (regs first, workshop last) supports retry, but if email/refund partially fails the workshop never flips to cancelled — consider tracking partial failures explicitly for ops alerting.",
+    "workshop_revenue: facilitator scope correctly enforced; admin sees any. Math: gross = paid+cancelled amounts; refunded = sum of cancelled refund_amount; net = gross - refunded. Looks correct.",
+    "workshop_photos: image processing via Pillow strips EXIF + resizes; thumb generated. 8MB cap enforced AFTER reading body — for very large uploads this still buffers full bytes; consider StreamingFile or chunked read with early abort.",
+    "Auth: get_current_user prefers cookie over Authorization header. Tests must use per-user requests.Session to avoid cross-talk (documented in test_iter4 fixtures).",
+    "MINOR: list endpoint /api/workshop-photos with no path matches '@router.get(\"\")' — keep an eye on FastAPI trailing-slash behavior; /api/workshop-photos/ returns 307."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter4_workshops_photos.py"
+  ],
+  "success_rate": { "backend": "100% (25/25)", "frontend": "not fully verified (route load OK; interactive flows inconclusive)" },
+  "test_credentials": "admin@birthright.org / birthright2026 ; elena@birthright.org / birthright2026 ; marcus@birthright.org / birthright2026 ; demo@birthright.org / birthright2026",
+  "seed_data_creation": "All test-created workshops, registrations, photos (incl. files on disk), outbound_emails, and temp users are cleaned up at test teardown. No persistent test data remains.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Tests use isolated per-user requests.Session() because backend auth reads cookie before Authorization header. The outbound_emails template field is 'template' (not 'template_name') — required for assertions. seed_demo registrations are intentionally routed to refund_status='manual'. Stripe refunds intentionally NOT triggered against real session IDs.",
+  "rca of the issue": "None — all iteration-4 backend features pass."
+}

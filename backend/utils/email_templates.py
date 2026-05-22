@@ -230,3 +230,40 @@ def newsletter_welcome(*, name: str) -> tuple[str, str, str]:
         "upcoming workshop dates, and the occasional quiet recommendation."
     )
     return subject, _shell(subject, "Welcome to the Birthright letter.", body), text
+
+
+def workshop_cancelled(
+    *, first_name: str, workshop: dict, refund_amount: float, refund_status: str, app_url: str
+) -> tuple[str, str, str]:
+    """Notify a registrant that their workshop was cancelled, with refund status."""
+    subject = f"Cancelled — {workshop['title']}"
+    refund_block = ""
+    if refund_status == "succeeded":
+        refund_block = (
+            f'<p style="color:{INK};">A full refund of <strong>{_money(refund_amount)}</strong> has been issued to '
+            f"your original payment method. It typically appears within 5–10 business days.</p>"
+        )
+    elif refund_status == "pending":
+        refund_block = (
+            f'<p style="color:{INK};">A refund of <strong>{_money(refund_amount)}</strong> is being processed. '
+            "You'll see it on your original payment method within 5–10 business days.</p>"
+        )
+    else:
+        refund_block = (
+            f'<p style="color:{INK};">Your refund of <strong>{_money(refund_amount)}</strong> is being arranged manually. '
+            "A human at the foundation will reach out within two business days to confirm.</p>"
+        )
+    body = f"""
+        <p style="font-family:Georgia,serif;font-size:22px;color:{INK};margin:0 0 8px;">A note, {first_name}.</p>
+        <p>We're writing to let you know that <strong>{workshop['title']}</strong>, scheduled for {_fmt_date(workshop.get('start_date'))}, has been cancelled.</p>
+        {refund_block}
+        <p style="color:{SMOKE};">We're sorry. If you'd like to be notified when this workshop returns to the calendar, just reply and we'll add you to the early list.</p>
+        {_button(f"{app_url}/workshops", "Browse other workshops")}
+    """
+    text = (
+        f"A note, {first_name}.\n\n"
+        f"{workshop['title']} on {_fmt_date(workshop.get('start_date'))} has been cancelled.\n\n"
+        f"Refund of {_money(refund_amount)} — status: {refund_status}.\n\n"
+        "If you'd like to be notified when it returns, reply to this email."
+    )
+    return subject, _shell(subject, f"{workshop['title']} has been cancelled.", body), text

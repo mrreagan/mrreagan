@@ -11,6 +11,7 @@ import {
   Star,
   Sparkles,
   LifeBuoy,
+  Camera,
 } from "lucide-react";
 import DirectionsTab from "../components/workshop-hub/DirectionsTab";
 import DiscussionTab from "../components/workshop-hub/DiscussionTab";
@@ -19,6 +20,7 @@ import MaterialsTab from "../components/workshop-hub/MaterialsTab";
 import ReviewTab from "../components/workshop-hub/ReviewTab";
 import ImpactTab from "../components/workshop-hub/ImpactTab";
 import SupportTab from "../components/workshop-hub/SupportTab";
+import PhotosTab from "../components/workshop-hub/PhotosTab";
 
 const TABS = [
   { id: "directions", label: "Directions & Check-in", icon: MapPin },
@@ -26,6 +28,7 @@ const TABS = [
   { id: "qa", label: "Q&A", icon: HelpCircle },
   { id: "chat", label: "Chat", icon: MessageCircle },
   { id: "materials", label: "Materials", icon: ShoppingBag },
+  { id: "photos", label: "Photos", icon: Camera },
   { id: "review", label: "Review", icon: Star },
   { id: "impact", label: "Impact", icon: Sparkles },
   { id: "support", label: "Support", icon: LifeBuoy },
@@ -64,6 +67,8 @@ function TabContent({ tab, workshop, reg, user }) {
       return <ChatTab workshop={workshop} user={user} />;
     case "materials":
       return <MaterialsTab workshop={workshop} />;
+    case "photos":
+      return <PhotosTab workshop={workshop} user={user} />;
     case "review":
       return <ReviewTab workshop={workshop} />;
     case "impact":
