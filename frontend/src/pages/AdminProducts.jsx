@@ -69,6 +69,8 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
   const isEdit = Boolean(initial?.id);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [regenPrompt, setRegenPrompt] = useState("");
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -78,12 +80,35 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         price: initial?.price ?? "",
         workshop_id: initial?.workshop_id ?? "",
       });
+      setRegenPrompt(initial?.description || "");
     }
   }, [open, initial]);
 
   if (!open) return null;
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const regenerateImage = async () => {
+    if (!isEdit) return;
+    if (regenPrompt.trim().length < 10) {
+      toast.error("Please describe the image (10+ characters).");
+      return;
+    }
+    setRegenerating(true);
+    try {
+      const res = await api.post(`/products/${initial.id}/regenerate-image`, { prompt: regenPrompt });
+      const newUrl = res.data?.image_url;
+      if (newUrl) {
+        // Add a cache-buster so the browser fetches the new bytes
+        update("image_url", `${newUrl}?v=${Date.now()}`);
+        toast.success("New mockup ready");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Regeneration failed");
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -255,6 +280,31 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         {form.image_url && (
           <div className="w-full aspect-square max-w-[200px] bg-[#FAF8F5] rounded overflow-hidden border border-[#E5E1D8]">
             <img src={form.image_url} alt="preview" className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        {isEdit && (
+          <div className="border border-[#E5E1D8] bg-[#FAF8F5] p-4 rounded" data-testid="admin-product-regen-section">
+            <p className="text-xs uppercase tracking-wider text-[#C9A961]">Regenerate mockup with AI</p>
+            <p className="text-[11px] text-[#5C6B6B] mt-1">
+              Describe the photo you want. We'll generate it via Gemini Nano Banana, save it to the storefront, and update this product's image.
+            </p>
+            <textarea
+              className="input-field mt-3 min-h-[70px] text-sm"
+              value={regenPrompt}
+              onChange={(e) => setRegenPrompt(e.target.value)}
+              placeholder="e.g. A folded cream cotton tee on warm linen, soft natural light, square 1:1, editorial product photography"
+              data-testid="admin-product-regen-prompt"
+            />
+            <button
+              type="button"
+              onClick={regenerateImage}
+              disabled={regenerating}
+              className="btn-outline mt-3 text-sm"
+              data-testid="admin-product-regen-button"
+            >
+              {regenerating ? "Generating (~20s)..." : "Generate new image"}
+            </button>
           </div>
         )}
 

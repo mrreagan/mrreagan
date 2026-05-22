@@ -37,18 +37,22 @@ async def health():
 
 # Include routers
 from routers.auth import router as auth_router
+from routers.password_reset import router as password_reset_router
 from routers.workshops import router as workshops_router
 from routers.products import router as products_router
 from routers.checkout import router as checkout_router, stripe_webhook
 from routers.community import router as community_router
 from routers.foundation import router as foundation_router
+from routers.registrations import router as registrations_router
 
 api_router.include_router(auth_router)
+api_router.include_router(password_reset_router)
 api_router.include_router(workshops_router)
 api_router.include_router(products_router)
 api_router.include_router(checkout_router)
 api_router.include_router(community_router)
 api_router.include_router(foundation_router)
+api_router.include_router(registrations_router)
 
 
 @api_router.post("/webhook/stripe")
@@ -78,8 +82,18 @@ async def startup_event():
         logger.info("Seed check complete.")
     except Exception as e:
         logger.error(f"Seeding error: {e}")
+    try:
+        from utils.scheduler import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        logger.error(f"Scheduler start error: {e}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    try:
+        from utils.scheduler import stop_scheduler
+        stop_scheduler()
+    except Exception:
+        pass
     client.close()

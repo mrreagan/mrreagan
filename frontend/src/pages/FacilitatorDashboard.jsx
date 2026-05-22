@@ -66,7 +66,7 @@ function WorkshopHeaderCard({ workshop, participants, qaCount, supportCount }) {
 }
 
 // ---------- Participants list ----------
-function ParticipantsList({ participants }) {
+function ParticipantsList({ participants, onRelease }) {
   return (
     <div className="card p-7" data-testid="fac-participants">
       <h3 className="font-serif text-xl">Participants ({participants.length})</h3>
@@ -82,11 +82,22 @@ function ParticipantsList({ participants }) {
                 {p.user?.email} · {p.pricing_tier}
               </p>
             </div>
-            {p.checked_in && (
-              <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#2E5C46]/10 text-[#2E5C46]">
-                Checked in
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {p.checked_in ? (
+                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#2E5C46]/10 text-[#2E5C46]">
+                  Checked in
+                </span>
+              ) : (
+                <button
+                  onClick={() => onRelease(p)}
+                  className="text-[11px] text-[#B86A5C] hover:underline"
+                  data-testid={`release-seat-${p.id}`}
+                  title="Release this seat — the next person on the waitlist will be notified"
+                >
+                  Release seat
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -188,7 +199,7 @@ function SupportRequestList({ supportRequests, replies, onReplyChange, onSendRep
 }
 
 // ---------- Selected workshop detail panel ----------
-function WorkshopDetailPanel({ workshop, participants, qa, support, replies, onMarkAnswered, onReplyChange, onSendReply }) {
+function WorkshopDetailPanel({ workshop, participants, qa, support, replies, onMarkAnswered, onReplyChange, onSendReply, onRelease }) {
   const openQa = useMemo(() => qa.filter((q) => !q.answered), [qa]);
   const openSupportCount = useMemo(
     () => support.filter((s) => s.status !== "resolved").length,
@@ -203,7 +214,7 @@ function WorkshopDetailPanel({ workshop, participants, qa, support, replies, onM
         qaCount={openQa.length}
         supportCount={openSupportCount}
       />
-      <ParticipantsList participants={participants} />
+      <ParticipantsList participants={participants} onRelease={onRelease} />
       <OpenQaList openQa={openQa} onMarkAnswered={onMarkAnswered} />
       <SupportRequestList
         supportRequests={support}
@@ -258,6 +269,18 @@ export default function FacilitatorDashboard() {
     toast.success("Response sent");
   }, [replies, selected]);
 
+  const releaseSeat = useCallback(async (registration) => {
+    const name = `${registration.user?.first_name || ""} ${registration.user?.last_name || ""}`.trim() || "this participant";
+    if (!window.confirm(`Release the seat held by ${name}? The first person on the waitlist will be notified by email.`)) return;
+    try {
+      const res = await api.post(`/registrations/${registration.id}/release`);
+      setParticipants((prev) => prev.filter((p) => p.id !== registration.id));
+      toast.success(res.data?.promoted ? "Seat released. Waitlist promoted." : "Seat released.");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not release seat");
+    }
+  }, []);
+
   return (
     <div className="container-page py-12" data-testid="facilitator-dashboard-page">
       <span className="label">Facilitator dashboard</span>
@@ -284,6 +307,7 @@ export default function FacilitatorDashboard() {
               onMarkAnswered={markAnswered}
               onReplyChange={handleReplyChange}
               onSendReply={respondSupport}
+              onRelease={releaseSeat}
             />
           )}
         </div>

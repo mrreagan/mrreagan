@@ -1,10 +1,26 @@
 """Product / Storefront routes."""
+import base64
+import logging
+import os
+import re
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel, Field
 from typing import Optional
 from models import ProductCreate, Product, ProductUpdate, gen_id, now_iso
 from auth_utils import get_current_user, require_roles, get_current_user_optional
 
+logger = logging.getLogger("birthright.products")
 router = APIRouter(prefix="/products", tags=["products"])
+
+
+class RegenerateImageRequest(BaseModel):
+    prompt: str = Field(min_length=10, max_length=2000)
+
+
+def _slugify(text: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
+    return s[:60] or gen_id()[:8]
 
 
 @router.get("")
@@ -78,3 +94,65 @@ async def delete_product(product_id: str, user: dict = Depends(require_roles("ad
     from database import db
     await db.products.delete_one({"id": product_id})
     return {"success": True}
+
+
+@router.post("/{product_id}/regenerate-image")
+async def regenerate_image(
+    product_id: str,
+    data: RegenerateImageRequest,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Generate a fresh mockup with Gemini Nano Banana, save to /api/static/products/<slug>.png,
+    and update the product's image_url."""
+    from database import db
+    product = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="EMERGENT_LLM_KEY not configured")
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image library unavailable: {e}")
+
+    slug = product.get("slug") or _slugify(product["name"])
+    full_prompt = (
+        data.prompt.strip()
+        + " Brand palette: muted teal #476B6B, gold #C9A961, cream #FAF8F5. "
+        "Square 1:1. Editorial product photography on warm cream linen, soft natural light. "
+        "No printed brand name, no logo text, no human faces, no watermark."
+    )
+
+    try:
+        chat = (
+            LlmChat(
+                api_key=api_key,
+                session_id=f"regen-{product_id}",
+                system_message="You generate clean editorial e-commerce product mockup photography.",
+            )
+            .with_model("gemini", "gemini-3.1-flash-image-preview")
+            .with_params(modalities=["image", "text"])
+        )
+        _, images = await chat.send_message_multimodal_response(UserMessage(text=full_prompt))
+        if not images:
+            raise HTTPException(status_code=502, detail="No image returned from generator")
+        static_dir = Path(__file__).resolve().parent.parent / "static" / "products"
+        static_dir.mkdir(parents=True, exist_ok=True)
+        out = static_dir / f"{slug}.png"
+        out.write_bytes(base64.b64decode(images[0]["data"]))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"image regen failed for {product_id}: {e}")
+        raise HTTPException(status_code=502, detail=f"Image generation failed: {e}")
+
+    new_url = f"/api/static/products/{slug}.png"
+    await db.products.update_one(
+        {"id": product_id},
+        {"$set": {"image_url": new_url, "slug": slug}},
+    )
+    updated = await db.products.find_one({"id": product_id}, {"_id": 0})
+    return updated

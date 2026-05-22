@@ -1,4 +1,6 @@
 """Foundation content, governing members, contact, newsletter, sponsors, dashboard."""
+import logging
+import os
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 from models import (
@@ -11,7 +13,14 @@ from models import (
     now_iso,
 )
 from auth_utils import get_current_user, require_roles
+from utils.mailer import send_email
+from utils.email_templates import (
+    contact_autoreply,
+    contact_admin_notify,
+    newsletter_welcome,
+)
 
+logger = logging.getLogger("birthright.foundation")
 router = APIRouter(tags=["foundation"])
 
 
@@ -130,6 +139,27 @@ async def submit_contact(data: ContactMessageCreate):
             upsert=True,
         )
     msg.pop("_id", None)
+    # Fire-and-forget emails (notify admin + auto-reply to sender)
+    try:
+        admin_inbox = os.environ.get("ADMIN_NOTIFY_EMAIL") or os.environ.get("REPLY_TO_EMAIL")
+        full_name = f"{data.first_name} {data.last_name or ''}".strip()
+        if admin_inbox:
+            subj, html, text = contact_admin_notify(
+                name=full_name, email=data.email, phone=data.phone or "",
+                subject_line=data.subject or "", message=data.message,
+            )
+            await send_email(
+                to=admin_inbox, subject=subj, html=html, text=text,
+                reply_to=data.email, template_name="contact_admin_notify",
+                metadata={"contact_id": msg["id"]},
+            )
+        subj, html, text = contact_autoreply(first_name=data.first_name)
+        await send_email(
+            to=data.email, subject=subj, html=html, text=text,
+            template_name="contact_autoreply", metadata={"contact_id": msg["id"]},
+        )
+    except Exception as e:
+        logger.error(f"contact email failed: {e}")
     return {"success": True, "message": "Thank you for reaching out. We'll be in touch soon."}
 
 
@@ -155,6 +185,14 @@ async def subscribe(data: NewsletterSubscribe):
         "active": True,
     }
     await db.newsletter_subscribers.insert_one(sub)
+    try:
+        subj, html, text = newsletter_welcome(name=data.name or "")
+        await send_email(
+            to=data.email, subject=subj, html=html, text=text,
+            template_name="newsletter_welcome", metadata={"subscriber_id": sub["id"]},
+        )
+    except Exception as e:
+        logger.error(f"newsletter welcome email failed: {e}")
     return {"success": True, "message": "Welcome! You're subscribed to birthright updates."}
 
 
@@ -247,6 +285,22 @@ async def list_users(user: dict = Depends(require_roles("admin"))):
     from database import db
     users = await db.users.find({}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(10000)
     return users
+
+
+@router.get("/admin/email-log")
+async def email_log(user: dict = Depends(require_roles("admin")), limit: int = 100):
+    """Combined view of dry-run-queued + actually-sent emails for inspection."""
+    from database import db
+    sent = await db.email_log.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    queued = await db.outbound_emails.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    combined = sorted(sent + queued, key=lambda e: e.get("created_at", ""), reverse=True)
+    return {
+        "items": combined[:limit],
+        "real_send_enabled": bool(
+            __import__("os").environ.get("RESEND_API_KEY", "").startswith("re_")
+            and __import__("os").environ.get("EMAIL_DRY_RUN", "true").lower() != "true"
+        ),
+    }
 
 
 @router.put("/admin/users/{user_id}/role")

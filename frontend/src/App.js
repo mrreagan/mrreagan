@@ -22,6 +22,8 @@ import Cart from "./pages/Cart";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import WorkshopHub from "./pages/WorkshopHub";
 import Sponsorship from "./pages/Sponsorship";
@@ -63,6 +65,8 @@ function AppRoutes() {
       <Route path="/facilitators/:slug" element={<FacilitatorProfile />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route
         path="/dashboard"

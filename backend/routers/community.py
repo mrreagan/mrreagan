@@ -1,4 +1,6 @@
 """Community routes: discussions/Q&A, chat, reviews, impact statements, support."""
+import logging
+import os
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List
 from models import (
@@ -12,7 +14,10 @@ from models import (
     now_iso,
 )
 from auth_utils import get_current_user, require_roles
+from utils.mailer import send_email
+from utils.email_templates import qa_reply_notification
 
+logger = logging.getLogger("birthright.community")
 router = APIRouter(tags=["community"])
 
 
@@ -47,6 +52,30 @@ async def create_discussion(data: DiscussionCreate, user: dict = Depends(get_cur
     }
     await db.discussions.insert_one(doc)
     doc.pop("_id", None)
+    # If this is a facilitator/admin reply to a question, notify the question's author
+    try:
+        if data.parent_id and user["role"] in ("facilitator", "admin"):
+            parent = await db.discussions.find_one({"id": data.parent_id})
+            if parent and parent.get("is_question") and parent["user_id"] != user["id"]:
+                author = await db.users.find_one({"id": parent["user_id"]}, {"_id": 0, "password_hash": 0})
+                workshop = await db.workshops.find_one({"id": data.workshop_id}, {"_id": 0})
+                if author and workshop and author.get("email"):
+                    app_url = os.environ.get("PUBLIC_APP_URL", "https://birthright.live")
+                    excerpt = (data.content or "")[:280] + ("…" if len(data.content or "") > 280 else "")
+                    subject, html, text = qa_reply_notification(
+                        first_name=author["first_name"], workshop=workshop,
+                        reply_excerpt=excerpt, app_url=app_url,
+                    )
+                    await send_email(
+                        to=author["email"], subject=subject, html=html, text=text,
+                        template_name="qa_reply",
+                        metadata={"workshop_id": data.workshop_id, "discussion_id": doc["id"]},
+                    )
+            # mark question as answered
+            if parent and parent.get("is_question"):
+                await db.discussions.update_one({"id": parent["id"]}, {"$set": {"answered": True}})
+    except Exception as e:
+        logger.error(f"Q&A reply notification failed: {e}")
     return doc
 
 

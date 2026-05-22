@@ -128,11 +128,76 @@ function MessagesTab({ messages }) {
   );
 }
 
+// ---------- Email log tab ----------
+function EmailLogTab({ items, realSendEnabled }) {
+  return (
+    <div data-testid="admin-email-log">
+      <div className={`card p-4 mb-4 ${realSendEnabled ? "bg-[#F0F6F4]" : "bg-[#FFF8E8]"}`}>
+        <p className="text-sm">
+          {realSendEnabled ? (
+            <>
+              <strong className="text-[#2E5C46]">Live mode.</strong>{" "}
+              Emails are sending through Resend to real inboxes.
+            </>
+          ) : (
+            <>
+              <strong className="text-[#C9A961]">Dry-run mode.</strong>{" "}
+              Emails are queued for inspection only — no real sends. Add a valid <code>RESEND_API_KEY</code>{" "}
+              and set <code>EMAIL_DRY_RUN=false</code> in <code>backend/.env</code> to go live.
+            </>
+          )}
+        </p>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-sm text-[#5C6B6B]">No emails sent yet.</p>
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-[#FAF8F5] border-b border-[#E5E1D8]">
+              <tr>
+                <th className="text-left p-3 label">When</th>
+                <th className="text-left p-3 label">Template</th>
+                <th className="text-left p-3 label">Subject</th>
+                <th className="text-left p-3 label">To</th>
+                <th className="text-left p-3 label">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((e) => (
+                <tr key={e.id} className="border-b border-[#E5E1D8] last:border-0" data-testid={`email-row-${e.id}`}>
+                  <td className="p-3 text-xs text-[#5C6B6B]">{new Date(e.created_at).toLocaleString()}</td>
+                  <td className="p-3 text-xs">{e.template || "—"}</td>
+                  <td className="p-3 text-xs">{e.subject}</td>
+                  <td className="p-3 text-xs text-[#5C6B6B]">{(e.to || []).join(", ")}</td>
+                  <td className="p-3">
+                    <span
+                      className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                        e.status === "sent"
+                          ? "bg-[#2E5C46]/10 text-[#2E5C46]"
+                          : e.status === "failed"
+                          ? "bg-[#B86A5C]/10 text-[#B86A5C]"
+                          : "bg-[#C9A961]/15 text-[#C9A961]"
+                      }`}
+                    >
+                      {e.status?.replace("_", " ") || "queued"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------- Tab switcher ----------
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "users", label: "Users" },
   { id: "messages", label: "Contact Messages" },
+  { id: "emails", label: "Email log" },
 ];
 
 function TabBar({ active, onChange }) {
@@ -159,6 +224,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [emailLog, setEmailLog] = useState({ items: [], real_send_enabled: false });
   const [tab, setTab] = useState("overview");
 
   useEffect(() => {
@@ -166,6 +232,12 @@ export default function AdminDashboard() {
     api.get("/admin/users").then((r) => setUsers(r.data));
     api.get("/contact/messages").then((r) => setMessages(r.data)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (tab === "emails") {
+      api.get("/admin/email-log?limit=100").then((r) => setEmailLog(r.data)).catch(() => {});
+    }
+  }, [tab]);
 
   const changeRole = async (userId, role) => {
     await api.put(`/admin/users/${userId}/role`, { role });
@@ -192,6 +264,7 @@ export default function AdminDashboard() {
         {tab === "overview" && <OverviewTab />}
         {tab === "users" && <UsersTab users={users} onChangeRole={changeRole} />}
         {tab === "messages" && <MessagesTab messages={messages} />}
+        {tab === "emails" && <EmailLogTab items={emailLog.items} realSendEnabled={emailLog.real_send_enabled} />}
       </div>
     </div>
   );

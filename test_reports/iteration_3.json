@@ -1,0 +1,55 @@
+{
+  "summary": "Iteration 3 testing complete: emails (dry-run), password reset flow, registration cancel/release with waitlist promotion, regenerate-image endpoint contract, admin email log, and scheduler. 16/16 backend pytest tests pass; all targeted frontend UI checks pass.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter3_emails.py",
+    "/app/test_reports/pytest/iter3_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "mailer._is_real_send_enabled() correctly gates real send on both EMAIL_DRY_RUN!=true and RESEND_API_KEY startswith 're_'. Good.",
+    "password_reset endpoint correctly returns the SAME success message for non-existent users (no enumeration leak).",
+    "reset_password invalidates all other outstanding tokens for the user — correctly implemented.",
+    "registrations.DELETE checks ownership + checked_in correctly (403/400 paths verified).",
+    "regenerate-image uses Field(min_length=10) → returns 422 for short prompts, and require_roles('admin') → 403 for participant. Good.",
+    "admin/email-log: real_send_enabled flag correctly false in dry-run mode; combined sent+queued list sorted desc.",
+    "Scheduler logs 'scheduler started (workshop_reminders every 30m)' on startup; job is registered.",
+    "Minor: utils/mailer.py imports `resend` at module-load time; if pkg missing this would crash startup — but it is in requirements so OK in current env.",
+    "Minor: foundation.py contact endpoint subscribes to newsletter on opt-in but does NOT queue the newsletter_welcome email in that path — intentional? consider unifying."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter3_emails.py"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% (all targeted flows verified)"},
+  "test_credentials": "admin@birthright.org / birthright2026 ; demo@birthright.org / birthright2026 (password restored after reset tests) ; elena@birthright.org / birthright2026",
+  "seed_data_creation": "Tests inserted: temporary registrations for demo on upcoming workshops (then cancelled), waitlist entries (notified=true after promotion), contact_messages, newsletter_subscribers (test_newsletter_iter3_*), password_reset_tokens (all consumed/invalidated). Demo user password restored to 'birthright2026' at end of reset-password test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All iteration-3 features green. Backend pytest at /app/backend/tests/test_iter3_emails.py is idempotent — safe to re-run. Email is in DRY-RUN by design: assert against db.outbound_emails, not real inboxes. The 'regenerate-image' endpoint contract is tested (auth + validation); a real Gemini Nano Banana call was NOT triggered to preserve LLM credits. To verify a real image gen, hit POST /api/products/{id}/regenerate-image as admin with prompt >=10 chars; expect image_url=/api/static/products/<slug>.png and 200 image/png on subsequent fetch.",
+  "verified_features": [
+    "POST /api/contact queues admin_notify + autoreply (status='queued_dry_run') — verified in db.outbound_emails.",
+    "POST /api/auth/request-password-reset: existing user → 1 token + 1 password_reset email; nonexistent → 0 tokens, 0 emails, same response message.",
+    "POST /api/auth/reset-password: valid token → new password works, token marked used=true, other outstanding tokens invalidated. Reused token → 400.",
+    "POST /api/newsletter: subscriber row inserted + welcome email queued.",
+    "DELETE /api/registrations/{id}: owner can cancel (payment_status='cancelled'), waitlist promotion email queued, waitlist entry notified=true. Wrong user → 403.",
+    "POST /api/registrations/{id}/release: admin works; participant → 403.",
+    "POST /api/products/{id}/regenerate-image: admin auth required (participant → 403); prompt min_length=10 enforced (→ 422). Real generation NOT invoked.",
+    "GET /api/admin/email-log: admin → {items, real_send_enabled:false}; participant → 403.",
+    "APScheduler 'workshop_reminders' job registered on startup (log: 'scheduler started (workshop_reminders every 30m)').",
+    "Frontend /forgot-password renders, submission shows 'reset link is on its way' confirmation (no email leak).",
+    "Frontend /reset-password?token=<x> renders form; mismatched passwords → 'Passwords don't match' toast.",
+    "Frontend /reset-password (no token) shows missing-token state with 'Start over' link.",
+    "Frontend Login page has 'Forgot your password?' link → /forgot-password.",
+    "Frontend AdminProducts edit drawer shows regen section (data-testid='admin-product-regen-section') with prompt textarea + Generate button; the section is correctly HIDDEN in 'New product' (create) mode.",
+    "Frontend AdminDashboard 'Email log' tab renders with 'Dry-run mode' banner and lists queued password_reset, newsletter_welcome, waitlist_promotion, contact emails."
+  ],
+  "rca of the issue": "None — all targeted iteration-3 features pass."
+}

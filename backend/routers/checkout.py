@@ -1,5 +1,6 @@
 """Payments: Stripe checkout for workshop registration, products, donations, sponsorships."""
 import os
+import logging
 from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import Optional
 from emergentintegrations.payments.stripe.checkout import (
@@ -17,6 +18,11 @@ from models import (
     now_iso,
 )
 from auth_utils import get_current_user, get_current_user_optional
+from utils.mailer import send_email, attachment_from_bytes
+from utils.email_templates import order_receipt, workshop_confirmation
+from utils.calendar_qr import build_ics, build_qr_png
+
+logger = logging.getLogger("birthright.checkout")
 
 router = APIRouter(prefix="/checkout", tags=["checkout"])
 
@@ -293,7 +299,7 @@ async def _create_registration_from_txn(db, txn: dict) -> None:
     )
     if existing:
         return
-    await db.registrations.insert_one({
+    reg = {
         "id": gen_id(),
         "workshop_id": meta["workshop_id"],
         "user_id": meta["user_id"],
@@ -303,13 +309,39 @@ async def _create_registration_from_txn(db, txn: dict) -> None:
         "payment_status": "paid",
         "checked_in": False,
         "checked_in_at": None,
+        "reminder_sent": False,
         "created_at": now_iso(),
-    })
+    }
+    await db.registrations.insert_one(reg)
+    # Send workshop confirmation email
+    try:
+        user = await db.users.find_one({"id": meta["user_id"]}, {"_id": 0, "password_hash": 0})
+        workshop = await db.workshops.find_one({"id": meta["workshop_id"]}, {"_id": 0})
+        if user and workshop and user.get("email"):
+            app_url = os.environ.get("PUBLIC_APP_URL", "https://birthright.live")
+            check_in_code = workshop.get("check_in_code", "—")
+            subject, html, text = workshop_confirmation(
+                first_name=user["first_name"], workshop=workshop, registration=reg,
+                check_in_code=check_in_code, app_url=app_url,
+            )
+            ics_bytes = build_ics(workshop)
+            qr_bytes = build_qr_png(check_in_code)
+            attachments = [
+                attachment_from_bytes(f"{workshop['slug']}.ics", ics_bytes, "text/calendar"),
+                attachment_from_bytes("check-in-qr.png", qr_bytes, "image/png"),
+            ]
+            await send_email(
+                to=user["email"], subject=subject, html=html, text=text,
+                attachments=attachments, template_name="workshop_confirmation",
+                metadata={"workshop_id": workshop["id"], "registration_id": reg["id"]},
+            )
+    except Exception as e:
+        logger.error(f"workshop confirmation email failed: {e}")
 
 
 async def _create_order_from_txn(db, txn: dict) -> None:
     items = txn.get("items", [])
-    await db.orders.insert_one({
+    order = {
         "id": gen_id(),
         "user_id": txn.get("user_id"),
         "items": items,
@@ -318,11 +350,28 @@ async def _create_order_from_txn(db, txn: dict) -> None:
         "payment_session_id": txn["session_id"],
         "status": "paid",
         "created_at": now_iso(),
-    })
+    }
+    await db.orders.insert_one(order)
     for item in items:
         await db.products.update_one(
             {"id": item["product_id"]}, {"$inc": {"inventory": -item["quantity"]}}
         )
+    # Send order receipt
+    try:
+        if txn.get("user_id"):
+            user = await db.users.find_one({"id": txn["user_id"]}, {"_id": 0, "password_hash": 0})
+            if user and user.get("email"):
+                app_url = os.environ.get("PUBLIC_APP_URL", "https://birthright.live")
+                subject, html, text = order_receipt(
+                    first_name=user["first_name"], items=items,
+                    total=txn["amount"], order_id=order["id"], app_url=app_url,
+                )
+                await send_email(
+                    to=user["email"], subject=subject, html=html, text=text,
+                    template_name="order_receipt", metadata={"order_id": order["id"]},
+                )
+    except Exception as e:
+        logger.error(f"order receipt email failed: {e}")
 
 
 async def _create_sponsor_from_txn(db, txn: dict) -> None:

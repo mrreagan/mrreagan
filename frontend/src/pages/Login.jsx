@@ -48,6 +48,11 @@ export default function Login() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+        <p className="text-xs text-[#5C6B6B] mt-4 text-center">
+          <Link to="/forgot-password" className="hover:text-[#476B6B]" data-testid="login-forgot-link">
+            Forgot your password?
+          </Link>
+        </p>
         <p className="text-sm text-[#5C6B6B] mt-6 text-center">
           New here?{" "}
           <Link to="/register" className="text-[#476B6B] font-medium hover:underline" data-testid="login-to-register">

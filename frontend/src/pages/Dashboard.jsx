@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
-import { Calendar, Sparkles, ArrowRight } from "lucide-react";
+import { Calendar, Sparkles, ArrowRight, X } from "lucide-react";
+import { toast } from "sonner";
 
 const formatDate = (iso) => {
   if (!iso) return "";
@@ -10,33 +11,59 @@ const formatDate = (iso) => {
 };
 
 // ---------- Single workshop card ----------
-function WorkshopRegistrationCard({ registration, isPast }) {
+function WorkshopRegistrationCard({ registration, isPast, onCancelled }) {
   const w = registration.workshop;
   const ctaText = isPast
     ? "Leave a review or share impact"
     : registration.checked_in
     ? "Checked in"
     : "Open workshop hub";
+
+  const canCancel = !isPast && !registration.checked_in;
+
+  const cancel = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Cancel your registration for "${w.title}"? Your seat will be offered to the next person on the waitlist.`)) return;
+    try {
+      const res = await api.delete(`/registrations/${registration.id}`);
+      toast.success(res.data?.promoted ? "Seat released. The next waitlister has been notified." : "Registration cancelled.");
+      onCancelled(registration.id);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Cancellation failed");
+    }
+  };
+
   return (
-    <Link
-      to={`/dashboard/workshops/${w.id}`}
-      className="card card-hover overflow-hidden flex"
+    <div
+      className="card card-hover overflow-hidden flex relative"
       data-testid={isPast ? `past-reg-${registration.id}` : `reg-${registration.id}`}
     >
-      <div className="w-32 shrink-0 bg-[#E5E1D8]">
-        <img src={w.image_url} alt="" className={`w-full h-full object-cover aspect-square ${isPast ? "opacity-80" : ""}`} />
-      </div>
-      <div className="p-5 flex-1">
-        <div className="flex items-center gap-2 text-xs text-[#5C6B6B]">
-          <Calendar size={12} strokeWidth={1.5} />
-          {formatDate(w.start_date)}
+      <Link to={`/dashboard/workshops/${w.id}`} className="flex flex-1">
+        <div className="w-32 shrink-0 bg-[#E5E1D8]">
+          <img src={w.image_url} alt="" className={`w-full h-full object-cover aspect-square ${isPast ? "opacity-80" : ""}`} />
         </div>
-        <p className="font-serif text-lg mt-1 leading-tight">{w.title}</p>
-        <p className={`text-xs mt-2 inline-flex items-center gap-1 ${isPast ? "text-[#476B6B]" : "text-[#5C6B6B]"}`}>
-          {ctaText} <ArrowRight size={11} strokeWidth={1.5} />
-        </p>
-      </div>
-    </Link>
+        <div className="p-5 flex-1">
+          <div className="flex items-center gap-2 text-xs text-[#5C6B6B]">
+            <Calendar size={12} strokeWidth={1.5} />
+            {formatDate(w.start_date)}
+          </div>
+          <p className="font-serif text-lg mt-1 leading-tight">{w.title}</p>
+          <p className={`text-xs mt-2 inline-flex items-center gap-1 ${isPast ? "text-[#476B6B]" : "text-[#5C6B6B]"}`}>
+            {ctaText} <ArrowRight size={11} strokeWidth={1.5} />
+          </p>
+          {canCancel && (
+            <button
+              onClick={cancel}
+              className="mt-3 text-[11px] text-[#B86A5C] hover:underline inline-flex items-center gap-1"
+              data-testid={`cancel-reg-${registration.id}`}
+            >
+              <X size={11} strokeWidth={1.5} /> Cancel registration
+            </button>
+          )}
+        </div>
+      </Link>
+    </div>
   );
 }
 
@@ -53,13 +80,13 @@ function EmptyWorkshops() {
 }
 
 // ---------- Group of workshop cards ----------
-function WorkshopsGroup({ label, items, isPast, testId }) {
+function WorkshopsGroup({ label, items, isPast, testId, onCancelled }) {
   return (
     <div>
       <p className="label mb-3">{label}</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid={testId}>
         {items.map((r) => (
-          <WorkshopRegistrationCard key={r.id} registration={r} isPast={isPast} />
+          <WorkshopRegistrationCard key={r.id} registration={r} isPast={isPast} onCancelled={onCancelled} />
         ))}
       </div>
     </div>
@@ -67,7 +94,7 @@ function WorkshopsGroup({ label, items, isPast, testId }) {
 }
 
 // ---------- Workshops section ----------
-function WorkshopsSection({ registrations }) {
+function WorkshopsSection({ registrations, onCancelled }) {
   const { upcoming, past } = useMemo(() => {
     const now = Date.now();
     return registrations.reduce(
@@ -93,10 +120,10 @@ function WorkshopsSection({ registrations }) {
       ) : (
         <div className="space-y-6">
           {upcoming.length > 0 && (
-            <WorkshopsGroup label="Upcoming" items={upcoming} isPast={false} testId="upcoming-registrations" />
+            <WorkshopsGroup label="Upcoming" items={upcoming} isPast={false} testId="upcoming-registrations" onCancelled={onCancelled} />
           )}
           {past.length > 0 && (
-            <WorkshopsGroup label="Completed" items={past} isPast={true} testId="past-registrations" />
+            <WorkshopsGroup label="Completed" items={past} isPast={true} testId="past-registrations" onCancelled={onCancelled} />
           )}
         </div>
       )}
@@ -190,7 +217,12 @@ export default function Dashboard() {
         Hello, {user?.first_name}.
       </h1>
       <div className="divider-flame" />
-      <WorkshopsSection registrations={data.registrations} />
+      <WorkshopsSection
+        registrations={data.registrations}
+        onCancelled={(regId) =>
+          setData((d) => ({ ...d, registrations: d.registrations.filter((r) => r.id !== regId) }))
+        }
+      />
       <JourneySection impactStatements={data.impact_statements} />
       <OrdersSection orders={data.orders} />
     </div>
