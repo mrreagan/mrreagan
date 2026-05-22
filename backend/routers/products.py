@@ -66,7 +66,7 @@ async def create_product(data: ProductCreate, user: dict = Depends(require_roles
 @router.put("/{product_id}")
 async def update_product(product_id: str, updates: ProductUpdate, user: dict = Depends(require_roles("admin"))):
     from database import db
-    update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
+    update_data = updates.model_dump(exclude_none=True)
     if update_data:
         await db.products.update_one({"id": product_id}, {"$set": update_data})
     p = await db.products.find_one({"id": product_id}, {"_id": 0})

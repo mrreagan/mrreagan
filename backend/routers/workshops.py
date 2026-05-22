@@ -92,7 +92,7 @@ async def update_workshop(workshop_id: str, updates: WorkshopUpdate, user: dict 
         raise HTTPException(status_code=404, detail="Workshop not found")
     if user["role"] == "facilitator" and w["facilitator_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Not your workshop")
-    update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
+    update_data = updates.model_dump(exclude_none=True)
     if update_data:
         await db.workshops.update_one({"id": workshop_id}, {"$set": update_data})
     updated = await db.workshops.find_one({"id": workshop_id}, {"_id": 0})

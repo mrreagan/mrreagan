@@ -1,16 +1,16 @@
-"""Auth utilities: JWT, password hashing, role-based dependencies."""
+"""Auth utilities: JWT, password hashing, role-based dependencies. Reads token from cookie OR Authorization header."""
 import os
 import jwt
 import bcrypt
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List
-from fastapi import Depends, HTTPException, status
+from typing import Optional
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from motor.motor_asyncio import AsyncIOMotorDatabase
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "change-me")
 JWT_ALG = "HS256"
 JWT_EXPIRE_DAYS = 30
+COOKIE_NAME = "br_session"
 
 security = HTTPBearer(auto_error=False)
 
@@ -43,13 +43,24 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
+def _extract_token(request: Request, credentials: Optional[HTTPAuthorizationCredentials]) -> Optional[str]:
+    """Cookie first, Authorization header as fallback."""
+    cookie_token = request.cookies.get(COOKIE_NAME) if request else None
+    if cookie_token:
+        return cookie_token
+    if credentials:
+        return credentials.credentials
+    return None
+
+
 async def get_current_user_optional(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Optional[dict]:
-    """Returns user dict or None if not authenticated."""
-    if not credentials:
+    token = _extract_token(request, credentials)
+    if not token:
         return None
-    payload = decode_token(credentials.credentials)
+    payload = decode_token(token)
     if not payload:
         return None
     from database import db
@@ -58,11 +69,13 @@ async def get_current_user_optional(
 
 
 async def get_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict:
-    if not credentials:
+    token = _extract_token(request, credentials)
+    if not token:
         raise HTTPException(status_code=401, detail="Authentication required")
-    payload = decode_token(credentials.credentials)
+    payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     from database import db
@@ -78,3 +91,20 @@ def require_roles(*roles: str):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return user
     return checker
+
+
+def set_session_cookie(response, token: str) -> None:
+    """Set httpOnly session cookie."""
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=JWT_EXPIRE_DAYS * 24 * 3600,
+        path="/",
+    )
+
+
+def clear_session_cookie(response) -> None:
+    response.delete_cookie(key=COOKIE_NAME, path="/")

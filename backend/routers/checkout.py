@@ -43,75 +43,113 @@ async def get_sponsorship_tiers():
     return [{"id": k, **v} for k, v in SPONSORSHIP_TIERS.items()]
 
 
+def _resolve_workshop_pricing(workshop: dict) -> tuple[str, float]:
+    """Return (tier, amount) based on early-bird cutoff."""
+    from datetime import datetime, timezone
+    if workshop.get("early_bird_until"):
+        try:
+            eb_until = datetime.fromisoformat(workshop["early_bird_until"].replace("Z", "+00:00"))
+            if datetime.now(timezone.utc) < eb_until:
+                return "early_bird", float(workshop["early_bird_price"])
+        except Exception:
+            pass
+    return "regular", float(workshop["regular_price"])
+
+
+async def _validate_workshop_registration(db, workshop_id: str, user_id: str) -> dict:
+    """Ensure workshop exists, user not already registered, capacity available. Returns workshop doc."""
+    w = await db.workshops.find_one({"id": workshop_id})
+    if not w:
+        raise HTTPException(status_code=404, detail="Workshop not found")
+    if await db.registrations.find_one(
+        {"workshop_id": workshop_id, "user_id": user_id, "payment_status": "paid"}
+    ):
+        raise HTTPException(status_code=400, detail="Already registered for this workshop")
+    paid_count = await db.registrations.count_documents(
+        {"workshop_id": workshop_id, "payment_status": "paid"}
+    )
+    if paid_count >= w["capacity"]:
+        raise HTTPException(status_code=400, detail="Workshop is full. Join the waitlist instead.")
+    return w
+
+
+def _record_transaction(txn_type: str, session_id: str, user_id: Optional[str], amount: float, metadata: dict, **extra) -> dict:
+    """Build a payment_transactions document."""
+    return {
+        "id": gen_id(),
+        "session_id": session_id,
+        "user_id": user_id,
+        "type": txn_type,
+        "amount": amount,
+        "currency": "usd",
+        "metadata": metadata,
+        "payment_status": "initiated",
+        "status": "open",
+        "created_at": now_iso(),
+        **extra,
+    }
+
+
 @router.post("/workshop")
 async def checkout_workshop(
     data: WorkshopCheckoutRequest, request: Request, user: dict = Depends(get_current_user)
 ):
     from database import db
-    w = await db.workshops.find_one({"id": data.workshop_id})
-    if not w:
-        raise HTTPException(status_code=404, detail="Workshop not found")
-    # Check if already registered
-    existing = await db.registrations.find_one(
-        {"workshop_id": data.workshop_id, "user_id": user["id"], "payment_status": "paid"}
-    )
-    if existing:
-        raise HTTPException(status_code=400, detail="Already registered for this workshop")
-    # Check capacity
-    paid_count = await db.registrations.count_documents(
-        {"workshop_id": data.workshop_id, "payment_status": "paid"}
-    )
-    if paid_count >= w["capacity"]:
-        raise HTTPException(status_code=400, detail="Workshop is full. Join the waitlist instead.")
-    # Determine price (early bird vs regular)
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc)
-    tier = "regular"
-    amount = float(w["regular_price"])
-    if w.get("early_bird_until"):
-        try:
-            eb_until = datetime.fromisoformat(w["early_bird_until"].replace("Z", "+00:00"))
-            if now < eb_until:
-                tier = "early_bird"
-                amount = float(w["early_bird_price"])
-        except Exception:
-            pass
+    w = await _validate_workshop_registration(db, data.workshop_id, user["id"])
+    tier, amount = _resolve_workshop_pricing(w)
 
     success_url = f"{data.origin_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}&type=workshop"
     cancel_url = f"{data.origin_url}/workshops/{w['slug']}"
-
-    stripe_checkout = get_stripe(request)
     metadata = {
         "type": "workshop",
         "workshop_id": data.workshop_id,
         "user_id": user["id"],
         "pricing_tier": tier,
     }
-    checkout_req = CheckoutSessionRequest(
-        amount=amount,
-        currency="usd",
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata=metadata,
+    stripe_checkout = get_stripe(request)
+    session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(
+        CheckoutSessionRequest(
+            amount=amount, currency="usd", success_url=success_url, cancel_url=cancel_url, metadata=metadata,
+        )
     )
-    session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_req)
-
-    # Record transaction
-    txn = {
-        "id": gen_id(),
-        "session_id": session.session_id,
-        "user_id": user["id"],
-        "type": "workshop",
-        "amount": amount,
-        "currency": "usd",
-        "metadata": metadata,
-        "items": [{"workshop_id": data.workshop_id, "pricing_tier": tier}],
-        "payment_status": "initiated",
-        "status": "open",
-        "created_at": now_iso(),
-    }
-    await db.payment_transactions.insert_one(txn)
+    await db.payment_transactions.insert_one(
+        _record_transaction(
+            "workshop", session.session_id, user["id"], amount, metadata,
+            items=[{"workshop_id": data.workshop_id, "pricing_tier": tier}],
+        )
+    )
     return {"url": session.url, "session_id": session.session_id}
+
+
+async def _validate_cart_and_total(db, items, user) -> tuple[float, list]:
+    """Validate items, enforce gating, compute total server-side."""
+    total = 0.0
+    line_items = []
+    for item in items:
+        p = await db.products.find_one({"id": item.product_id})
+        if not p:
+            raise HTTPException(status_code=400, detail=f"Product not found: {item.product_id}")
+        await _enforce_material_gating(db, p, user)
+        qty = max(1, int(item.quantity))
+        total += float(p["price"]) * qty
+        line_items.append({"product_id": p["id"], "name": p["name"], "price": p["price"], "quantity": qty})
+    return round(total, 2), line_items
+
+
+async def _enforce_material_gating(db, product: dict, user: Optional[dict]) -> None:
+    """Workshop materials are restricted to registered (paid) participants and admins."""
+    if product["type"] != "workshop_material":
+        return
+    if not user:
+        raise HTTPException(status_code=403, detail="Sign in to purchase workshop materials")
+    reg = await db.registrations.find_one(
+        {"workshop_id": product["workshop_id"], "user_id": user["id"], "payment_status": "paid"}
+    )
+    if not reg and user.get("role") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Materials for this workshop are limited to registered participants.",
+        )
 
 
 @router.post("/products")
@@ -121,56 +159,23 @@ async def checkout_products(
     from database import db
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
-    # Validate and compute total server-side
-    total = 0.0
-    line_items = []
-    for item in data.items:
-        p = await db.products.find_one({"id": item.product_id})
-        if not p:
-            raise HTTPException(status_code=400, detail=f"Product not found: {item.product_id}")
-        # Workshop-material gating
-        if p["type"] == "workshop_material":
-            if not user:
-                raise HTTPException(status_code=403, detail="Sign in to purchase workshop materials")
-            reg = await db.registrations.find_one(
-                {"workshop_id": p["workshop_id"], "user_id": user["id"], "payment_status": "paid"}
-            )
-            if not reg and user.get("role") != "admin":
-                raise HTTPException(
-                    status_code=403,
-                    detail="Materials for this workshop are limited to registered participants.",
-                )
-        qty = max(1, int(item.quantity))
-        total += float(p["price"]) * qty
-        line_items.append({"product_id": p["id"], "name": p["name"], "price": p["price"], "quantity": qty})
-    total = round(total, 2)
+    total, line_items = await _validate_cart_and_total(db, data.items, user)
+    user_id = user["id"] if user else None
     success_url = f"{data.origin_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}&type=order"
     cancel_url = f"{data.origin_url}/shop"
+    metadata = {"type": "order", "user_id": user_id or "guest", "item_count": str(len(line_items))}
     stripe_checkout = get_stripe(request)
-    metadata = {
-        "type": "order",
-        "user_id": user["id"] if user else "guest",
-        "item_count": str(len(line_items)),
-    }
-    checkout_req = CheckoutSessionRequest(
-        amount=total, currency="usd", success_url=success_url, cancel_url=cancel_url, metadata=metadata
+    session = await stripe_checkout.create_checkout_session(
+        CheckoutSessionRequest(
+            amount=total, currency="usd", success_url=success_url, cancel_url=cancel_url, metadata=metadata,
+        )
     )
-    session = await stripe_checkout.create_checkout_session(checkout_req)
-    txn = {
-        "id": gen_id(),
-        "session_id": session.session_id,
-        "user_id": user["id"] if user else None,
-        "type": "order",
-        "amount": total,
-        "currency": "usd",
-        "metadata": metadata,
-        "items": line_items,
-        "shipping_address": data.shipping_address,
-        "payment_status": "initiated",
-        "status": "open",
-        "created_at": now_iso(),
-    }
-    await db.payment_transactions.insert_one(txn)
+    await db.payment_transactions.insert_one(
+        _record_transaction(
+            "order", session.session_id, user_id, total, metadata,
+            items=line_items, shipping_address=data.shipping_address,
+        )
+    )
     return {"url": session.url, "session_id": session.session_id}
 
 
@@ -281,70 +286,83 @@ async def checkout_status(session_id: str, request: Request):
     }
 
 
-async def _process_paid_transaction(txn: dict):
-    """Handle side-effects of a successful payment."""
-    from database import db
-    t_type = txn["type"]
-    if t_type == "workshop":
-        meta = txn.get("metadata", {})
-        # Create registration if not exists
-        existing = await db.registrations.find_one(
-            {"workshop_id": meta["workshop_id"], "user_id": meta["user_id"], "payment_status": "paid"}
+async def _create_registration_from_txn(db, txn: dict) -> None:
+    meta = txn.get("metadata", {})
+    existing = await db.registrations.find_one(
+        {"workshop_id": meta["workshop_id"], "user_id": meta["user_id"], "payment_status": "paid"}
+    )
+    if existing:
+        return
+    await db.registrations.insert_one({
+        "id": gen_id(),
+        "workshop_id": meta["workshop_id"],
+        "user_id": meta["user_id"],
+        "pricing_tier": meta.get("pricing_tier", "regular"),
+        "amount_paid": txn["amount"],
+        "payment_session_id": txn["session_id"],
+        "payment_status": "paid",
+        "checked_in": False,
+        "checked_in_at": None,
+        "created_at": now_iso(),
+    })
+
+
+async def _create_order_from_txn(db, txn: dict) -> None:
+    items = txn.get("items", [])
+    await db.orders.insert_one({
+        "id": gen_id(),
+        "user_id": txn.get("user_id"),
+        "items": items,
+        "total": txn["amount"],
+        "shipping_address": txn.get("shipping_address"),
+        "payment_session_id": txn["session_id"],
+        "status": "paid",
+        "created_at": now_iso(),
+    })
+    for item in items:
+        await db.products.update_one(
+            {"id": item["product_id"]}, {"$inc": {"inventory": -item["quantity"]}}
         )
-        if not existing:
-            reg = {
-                "id": gen_id(),
-                "workshop_id": meta["workshop_id"],
-                "user_id": meta["user_id"],
-                "pricing_tier": meta.get("pricing_tier", "regular"),
-                "amount_paid": txn["amount"],
-                "payment_session_id": txn["session_id"],
-                "payment_status": "paid",
-                "checked_in": False,
-                "checked_in_at": None,
-                "created_at": now_iso(),
-            }
-            await db.registrations.insert_one(reg)
-    elif t_type == "order":
-        # Create order record
-        order = {
-            "id": gen_id(),
-            "user_id": txn.get("user_id"),
-            "items": txn.get("items", []),
-            "total": txn["amount"],
-            "shipping_address": txn.get("shipping_address"),
-            "payment_session_id": txn["session_id"],
-            "status": "paid",
-            "created_at": now_iso(),
-        }
-        await db.orders.insert_one(order)
-        # Decrement inventory
-        for item in txn.get("items", []):
-            await db.products.update_one(
-                {"id": item["product_id"]}, {"$inc": {"inventory": -item["quantity"]}}
-            )
-    elif t_type == "sponsorship":
-        sponsor = {
-            "id": gen_id(),
-            "user_id": txn.get("user_id"),
-            "tier_id": txn.get("tier_id"),
-            "amount": txn["amount"],
-            "payment_session_id": txn["session_id"],
-            "status": "active",
-            "public_display": True,
-            "created_at": now_iso(),
-        }
-        await db.sponsors.insert_one(sponsor)
-    elif t_type == "donation":
-        donation = {
-            "id": gen_id(),
-            "user_id": txn.get("user_id"),
-            "amount": txn["amount"],
-            "note": txn.get("metadata", {}).get("note", ""),
-            "payment_session_id": txn["session_id"],
-            "created_at": now_iso(),
-        }
-        await db.donations.insert_one(donation)
+
+
+async def _create_sponsor_from_txn(db, txn: dict) -> None:
+    await db.sponsors.insert_one({
+        "id": gen_id(),
+        "user_id": txn.get("user_id"),
+        "tier_id": txn.get("tier_id"),
+        "amount": txn["amount"],
+        "payment_session_id": txn["session_id"],
+        "status": "active",
+        "public_display": True,
+        "created_at": now_iso(),
+    })
+
+
+async def _create_donation_from_txn(db, txn: dict) -> None:
+    await db.donations.insert_one({
+        "id": gen_id(),
+        "user_id": txn.get("user_id"),
+        "amount": txn["amount"],
+        "note": txn.get("metadata", {}).get("note", ""),
+        "payment_session_id": txn["session_id"],
+        "created_at": now_iso(),
+    })
+
+
+_PAID_HANDLERS = {
+    "workshop": _create_registration_from_txn,
+    "order": _create_order_from_txn,
+    "sponsorship": _create_sponsor_from_txn,
+    "donation": _create_donation_from_txn,
+}
+
+
+async def _process_paid_transaction(txn: dict):
+    """Handle side-effects of a successful payment by dispatching to the correct handler."""
+    from database import db
+    handler = _PAID_HANDLERS.get(txn["type"])
+    if handler:
+        await handler(db, txn)
 
 
 # Webhook endpoint registered separately on root /api

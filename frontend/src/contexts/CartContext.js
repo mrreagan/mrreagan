@@ -3,18 +3,22 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 const CartContext = createContext(null);
 const STORAGE_KEY = "br_cart";
 
+// Cart contents are non-sensitive (no PII, no tokens). sessionStorage clears on browser close,
+// reducing surface for cross-tab snooping while preserving in-tab UX.
+const readStorage = () => {
+  try {
+    const stored = sessionStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
 export function CartProvider({ children }) {
-  const [items, setItems] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [items, setItems] = useState(readStorage);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
   const addItem = useCallback((product, quantity = 1) => {
@@ -52,12 +56,21 @@ export function CartProvider({ children }) {
 
   const clear = useCallback(() => setItems([]), []);
 
-  const total = useMemo(() => items.reduce((sum, i) => sum + i.price * i.quantity, 0), [items]);
-  const count = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
-
+  // Split into 2 memos to keep dep counts low
+  const totals = useMemo(
+    () => ({
+      total: items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+      count: items.reduce((sum, i) => sum + i.quantity, 0),
+    }),
+    [items]
+  );
+  const actions = useMemo(
+    () => ({ addItem, updateQty, removeItem, clear }),
+    [addItem, updateQty, removeItem, clear]
+  );
   const value = useMemo(
-    () => ({ items, addItem, updateQty, removeItem, clear, total, count }),
-    [items, addItem, updateQty, removeItem, clear, total, count]
+    () => ({ items, ...totals, ...actions }),
+    [items, totals, actions]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

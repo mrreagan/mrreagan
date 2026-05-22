@@ -8,65 +8,38 @@ def _iso(dt: datetime) -> str:
     return dt.isoformat()
 
 
+def _seed_user(email, first, last, role, bio="", avatar_url="", slug=None, credentials=None):
+    """Build one user document."""
+    return {
+        "id": gen_id(),
+        "email": email,
+        "password_hash": hash_password("birthright2026"),
+        "first_name": first,
+        "last_name": last,
+        "phone": "",
+        "role": role,
+        "bio": bio,
+        "avatar_url": avatar_url,
+        "facilitator_slug": slug,
+        "credentials": credentials,
+        "created_at": now_iso(),
+    }
+
+
 # ---- USERS ----
 def _build_seed_users():
     return [
-        {
-            "id": gen_id(),
-            "email": "admin@birthright.org",
-            "password_hash": hash_password("birthright2026"),
-            "first_name": "Birthright",
-            "last_name": "Admin",
-            "phone": "",
-            "role": "admin",
-            "bio": "Founding administrator of the Birthright Foundation.",
-            "avatar_url": "",
-            "facilitator_slug": None,
-            "credentials": None,
-            "created_at": now_iso(),
-        },
-        {
-            "id": gen_id(),
-            "email": "elena@birthright.org",
-            "password_hash": hash_password("birthright2026"),
-            "first_name": "Elena",
-            "last_name": "Hartwell",
-            "phone": "",
-            "role": "facilitator",
-            "bio": "Elena is a licensed therapist with over fifteen years guiding individuals and families through attachment work. She believes secure bonds are restorative, not aspirational.",
-            "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600",
-            "facilitator_slug": "elena-hartwell",
-            "credentials": "LMFT, EFT-Certified",
-            "created_at": now_iso(),
-        },
-        {
-            "id": gen_id(),
-            "email": "marcus@birthright.org",
-            "password_hash": hash_password("birthright2026"),
-            "first_name": "Marcus",
-            "last_name": "Okafor",
-            "phone": "",
-            "role": "facilitator",
-            "bio": "Marcus weaves contemplative practice with relational science to help groups recover what was always theirs: the right to belong.",
-            "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600",
-            "facilitator_slug": "marcus-okafor",
-            "credentials": "PhD Psychology, Group Facilitator",
-            "created_at": now_iso(),
-        },
-        {
-            "id": gen_id(),
-            "email": "demo@birthright.org",
-            "password_hash": hash_password("birthright2026"),
-            "first_name": "Sam",
-            "last_name": "Rivera",
-            "phone": "",
-            "role": "participant",
-            "bio": "",
-            "avatar_url": "",
-            "facilitator_slug": None,
-            "credentials": None,
-            "created_at": now_iso(),
-        },
+        _seed_user("admin@birthright.org", "Birthright", "Admin", "admin",
+                   bio="Founding administrator of the Birthright Foundation."),
+        _seed_user("elena@birthright.org", "Elena", "Hartwell", "facilitator",
+                   bio="Elena is a licensed therapist with over fifteen years guiding individuals and families through attachment work. She believes secure bonds are restorative, not aspirational.",
+                   avatar_url="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600",
+                   slug="elena-hartwell", credentials="LMFT, EFT-Certified"),
+        _seed_user("marcus@birthright.org", "Marcus", "Okafor", "facilitator",
+                   bio="Marcus weaves contemplative practice with relational science to help groups recover what was always theirs: the right to belong.",
+                   avatar_url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600",
+                   slug="marcus-okafor", credentials="PhD Psychology, Group Facilitator"),
+        _seed_user("demo@birthright.org", "Sam", "Rivera", "participant"),
     ]
 
 
@@ -98,90 +71,118 @@ def _build_governing_members():
     ]
 
 
+_LOC_NAME = "Birthright Community Hall"
+_LOC_ADDR = "2148 W Earll Dr, Phoenix, AZ 85015"
+_LOC_MAP = "https://maps.google.com/?q=2148+W+Earll+Dr+Phoenix+AZ+85015"
+
+
+def _make_workshop(**kw):
+    """Build a workshop document with sensible defaults."""
+    base = {
+        "id": gen_id(),
+        "location_name": _LOC_NAME,
+        "location_address": _LOC_ADDR,
+        "map_url": _LOC_MAP,
+        "directions_notes": "",
+        "materials_included": [],
+        "faq": [],
+        "created_at": now_iso(),
+    }
+    base.update(kw)
+    return base
+
+
+def _foundations_workshop(now, fac_id):
+    return _make_workshop(
+        title="Foundations of Secure Bonds",
+        slug="foundations-of-secure-bonds",
+        short_description="A weekend immersion in the language, felt-sense, and daily practice of attachment-secure relating.",
+        full_description="Over two days, you'll learn to recognize the small moments where bonds either deepen or fray. Through guided exercises, dyad practice, and reflective journaling, you'll leave with a working vocabulary for what was previously instinct. Designed for newcomers to attachment work and seasoned practitioners alike.",
+        facilitator_id=fac_id,
+        directions_notes="Free street parking is available. Please use the side entrance on Earll Dr. Light refreshments provided. Bring a journal and comfortable clothing.",
+        start_date=_iso(now + timedelta(days=21)),
+        end_date=_iso(now + timedelta(days=22)),
+        capacity=24, early_bird_price=285.00, regular_price=365.00,
+        early_bird_until=_iso(now + timedelta(days=7)),
+        image_url="https://images.unsplash.com/photo-1634155938686-24a26c55d71a?w=1200",
+        materials_included=[
+            "Foundations workbook (printed)",
+            "Two days of facilitated practice",
+            "Light meals and refreshments",
+            "Access to alumni community channel",
+        ],
+        faq=[
+            {"q": "Is this therapy?", "a": "No. This is educational practice. We hold a learning container, not a clinical one. Many participants are also in therapy; the two complement each other beautifully."},
+            {"q": "What should I bring?", "a": "A journal, a refillable water bottle, and clothing you can move and sit comfortably in. Everything else is provided."},
+            {"q": "Can I attend if I'm new to attachment language?", "a": "Yes. This is the on-ramp. We start with the basics and build from there."},
+        ],
+        check_in_code="BRIGHT24", status="upcoming",
+    )
+
+
+def _repair_workshop(now, fac_id):
+    return _make_workshop(
+        title="Repair: The Conversation You Postponed",
+        slug="repair-the-conversation-you-postponed",
+        short_description="A focused day on the architecture of relational repair, for couples, family members, and close friends.",
+        full_description="Most ruptures don't need a grand reckoning, they need a small, well-formed reentry. This single-day intensive teaches the three movements of repair and gives you supervised practice with a partner of your choosing or one assigned at the workshop. Includes optional follow-up coaching.",
+        facilitator_id=fac_id,
+        directions_notes="Doors open 30 minutes before start. Childcare available with 7 days notice (contact us).",
+        start_date=_iso(now + timedelta(days=45)),
+        end_date=_iso(now + timedelta(days=45, hours=8)),
+        capacity=18, early_bird_price=195.00, regular_price=245.00,
+        early_bird_until=_iso(now + timedelta(days=20)),
+        image_url="https://images.unsplash.com/photo-1655337690436-98778f38d613?w=1200",
+        materials_included=["Repair pocket guide", "Pair-practice worksheets", "Optional 30-min coaching follow-up (sold separately)"],
+        faq=[{"q": "Do I need to bring a partner?", "a": "No. We'll pair you with another participant for practice. Many people prefer it this way."}],
+        check_in_code="REPAIR45", status="upcoming",
+    )
+
+
+def _circle_workshop(now, fac_id):
+    return _make_workshop(
+        title="Living the Work: Monthly Practice Circle",
+        slug="living-the-work-monthly-circle",
+        short_description="An ongoing monthly cohort for alumni. Keep the practice alive between formal trainings.",
+        full_description="Once you've completed Foundations or Repair, this is where the work lives. A two-hour monthly gathering with rotating facilitators, peer practice, and a small library of advanced exercises that rotate through the year.",
+        facilitator_id=fac_id,
+        directions_notes="Held the second Saturday of every month.",
+        start_date=_iso(now + timedelta(days=60)),
+        end_date=_iso(now + timedelta(days=60, hours=2)),
+        capacity=30, early_bird_price=35.00, regular_price=45.00,
+        early_bird_until=_iso(now + timedelta(days=30)),
+        image_url="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200",
+        materials_included=["Practice circle worksheet of the month"],
+        check_in_code="CIRCLE12", status="upcoming",
+    )
+
+
+def _past_foundations_workshop(now, fac_id):
+    return _make_workshop(
+        title="Foundations of Secure Bonds (Spring Cohort)",
+        slug="foundations-spring-cohort-past",
+        short_description="Our last spring cohort. Completed; reviews and impact statements live here.",
+        full_description="A two-day immersion held this past spring. Reviews and participant impact statements are available below.",
+        facilitator_id=fac_id,
+        start_date=_iso(now - timedelta(days=45)),
+        end_date=_iso(now - timedelta(days=44)),
+        capacity=24, early_bird_price=285.00, regular_price=365.00,
+        early_bird_until=_iso(now - timedelta(days=60)),
+        image_url="https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=1200",
+        materials_included=["Foundations workbook"],
+        check_in_code="BRIGHT23", status="completed",
+    )
+
+
 # ---- WORKSHOPS ----
 def _build_workshops(now, fac1_id, fac2_id):
-    w1_id, w2_id, w3_id, w4_id = gen_id(), gen_id(), gen_id(), gen_id()
     workshops = [
-        {
-            "id": w1_id, "title": "Foundations of Secure Bonds",
-            "slug": "foundations-of-secure-bonds",
-            "short_description": "A weekend immersion in the language, felt-sense, and daily practice of attachment-secure relating.",
-            "full_description": "Over two days, you'll learn to recognize the small moments where bonds either deepen or fray. Through guided exercises, dyad practice, and reflective journaling, you'll leave with a working vocabulary for what was previously instinct. Designed for newcomers to attachment work and seasoned practitioners alike.",
-            "facilitator_id": fac1_id,
-            "location_name": "Birthright Community Hall",
-            "location_address": "2148 W Earll Dr, Phoenix, AZ 85015",
-            "directions_notes": "Free street parking is available. Please use the side entrance on Earll Dr. Light refreshments provided. Bring a journal and comfortable clothing.",
-            "map_url": "https://maps.google.com/?q=2148+W+Earll+Dr+Phoenix+AZ+85015",
-            "start_date": _iso(now + timedelta(days=21)),
-            "end_date": _iso(now + timedelta(days=22)),
-            "capacity": 24, "early_bird_price": 285.00, "regular_price": 365.00,
-            "early_bird_until": _iso(now + timedelta(days=7)),
-            "image_url": "https://images.unsplash.com/photo-1634155938686-24a26c55d71a?w=1200",
-            "materials_included": ["Foundations workbook (printed)", "Two days of facilitated practice", "Light meals and refreshments", "Access to alumni community channel"],
-            "faq": [
-                {"q": "Is this therapy?", "a": "No. This is educational practice. We hold a learning container, not a clinical one. Many participants are also in therapy; the two complement each other beautifully."},
-                {"q": "What should I bring?", "a": "A journal, a refillable water bottle, and clothing you can move and sit comfortably in. Everything else is provided."},
-                {"q": "Can I attend if I'm new to attachment language?", "a": "Yes. This is the on-ramp. We start with the basics and build from there."},
-            ],
-            "check_in_code": "BRIGHT24", "status": "upcoming", "created_at": now_iso(),
-        },
-        {
-            "id": w2_id, "title": "Repair: The Conversation You Postponed",
-            "slug": "repair-the-conversation-you-postponed",
-            "short_description": "A focused day on the architecture of relational repair, for couples, family members, and close friends.",
-            "full_description": "Most ruptures don't need a grand reckoning, they need a small, well-formed reentry. This single-day intensive teaches the three movements of repair and gives you supervised practice with a partner of your choosing or one assigned at the workshop. Includes optional follow-up coaching.",
-            "facilitator_id": fac2_id,
-            "location_name": "Birthright Community Hall",
-            "location_address": "2148 W Earll Dr, Phoenix, AZ 85015",
-            "directions_notes": "Doors open 30 minutes before start. Childcare available with 7 days notice (contact us).",
-            "map_url": "https://maps.google.com/?q=2148+W+Earll+Dr+Phoenix+AZ+85015",
-            "start_date": _iso(now + timedelta(days=45)),
-            "end_date": _iso(now + timedelta(days=45, hours=8)),
-            "capacity": 18, "early_bird_price": 195.00, "regular_price": 245.00,
-            "early_bird_until": _iso(now + timedelta(days=20)),
-            "image_url": "https://images.unsplash.com/photo-1655337690436-98778f38d613?w=1200",
-            "materials_included": ["Repair pocket guide", "Pair-practice worksheets", "Optional 30-min coaching follow-up (sold separately)"],
-            "faq": [{"q": "Do I need to bring a partner?", "a": "No. We'll pair you with another participant for practice. Many people prefer it this way."}],
-            "check_in_code": "REPAIR45", "status": "upcoming", "created_at": now_iso(),
-        },
-        {
-            "id": w3_id, "title": "Living the Work: Monthly Practice Circle",
-            "slug": "living-the-work-monthly-circle",
-            "short_description": "An ongoing monthly cohort for alumni. Keep the practice alive between formal trainings.",
-            "full_description": "Once you've completed Foundations or Repair, this is where the work lives. A two-hour monthly gathering with rotating facilitators, peer practice, and a small library of advanced exercises that rotate through the year.",
-            "facilitator_id": fac1_id,
-            "location_name": "Birthright Community Hall",
-            "location_address": "2148 W Earll Dr, Phoenix, AZ 85015",
-            "directions_notes": "Held the second Saturday of every month.",
-            "map_url": "https://maps.google.com/?q=2148+W+Earll+Dr+Phoenix+AZ+85015",
-            "start_date": _iso(now + timedelta(days=60)),
-            "end_date": _iso(now + timedelta(days=60, hours=2)),
-            "capacity": 30, "early_bird_price": 35.00, "regular_price": 45.00,
-            "early_bird_until": _iso(now + timedelta(days=30)),
-            "image_url": "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200",
-            "materials_included": ["Practice circle worksheet of the month"],
-            "faq": [],
-            "check_in_code": "CIRCLE12", "status": "upcoming", "created_at": now_iso(),
-        },
-        {
-            "id": w4_id, "title": "Foundations of Secure Bonds (Spring Cohort)",
-            "slug": "foundations-spring-cohort-past",
-            "short_description": "Our last spring cohort. Completed; reviews and impact statements live here.",
-            "full_description": "A two-day immersion held this past spring. Reviews and participant impact statements are available below.",
-            "facilitator_id": fac1_id,
-            "location_name": "Birthright Community Hall",
-            "location_address": "2148 W Earll Dr, Phoenix, AZ 85015",
-            "directions_notes": "", "map_url": "https://maps.google.com/?q=2148+W+Earll+Dr+Phoenix+AZ+85015",
-            "start_date": _iso(now - timedelta(days=45)),
-            "end_date": _iso(now - timedelta(days=44)),
-            "capacity": 24, "early_bird_price": 285.00, "regular_price": 365.00,
-            "early_bird_until": _iso(now - timedelta(days=60)),
-            "image_url": "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=1200",
-            "materials_included": ["Foundations workbook"], "faq": [],
-            "check_in_code": "BRIGHT23", "status": "completed", "created_at": now_iso(),
-        },
+        _foundations_workshop(now, fac1_id),
+        _repair_workshop(now, fac2_id),
+        _circle_workshop(now, fac1_id),
+        _past_foundations_workshop(now, fac1_id),
     ]
-    return workshops, w1_id, w2_id, w3_id, w4_id
+    return workshops, workshops[0]["id"], workshops[1]["id"], workshops[2]["id"], workshops[3]["id"]
 
 
 # ---- PRODUCTS ----
