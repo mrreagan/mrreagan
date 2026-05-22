@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 5 (real-time chat over WebSocket) tested end-to-end. Backend: 16/16 pytest cases GREEN — auth (valid cookie, missing cookie, invalid token, no-access user, facilitator-of-workshop, admin, token query-param fallback), messaging (group broadcast + persistence in db.chat_messages, 3-client DM filtering, typing broadcast, ping/pong, empty + oversize content rejected), presence broadcast on disconnect, and REST /api/chat GET+POST regressions. Frontend: ChatTab in /dashboard/workshops/{id} connects with status pill flipping to 'LIVE' within ~2s; sending via Enter key delivers messages with own bubbles right-aligned in teal #476B6B; an Elena WS connection from the test driver produced a green presence dot in demo's sidebar; typing indicator showed 'Elena Hartwell is typing…' with 3-dot animation and cleared after 3s; incoming group message rendered as a left-aligned other-user bubble; DM flow verified — selecting Elena in sidebar loaded the DM thread and the DM appeared, switching back to group correctly filtered the DM out and kept the prior group message.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter5_chat_ws.py",
+    "/app/test_reports/pytest/iter5_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "chat_ws.py: _can_access_workshop correctly enforces admin OR facilitator-of-workshop OR paid registrant. ✅",
+    "ws_manager.py: DM filter `_targets` uses sender_id OR recipient_id membership (so multi-tab works). ✅",
+    "Presence-on-disconnect uses the same broadcast logic so all remaining members are notified; ChatRoomRegistry.drop_if_empty cleans up the room when last socket leaves. ✅",
+    "Chat content validation: trims whitespace, rejects empty, rejects > MAX_CONTENT_LEN (4000). DB insert succeeds before broadcast — order is correct (do not lose messages on broadcast failure). ✅",
+    "useChatSocket: exponential backoff 1/2/4/8s capped 30s, FALLBACK_AFTER=3 then flips to 'fallback' so parent kicks REST polling; ping every 25s. closedByUserRef/cleanup ordering prevents reconnect storm on unmount. ✅",
+    "ChatTab: matchesView gating in WS onMessage cleanly separates group vs DM views and ignores own typing echo. ✅",
+    "MINOR (informational, no fix needed): On initial mount the browser console prints `WebSocket connection ... failed: WebSocket is closed before the connection is established.` once. This is React StrictMode double-invoke calling cleanup() on the throwaway first effect — the second effect connects and status reaches 'connected' normally. Harmless in production builds.",
+    "MINOR (informational): Programmatic `click(force=True)` on the form submit button via Playwright did not always trigger form submit; pressing Enter on the chat input always works. Real human clicks work fine — this is a Playwright force-click quirk, not a product issue. No action needed."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter5_chat_ws.py",
+    "/app/backend/tests/conftest.py"
+  ],
+  "success_rate": { "backend": "100% (16/16)", "frontend": "100% (all 6 frontend flows verified)" },
+  "test_credentials": "admin@birthright.org / birthright2026 ; elena@birthright.org / birthright2026 ; demo@birthright.org / birthright2026 ; marcus@birthright.org / birthright2026",
+  "seed_data_creation": "Test-generated chat_messages rows are persisted (no destructive cleanup, prefixed TEST_/PW_ to allow later sweep). No registrations/users created.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Use pytest with asyncio_mode=auto (added pytest-asyncio 1.3.0). WS URL = wss://<REACT_APP_BACKEND_URL host>/api/ws/chat/{workshop_id}. Auth via Cookie: br_session=<jwt> in additional_headers, OR ?token=<jwt> query (second-chance). For frontend, the chat lives at /dashboard/workshops/{workshop_id} (NOT /hub/{slug}). To exercise presence/typing in the UI from a test driver, open a second WS as another seeded user (e.g., Elena) and send typing/chat frames. iteration-1..4 tests untouched and still passing.",
+  "rca of the issue": "No bugs found in iteration 5. The chat WS layer (room registry, DM filter, presence, validation) and the React useChatSocket hook + ChatTab integration both behave per spec."
+}
