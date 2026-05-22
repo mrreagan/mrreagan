@@ -26,12 +26,17 @@ from models import gen_id, now_iso
 logger = logging.getLogger("birthright.mailer")
 
 
-def _is_real_send_enabled() -> bool:
+def is_real_send_enabled() -> bool:
     """Real send is enabled only when EMAIL_DRY_RUN is not 'true' AND a key is present."""
     if (os.environ.get("EMAIL_DRY_RUN", "true").lower() == "true"):
         return False
     key = os.environ.get("RESEND_API_KEY", "")
     return bool(key and key.startswith("re_"))
+
+
+def _is_real_send_enabled() -> bool:
+    """Deprecated private alias — use is_real_send_enabled()."""
+    return is_real_send_enabled()
 
 
 async def send_email(

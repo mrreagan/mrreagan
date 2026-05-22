@@ -39,11 +39,11 @@ function WorkshopRegistrationCard({ registration, isPast, onCancelled }) {
       className="card card-hover overflow-hidden flex relative"
       data-testid={isPast ? `past-reg-${registration.id}` : `reg-${registration.id}`}
     >
-      <Link to={`/dashboard/workshops/${w.id}`} className="flex flex-1">
+      <Link to={`/dashboard/workshops/${w.id}`} className="flex flex-1 min-w-0">
         <div className="w-32 shrink-0 bg-[#E5E1D8]">
           <img src={w.image_url} alt="" className={`w-full h-full object-cover aspect-square ${isPast ? "opacity-80" : ""}`} />
         </div>
-        <div className="p-5 flex-1">
+        <div className="p-5 flex-1 min-w-0">
           <div className="flex items-center gap-2 text-xs text-[#5C6B6B]">
             <Calendar size={12} strokeWidth={1.5} />
             {formatDate(w.start_date)}
@@ -52,17 +52,17 @@ function WorkshopRegistrationCard({ registration, isPast, onCancelled }) {
           <p className={`text-xs mt-2 inline-flex items-center gap-1 ${isPast ? "text-[#476B6B]" : "text-[#5C6B6B]"}`}>
             {ctaText} <ArrowRight size={11} strokeWidth={1.5} />
           </p>
-          {canCancel && (
-            <button
-              onClick={cancel}
-              className="mt-3 text-[11px] text-[#B86A5C] hover:underline inline-flex items-center gap-1"
-              data-testid={`cancel-reg-${registration.id}`}
-            >
-              <X size={11} strokeWidth={1.5} /> Cancel registration
-            </button>
-          )}
         </div>
       </Link>
+      {canCancel && (
+        <button
+          onClick={cancel}
+          className="absolute bottom-3 right-4 text-[11px] text-[#B86A5C] hover:underline inline-flex items-center gap-1"
+          data-testid={`cancel-reg-${registration.id}`}
+        >
+          <X size={11} strokeWidth={1.5} /> Cancel registration
+        </button>
+      )}
     </div>
   );
 }

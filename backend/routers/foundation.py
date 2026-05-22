@@ -13,7 +13,7 @@ from models import (
     now_iso,
 )
 from auth_utils import get_current_user, require_roles
-from utils.mailer import send_email
+from utils.mailer import send_email, is_real_send_enabled
 from utils.email_templates import (
     contact_autoreply,
     contact_admin_notify,
@@ -307,10 +307,7 @@ async def email_log(user: dict = Depends(require_roles("admin")), limit: int = 1
     combined = sorted(sent + queued, key=lambda e: e.get("created_at", ""), reverse=True)
     return {
         "items": combined[:limit],
-        "real_send_enabled": bool(
-            __import__("os").environ.get("RESEND_API_KEY", "").startswith("re_")
-            and __import__("os").environ.get("EMAIL_DRY_RUN", "true").lower() != "true"
-        ),
+        "real_send_enabled": is_real_send_enabled(),
     }
 
 
