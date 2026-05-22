@@ -213,8 +213,8 @@ export default function WorkshopDetail() {
             <div>
               <span className="label">What's included</span>
               <ul className="mt-4 space-y-2">
-                {w.materials_included.map((m, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-[#1A2424]">
+                {w.materials_included.map((m) => (
+                  <li key={m} className="flex items-start gap-3 text-sm text-[#1A2424]">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C9A961] mt-2 shrink-0" />
                     {m}
                   </li>
@@ -228,7 +228,7 @@ export default function WorkshopDetail() {
               <span className="label">Frequently asked</span>
               <div className="mt-4 space-y-3">
                 {w.faq.map((item, i) => (
-                  <div key={i} className="card overflow-hidden">
+                  <div key={item.q} className="card overflow-hidden">
                     <button
                       onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
                       className="w-full p-5 flex items-start justify-between text-left"

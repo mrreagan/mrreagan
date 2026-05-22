@@ -9,7 +9,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register")
 async def register(data: UserRegister):
-    from server import db
+    from database import db
     existing = await db.users.find_one({"email": data.email.lower()})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -36,7 +36,7 @@ async def register(data: UserRegister):
 
 @router.post("/login")
 async def login(data: UserLogin):
-    from server import db
+    from database import db
     user = await db.users.find_one({"email": data.email.lower()})
     if not user or not verify_password(data.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -53,7 +53,7 @@ async def me(user: dict = Depends(get_current_user)):
 
 @router.put("/me", response_model=UserProfile)
 async def update_me(updates: UserUpdate, user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
     if update_data:
         await db.users.update_one({"id": user["id"]}, {"$set": update_data})

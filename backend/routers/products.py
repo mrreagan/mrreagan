@@ -13,7 +13,7 @@ async def list_products(
     workshop_id: Optional[str] = None,
     category: Optional[str] = None,
 ):
-    from server import db
+    from database import db
     query = {}
     if type:
         query["type"] = type
@@ -27,7 +27,7 @@ async def list_products(
 
 @router.get("/{product_id}")
 async def get_product(product_id: str, user: Optional[dict] = Depends(get_current_user_optional)):
-    from server import db
+    from database import db
     p = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -56,7 +56,7 @@ async def get_product(product_id: str, user: Optional[dict] = Depends(get_curren
 
 @router.post("")
 async def create_product(data: ProductCreate, user: dict = Depends(require_roles("admin"))):
-    from server import db
+    from database import db
     product = {**data.model_dump(), "id": gen_id(), "created_at": now_iso()}
     await db.products.insert_one(product)
     product.pop("_id", None)
@@ -65,7 +65,7 @@ async def create_product(data: ProductCreate, user: dict = Depends(require_roles
 
 @router.put("/{product_id}")
 async def update_product(product_id: str, updates: ProductUpdate, user: dict = Depends(require_roles("admin"))):
-    from server import db
+    from database import db
     update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
     if update_data:
         await db.products.update_one({"id": product_id}, {"$set": update_data})
@@ -75,6 +75,6 @@ async def update_product(product_id: str, updates: ProductUpdate, user: dict = D
 
 @router.delete("/{product_id}")
 async def delete_product(product_id: str, user: dict = Depends(require_roles("admin"))):
-    from server import db
+    from database import db
     await db.products.delete_one({"id": product_id})
     return {"success": True}

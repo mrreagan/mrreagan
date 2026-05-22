@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -164,14 +164,13 @@ function DiscussionTab({ workshop, type, user }) {
   const [isPrivate, setIsPrivate] = useState(false);
   const isQuestion = type === "qa";
 
-  const load = () => {
+  const load = useCallback(() => {
     api.get(`/discussions?workshop_id=${workshop.id}&is_question=${isQuestion}`).then((r) => setItems(r.data));
-  };
+  }, [workshop.id, isQuestion]);
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workshop.id, type]);
+  }, [load]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -254,7 +253,7 @@ function ChatTab({ workshop, user }) {
   const lastFetchRef = useRef(null);
   const scrollRef = useRef(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const params = new URLSearchParams({ workshop_id: workshop.id });
     if (recipientId) params.append("recipient_id", recipientId);
     if (lastFetchRef.current) params.append("since", lastFetchRef.current);
@@ -266,7 +265,7 @@ function ChatTab({ workshop, user }) {
         return merged;
       });
     }
-  };
+  }, [workshop.id, recipientId]);
 
   useEffect(() => {
     setMessages([]);
@@ -275,8 +274,7 @@ function ChatTab({ workshop, user }) {
     load();
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipientId]);
+  }, [load, workshop.id]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -545,8 +543,11 @@ function SupportTab({ workshop }) {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ subject: "", content: "", urgency: "normal" });
 
-  const load = () => api.get(`/support-requests?workshop_id=${workshop.id}`).then((r) => setItems(r.data));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(
+    () => api.get(`/support-requests?workshop_id=${workshop.id}`).then((r) => setItems(r.data)),
+    [workshop.id]
+  );
+  useEffect(() => { load(); }, [load]);
 
   const submit = async (e) => {
     e.preventDefault();

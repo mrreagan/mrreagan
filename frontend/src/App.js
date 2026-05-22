@@ -39,6 +39,9 @@ function ProtectedRoute({ children, roles }) {
   return children;
 }
 
+const FACILITATOR_ROLES = ["facilitator", "admin"];
+const ADMIN_ROLES = ["admin"];
+
 function AppRoutes() {
   return (
     <Routes>
@@ -87,7 +90,7 @@ function AppRoutes() {
       <Route
         path="/facilitator"
         element={
-          <ProtectedRoute roles={["facilitator", "admin"]}>
+          <ProtectedRoute roles={FACILITATOR_ROLES}>
             <FacilitatorDashboard />
           </ProtectedRoute>
         }
@@ -95,7 +98,7 @@ function AppRoutes() {
       <Route
         path="/admin"
         element={
-          <ProtectedRoute roles={["admin"]}>
+          <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminDashboard />
           </ProtectedRoute>
         }

@@ -52,7 +52,7 @@ async def get_current_user_optional(
     payload = decode_token(credentials.credentials)
     if not payload:
         return None
-    from server import db  # local import to avoid circular
+    from database import db
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0, "password_hash": 0})
     return user
 
@@ -65,7 +65,7 @@ async def get_current_user(
     payload = decode_token(credentials.credentials)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    from server import db
+    from database import db
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")

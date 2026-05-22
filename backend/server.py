@@ -3,22 +3,13 @@ import os
 import sys
 from pathlib import Path
 
-# Add this dir to path so routers can import
 sys.path.insert(0, str(Path(__file__).parent))
 
 from fastapi import FastAPI, APIRouter, Request
-from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import logging
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
-
-# MongoDB
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+from database import db, client  # single source of truth for MongoDB
 
 app = FastAPI(title="Birthright API", version="1.0.0")
 api_router = APIRouter(prefix="/api")
@@ -75,7 +66,6 @@ logger = logging.getLogger("birthright")
 
 @app.on_event("startup")
 async def startup_event():
-    # Seed data if empty
     try:
         from seed_data import seed_if_empty
         await seed_if_empty(db)

@@ -45,8 +45,8 @@ export default function About() {
           <div className="mt-14">
             <span className="label">Our values</span>
             <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(content?.values || []).map((v, i) => (
-                <li key={i} className="flex items-start gap-3 text-[#1A2424]" data-testid={`value-${i}`}>
+              {(content?.values || []).map((v) => (
+                <li key={v} className="flex items-start gap-3 text-[#1A2424]" data-testid={`value-${v.replace(/\s+/g, "-").toLowerCase()}`}>
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C9A961] mt-2.5 shrink-0" />
                   <span className="font-serif text-lg">{v}</span>
                 </li>

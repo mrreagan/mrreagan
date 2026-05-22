@@ -47,7 +47,7 @@ async def get_sponsorship_tiers():
 async def checkout_workshop(
     data: WorkshopCheckoutRequest, request: Request, user: dict = Depends(get_current_user)
 ):
-    from server import db
+    from database import db
     w = await db.workshops.find_one({"id": data.workshop_id})
     if not w:
         raise HTTPException(status_code=404, detail="Workshop not found")
@@ -118,7 +118,7 @@ async def checkout_workshop(
 async def checkout_products(
     data: CheckoutRequest, request: Request, user: Optional[dict] = Depends(get_current_user_optional)
 ):
-    from server import db
+    from database import db
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
     # Validate and compute total server-side
@@ -138,7 +138,7 @@ async def checkout_products(
             if not reg and user.get("role") != "admin":
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Materials for this workshop are limited to registered participants.",
+                    detail="Materials for this workshop are limited to registered participants.",
                 )
         qty = max(1, int(item.quantity))
         total += float(p["price"]) * qty
@@ -178,7 +178,7 @@ async def checkout_products(
 async def checkout_donation(
     data: DonationRequest, request: Request, user: Optional[dict] = Depends(get_current_user_optional)
 ):
-    from server import db
+    from database import db
     if data.amount < 1:
         raise HTTPException(status_code=400, detail="Minimum donation is $1")
     amount = round(float(data.amount), 2)
@@ -214,7 +214,7 @@ async def checkout_donation(
 async def checkout_sponsorship(
     data: SponsorshipRequest, request: Request, user: Optional[dict] = Depends(get_current_user_optional)
 ):
-    from server import db
+    from database import db
     tier = SPONSORSHIP_TIERS.get(data.tier_id)
     if not tier:
         raise HTTPException(status_code=400, detail="Invalid sponsorship tier")
@@ -251,7 +251,7 @@ async def checkout_sponsorship(
 
 @router.get("/status/{session_id}")
 async def checkout_status(session_id: str, request: Request):
-    from server import db
+    from database import db
     txn = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
     if not txn:
         raise HTTPException(status_code=404, detail="Transaction not found")
@@ -283,7 +283,7 @@ async def checkout_status(session_id: str, request: Request):
 
 async def _process_paid_transaction(txn: dict):
     """Handle side-effects of a successful payment."""
-    from server import db
+    from database import db
     t_type = txn["type"]
     if t_type == "workshop":
         meta = txn.get("metadata", {})
@@ -349,7 +349,7 @@ async def _process_paid_transaction(txn: dict):
 
 # Webhook endpoint registered separately on root /api
 async def stripe_webhook(request: Request):
-    from server import db
+    from database import db
     stripe_checkout = get_stripe(request)
     body = await request.body()
     signature = request.headers.get("Stripe-Signature", "")

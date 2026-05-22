@@ -33,7 +33,7 @@ async def _ensure_workshop_access(db, workshop_id: str, user: dict, allow_facili
 # ========== DISCUSSIONS / Q&A ==========
 @router.post("/discussions")
 async def create_discussion(data: DiscussionCreate, user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     if not await _ensure_workshop_access(db, data.workshop_id, user):
         raise HTTPException(status_code=403, detail="Not enrolled in this workshop")
     doc = {
@@ -56,7 +56,7 @@ async def list_discussions(
     is_question: Optional[bool] = None,
     user: dict = Depends(get_current_user),
 ):
-    from server import db
+    from database import db
     if not await _ensure_workshop_access(db, workshop_id, user):
         raise HTTPException(status_code=403, detail="Not enrolled in this workshop")
     query = {"workshop_id": workshop_id}
@@ -79,7 +79,7 @@ async def list_discussions(
 
 @router.post("/discussions/{discussion_id}/mark-answered")
 async def mark_answered(discussion_id: str, user: dict = Depends(require_roles("facilitator", "admin"))):
-    from server import db
+    from database import db
     await db.discussions.update_one({"id": discussion_id}, {"$set": {"answered": True}})
     return {"success": True}
 
@@ -87,7 +87,7 @@ async def mark_answered(discussion_id: str, user: dict = Depends(require_roles("
 # ========== CHAT (polling) ==========
 @router.post("/chat")
 async def send_chat(data: ChatMessageCreate, user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     if not await _ensure_workshop_access(db, data.workshop_id, user):
         raise HTTPException(status_code=403, detail="Not enrolled in this workshop")
     msg = {
@@ -109,7 +109,7 @@ async def list_chat(
     since: Optional[str] = None,
     user: dict = Depends(get_current_user),
 ):
-    from server import db
+    from database import db
     if not await _ensure_workshop_access(db, workshop_id, user):
         raise HTTPException(status_code=403, detail="Not enrolled in this workshop")
     query = {"workshop_id": workshop_id}
@@ -130,7 +130,7 @@ async def list_chat(
 
 @router.get("/chat/participants")
 async def chat_participants(workshop_id: str = Query(...), user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     if not await _ensure_workshop_access(db, workshop_id, user):
         raise HTTPException(status_code=403, detail="Not enrolled in this workshop")
     w = await db.workshops.find_one({"id": workshop_id})
@@ -165,7 +165,7 @@ async def chat_participants(workshop_id: str = Query(...), user: dict = Depends(
 # ========== REVIEWS ==========
 @router.post("/reviews")
 async def create_review(data: ReviewCreate, user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     if not await _ensure_workshop_access(db, data.workshop_id, user, allow_facilitator=False, allow_admin=False):
         raise HTTPException(status_code=403, detail="Only registered participants can review")
     existing = await db.reviews.find_one({"workshop_id": data.workshop_id, "user_id": user["id"]})
@@ -190,7 +190,7 @@ async def create_review(data: ReviewCreate, user: dict = Depends(get_current_use
 
 @router.get("/reviews")
 async def list_reviews(workshop_id: str = Query(...)):
-    from server import db
+    from database import db
     reviews = await db.reviews.find({"workshop_id": workshop_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     # anonymize
     for r in reviews:
@@ -203,7 +203,7 @@ async def list_reviews(workshop_id: str = Query(...)):
 # ========== IMPACT STATEMENTS ==========
 @router.post("/impact-statements")
 async def create_impact(data: ImpactStatementCreate, user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     if not await _ensure_workshop_access(db, data.workshop_id, user, allow_facilitator=False, allow_admin=False):
         raise HTTPException(status_code=403, detail="Only registered participants can submit impact statements")
     existing = await db.impact_statements.find_one({"workshop_id": data.workshop_id, "user_id": user["id"]})
@@ -234,7 +234,7 @@ async def create_impact(data: ImpactStatementCreate, user: dict = Depends(get_cu
 async def list_impact(
     workshop_id: Optional[str] = None, public_only: bool = False, user: Optional[dict] = None
 ):
-    from server import db
+    from database import db
     query = {}
     if workshop_id:
         query["workshop_id"] = workshop_id
@@ -250,7 +250,7 @@ async def list_impact(
 
 @router.get("/impact-statements/mine")
 async def my_impact_statements(user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     items = await db.impact_statements.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return items
 
@@ -258,7 +258,7 @@ async def my_impact_statements(user: dict = Depends(get_current_user)):
 # ========== SUPPORT REQUESTS ==========
 @router.post("/support-requests")
 async def create_support(data: SupportRequestCreate, user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     if not await _ensure_workshop_access(db, data.workshop_id, user, allow_facilitator=False, allow_admin=False):
         raise HTTPException(status_code=403, detail="Only registered participants can submit support requests")
     req = {
@@ -282,7 +282,7 @@ async def list_support(
     workshop_id: Optional[str] = None,
     user: dict = Depends(get_current_user),
 ):
-    from server import db
+    from database import db
     query = {}
     if user["role"] == "participant":
         query["user_id"] = user["id"]
@@ -302,7 +302,7 @@ async def list_support(
 async def respond_support(
     req_id: str, body: SupportResponse, user: dict = Depends(require_roles("facilitator", "admin"))
 ):
-    from server import db
+    from database import db
     sr = await db.support_requests.find_one({"id": req_id})
     if not sr:
         raise HTTPException(status_code=404, detail="Not found")

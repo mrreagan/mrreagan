@@ -9,7 +9,7 @@ router = APIRouter(prefix="/workshops", tags=["workshops"])
 
 @router.get("")
 async def list_workshops(status: Optional[str] = None, search: Optional[str] = None):
-    from server import db
+    from database import db
     query = {}
     if status:
         query["status"] = status
@@ -45,7 +45,7 @@ async def list_workshops(status: Optional[str] = None, search: Optional[str] = N
 
 @router.get("/{workshop_id}")
 async def get_workshop(workshop_id: str):
-    from server import db
+    from database import db
     w = await db.workshops.find_one({"id": workshop_id}, {"_id": 0})
     if not w:
         # try slug
@@ -77,7 +77,7 @@ async def get_workshop(workshop_id: str):
 
 @router.post("")
 async def create_workshop(data: WorkshopCreate, user: dict = Depends(require_roles("admin", "facilitator"))):
-    from server import db
+    from database import db
     workshop = {**data.model_dump(), "id": gen_id(), "created_at": now_iso()}
     await db.workshops.insert_one(workshop)
     workshop.pop("_id", None)
@@ -86,7 +86,7 @@ async def create_workshop(data: WorkshopCreate, user: dict = Depends(require_rol
 
 @router.put("/{workshop_id}")
 async def update_workshop(workshop_id: str, updates: WorkshopUpdate, user: dict = Depends(require_roles("admin", "facilitator"))):
-    from server import db
+    from database import db
     w = await db.workshops.find_one({"id": workshop_id})
     if not w:
         raise HTTPException(status_code=404, detail="Workshop not found")
@@ -101,14 +101,14 @@ async def update_workshop(workshop_id: str, updates: WorkshopUpdate, user: dict 
 
 @router.delete("/{workshop_id}")
 async def delete_workshop(workshop_id: str, user: dict = Depends(require_roles("admin"))):
-    from server import db
+    from database import db
     await db.workshops.delete_one({"id": workshop_id})
     return {"success": True}
 
 
 @router.get("/{workshop_id}/participants")
 async def get_participants(workshop_id: str, user: dict = Depends(require_roles("admin", "facilitator"))):
-    from server import db
+    from database import db
     w = await db.workshops.find_one({"id": workshop_id})
     if not w:
         raise HTTPException(status_code=404, detail="Workshop not found")
@@ -123,7 +123,7 @@ async def get_participants(workshop_id: str, user: dict = Depends(require_roles(
 
 @router.post("/{workshop_id}/check-in")
 async def check_in(workshop_id: str, body: dict, user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     code = body.get("code", "")
     w = await db.workshops.find_one({"id": workshop_id})
     if not w:
@@ -144,7 +144,7 @@ async def check_in(workshop_id: str, body: dict, user: dict = Depends(get_curren
 
 @router.get("/{workshop_id}/my-registration")
 async def my_registration(workshop_id: str, user: dict = Depends(get_current_user)):
-    from server import db
+    from database import db
     reg = await db.registrations.find_one(
         {"workshop_id": workshop_id, "user_id": user["id"]}, {"_id": 0}
     )
