@@ -38,6 +38,8 @@ async def list_workshops(status: Optional[str] = None, search: Optional[str] = N
             {"workshop_id": w["id"], "payment_status": "paid"}
         )
         w["spots_left"] = max(0, w["capacity"] - w["registered_count"])
+        # Never expose check-in code in public list
+        w.pop("check_in_code", None)
     return workshops
 
 
