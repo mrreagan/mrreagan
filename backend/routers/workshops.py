@@ -2,11 +2,11 @@
 import logging
 import os
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends
-from typing import Optional, List
-from models import WorkshopCreate, Workshop, WorkshopUpdate, gen_id, now_iso
-from auth_utils import get_current_user, require_roles, get_current_user_optional
+from typing import Optional
+from models import WorkshopCreate, WorkshopUpdate, gen_id, now_iso
+from auth_utils import get_current_user, require_roles
 from utils.mailer import send_email
 from utils.email_templates import workshop_cancelled
 from utils.refunds import refund_session

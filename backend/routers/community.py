@@ -2,11 +2,10 @@
 import logging
 import os
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional, List
+from typing import Optional
 from models import (
     DiscussionCreate,
     ChatMessageCreate,
-    ReviewCreate,
     ImpactStatementCreate,
     SupportRequestCreate,
     SupportResponse,

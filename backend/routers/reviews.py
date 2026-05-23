@@ -24,9 +24,8 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
 
-from auth_utils import get_current_user, get_current_user_optional, require_roles
+from auth_utils import get_current_user, require_roles
 from models import ReviewCreate, ReviewReport, ReviewModerate, gen_id, now_iso
 
 logger = logging.getLogger("birthright.reviews")

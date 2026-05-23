@@ -2,9 +2,7 @@
 import logging
 import os
 from fastapi import APIRouter, HTTPException, Depends
-from typing import Optional
 from models import (
-    GoverningMember,
     GoverningMemberCreate,
     FoundationContent,
     ContactMessageCreate,

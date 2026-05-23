@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import io
-from datetime import datetime
-from typing import Optional
 
 import qrcode
 from ics import Calendar, Event

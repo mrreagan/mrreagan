@@ -306,10 +306,10 @@ class TestWorkshopPhotos:
         # stranger user (no registration, own session)
         stranger_session = requests.Session()
         stranger_email = f"test_stranger_{uuid.uuid4().hex[:8]}@birthright-test.com"
-        stranger_resp = stranger_session.post(f"{API}/auth/register", json={
+        stranger_session.post(f"{API}/auth/register", json={
             "email": stranger_email, "password": "P@ss12345",
             "first_name": "Stranger", "last_name": "User"
-        }, timeout=30).json()
+        }, timeout=30)
 
         yield {
             "workshop": w,
@@ -406,7 +406,6 @@ class TestWorkshopPhotos:
     def test_cross_workshop_pending_facilitator_only_theirs(self, s, fac, setup_workshop):
         r = fac["session"].get(f"{API}/workshop-photos", timeout=15)
         assert r.status_code == 200
-        wid = setup_workshop["wid"]
         # All returned photos should belong to fac's workshops; our test wid is owned by fac
         # so any pending photo for setup_workshop wid should appear here
         photos = r.json()

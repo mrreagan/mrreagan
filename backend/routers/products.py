@@ -7,8 +7,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional
-from models import ProductCreate, Product, ProductUpdate, gen_id, now_iso
-from auth_utils import get_current_user, require_roles, get_current_user_optional
+from models import ProductCreate, ProductUpdate, gen_id, now_iso
+from auth_utils import require_roles, get_current_user_optional
 
 logger = logging.getLogger("birthright.products")
 router = APIRouter(prefix="/products", tags=["products"])

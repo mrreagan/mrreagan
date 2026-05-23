@@ -3,7 +3,6 @@ import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 

@@ -18,7 +18,7 @@ import secrets
 import string
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 
 from auth_utils import get_current_user, require_roles

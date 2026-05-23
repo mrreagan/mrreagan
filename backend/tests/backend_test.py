@@ -6,7 +6,6 @@ impact statements, support requests, foundation content, governing members,
 facilitators, contact, newsletter, waitlist, dashboards, admin role change.
 """
 import os
-import time
 import uuid
 import pytest
 import requests
