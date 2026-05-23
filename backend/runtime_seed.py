@@ -35,52 +35,68 @@ KNOWN_IMAGE_REPAIRS: dict[str, str] = {
 }
 
 
+def _load_catalog_items() -> tuple[list[dict] | None, dict | None]:
+    """Read catalog.json. Returns (items, error_summary)."""
+    if not CATALOG_PATH.exists():
+        logger.warning(f"catalog.json not found at {CATALOG_PATH} — skipping catalog seed")
+        return None, {"inserted": 0, "skipped": 0, "missing_catalog": True}
+    try:
+        catalog = json.loads(CATALOG_PATH.read_text())
+        return catalog.get("items", []), None
+    except Exception as e:
+        logger.error(f"catalog.json parse failed: {e}")
+        return None, {"inserted": 0, "skipped": 0, "parse_error": True}
+
+
+async def _existing_slugs(db) -> set[str]:
+    """Return the set of product slugs already present in MongoDB."""
+    existing: set[str] = set()
+    async for p in db.products.find({"slug": {"$exists": True}}, {"slug": 1, "_id": 0}):
+        if p.get("slug"):
+            existing.add(p["slug"])
+    return existing
+
+
+def _resolve_image_url(slug: str) -> str:
+    """Point at the committed per-slug PNG, falling back to a placeholder."""
+    if (STATIC_DIR / f"{slug}.png").exists():
+        return f"/api/static/products/{slug}.png"
+    return "/api/static/products/_placeholder.png"
+
+
+def _build_catalog_product(item: dict) -> dict:
+    """Compose a catalog product document for insert."""
+    slug = item["slug"]
+    return {
+        "id": gen_id(),
+        "slug": slug,
+        "name": item["name"],
+        "description": item["description"],
+        "price": float(item["price"]),
+        "type": item.get("type_override") or "merch",
+        "workshop_id": None,
+        "image_url": _resolve_image_url(slug),
+        "inventory": int(item.get("inventory", 75)),
+        "category": item["category"],
+        "created_at": now_iso(),
+    }
+
+
 async def ensure_catalog_seeded(db) -> dict:
     """Insert any items from catalog.json whose `slug` is missing in DB.
 
     Returns a small summary dict for logging. Never raises — log + skip on error.
     """
-    if not CATALOG_PATH.exists():
-        logger.warning(f"catalog.json not found at {CATALOG_PATH} — skipping catalog seed")
-        return {"inserted": 0, "skipped": 0, "missing_catalog": True}
+    items, error = _load_catalog_items()
+    if error is not None:
+        return error
 
-    try:
-        catalog = json.loads(CATALOG_PATH.read_text())
-        items = catalog.get("items", [])
-    except Exception as e:
-        logger.error(f"catalog.json parse failed: {e}")
-        return {"inserted": 0, "skipped": 0, "parse_error": True}
-
-    # Build set of slugs already in DB
-    existing: set[str] = set()
-    async for p in db.products.find({"slug": {"$exists": True}}, {"slug": 1, "_id": 0}):
-        if p.get("slug"):
-            existing.add(p["slug"])
-
-    to_insert: list[dict] = []
-    for item in items:
-        slug = item.get("slug")
-        if not slug or slug in existing:
-            continue
-        png_path = STATIC_DIR / f"{slug}.png"
-        image_url = (
-            f"/api/static/products/{slug}.png"
-            if png_path.exists()
-            else "/api/static/products/_placeholder.png"
-        )
-        to_insert.append({
-            "id": gen_id(),
-            "slug": slug,
-            "name": item["name"],
-            "description": item["description"],
-            "price": float(item["price"]),
-            "type": item.get("type_override") or "merch",
-            "workshop_id": None,
-            "image_url": image_url,
-            "inventory": int(item.get("inventory", 75)),
-            "category": item["category"],
-            "created_at": now_iso(),
-        })
+    existing = await _existing_slugs(db)
+    to_insert = [
+        _build_catalog_product(item)
+        for item in items
+        if item.get("slug") and item["slug"] not in existing
+    ]
 
     if to_insert:
         await db.products.insert_many(to_insert)
