@@ -1,0 +1,49 @@
+{
+  "summary": "Phase 6B.2 Partner Subscriptions, Auto-Licensing & Dual-Tier Rev-Share validated end-to-end. 19/19 backend pytest passing (plans catalog filtering, checkout gating w/ Stripe session creation, idempotent fulfilment + audit_log write, my-subscriptions hydration, rev-share precedence subscription→global_default, regression on prior endpoints). Frontend flows verified live against the preview URL: /partners/subscribe plan picker (community + facilitator dual-tier 70/50, 65/45, 60/40), needs-approval-banner for demo on facilitator tab, Profile required disabled state, LICENSED status card on /dashboard/partner with days-remaining countdown, and /partners/apply facilitator subform banner correctly links to /partners/subscribe?type=facilitator with no 'coming soon' text.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter10_subscriptions.py",
+    "/app/test_reports/pytest/iter10_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routers/subscriptions.py create_subscription_from_txn idempotency keyed on payment_session_id (good). Same session_id reused for renewal would silently no-op — acceptable for v1 (renewals are new Stripe sessions).",
+    "utils/rev_share.py: _global_default_pct returns tiers[0] only; if foundation_settings ever supports multiple tiers, branching logic will need extension. Documented well; non-blocking.",
+    "Test agent typo'd `audit_logs` initially — actual collection is singular `audit_log`. Worth noting consistent collection naming in a follow-up cleanup.",
+    "Subscribe button styles use `bg-[#476B6B]` active tab — looks correct. Plan-revshare-{id} testid is reused both for facilitator dual-tier and other types — could cause confusion in unit selectors but works as testid namespace per plan id."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter10_subscriptions.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "demo@birthright.org / birthright2026 (has approved community partner_profile slug=sam-rivera-community); elena@birthright.org / birthright2026 (no partner profile); admin@birthright.org / birthright2026.",
+  "seed_data_creation": "Created a synthetic TEST_ partner_subscription doc for demo to verify the LICENSED status card on /dashboard/partner; cleaned up after testing. The pytest session creates 1 real Stripe checkout session for community Annual plan + payment_transactions row + then simulates paid + fulfilment; cleanup fixture deletes these afterwards.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "12 subscription_plans seeded in db.subscription_plans. Community global_default rev-share = 10%, facilitator = 72.5%. Backend version 1.8.0. To test fulfilment without real Stripe payment, call `from routers.subscriptions import create_subscription_from_txn; await create_subscription_from_txn(db, txn_with_payment_status_paid)`. The iter10 test file uses this pattern and is idempotent.",
+  "verified_flows": [
+    "GET /api/subscriptions/plans (no filter→12, facilitator→3 with BR_IP+other, community→3 with default_pct, invalid→400)",
+    "POST /api/subscriptions/checkout (anon→401, unknown plan→404, demo facilitator→403, demo community→200 with Stripe url + session_id; payment_transactions row inserted with type=subscription, payment_status=initiated, metadata.plan_id/duration_months/partner_profile_id present)",
+    "create_subscription_from_txn(db, paid_txn) → creates partner_subscription{status=active, partner_type=community, duration_months=12, expires_at>started_at}; second call idempotent (still 1 row); writes audit_log{action=subscription.activate}",
+    "GET /api/subscriptions/my as demo → returns sub with is_active=true, plan populated",
+    "GET /api/partners/my-rev-share/community (demo, after fulfilment) → source=subscription, pct=10 (matches Community Annual default_pct), plan_id+expires_at populated",
+    "GET /api/partners/my-rev-share/facilitator (elena, no profile, BR_IP=true|false) → source=global_default (72.5%)",
+    "GET /api/partners/my-rev-share/invalid_type → 400",
+    "Regression: /api/partners, /api/partners/sam-rivera-community, /api/governance/proposals, /api/workshops, /api/reviews/search all 200",
+    "Frontend /partners/subscribe?type=community as DEMO: 3 plan cards ($29/$299/$549), Subscribe enabled (demo has community profile), Most chosen ribbon on annual",
+    "Frontend /partners/subscribe?type=facilitator as DEMO: needs-approval-banner shown, 3 plans with dual-tier rev-share displayed (70/50, 65/45, 60/40), Subscribe buttons say 'Profile required' and are disabled",
+    "Frontend /dashboard/partner with active community sub: LICENSED card, 180 DAYS LEFT countdown, 'Community — Annual' plan name, Expires 11/19/2026",
+    "Frontend /partners/apply facilitator subform: banner text 'After approval you'll choose a subscription plan' with link href /partners/subscribe?type=facilitator (no 'coming soon')"
+  ]
+}

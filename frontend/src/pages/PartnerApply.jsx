@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { Link, useNavigate } from "react-router-dom";import { toast } from "sonner";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import { Users, Briefcase, Microscope, Store, AlertCircle } from "lucide-react";
@@ -162,7 +161,7 @@ export default function PartnerApply() {
             <div className="bg-[#FAF8F5] border border-[#C9A961]/40 rounded p-3 flex items-start gap-2">
               <AlertCircle size={14} strokeWidth={1.5} className="text-[#C9A961] mt-0.5 shrink-0" />
               <p className="text-xs text-[#5C6B6B]">
-                Facilitators are a special partner class. To present Birthright IP materials and workshops you'll need an active facilitator subscription (Phase 6B.2 — coming soon). Rev-share differs for Birthright IP vs your own/vendor materials. <strong>Tell us which you plan to present.</strong>
+                Facilitators are a special partner class. After approval you'll choose a <Link to="/partners/subscribe?type=facilitator" className="text-[#476B6B] underline">subscription plan</Link> (monthly / annual / 2-year). Subscription length sets your license window AND default revenue share — shorter terms carry a higher rev-share. Rev-share also differs for Birthright IP materials vs. your own / vendor content. <strong>Tell us which you plan to present.</strong>
               </p>
             </div>
             <div>

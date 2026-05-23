@@ -172,6 +172,26 @@ async def my_profiles(user: dict = Depends(get_current_user)):
     return profiles
 
 
+@router.get("/my-rev-share/{partner_type}")
+async def my_rev_share(
+    partner_type: str,
+    presents_birthright_ip: bool = False,
+    user: dict = Depends(get_current_user),
+):
+    """Show the caller their applicable rev-share rate for a partner_type.
+
+    For facilitators, pass `presents_birthright_ip=true` to see the Birthright-IP
+    tier; false (default) to see the rate for own/vendor content.
+    """
+    if partner_type not in PARTNER_TYPE_VALUES:
+        raise HTTPException(status_code=400, detail="Invalid partner_type")
+    from database import db
+    from utils.rev_share import resolve_rev_share
+    return await resolve_rev_share(
+        db, user["id"], partner_type, presents_birthright_ip=presents_birthright_ip
+    )
+
+
 @router.put("/my-profiles/{partner_type}")
 async def update_my_profile(
     partner_type: str,

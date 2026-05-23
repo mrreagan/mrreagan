@@ -523,3 +523,11 @@ class PartnerProfileUpdate(BaseModel):
     location: Optional[str] = Field(default=None, max_length=120)
     photo_url: Optional[str] = None
     public: Optional[bool] = None
+
+
+
+# ============ SUBSCRIPTIONS (Phase 6B.2) ============
+
+class SubscriptionCheckoutRequest(BaseModel):
+    plan_id: str
+    origin_url: str

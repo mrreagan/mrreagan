@@ -42,6 +42,7 @@ import PartnersDirectory from "./pages/PartnersDirectory";
 import PartnerProfilePage from "./pages/PartnerProfilePage";
 import PartnerApply from "./pages/PartnerApply";
 import PartnerDashboard from "./pages/PartnerDashboard";
+import PartnerSubscribe from "./pages/PartnerSubscribe";
 import AdminPartners from "./pages/AdminPartners";
 import Profile from "./pages/Profile";
 
@@ -81,6 +82,7 @@ function AppRoutes() {
       <Route path="/legal/indemnification" element={<IndemnificationPage />} />
       <Route path="/partners" element={<PartnersDirectory />} />
       <Route path="/partners/apply" element={<PartnerApply />} />
+      <Route path="/partners/subscribe" element={<PartnerSubscribe />} />
       <Route path="/partners/:slug" element={<PartnerProfilePage />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />

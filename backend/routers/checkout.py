@@ -406,6 +406,15 @@ _PAID_HANDLERS = {
 }
 
 
+async def _create_subscription_from_txn(db, txn: dict) -> None:
+    """Dispatch to subscriptions module so router code owns its data model."""
+    from routers.subscriptions import create_subscription_from_txn
+    await create_subscription_from_txn(db, txn)
+
+
+_PAID_HANDLERS["subscription"] = _create_subscription_from_txn
+
+
 async def _process_paid_transaction(txn: dict):
     """Handle side-effects of a successful payment by dispatching to the correct handler."""
     from database import db

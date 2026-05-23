@@ -4,6 +4,7 @@ import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { CheckCircle2, Clock, XCircle, Pencil, Globe, Eye, EyeOff } from "lucide-react";
+import { SubscriptionStatusCard } from "./PartnerSubscribe";
 
 const STATUS_BADGE = {
   pending:  { label: "Pending",  cls: "bg-[#C9A961]/15 text-[#8B7128] border-[#C9A961]/40", icon: Clock },
@@ -21,6 +22,7 @@ export default function PartnerDashboard() {
   const { user } = useAuth();
   const [apps, setApps] = useState([]);
   const [profiles, setProfiles] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
@@ -28,12 +30,18 @@ export default function PartnerDashboard() {
     Promise.all([
       api.get("/partners/my-applications"),
       api.get("/partners/my-profiles"),
-    ]).then(([a, p]) => {
+      api.get("/subscriptions/my"),
+    ]).then(([a, p, s]) => {
       setApps(a.data);
       setProfiles(p.data);
+      setSubscriptions(s.data);
     }).finally(() => setLoading(false));
   };
   useEffect(load, []);
+
+  const activeSubByType = subscriptions
+    .filter((s) => s.is_active)
+    .reduce((acc, s) => ({ ...acc, [s.partner_type]: s }), {});
 
   if (!user) return null;
 
@@ -57,7 +65,12 @@ export default function PartnerDashboard() {
         <section className="mt-2" data-testid="my-profiles-section">
           <h2 className="font-serif text-xl">Your live partner profiles</h2>
           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {profiles.map((p) => <ProfileCard key={p.id} profile={p} onChange={load} />)}
+            {profiles.map((p) => (
+              <div key={p.id} className="space-y-3">
+                <ProfileCard profile={p} onChange={load} />
+                <SubscriptionStatusCard profile={p} subscription={activeSubByType[p.partner_type]} />
+              </div>
+            ))}
           </div>
         </section>
       )}
