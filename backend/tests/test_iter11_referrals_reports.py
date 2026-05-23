@@ -13,7 +13,9 @@ ADMIN_EMAIL = "admin@birthright.org"
 DEMO_EMAIL = "demo@birthright.org"
 ELENA_EMAIL = "elena@birthright.org"
 MARCUS_EMAIL = "marcus@birthright.org"
-PASSWORD = "birthright2026"
+# Default matches the documented seed password in /app/memory/test_credentials.md.
+# Override via TEST_USER_PASSWORD env var when running tests against a non-seed env.
+PASSWORD = os.environ.get("TEST_USER_PASSWORD", "birthright2026")  # noqa: S105  # pragma: allowlist secret
 
 
 # ============ FIXTURES ============

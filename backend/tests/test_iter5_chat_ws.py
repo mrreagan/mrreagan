@@ -134,7 +134,8 @@ class TestWsAuth:
 
     @pytest.mark.asyncio
     async def test_invalid_cookie_rejected(self, workshop_id):
-        ws = await ws_connect(workshop_id, token="not-a-jwt")
+        # Deliberately invalid token to exercise rejection path. Not a real credential.
+        ws = await ws_connect(workshop_id, token="not-a-jwt")  # noqa: S105  # pragma: allowlist secret
         try:
             msg = await recv_one(ws)
             assert msg.get("type") == "error"
