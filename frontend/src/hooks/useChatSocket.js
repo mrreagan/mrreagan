@@ -33,7 +33,7 @@ export default function useChatSocket({ workshopId, onMessage }) {
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     if (pingTimerRef.current) clearInterval(pingTimerRef.current);
     if (wsRef.current) {
-      try { wsRef.current.close(); } catch {/* noop */}
+      try { wsRef.current.close(); } catch (err) { console.debug("[chat-ws] close during cleanup:", err); }
       wsRef.current = null;
     }
   }, []);
@@ -49,7 +49,7 @@ export default function useChatSocket({ workshopId, onMessage }) {
       attemptsRef.current = 0;
       setStatus("connected");
       pingTimerRef.current = setInterval(() => {
-        try { ws.send(JSON.stringify({ type: "ping" })); } catch {/* noop */}
+        try { ws.send(JSON.stringify({ type: "ping" })); } catch (err) { console.debug("[chat-ws] ping send failed:", err); }
       }, PING_INTERVAL_MS);
     };
 
@@ -57,7 +57,7 @@ export default function useChatSocket({ workshopId, onMessage }) {
       try {
         const data = JSON.parse(ev.data);
         onMessageRef.current?.(data);
-      } catch {/* ignore */}
+      } catch (err) { console.warn("[chat-ws] received non-JSON frame:", err); }
     };
 
     ws.onclose = () => {
@@ -74,7 +74,7 @@ export default function useChatSocket({ workshopId, onMessage }) {
     };
 
     ws.onerror = () => {
-      try { ws.close(); } catch {/* noop */}
+      try { ws.close(); } catch (err) { console.debug("[chat-ws] close-after-error failed:", err); }
     };
   }, [workshopId, cleanup]);
 

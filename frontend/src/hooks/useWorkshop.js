@@ -26,8 +26,8 @@ export default function useWorkshop(slug, user) {
           loadImpacts(data.id),
           userId ? loadRegistration(data.id) : null,
         ]);
-      } catch {
-        // swallow — page shows loading or empty state
+      } catch (err) {
+        console.error(`Failed to load workshop ${slug}:`, err);
       }
     };
 
@@ -35,8 +35,8 @@ export default function useWorkshop(slug, user) {
       try {
         const { data } = await api.get(`/reviews?workshop_id=${id}`);
         if (!cancelled) setReviews(data);
-      } catch {
-        /* noop */
+      } catch (err) {
+        console.warn(`Failed to load reviews for workshop ${id}:`, err);
       }
     };
 
@@ -44,8 +44,8 @@ export default function useWorkshop(slug, user) {
       try {
         const { data } = await api.get(`/impact-statements?workshop_id=${id}&public_only=true`);
         if (!cancelled) setPublicImpacts(data);
-      } catch {
-        /* noop */
+      } catch (err) {
+        console.warn(`Failed to load impact statements for workshop ${id}:`, err);
       }
     };
 
@@ -53,8 +53,8 @@ export default function useWorkshop(slug, user) {
       try {
         const { data } = await api.get(`/workshops/${id}/my-registration`);
         if (!cancelled) setRegistered(Boolean(data.registered));
-      } catch {
-        /* noop */
+      } catch (err) {
+        console.warn(`Failed to load registration for workshop ${id}:`, err);
       }
     };
 

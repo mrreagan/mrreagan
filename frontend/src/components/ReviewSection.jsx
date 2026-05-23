@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
@@ -133,7 +133,7 @@ export default function ReviewSection({ subjectType, subjectId, subjectLabel }) 
     [reviews, user]
   );
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     Promise.all([
       api.get(`/reviews?subject_type=${subjectType}&subject_id=${subjectId}`),
@@ -141,8 +141,8 @@ export default function ReviewSection({ subjectType, subjectId, subjectLabel }) 
     ])
       .then(([rRes, aRes]) => { setReviews(rRes.data); setAgg(aRes.data); })
       .finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [subjectType, subjectId]);
+  }, [subjectType, subjectId]);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     if (myReview && editing) {

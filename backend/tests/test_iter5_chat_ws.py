@@ -18,7 +18,7 @@ import websockets
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://birthright-hub.preview.emergentagent.com").rstrip("/")
 WS_BASE = re.sub(r"^http", "ws", BASE_URL)
 WORKSHOP_SLUG = "foundations-of-secure-bonds"
-PASSWORD = "birthright2026"
+PASSWORD = os.environ.get("BIRTHRIGHT_TEST_PASSWORD", "birthright2026")
 
 
 # ----------------- helpers -----------------
