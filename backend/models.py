@@ -39,6 +39,8 @@ class UserProfile(BaseModel):
     avatar_url: Optional[str] = None
     facilitator_slug: Optional[str] = None
     credentials: Optional[str] = None
+    governance_member: bool = False
+    is_ombudsman: bool = False
     created_at: str
 
 
@@ -356,3 +358,118 @@ class WorkshopPhoto(BaseModel):
 
 class PhotoModerationAction(BaseModel):
     reason: Optional[str] = None
+
+
+
+# ============ PARTNERS / GOVERNANCE / LEGAL (Phase 6A.2) ============
+
+PARTNER_TYPES = ("facilitator", "community", "research", "vendor")
+PROPOSAL_CATEGORIES = ("rev_share", "policy", "membership", "indemnification", "other")
+
+
+class RevShareTier(BaseModel):
+    name: str  # e.g. 'bronze', 'silver', 'gold'
+    pct: float = Field(ge=0, le=100)
+    description: Optional[str] = ""
+
+
+class GlobalDefaults(BaseModel):
+    """Singleton document (key='global_defaults') for org-wide defaults."""
+    rev_share: dict  # {partner_type: [RevShareTier...]}
+    min_listing_rating: float = 0.0
+    indemnification_active_version_id: Optional[str] = None
+    updated_by: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class GlobalDefaultsUpdate(BaseModel):
+    rev_share: Optional[dict] = None
+    min_listing_rating: Optional[float] = Field(default=None, ge=0, le=5)
+
+
+class ProposalCreate(BaseModel):
+    title: str = Field(min_length=5, max_length=200)
+    summary: str = Field(min_length=10, max_length=500)
+    body: str = Field(min_length=20, max_length=20000)
+    category: Literal["rev_share", "policy", "membership", "indemnification", "other"] = "policy"
+    voting_closes_at: Optional[str] = None  # ISO datetime; default = +14 days set server-side
+    implementation_notes: Optional[str] = ""
+
+
+class Proposal(BaseModel):
+    id: str
+    title: str
+    summary: str
+    body: str
+    category: str
+    proposer_id: str
+    proposer_name: str
+    status: Literal["draft", "open", "passed", "failed", "withdrawn"] = "open"
+    created_at: str
+    voting_closes_at: str
+    closed_at: Optional[str] = None
+    closed_by: Optional[str] = None
+    implementation_notes: Optional[str] = ""
+    yes_count: int = 0
+    no_count: int = 0
+    abstain_count: int = 0
+
+
+class VoteCast(BaseModel):
+    vote: Literal["yes", "no", "abstain"]
+    comment: Optional[str] = Field(default="", max_length=2000)
+
+
+class GovernanceVote(BaseModel):
+    id: str
+    proposal_id: str
+    voter_id: str
+    voter_name: str
+    vote: str
+    comment: str = ""
+    created_at: str
+
+
+class MemberFlagsUpdate(BaseModel):
+    governance_member: Optional[bool] = None
+    is_ombudsman: Optional[bool] = None
+
+
+class IndemnificationCreate(BaseModel):
+    version: str = Field(min_length=1, max_length=20)  # semantic-ish, e.g. "1.0", "1.1-draft"
+    body: str = Field(min_length=50)
+    summary_of_changes: Optional[str] = ""
+
+
+class IndemnificationVersion(BaseModel):
+    id: str
+    version: str
+    body: str
+    summary_of_changes: str = ""
+    active: bool = False
+    created_by: str
+    created_at: str
+    activated_at: Optional[str] = None
+
+
+class IndemnificationSignature(BaseModel):
+    id: str
+    version_id: str
+    version: str
+    user_id: str
+    user_name: str
+    user_role: str
+    signed_at: str
+    ip: Optional[str] = None
+
+
+class AuditLogEntry(BaseModel):
+    id: str
+    actor_id: Optional[str] = None
+    actor_role: Optional[str] = None
+    actor_name: Optional[str] = None
+    action: str  # e.g. 'governance.defaults.update', 'governance.proposal.create', 'legal.indemnification.activate'
+    target_type: Optional[str] = None
+    target_id: Optional[str] = None
+    metadata: dict = {}
+    created_at: str

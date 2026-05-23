@@ -35,6 +35,9 @@ import AdminProducts from "./pages/AdminProducts";
 import AdminWorkshops from "./pages/AdminWorkshops";
 import PhotoModeration from "./pages/PhotoModeration";
 import ReviewsBrowser from "./pages/ReviewsBrowser";
+import GovernanceProposals from "./pages/GovernanceProposals";
+import IndemnificationPage from "./pages/IndemnificationPage";
+import AdminGovernance from "./pages/AdminGovernance";
 import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children, roles }) {
@@ -69,6 +72,8 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reviews" element={<ReviewsBrowser />} />
+      <Route path="/governance/proposals" element={<GovernanceProposals />} />
+      <Route path="/legal/indemnification" element={<IndemnificationPage />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -133,6 +138,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={FACILITATOR_ROLES}>
             <PhotoModeration />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/governance"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminGovernance />
           </ProtectedRoute>
         }
       />

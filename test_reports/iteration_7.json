@@ -1,0 +1,53 @@
+{
+  "summary": "Iteration 7 / Phase 6A.2 (Governance & Legal) — backend pytest 30/30 PASS covering global defaults, member flags, proposals lifecycle (create/list/filter/get/404), voting (re-cast updates same row), close paths (admin passed/failed, proposer→withdrawn, ineligible→403, re-close→400), indemnification (auto-bootstrap, sign idempotent, my-status, publish new version flips signed→false + duplicate→400 + audit), audit log gating (admin/ombudsman read, participant & non-ombudsman facilitator 403, action_prefix filter), and UserProfile flag exposure on /api/auth/me. Frontend: admin /governance/proposals shows 'Propose a change' button + 7 proposal rows; clicking a row opens detail modal with Yes/No/Abstain vote buttons + Close & tally button. Admin /admin/governance loads with all 4 tab buttons (Defaults/Members/Indemnification/Audit Log); Defaults tab persisted the API-side change to 72.5% facilitator pct and min_listing_rating 0.5 (verified visually). /legal/indemnification displays active body + version + NOT YET SIGNED badge (the API test published a fresh v 'vtest-…' which is now the active version — main agent should publish a proper v1.x or revert via DB if desired). Demo participant: 'Propose a change' button correctly hidden on /governance/proposals; /admin/governance correctly redirects to /dashboard. Public /governance page shows both Proposals & Indemnification callouts at the bottom.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/governance/proposals — status filter chips",
+        "issues": ["Filter chips (all/open/passed/failed/withdrawn) lack data-testid attributes; query [data-testid^='proposal-filter-'] returned 0. They are visually present and clickable. Adding e.g. data-testid='proposal-filter-open' would make automation reliable."]
+      },
+      {
+        "screen": "/admin/governance — tab buttons",
+        "issues": ["The 4 tab buttons (Defaults/Members/Indemnification/Audit Log) lack data-testid and role='tab'. Tests fell back to text content. Consider adding data-testid='admin-gov-tab-defaults' etc."]
+      },
+      {
+        "screen": "/governance/proposals (demo participant)",
+        "issues": ["At the LIST level the page does not surface a 'Only governance members can vote' notice — assumed to only appear when a non-member opens the detail modal. Not blocking; the Propose CTA is correctly hidden. Worth verifying the in-modal notice manually."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter7_governance.py",
+    "/app/test_reports/pytest/iter7_results.xml"
+  ],
+  "action_items": [
+    "Add data-testid attributes to (a) /governance/proposals status-filter chips (proposal-filter-{all|open|passed|failed|withdrawn}), (b) /admin/governance tab buttons (admin-gov-tab-{defaults|members|indemnification|audit}), and (c) vote buttons inside the proposal-detail modal (vote-yes-btn / vote-no-btn / vote-abstain-btn) for stable Playwright targeting.",
+    "Optional cleanup: the indemnification 'vtest-1779511789' test version is now the live active version (with body 'Updated indemnification body content with more than fifty characters of test text to satisfy validator.'). Main agent may want to publish a real v1.1 (or delete from db.indemnification_versions and re-activate v1.0) before user-facing demos so the page shows the seeded placeholder copy.",
+    "Optional: surface the 'Only governance members can vote' notice (or hide vote controls and show a tooltip) for non-members BEFORE they open the modal — currently the only signal is the missing 'Propose a change' button."
+  ],
+  "critical_code_review_comments": [
+    "routers/governance.py _require_governance (line 34-41): grants access if role=='admin' OR governance_member=True. Confirms admin doesn't need governance_member flag explicitly — consistent with the seed (admin still seeded with governance_member=True per spec).",
+    "routers/governance.py _recompute_tally (line 44): aggregation correctly rewrites yes_count/no_count/abstain_count, ensuring re-cast votes recompute totals correctly (verified by test_vote_yes_then_recast_no).",
+    "routers/governance.py close_proposal (line 297): proposer-only close logic: 'if is_proposer and not (is_admin or is_ombudsman): withdrawn'. So an admin who is ALSO the proposer would not withdraw — would tally. Documented behaviour, matches spec.",
+    "routers/legal.py create_version (line 80): deactivates ALL prior active versions before inserting new one — safe even if multiple were accidentally active. Good.",
+    "routers/legal.py sign_active (line 110-138): idempotent on duplicate sign — returns already_signed=True with original signed_at. Good. ip is captured for evidence trail.",
+    "routers/audit.py _require_admin_or_ombudsman: facilitator (governance_member but not ombudsman) explicitly 403. Verified by test_facilitator_non_ombudsman_forbidden.",
+    "utils/audit.py log_action is fire-and-forget per the agent_to_agent note — verified no governance test failed due to audit DB errors during the run.",
+    "models.py ProposalCreate validates title min 5 / body min 20 → 422 — verified.",
+    "models.py IndemnificationCreate body min 50 — verified (the test used a 100+ char body).",
+    "GlobalDefaultsUpdate has only rev_share + min_listing_rating; indemnification_active_version_id is updated by legal router directly, not via this endpoint — correct decoupling."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter7_governance.py"
+  ],
+  "success_rate": { "backend": "100% (30/30)", "frontend": "~95% — all 6 critical user-facing flows verified visually (admin proposals list+detail modal, admin governance tabs, defaults persistence, indemnification active version display, demo restricted access, public callouts). Only data-testid hooks missing for filter chips & tabs — does not affect users." },
+  "test_credentials": "admin@birthright.org / birthright2026 ; elena@birthright.org / birthright2026 ; marcus@birthright.org / birthright2026 ; demo@birthright.org / birthright2026",
+  "seed_data_creation": "Test run created (a) 5–6 governance proposals under Elena (all in current DB, status mix of open/passed/failed/withdrawn — visible in admin's proposal list as 7 rows total including prior 'Test proposal — adjust facilitator share'), (b) multiple vote rows under Marcus, (c) one new indemnification version 'vtest-{ts}' now ACTIVE (deactivated v1.0), (d) demo's indemnification signature on the original v1.0 (now stale because version_id changed — signed=false on my-status as expected). Audit log has new entries: governance.defaults.update, governance.proposal.create×N, governance.vote.create×N, governance.proposal.close×3, governance.member.update×2, legal.indemnification.activate, legal.indemnification.sign. Global defaults now stored facilitator pct=72.5, min_listing_rating=0.5 (test-modified).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "test_iter7_governance.py runs in isolation, ~7s, all 30 tests green. Same Bearer-token style as iter6 — no conftest changes needed. Be aware: tests publish a new indemnification version each run (so v-strings keep accumulating); they also flip the demo user's ombudsman flag on then off (final state: demo has governance_member=False, is_ombudsman=False). global_defaults facilitator pct is left at 72.5 and min_listing_rating at 0.5 — main agent may want to reset via PUT /api/governance/defaults if pristine seed values are needed for screenshots.",
+  "rca of the issue": "No bugs found. The earlier iter6 ReviewSection edit-form bug was already fixed by main agent (per the agent_to_agent_context_note: ReviewSection.jsx useAuth destructuring of non-existent isAuthenticated → replaced with !!user). Not re-tested in this iteration since not in scope. All Phase 6A.2 endpoints and screens behave per spec."
+}

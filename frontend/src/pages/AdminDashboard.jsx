@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../lib/api";
 import { Link } from "react-router-dom";
-import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera } from "lucide-react";
+import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale } from "lucide-react";
 import { toast } from "sonner";
 
 // ---------- Stat card ----------
@@ -57,6 +57,7 @@ function OverviewTab() {
       <QuickActionCard to="/admin/workshops" icon={Calendar} title="Manage Workshops" description="Create, edit, cancel, duplicate" />
       <QuickActionCard to="/admin/products" icon={ShoppingBag} title="Manage Products" description="Merch and workshop materials" />
       <QuickActionCard to="/admin/photos" icon={Camera} title="Photo Moderation" description="Approve participant uploads" />
+      <QuickActionCard to="/admin/governance" icon={Scale} title="Governance & Legal" description="Defaults, members, indemnification, audit" />
       <QuickActionCard to="/admin/content" icon={Heart} title="Foundation Content" description="Mission, about, governance" />
     </div>
   );

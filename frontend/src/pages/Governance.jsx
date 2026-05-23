@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../lib/api";
+import { Vote, FileText } from "lucide-react";
 
 export default function Governance() {
   const [members, setMembers] = useState([]);
@@ -32,6 +34,19 @@ export default function Governance() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="governance-callouts">
+        <Link to="/governance/proposals" className="card p-6 hover:border-[#476B6B] transition" data-testid="link-proposals">
+          <Vote size={20} strokeWidth={1.5} className="text-[#C9A961]" />
+          <h3 className="font-serif text-xl mt-3">Proposals & voting</h3>
+          <p className="text-sm text-[#5C6B6B] mt-1">Read every proposal in the open. Governance members vote. Anyone can debate.</p>
+        </Link>
+        <Link to="/legal/indemnification" className="card p-6 hover:border-[#476B6B] transition" data-testid="link-indemnification">
+          <FileText size={20} strokeWidth={1.5} className="text-[#C9A961]" />
+          <h3 className="font-serif text-xl mt-3">Universal indemnification</h3>
+          <p className="text-sm text-[#5C6B6B] mt-1">One agreement, openly versioned, that participants and partners sign.</p>
+        </Link>
       </div>
     </div>
   );
