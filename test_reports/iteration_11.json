@@ -1,0 +1,38 @@
+{
+  "summary": "Phase 6B.3 Community Referrals + Reporting MVP validated end-to-end. 25/25 backend pytest passing (referral redirect for valid/invalid codes w/ cookie set, my-link, my-earnings shape, admin referral list filtering by status, payout-summary per-partner aggregate, mark-paid happy-path + idempotency 400 on second call + 404 unknown, /api/me/reports for participant + partner, /api/admin/reports rollup w/ revenue/engagement/payouts/top_partners/top_workshops, non-admin 403s, cookie injection into payment_transactions.metadata.referral_code on /api/checkout/workshop, and regression on 6B.2 subscription plans + partners + workshops). Frontend flows verified live against the preview URL: /admin/reports renders Foundation reports with engagement stats + revenue cards + gross_total + partner payout liability; /admin/payouts renders per-partner liability (Sam Rivera, $15 pending) + earned/paid tabs + inline Mark paid form (Manual select / Reference / Note / Confirm paid + Cancel); /dashboard/reports for demo shows engagement + spending + Partner earnings section ($15 pending/$15 lifetime/$0 paid/1 referral/3 link clicks); /dashboard/partner for demo shows the community PartnerEarningsCard with stats + referral link + Copy button + RECENT ATTRIBUTIONS; Elena (facilitator + research partner profiles only, no community) correctly does NOT see PartnerEarningsCard; demo (non-admin) blocked from both /admin/reports and /admin/payouts and redirected to /dashboard.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter11_referrals_reports.py",
+    "/app/test_reports/pytest/iter11_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routers/referrals.py record_referral idempotency keyed on payment_session_id (good). However the `db.referrals.insert_one(dict(doc))` defensive copy is fine; the prior 'existing' check ensures duplicates aren't created.",
+    "routers/referrals.resolve_referral_for_checkout filters partner_type=='community' — explicit and correct for v1 (other partner types do not earn).",
+    "routers/checkout._create_registration_from_txn and _create_order_from_txn correctly guard `attribution['partner_user_id'] != meta['user_id']` to prevent self-attribution. Worth keeping as a regression test in future iterations.",
+    "PayoutMarkPaid (models.py:539) treats `reference` default as empty string but field is documented Optional; (data.reference or '').strip() handles None safely. OK.",
+    "routers/reports.py _partner_finance returns None when no partner_profiles exist — matches frontend expectation that /dashboard/reports hides the Partner section. Verified live.",
+    "Test agent observation: AdminPayouts mark-paid form fields are unlabeled inputs (only placeholders 'Reference / txn id', 'Note (optional)'); consider adding <label> for screen readers. Non-blocking accessibility nit.",
+    "/api/r/{code} returns 302 to '/' (relative path) — browsers will resolve relative to the API host. Since the API and frontend share the same origin in preview, this works. If the API ever moves to a subdomain, this redirect should switch to PUBLIC_APP_URL-based absolute URLs."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter11_referrals_reports.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "admin@birthright.org / birthright2026; demo@birthright.org / birthright2026 (has active community partner_profile slug=sam-rivera-community, referral code TBMBHKHR); elena@birthright.org / birthright2026 (no community profile — has facilitator/research only).",
+  "seed_data_creation": "Inserted 1 synthetic referral (TEST_seed_earn_1, $15 payout, status=earned, partner=demo) directly into db.referrals to test admin ledger UI + payout-summary aggregate + PartnerEarningsCard 'recent attributions' rendering. Cleaned up after testing (1 doc deleted). The pytest also seeds + tears down TEST_ referrals for mark-paid idempotency tests; both are scoped and cleaned up automatically.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 6B.3 is complete and stable. Backend version 1.9.0. The referral cookie is birthright_ref; cookie is captured at /api/checkout/workshop & /api/checkout/order into payment_transactions.metadata.referral_code, then on fulfilment (paid status) routers/referrals.record_referral inserts a referrals row idempotently keyed on payment_session_id with payout_amount = order_total * rev_share_pct / 100. Community partner is the only partner_type with referral earnings in v1 — verified other types (facilitator/research) do NOT render PartnerEarningsCard. Admin can mark referrals paid via POST /api/admin/referrals/{id}/mark-paid; second call returns 400 (already paid). /api/admin/reports + /api/admin/payouts pages require admin role on both backend (require_roles('admin')) and frontend (redirects to /dashboard for non-admin). To repro the e2e attribution flow w/o a real Stripe payment, drop a paid payment_transactions doc with type=workshop|order + metadata.referral_code=<community partner code>, then call from routers.checkout._process_paid_transaction; the iter11 test file demonstrates the cookie-capture half on POST /api/checkout/workshop."
+}
