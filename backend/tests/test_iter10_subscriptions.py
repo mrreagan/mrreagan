@@ -22,17 +22,21 @@ import requests
 sys.path.insert(0, "/app/backend")
 
 
+def _read_env_file(path: str) -> str:
+    try:
+        with open(path, "r") as fh:
+            for line in fh:
+                if line.startswith("REACT_APP_BACKEND_URL="):
+                    return line.split("=", 1)[1].strip()
+    except FileNotFoundError:
+        return ""
+    return ""
+
+
 def _load_backend_url() -> str:
     val = os.environ.get("REACT_APP_BACKEND_URL", "").strip()
     if not val:
-        try:
-            with open("/app/frontend/.env", "r") as fh:
-                for line in fh:
-                    if line.startswith("REACT_APP_BACKEND_URL="):
-                        val = line.split("=", 1)[1].strip()
-                        break
-        except FileNotFoundError:
-            pass
+        val = _read_env_file("/app/frontend/.env")
     return val.rstrip("/")
 
 

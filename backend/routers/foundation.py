@@ -117,36 +117,35 @@ async def get_facilitator(slug_or_id: str):
     return f
 
 
-# ========== CONTACT ==========
-@router.post("/contact")
-async def submit_contact(data: ContactMessageCreate):
-    from database import db
-    msg = {**data.model_dump(), "id": gen_id(), "created_at": now_iso(), "read": False}
-    await db.contact_messages.insert_one(msg)
-    # Optionally subscribe to newsletter (and welcome if it's a new subscription)
-    sent_welcome = False
-    if data.newsletter_opt_in:
-        existing_sub = await db.newsletter_subscribers.find_one({"email": data.email.lower()})
-        if not existing_sub:
-            await db.newsletter_subscribers.insert_one({
-                "id": gen_id(),
-                "email": data.email.lower(),
-                "name": f"{data.first_name} {data.last_name or ''}".strip(),
-                "created_at": now_iso(),
-                "active": True,
-            })
-            try:
-                subj, html, text = newsletter_welcome(name=data.first_name)
-                await send_email(
-                    to=data.email, subject=subj, html=html, text=text,
-                    template_name="newsletter_welcome",
-                    metadata={"source": "contact_form_opt_in"},
-                )
-                sent_welcome = True
-            except Exception as e:
-                logger.error(f"newsletter welcome (contact opt-in) failed: {e}")
-    msg.pop("_id", None)
-    # Fire-and-forget emails (notify admin + auto-reply to sender)
+async def _subscribe_to_newsletter(db, data) -> bool:
+    """Add to newsletter if opted-in and not already subscribed. Returns True
+    if a welcome email was queued for a NEW subscription."""
+    if not data.newsletter_opt_in:
+        return False
+    if await db.newsletter_subscribers.find_one({"email": data.email.lower()}):
+        return False
+    await db.newsletter_subscribers.insert_one({
+        "id": gen_id(),
+        "email": data.email.lower(),
+        "name": f"{data.first_name} {data.last_name or ''}".strip(),
+        "created_at": now_iso(),
+        "active": True,
+    })
+    try:
+        subj, html, text = newsletter_welcome(name=data.first_name)
+        await send_email(
+            to=data.email, subject=subj, html=html, text=text,
+            template_name="newsletter_welcome",
+            metadata={"source": "contact_form_opt_in"},
+        )
+        return True
+    except Exception as e:
+        logger.error(f"newsletter welcome (contact opt-in) failed: {e}")
+        return False
+
+
+async def _send_contact_emails(data, contact_id: str) -> None:
+    """Notify admin and auto-reply the sender. Best-effort; never raises."""
     try:
         admin_inbox = os.environ.get("ADMIN_NOTIFY_EMAIL") or os.environ.get("REPLY_TO_EMAIL")
         full_name = f"{data.first_name} {data.last_name or ''}".strip()
@@ -158,15 +157,26 @@ async def submit_contact(data: ContactMessageCreate):
             await send_email(
                 to=admin_inbox, subject=subj, html=html, text=text,
                 reply_to=data.email, template_name="contact_admin_notify",
-                metadata={"contact_id": msg["id"]},
+                metadata={"contact_id": contact_id},
             )
         subj, html, text = contact_autoreply(first_name=data.first_name)
         await send_email(
             to=data.email, subject=subj, html=html, text=text,
-            template_name="contact_autoreply", metadata={"contact_id": msg["id"]},
+            template_name="contact_autoreply", metadata={"contact_id": contact_id},
         )
     except Exception as e:
         logger.error(f"contact email failed: {e}")
+
+
+# ========== CONTACT ==========
+@router.post("/contact")
+async def submit_contact(data: ContactMessageCreate):
+    from database import db
+    msg = {**data.model_dump(), "id": gen_id(), "created_at": now_iso(), "read": False}
+    await db.contact_messages.insert_one(msg)
+    msg.pop("_id", None)
+    sent_welcome = await _subscribe_to_newsletter(db, data)
+    await _send_contact_emails(data, msg["id"])
     return {
         "success": True,
         "message": "Thank you for reaching out. We'll be in touch soon.",
