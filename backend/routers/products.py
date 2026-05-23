@@ -56,39 +56,53 @@ async def list_products(
     return products
 
 
+def _is_vendor_product_hidden_from(p: dict, user: Optional[dict]) -> bool:
+    """Vendor products with non-active moderation are hidden from the public.
+    Admins and the vendor owner can still see them."""
+    if not p.get("is_vendor_product"):
+        return False
+    if p.get("moderation_status") == "active":
+        return False
+    if user and user.get("role") == "admin":
+        return False
+    if user and user.get("id") == p.get("vendor_user_id"):
+        return False
+    return True
+
+
+async def _resolve_material_lock(p: dict, user: Optional[dict], db) -> tuple[bool, str]:
+    """Return (locked, reason) for a workshop_material product.
+    Non-materials are never locked."""
+    if p["type"] != "workshop_material" or not p.get("workshop_id"):
+        return False, ""
+    if not user:
+        return True, "Sign in and register for the workshop to purchase materials."
+    if user["role"] == "admin":
+        return False, ""
+    reg = await db.registrations.find_one(
+        {
+            "workshop_id": p["workshop_id"],
+            "user_id": user["id"],
+            "payment_status": "paid",
+        }
+    )
+    if reg:
+        return False, ""
+    return True, "Only registered workshop participants can purchase these materials."
+
+
 @router.get("/{product_id}")
 async def get_product(product_id: str, user: Optional[dict] = Depends(get_current_user_optional)):
     from database import db
     p = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
-    # Vendor products with non-active moderation are hidden from the public
-    # (except admins and the vendor owner themselves).
-    if p.get("is_vendor_product") and p.get("moderation_status") != "active":
-        is_admin = bool(user and user.get("role") == "admin")
-        is_owner = bool(user and user.get("id") == p.get("vendor_user_id"))
-        if not (is_admin or is_owner):
-            raise HTTPException(status_code=404, detail="Product not found")
-    # gating info: if workshop material, check eligibility
-    if p["type"] == "workshop_material" and p.get("workshop_id"):
-        if not user:
-            p["locked"] = True
-            p["lock_reason"] = "Sign in and register for the workshop to purchase materials."
-        else:
-            reg = await db.registrations.find_one(
-                {
-                    "workshop_id": p["workshop_id"],
-                    "user_id": user["id"],
-                    "payment_status": "paid",
-                }
-            )
-            if not reg and user["role"] not in ("admin",):
-                p["locked"] = True
-                p["lock_reason"] = "Only registered workshop participants can purchase these materials."
-            else:
-                p["locked"] = False
-    else:
-        p["locked"] = False
+    if _is_vendor_product_hidden_from(p, user):
+        raise HTTPException(status_code=404, detail="Product not found")
+    locked, lock_reason = await _resolve_material_lock(p, user, db)
+    p["locked"] = locked
+    if locked:
+        p["lock_reason"] = lock_reason
     return p
 
 

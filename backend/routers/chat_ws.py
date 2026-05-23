@@ -63,6 +63,77 @@ async def _can_access_workshop(workshop_id: str, user: dict) -> bool:
     return bool(reg)
 
 
+async def _handle_typing(room, conn: Connection, data: dict) -> None:
+    await room.broadcast(
+        {
+            "type": "typing",
+            "user_id": conn.user_id,
+            "user_name": conn.user_name,
+            "recipient_id": data.get("recipient_id"),
+            "is_typing": bool(data.get("is_typing")),
+        },
+        sender_id=conn.user_id,
+        recipient_id=data.get("recipient_id"),
+    )
+
+
+async def _handle_chat(
+    websocket: WebSocket, room, conn: Connection, workshop_id: str, data: dict,
+) -> None:
+    content = (data.get("content") or "").strip()
+    if not content:
+        await websocket.send_json({"type": "error", "detail": "Empty message"})
+        return
+    if len(content) > MAX_CONTENT_LEN:
+        await websocket.send_json({"type": "error", "detail": f"Message exceeds {MAX_CONTENT_LEN} chars"})
+        return
+    recipient_id = data.get("recipient_id") or None
+    from database import db
+    msg = {
+        "id": gen_id(),
+        "workshop_id": workshop_id,
+        "sender_id": conn.user_id,
+        "sender_name": conn.user_name,
+        "recipient_id": recipient_id,
+        "content": content,
+        "created_at": now_iso(),
+    }
+    await db.chat_messages.insert_one(msg)
+    msg.pop("_id", None)
+    await room.broadcast(
+        {"type": "chat", "message": msg},
+        sender_id=conn.user_id,
+        recipient_id=recipient_id,
+    )
+
+
+async def _dispatch_message(
+    websocket: WebSocket, room, conn: Connection, workshop_id: str, data: dict,
+) -> None:
+    """Route a single inbound payload to its handler. Unknown types emit an error frame."""
+    msg_type = data.get("type")
+    if msg_type == "ping":
+        await websocket.send_json({"type": "pong"})
+    elif msg_type == "typing":
+        await _handle_typing(room, conn, data)
+    elif msg_type == "chat":
+        await _handle_chat(websocket, room, conn, workshop_id, data)
+    else:
+        await websocket.send_json({"type": "error", "detail": f"Unknown message type: {msg_type}"})
+
+
+async def _broadcast_presence(room, conn: Connection) -> None:
+    """Broadcast the current room presence to everyone. Swallows broadcast errors."""
+    try:
+        await room.broadcast(
+            {"type": "presence", "users": room.presence_snapshot()},
+            sender_id=conn.user_id,
+            recipient_id=None,
+        )
+    except Exception as e:  # pragma: no cover — best-effort presence
+        logger.debug(f"presence broadcast suppressed: {e}")
+
+
 @router.websocket("/ws/chat/{workshop_id}")
 async def chat_ws(websocket: WebSocket, workshop_id: str):
     await websocket.accept()
@@ -84,78 +155,17 @@ async def chat_ws(websocket: WebSocket, workshop_id: str):
         user_role=user["role"],
     )
     await room.add(conn)
-    # broadcast presence to everyone
-    await room.broadcast(
-        {"type": "presence", "users": room.presence_snapshot()},
-        sender_id=conn.user_id,
-        recipient_id=None,
-    )
+    await _broadcast_presence(room, conn)
 
     try:
         while True:
             data = await websocket.receive_json()
-            msg_type = data.get("type")
-
-            if msg_type == "ping":
-                await websocket.send_json({"type": "pong"})
-                continue
-
-            if msg_type == "typing":
-                await room.broadcast(
-                    {
-                        "type": "typing",
-                        "user_id": conn.user_id,
-                        "user_name": conn.user_name,
-                        "recipient_id": data.get("recipient_id"),
-                        "is_typing": bool(data.get("is_typing")),
-                    },
-                    sender_id=conn.user_id,
-                    recipient_id=data.get("recipient_id"),
-                )
-                continue
-
-            if msg_type == "chat":
-                content = (data.get("content") or "").strip()
-                if not content:
-                    await websocket.send_json({"type": "error", "detail": "Empty message"})
-                    continue
-                if len(content) > MAX_CONTENT_LEN:
-                    await websocket.send_json({"type": "error", "detail": f"Message exceeds {MAX_CONTENT_LEN} chars"})
-                    continue
-                recipient_id = data.get("recipient_id") or None
-                from database import db
-                msg = {
-                    "id": gen_id(),
-                    "workshop_id": workshop_id,
-                    "sender_id": conn.user_id,
-                    "sender_name": conn.user_name,
-                    "recipient_id": recipient_id,
-                    "content": content,
-                    "created_at": now_iso(),
-                }
-                await db.chat_messages.insert_one(msg)
-                msg.pop("_id", None)
-                await room.broadcast(
-                    {"type": "chat", "message": msg},
-                    sender_id=conn.user_id,
-                    recipient_id=recipient_id,
-                )
-                continue
-
-            await websocket.send_json({"type": "error", "detail": f"Unknown message type: {msg_type}"})
+            await _dispatch_message(websocket, room, conn, workshop_id, data)
     except WebSocketDisconnect:
         pass
     except Exception as e:
         logger.warning(f"chat_ws error for user {user.get('id')}: {e}")
     finally:
         await room.remove(websocket)
-        # broadcast updated presence
-        try:
-            await room.broadcast(
-                {"type": "presence", "users": room.presence_snapshot()},
-                sender_id=conn.user_id,
-                recipient_id=None,
-            )
-        except Exception:
-            pass
+        await _broadcast_presence(room, conn)
         await registry.drop_if_empty(workshop_id)

@@ -140,7 +140,7 @@ async def main() -> None:
             await db.subscription_plans.insert_one(doc)
             inserts += 1
     total = await db.subscription_plans.count_documents({})
-    print(f"== Subscription plans seed ==")
+    print("== Subscription plans seed ==")
     print(f"   inserts: {inserts}   updates: {upserts}")
     print(f"   total plans in DB: {total}")
 

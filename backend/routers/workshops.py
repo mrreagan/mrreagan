@@ -21,10 +21,60 @@ def _gen_check_in_code() -> str:
     return "".join(secrets.choice(alphabet) for _ in range(6))
 
 
+async def _fetch_facilitators(db, facilitator_ids: list) -> dict:
+    if not facilitator_ids:
+        return {}
+    rows = await db.users.find(
+        {"id": {"$in": facilitator_ids}}, {"_id": 0, "password_hash": 0}
+    ).to_list(len(facilitator_ids))
+    return {f["id"]: f for f in rows}
+
+
+async def _registration_counts(db, workshop_ids: list) -> dict:
+    counts = {wid: 0 for wid in workshop_ids}
+    if not workshop_ids:
+        return counts
+    pipeline = [
+        {"$match": {"workshop_id": {"$in": workshop_ids}, "payment_status": "paid"}},
+        {"$group": {"_id": "$workshop_id", "n": {"$sum": 1}}},
+    ]
+    async for row in db.registrations.aggregate(pipeline):
+        counts[row["_id"]] = row["n"]
+    return counts
+
+
+def _build_facilitator_summary(fac: Optional[dict]) -> Optional[dict]:
+    if not fac:
+        return None
+    return {
+        "id": fac["id"],
+        "first_name": fac["first_name"],
+        "last_name": fac["last_name"],
+        "avatar_url": fac.get("avatar_url", ""),
+        "facilitator_slug": fac.get("facilitator_slug"),
+        "credentials": fac.get("credentials"),
+    }
+
+
+async def _enrich_workshops(db, workshops: list) -> list:
+    """Attach facilitator summary + registered_count + spots_left, and strip check_in_code."""
+    facilitator_ids = list({w["facilitator_id"] for w in workshops if w.get("facilitator_id")})
+    facs_by_id = await _fetch_facilitators(db, facilitator_ids)
+    counts_by_workshop = await _registration_counts(db, [w["id"] for w in workshops])
+
+    for w in workshops:
+        w["facilitator"] = _build_facilitator_summary(facs_by_id.get(w.get("facilitator_id")))
+        w["registered_count"] = counts_by_workshop.get(w["id"], 0)
+        w["spots_left"] = max(0, w["capacity"] - w["registered_count"])
+        # Never expose check-in code in public list
+        w.pop("check_in_code", None)
+    return workshops
+
+
 @router.get("")
 async def list_workshops(status: Optional[str] = None, search: Optional[str] = None):
     from database import db
-    query = {}
+    query: dict = {}
     if status:
         query["status"] = status
     if search:
@@ -33,42 +83,7 @@ async def list_workshops(status: Optional[str] = None, search: Optional[str] = N
             {"short_description": {"$regex": search, "$options": "i"}},
         ]
     workshops = await db.workshops.find(query, {"_id": 0}).sort("start_date", 1).to_list(1000)
-    # Batch-fetch all facilitators + registration counts to avoid N+1 queries.
-    facilitator_ids = list({w["facilitator_id"] for w in workshops if w.get("facilitator_id")})
-    fac_rows = await db.users.find(
-        {"id": {"$in": facilitator_ids}}, {"_id": 0, "password_hash": 0}
-    ).to_list(len(facilitator_ids) or 1) if facilitator_ids else []
-    facs_by_id = {f["id"]: f for f in fac_rows}
-
-    workshop_ids = [w["id"] for w in workshops]
-    counts_by_workshop = {wid: 0 for wid in workshop_ids}
-    if workshop_ids:
-        pipeline = [
-            {"$match": {"workshop_id": {"$in": workshop_ids}, "payment_status": "paid"}},
-            {"$group": {"_id": "$workshop_id", "n": {"$sum": 1}}},
-        ]
-        async for row in db.registrations.aggregate(pipeline):
-            counts_by_workshop[row["_id"]] = row["n"]
-
-    for w in workshops:
-        fac = facs_by_id.get(w.get("facilitator_id"))
-        w["facilitator"] = (
-            {
-                "id": fac["id"],
-                "first_name": fac["first_name"],
-                "last_name": fac["last_name"],
-                "avatar_url": fac.get("avatar_url", ""),
-                "facilitator_slug": fac.get("facilitator_slug"),
-                "credentials": fac.get("credentials"),
-            }
-            if fac
-            else None
-        )
-        w["registered_count"] = counts_by_workshop.get(w["id"], 0)
-        w["spots_left"] = max(0, w["capacity"] - w["registered_count"])
-        # Never expose check-in code in public list
-        w.pop("check_in_code", None)
-    return workshops
+    return await _enrich_workshops(db, workshops)
 
 
 @router.get("/{workshop_id}")
