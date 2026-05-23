@@ -33,6 +33,7 @@ export function ShopFilters({ active, onChange }) {
 export function ProductCard({ product }) {
   const { addItem } = useCart();
   const isMaterial = product.type === "workshop_material";
+  const isVendor = product.is_vendor_product;
 
   return (
     <div className="card card-hover overflow-hidden flex flex-col" data-testid={`product-card-${product.id}`}>
@@ -46,6 +47,18 @@ export function ProductCard({ product }) {
           </Link>
           {isMaterial && <Lock size={14} strokeWidth={1.5} className="text-[#C9A961] shrink-0 mt-1" />}
         </div>
+        {isVendor && product.vendor_name && (
+          <p className="text-[10px] uppercase tracking-wider text-[#C9A961] mt-1" data-testid={`product-vendor-badge-${product.id}`}>
+            By{" "}
+            {product.vendor_slug ? (
+              <Link to={`/partners/${product.vendor_slug}`} className="text-[#476B6B] hover:underline" onClick={(e) => e.stopPropagation()}>
+                {product.vendor_name}
+              </Link>
+            ) : (
+              <span className="text-[#476B6B]">{product.vendor_name}</span>
+            )}
+          </p>
+        )}
         <p className="text-xs text-[#5C6B6B] mt-1 line-clamp-2 flex-1">{product.description}</p>
         <div className="mt-2">
           <AggregateRatingBadge subjectType="product" subjectId={product.id} />

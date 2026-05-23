@@ -28,15 +28,30 @@ async def list_products(
     type: Optional[str] = None,
     workshop_id: Optional[str] = None,
     category: Optional[str] = None,
+    vendor_id: Optional[str] = None,
 ):
+    """Public product listing.
+
+    Vendor products with moderation_status != 'active' are HIDDEN from the
+    public storefront. Foundation products (is_vendor_product != True) are
+    always shown (admins curate them via /admin/products).
+    """
     from database import db
-    query = {}
+    query: dict = {
+        # Exclude vendor products that are not currently active.
+        "$or": [
+            {"is_vendor_product": {"$ne": True}},
+            {"is_vendor_product": True, "moderation_status": "active"},
+        ],
+    }
     if type:
         query["type"] = type
     if workshop_id:
         query["workshop_id"] = workshop_id
     if category:
         query["category"] = category
+    if vendor_id:
+        query["vendor_partner_id"] = vendor_id
     products = await db.products.find(query, {"_id": 0}).to_list(1000)
     return products
 
@@ -47,6 +62,13 @@ async def get_product(product_id: str, user: Optional[dict] = Depends(get_curren
     p = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
+    # Vendor products with non-active moderation are hidden from the public
+    # (except admins and the vendor owner themselves).
+    if p.get("is_vendor_product") and p.get("moderation_status") != "active":
+        is_admin = bool(user and user.get("role") == "admin")
+        is_owner = bool(user and user.get("id") == p.get("vendor_user_id"))
+        if not (is_admin or is_owner):
+            raise HTTPException(status_code=404, detail="Product not found")
     # gating info: if workshop material, check eligibility
     if p["type"] == "workshop_material" and p.get("workshop_id"):
         if not user:

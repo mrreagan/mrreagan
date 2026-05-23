@@ -47,6 +47,8 @@ import AdminPartners from "./pages/AdminPartners";
 import AdminPayouts from "./pages/AdminPayouts";
 import AdminReports from "./pages/AdminReports";
 import MyReports from "./pages/MyReports";
+import VendorProducts from "./pages/VendorProducts";
+import AdminVendorProducts from "./pages/AdminVendorProducts";
 import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children, roles }) {
@@ -199,6 +201,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/vendor/products"
+        element={
+          <ProtectedRoute>
+            <VendorProducts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/vendor-products"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminVendorProducts />
           </ProtectedRoute>
         }
       />

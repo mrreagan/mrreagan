@@ -135,6 +135,14 @@ class ProductCreate(BaseModel):
     image_url: Optional[str] = ""
     inventory: int = 100
     category: Optional[str] = "general"
+    # Vendor catalog (Phase 6B.4)
+    is_vendor_product: bool = False
+    vendor_partner_id: Optional[str] = None
+    vendor_user_id: Optional[str] = None
+    vendor_name: Optional[str] = None
+    vendor_slug: Optional[str] = None
+    moderation_status: Literal["active", "flagged", "unpublished"] = "active"
+    moderation_note: Optional[str] = None
 
 
 class Product(ProductCreate):
@@ -149,6 +157,30 @@ class ProductUpdate(BaseModel):
     image_url: Optional[str] = None
     inventory: Optional[int] = None
     category: Optional[str] = None
+
+
+# ============ VENDOR CATALOG (Phase 6B.4) ============
+
+class VendorProductCreate(BaseModel):
+    """Vendor-facing product create — vendor cannot set workshop_id, type is
+    forced to 'merch', and moderation fields are server-controlled."""
+    name: str = Field(min_length=2, max_length=200)
+    description: str = Field(min_length=10, max_length=4000)
+    price: float = Field(ge=0)
+    image_url: Optional[str] = ""
+    category: Optional[str] = Field(default="general", max_length=60)
+
+
+class VendorProductUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    description: Optional[str] = Field(default=None, min_length=10, max_length=4000)
+    price: Optional[float] = Field(default=None, ge=0)
+    image_url: Optional[str] = None
+    category: Optional[str] = Field(default=None, max_length=60)
+
+
+class VendorModerationAction(BaseModel):
+    moderation_note: Optional[str] = Field(default="", max_length=2000)
 
 
 # ============ CART / CHECKOUT ============

@@ -162,12 +162,17 @@ function ProfileCard({ profile, onChange }) {
               {profile.public ? "Public" : "Hidden from directory"}
             </span>
           </div>
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-4 flex-wrap">
             <button onClick={() => setEditing(true)} className="btn-outline text-xs inline-flex items-center gap-1" data-testid={`edit-profile-${profile.partner_type}`}>
               <Pencil size={11} strokeWidth={1.5} /> Edit
             </button>
             {profile.status === "active" && (
               <Link to={`/partners/${profile.slug}`} className="btn-outline text-xs">View public page</Link>
+            )}
+            {profile.partner_type === "vendor" && profile.status === "active" && (
+              <Link to="/dashboard/vendor/products" className="btn-primary text-xs" data-testid={`manage-vendor-products-${profile.id}`}>
+                Manage products
+              </Link>
             )}
           </div>
         </>

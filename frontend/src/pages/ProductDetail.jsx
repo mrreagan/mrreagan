@@ -32,6 +32,16 @@ export default function ProductDetail() {
             <span className="label text-[#C9A961] inline-flex items-center gap-2"><Lock size={12} strokeWidth={1.5} /> Workshop material</span>
           )}
           <h1 className="editorial-h1 mt-3" data-testid="product-name">{p.name}</h1>
+          {p.is_vendor_product && p.vendor_name && (
+            <p className="text-xs uppercase tracking-wider text-[#C9A961] mt-2" data-testid="product-vendor-badge">
+              By{" "}
+              {p.vendor_slug ? (
+                <Link to={`/partners/${p.vendor_slug}`} className="text-[#476B6B] hover:underline">{p.vendor_name}</Link>
+              ) : (
+                <span className="text-[#476B6B]">{p.vendor_name}</span>
+              )}
+            </p>
+          )}
           <div className="mt-2">
             <AggregateRatingBadge subjectType="product" subjectId={p.id} />
           </div>

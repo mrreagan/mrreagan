@@ -1,0 +1,56 @@
+{
+  "summary": "Phase 6B.4 Vendor Autonomous Catalog tested end-to-end. Backend: 22/22 pytest pass (vendor CRUD + ownership 404 + paid-order delete guard + admin moderation flag/unflag/unpublish/restore + public hide for non-active vendor products + owner/admin can still see own flagged + vendor_id filter + regression on /api/admin/reports & foundation product CRUD & /api/me/referrals). Frontend: demo vendor sees /dashboard/vendor/products with table+toolbar+New product+Linen Journal seed; drawer create flow works (TEST product appeared in list & was cleaned up); /admin/vendor-products shows cross-vendor moderation table with all 4 status tabs (All/Live/Flagged/Unpublished) + 2 rows; /admin overview shows new quick-action cards (Vendor catalog, Partner payouts, Foundation reports); /shop ProductCards link to /partners/sam-rivera-vendor (vendor badge for vendor products only).  ONE BUG: Elena (no vendor profile) visiting /dashboard/vendor/products does NOT see the vendor-access-denied empty state — she sees the normal 'Your products' empty page with a New product button. Root cause: VendorProducts.jsx triggers accessDenied=true only when GET /vendor/products returns 403, but the backend GET endpoint is open to any authenticated user and returns [] for non-vendors. The 403 only fires on POST. Either backend GET should 403 non-vendors, or frontend should pre-check /api/me/partner-profiles for an active vendor profile before rendering.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "VendorProducts.jsx",
+        "issue": "User without active vendor profile (Elena) does not see the vendor-access-denied empty state. Page renders the normal 'Your products' shell with a clickable New product button. The button would 403 on submit, but the gating UX promised in the spec is missing.",
+        "selector": "[data-testid='vendor-access-denied']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Vendor catalog access gating",
+        "issue": "Frontend assumes GET /api/vendor/products returns 403 for non-vendors, but the backend GET returns 200 + empty list (only POST/PUT/DELETE require an active vendor profile). The access-denied state therefore never triggers.",
+        "affected_selectors": ["[data-testid='vendor-access-denied']", "[data-testid='vendor-product-new-button']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter12_vendor_catalog.py",
+    "/app/test_reports/pytest/iter12_results.xml"
+  ],
+  "action_items": [
+    "Fix vendor-access-denied gating in /dashboard/vendor/products. Either (a) make GET /api/vendor/products return 403 when the caller has no active vendor PartnerProfile, or (b) have VendorProducts.jsx fetch /api/me/partner-profiles first and only render the table if an active vendor profile exists; otherwise show the data-testid='vendor-access-denied' state. Option (a) is one-line: call _get_active_vendor_profile() inside list_my_vendor_products too — note however that this would break Elena's empty list use case if she's a legitimate user just browsing; option (b) is cleaner UX.",
+    "Optional: also disable the 'Manage products' button on /dashboard/partner for partner profiles whose status is not 'active' (spec already requires partner_type='vendor' AND status='active' — verify visually with elena who has facilitator/research only)."
+  ],
+  "critical_code_review_comments": [
+    "routers/vendor_catalog.py list_my_vendor_products is open to any authenticated user — likely a design oversight. The endpoint does no 403 even though the docstring implies the caller is a vendor. Recommend gating with _get_active_vendor_profile() for consistency, OR documenting that GET-empty-list is intentional and updating the frontend.",
+    "routers/vendor_catalog.delete_vendor_product correctly guards against deletion if the product has any paid orders (verified by inserting a synthetic paid order doc). Good defensive design.",
+    "routers/vendor_catalog.create_vendor_product hard-codes inventory=100 (print-on-demand assumption per the user choices) and type='merch'. Both intentional per requirements.",
+    "routers/products.list_products $or clause is correct: vendor products require moderation_status=='active' to be public; foundation products (is_vendor_product != True) always appear.",
+    "routers/products.get_product correctly allows admin + owner to see flagged/unpublished vendor products while 404'ing them for the public. Verified in test_owner_can_see_flagged.",
+    "vendor_name is captured at create-time from profile.meta.business_name (preferred) or display_name. If a vendor renames their business later, existing products keep the old vendor_name. Per agent_to_agent_context_note this is intentional for v1 — flagged here for future iteration.",
+    "VendorProducts.jsx access-denied detection relies on a 403 response from GET that never fires. Bug — see action items.",
+    "Storefront ProductCard 'By <vendor_name>' badge confirmed rendering — 2 vendor links to /partners/sam-rivera-vendor present on /shop. The literal word 'By ' was not detectable in body.innerText (likely because it's inside a span with surrounding whitespace that React renders as adjacent text nodes); the link itself is the verifiable signal."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter12_vendor_catalog.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "90%"
+  },
+  "test_credentials": "admin@birthright.org / birthright2026; demo@birthright.org / birthright2026 (has APPROVED vendor partner profile 'Demo Crafts Co' slug=sam-rivera-vendor + community profile slug=sam-rivera-community + 1 seeded vendor product 'Linen Journal' $48); elena@birthright.org / birthright2026 (facilitator + research profiles, NO vendor).",
+  "seed_data_creation": "During tests created multiple TEST_-prefixed vendor products (Wool Scarf, SoldOut, E2E_Tote) and one synthetic paid order doc to validate the delete-with-orders guard. ALL synthetic data was cleaned up at teardown (verified via direct MongoDB delete_many: 1 leftover TEST_ vendor product removed, 0 orders, 0 foundation TEST_ items). Demo's seed 'Linen Journal' product is intact for future testing.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 6B.4 vendor catalog is functional end-to-end. The only outstanding bug is the access-denied gating on /dashboard/vendor/products for users without a vendor profile (see action_items). All admin moderation flows (flag/unflag/unpublish/restore) work correctly both at API and UI level. Public storefront correctly hides non-active vendor products and shows the vendor badge with link to /partners/<slug>. The vendor_name on a product is snapshot at creation time and does not auto-sync if the partner's business_name changes — this is intentional per main agent's note. Backend version 1.10.0. Re-running the iter12 pytest file gives 22/22 pass.",
+  "rca of the issue": "VendorProducts.jsx (line 149) sets accessDenied=true only on a 403 from api.get('/vendor/products'). The backend route list_my_vendor_products in /app/backend/routers/vendor_catalog.py (lines 60-68) uses only Depends(get_current_user) — no vendor-profile check — so non-vendors get a 200 with an empty list. Result: the access-denied UI never renders for users without a vendor profile. Mitigation options: (a) add `await _get_active_vendor_profile(db, user['id'])` at the top of list_my_vendor_products to make GET return 403 for non-vendors; (b) have VendorProducts.jsx call /api/me/partner-profiles first and only show the catalog UI if there's an active partner_type='vendor' profile, otherwise render the access-denied panel. Option (b) is preferred since it avoids a 403 in the network tab for the normal logged-in browsing case and matches the existing PartnerDashboard guard pattern."
+}
