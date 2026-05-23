@@ -12,6 +12,7 @@ DB_NAME = os.environ.get("DB_NAME")
 ADMIN_EMAIL = "admin@birthright.org"
 DEMO_EMAIL = "demo@birthright.org"
 ELENA_EMAIL = "elena@birthright.org"
+MARCUS_EMAIL = "marcus@birthright.org"
 PASSWORD = "birthright2026"
 
 
@@ -34,6 +35,14 @@ def demo_token():
 @pytest.fixture(scope="module")
 def elena_token():
     r = requests.post(f"{BASE_URL}/api/auth/login", json={"email": ELENA_EMAIL, "password": PASSWORD})
+    assert r.status_code == 200, r.text
+    return r.json()["token"]
+
+
+@pytest.fixture(scope="module")
+def marcus_token():
+    """Facilitator with NO partner profile — used for partner-null cases."""
+    r = requests.post(f"{BASE_URL}/api/auth/login", json={"email": MARCUS_EMAIL, "password": PASSWORD})
     assert r.status_code == 200, r.text
     return r.json()["token"]
 
@@ -254,9 +263,9 @@ class TestMyReports:
         # demo has community partner profile → partner block populated
         assert data["partner"] is not None
 
-    def test_elena_reports_partner_null(self, elena_token):
-        # elena has facilitator role but no partner_profile
-        r = requests.get(f"{BASE_URL}/api/me/reports", headers=h(elena_token))
+    def test_marcus_reports_partner_null(self, marcus_token):
+        # marcus has facilitator role but no partner_profile
+        r = requests.get(f"{BASE_URL}/api/me/reports", headers=h(marcus_token))
         assert r.status_code == 200
         data = r.json()
         assert data["partner"] is None
