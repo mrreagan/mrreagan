@@ -187,9 +187,24 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Bumped to `v1.8.0`.** Iter-10 testing: backend **19/19 PASS**, frontend **100%** (`/app/test_reports/iteration_10.json`). Zero defects.
 
 ## Phase 6B sub-phases — remaining
-- **6B.3** — Community referrals: per-user code + `/r/{partner_slug}/{workshop_slug}` affiliate links + attribution captured at checkout + admin payout records
-- **6B.4** — Vendor autonomous catalog: vendors CRUD their own products tied to their PartnerProfile; admin can flag/override
 - **6B.5** — Research submissions queue + public listing on `/partners?tab=research`
+
+## Iteration 11 — Phase 6B.3 Community Referrals + Reporting MVP (May 2026)
+- **`routers/referrals.py`** — `GET /api/r/{code}` redirect-and-set-cookie (30-day max-age, samesite=lax, secure), `GET /api/referrals/my-link/{partner_type}`, `GET /api/referrals/my-earnings`, admin: `GET /api/admin/referrals?status=` filter, `GET /api/admin/referrals/payout-summary` per-partner aggregate w/ user enrichment, `POST /api/admin/referrals/{id}/mark-paid` (idempotent — 400 if already paid).
+- **`routers/reports.py`** — `GET /api/me/reports` returns `{engagement, finance, partner}` (partner is null when caller has no profile); `GET /api/admin/reports` returns `{engagement, revenue, payouts, top_partners, top_workshops}` (admin only).
+- **Checkout integration** — `routers/checkout.py` reads `birthright_ref` cookie and writes it into `payment_transactions.metadata.referral_code`. On fulfilment, `record_referral` inserts a `referrals` row idempotently keyed on payment_session_id with `payout_amount = order_total * rev_share_pct / 100`. Community partners are the only type that earns referrals in v1; self-attribution is blocked.
+- **Frontend** — `/dashboard/reports` (MyReports, engagement + spending + optional partner earnings), `/admin/reports` (Foundation reports), `/admin/payouts` (per-partner liability + earned/paid tabs + inline mark-paid form). `PartnerEarningsCard` shows pending/lifetime/paid + referral link + Copy + recent attributions — rendered only for community partner profiles.
+- **Bumped to `v1.9.0`.** Iter-11 testing: backend **25/25 PASS**, frontend **100%** (`/app/test_reports/iteration_11.json`). Zero defects.
+
+## Iteration 12+13 — Phase 6B.4 Vendor Autonomous Catalog (May 2026)
+- **Design decisions** (per user): vendors set prices freely; auto-publish; admin can flag/unpublish anytime; print-on-demand assumption (no inventory tracking); products clearly identify their vendor on the storefront. Cross-vendor sort/filter for the public store was DEFERRED to advanced search backlog.
+- **Models extended** (`models.py`) — `ProductCreate` gained `is_vendor_product`, `vendor_partner_id`, `vendor_user_id`, `vendor_name`, `vendor_slug`, `moderation_status` (active|flagged|unpublished), `moderation_note`. New `VendorProductCreate`/`VendorProductUpdate`/`VendorModerationAction` request models.
+- **`routers/vendor_catalog.py`** — Vendor self-serve: `GET/POST /api/vendor/products`, `PUT/DELETE /api/vendor/products/{id}` (gated by active vendor `PartnerProfile`; 400 on delete if any paid orders reference the product; 400 on edit if product is unpublished). Admin moderation: `GET /api/admin/vendor-products?status=&vendor_user_id=`, `POST .../flag` + `/unflag` + `/unpublish` + `/restore`. All write actions audit-logged. `vendor_name` snapshots from `profile.meta.business_name` (fallback `display_name`) at create time.
+- **`routers/products.py`** — Public listing (`GET /api/products`) HIDES vendor products where `moderation_status != active`. Foundation products (no `is_vendor_product`) are unaffected. `GET /api/products/{id}` 404s flagged/unpublished vendor products for the public but admin + owner can still see. Added `?vendor_id=` filter.
+- **Frontend pages** — `/dashboard/vendor/products` (vendor CRUD w/ live/flagged/unpublished filters, drawer-based create/edit, delete confirm, status badges, admin moderation notes shown to vendor); `/admin/vendor-products` (cross-vendor moderation table with Flag/Unflag/Unpublish/Restore actions, status tabs, search). Public Shop ProductCard + ProductDetail show "By <vendor_name>" badge linking to `/partners/<slug>`.
+- **UX gating** — `/dashboard/vendor/products` pre-checks `/api/partners/my-profiles` and renders the `vendor-access-denied` empty state with Apply CTA for users without an active vendor profile (fix from iter12→iter13).
+- **AdminDashboard quick-actions** updated: Vendor catalog, Partner payouts, Foundation reports cards added.
+- **Bumped to `v1.10.0`.** Iter-12 backend **22/22 PASS**, iter-13 frontend retest **100% PASS** (`/app/test_reports/iteration_12.json` + `/app/test_reports/iteration_13.json`). Zero outstanding defects.
 
 ## Phase 2 — Backlog (P0/P1)
 - **P0 (DONE in Iter 3)**: Email infrastructure via Resend (dry-run)
@@ -211,8 +226,3 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 
 ## Test credentials
 See `/app/memory/test_credentials.md`
-
-## Known limitations
-- Real-time chat is polling-based (4s interval) — functionally identical UX, swap for WebSocket in Phase 2
-- Email/SMS notifications NOT WIRED — all communication is in-app only
-- Stripe webhook endpoint registered but signature verification not strict — fine for MVP, harden before live launch
