@@ -189,15 +189,19 @@ async def chat_participants(workshop_id: str = Query(...), user: dict = Depends(
                 }
             )
             seen.add(fac["id"])
-    for r in regs:
-        if r["user_id"] in seen or r["user_id"] == user["id"]:
-            continue
-        u = await db.users.find_one({"id": r["user_id"]}, {"_id": 0, "password_hash": 0})
-        if u:
+    # Collect unique participant user_ids (excluding caller + facilitator already seeded).
+    participant_ids = list({
+        r["user_id"] for r in regs
+        if r.get("user_id") and r["user_id"] not in seen and r["user_id"] != user["id"]
+    })
+    if participant_ids:
+        rows = await db.users.find(
+            {"id": {"$in": participant_ids}}, {"_id": 0, "password_hash": 0}
+        ).to_list(len(participant_ids))
+        for u in rows:
             participants.append(
                 {"id": u["id"], "name": f"{u['first_name']} {u['last_name']}", "role": "participant"}
             )
-            seen.add(u["id"])
     return participants
 
 

@@ -342,9 +342,15 @@ async def get_participants(workshop_id: str, user: dict = Depends(require_roles(
     if user["role"] == "facilitator" and w["facilitator_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Not your workshop")
     regs = await db.registrations.find({"workshop_id": workshop_id, "payment_status": "paid"}, {"_id": 0}).to_list(1000)
+    user_ids = list({r["user_id"] for r in regs if r.get("user_id")})
+    users_by_id: dict = {}
+    if user_ids:
+        rows = await db.users.find(
+            {"id": {"$in": user_ids}}, {"_id": 0, "password_hash": 0}
+        ).to_list(len(user_ids))
+        users_by_id = {u["id"]: u for u in rows}
     for r in regs:
-        u = await db.users.find_one({"id": r["user_id"]}, {"_id": 0, "password_hash": 0})
-        r["user"] = u
+        r["user"] = users_by_id.get(r.get("user_id"))
     return regs
 
 
