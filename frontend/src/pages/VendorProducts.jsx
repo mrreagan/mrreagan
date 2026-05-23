@@ -144,9 +144,21 @@ export default function VendorProducts() {
 
   const load = () => {
     setLoading(true);
-    api.get("/vendor/products")
-      .then((r) => setProducts(r.data))
-      .catch((err) => { if (err.response?.status === 403) setAccessDenied(true); })
+    Promise.all([
+      api.get("/partners/my-profiles"),
+      api.get("/vendor/products"),
+    ])
+      .then(([profRes, prodRes]) => {
+        const hasActiveVendor = (profRes.data || []).some(
+          (p) => p.partner_type === "vendor" && p.status === "active",
+        );
+        if (!hasActiveVendor) {
+          setAccessDenied(true);
+        } else {
+          setProducts(prodRes.data);
+        }
+      })
+      .catch(() => setAccessDenied(true))
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
