@@ -4,6 +4,7 @@ import api from "../lib/api";
 import { useCart } from "../contexts/CartContext";
 import { toast } from "sonner";
 import { ShoppingBag, Lock, ArrowLeft } from "lucide-react";
+import ReviewSection, { AggregateRatingBadge } from "../components/ReviewSection";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -31,6 +32,9 @@ export default function ProductDetail() {
             <span className="label text-[#C9A961] inline-flex items-center gap-2"><Lock size={12} strokeWidth={1.5} /> Workshop material</span>
           )}
           <h1 className="editorial-h1 mt-3" data-testid="product-name">{p.name}</h1>
+          <div className="mt-2">
+            <AggregateRatingBadge subjectType="product" subjectId={p.id} />
+          </div>
           <p className="font-serif text-3xl text-[#1A2424] mt-4">${p.price?.toFixed(2)}</p>
           <p className="text-base text-[#5C6B6B] mt-6 leading-relaxed">{p.description}</p>
 
@@ -66,6 +70,14 @@ export default function ProductDetail() {
 
           <p className="text-xs text-[#5C6B6B] mt-6">{p.inventory} in stock</p>
         </div>
+      </div>
+
+      <div className="mt-12">
+        <ReviewSection
+          subjectType="product"
+          subjectId={p.id}
+          subjectLabel="Customer reviews"
+        />
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ import logging
 
 from database import db, client  # single source of truth for MongoDB
 
-app = FastAPI(title="Birthright API", version="1.4.0")
+app = FastAPI(title="Birthright API", version="1.5.0")
 api_router = APIRouter(prefix="/api")
 
 # Serve product mockup images & other static assets at /api/static/*
@@ -26,7 +26,7 @@ async def root():
     return {
         "name": "Birthright Foundation API",
         "motto": "Secure Bonds > Thrive",
-        "version": "1.4.0",
+        "version": "1.5.0",
     }
 
 
@@ -46,6 +46,7 @@ from routers.foundation import router as foundation_router
 from routers.registrations import router as registrations_router
 from routers.workshop_photos import router as workshop_photos_router
 from routers.chat_ws import router as chat_ws_router
+from routers.reviews import router as reviews_router
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -57,6 +58,7 @@ api_router.include_router(foundation_router)
 api_router.include_router(registrations_router)
 api_router.include_router(workshop_photos_router)
 api_router.include_router(chat_ws_router)
+api_router.include_router(reviews_router)
 
 
 @api_router.post("/webhook/stripe")

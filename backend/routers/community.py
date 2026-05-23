@@ -191,42 +191,7 @@ async def chat_participants(workshop_id: str = Query(...), user: dict = Depends(
     return participants
 
 
-# ========== REVIEWS ==========
-@router.post("/reviews")
-async def create_review(data: ReviewCreate, user: dict = Depends(get_current_user)):
-    from database import db
-    if not await _ensure_workshop_access(db, data.workshop_id, user, allow_facilitator=False, allow_admin=False):
-        raise HTTPException(status_code=403, detail="Only registered participants can review")
-    existing = await db.reviews.find_one({"workshop_id": data.workshop_id, "user_id": user["id"]})
-    if existing:
-        await db.reviews.update_one(
-            {"id": existing["id"]},
-            {"$set": {"rating": data.rating, "review_text": data.review_text, "anonymous": data.anonymous}},
-        )
-        updated = await db.reviews.find_one({"id": existing["id"]}, {"_id": 0})
-        return updated
-    review = {
-        **data.model_dump(),
-        "id": gen_id(),
-        "user_id": user["id"],
-        "user_name": f"{user['first_name']} {user['last_name']}",
-        "created_at": now_iso(),
-    }
-    await db.reviews.insert_one(review)
-    review.pop("_id", None)
-    return review
-
-
-@router.get("/reviews")
-async def list_reviews(workshop_id: str = Query(...)):
-    from database import db
-    reviews = await db.reviews.find({"workshop_id": workshop_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    # anonymize
-    for r in reviews:
-        if r.get("anonymous"):
-            r["user_name"] = "Anonymous Participant"
-            r["user_id"] = None
-    return reviews
+# ========== REVIEWS (moved to dedicated routers/reviews.py — universal polymorphic) ==========
 
 
 # ========== IMPACT STATEMENTS ==========

@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 6A.1 (Universal Polymorphic Reviews) verified end-to-end. Backend pytest: 16/16 PASS covering POST/GET/aggregate/search/report/moderate + back-compat workshop_id alias, second-review-updates-not-duplicates, verified_purchase gating, 403 for unregistered workshop review, 422 for short text / out-of-range rating, 400 for missing subject. Frontend: /reviews ReviewsBrowser filters (category, min-rating, search debounce) and result links (/shop/{id} vs /workshops/{id}) all work; aggregate badges on /shop render only when count>0; product-detail ReviewSection submits and displays Your-review summary; Workshop Hub past-workshop 'Review' tab loads ReviewSection for paid demo; report flow as Elena submits a flag toast; admin Hide moderation toggles moderated=true (verified via API). Signed-out CTA renders on product detail. One frontend bug found: clicking 'Edit' on an existing user review (review-edit-mine) does NOT render the edit form — see frontend_issues below.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "ReviewSection (Product Detail & Workshop Hub)",
+        "issue": "Clicking 'Edit' on the user's own review (data-testid=review-edit-mine) does not show the edit form. The 'Your review' summary disappears (editing=true hides it) but the form ([data-testid=review-form]) never renders. Additionally the 'Sign in to leave a review.' hint becomes visible at the same time, despite the user still being authenticated (navbar still shows Sam). This implies that after setEditing(true), the component re-evaluates isAuthenticated as false. Suspect a re-render race in ReviewSection.jsx where useAuth() returns null between renders, OR the Pencil icon click is bubbling and triggering an unintended navigation/state reset. Reproduction: sign in as demo, /shop/b074da0c-0856-40cb-8d3c-473b0feb5f22 (Birthright Hardcover Journal — demo already has a review), click pencil 'Edit' — form never appears.",
+        "selector": "[data-testid='review-edit-mine']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter6_reviews.py",
+    "/app/test_reports/pytest/iter6_results.xml"
+  ],
+  "action_items": [
+    "Fix Edit flow in /app/frontend/src/components/ReviewSection.jsx so that clicking review-edit-mine reliably toggles into edit mode and shows [data-testid='review-form']. Verify isAuthenticated stays true across the setEditing(true) re-render. Consider replacing the conditional `canShowForm = isAuthenticated && (editing || !myReview)` with an explicit branch and/or ensuring the Pencil <svg> click doesn't bubble (the <button> already has onClick — just make sure no parent intercepts).",
+    "(Optional) Add a small visual diff between moderated and restored states: currently the only signal admin sees is the button text flipping Hide↔Restore — consider also dimming the review when moderated=true even in the admin's include_moderated view, which the spec called for ('hidden by moderation' italic note + dimmed)."
+  ],
+  "critical_code_review_comments": [
+    "routers/reviews.py _resolve_subject (line 38): subject_category for workshop is hard-coded to 'workshop' regardless of workshop.category — fine for current model where workshops have no category, but flag for future taxonomy work.",
+    "routers/reviews.py _has_purchased: products use orders.items.product_id with status='paid' — verified to work; verified_purchase=true requires both the order existence AND status. Demo never bought a journal so verified_purchase=false in tests, as expected.",
+    "Workshop reviews bypass the purchase-gate for admin and facilitator roles (line 96). Spec did not call this out explicitly — main agent may want to confirm this is intentional (admins commonly need to seed/test). Currently no UI exposure of this bypass, only API. ✓",
+    "Models.py ReviewCreate uses Literal['workshop','product','service'] so unknown subject_types are rejected with 422 (test confirms). Good.",
+    "Aggregate endpoint correctly excludes moderated reviews (line 205 {'moderated': {'$ne': True}}). avg is rounded with python round() to 2 decimals.",
+    "Search endpoint enriches each result with subject_label by calling _resolve_subject per result — N+1 lookups. Fine for small datasets but consider batching when reviews grow into 1000s.",
+    "ReviewSection.jsx submit handler always sends both subject_type & subject_id (line 161) — no longer relies on back-compat alias. Good.",
+    "ReviewsBrowser.jsx uses /api/reviews/search with debounced q — verified debounce works."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter6_reviews.py"
+  ],
+  "success_rate": { "backend": "100% (16/16)", "frontend": "~85% — 7 of 8 user-facing flows verified; only the Edit-existing-review form-show fails" },
+  "test_credentials": "admin@birthright.org / birthright2026 ; elena@birthright.org / birthright2026 ; demo@birthright.org / birthright2026 ; marcus@birthright.org / birthright2026",
+  "seed_data_creation": "Tests created several product/workshop reviews under demo's user during runs. All persisted. One review on the Hardcover Journal was hidden by admin during testing then restored via API after the test (final state: moderated=false). No destructive cleanup.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "test_iter6_reviews.py uses Bearer-token auth (no cookies) and requests directly; no async fixtures so no asyncio_mode needed. Demo IS paid-registered on TWO workshops: foundations-spring-cohort-past (completed) AND foundations-of-secure-bonds (upcoming) — so to test the not-registered 403 path, use repair-the-conversation-you-postponed or living-the-work-monthly-circle. The Birthright Hardcover Journal product (id b074da0c-0856-40cb-8d3c-473b0feb5f22) currently holds demo's review with rating 5 and text 'Lovely journal for daily reflection.' (moderated=false). Product categories used in tests: journals, home, bags, apparel. Workshop Hub tab label is 'Review' (singular).",
+  "rca of the issue": "Edit form not rendering after click: most likely a render-cycle where useAuth() context returns user=null briefly when setEditing(true) flushes — could be the AuthContext provider re-mounting or a stale closure. To confirm, instrument ReviewSection with `console.log('auth', isAuthenticated, user?.id)` and observe the values on Edit click. Workaround for users: refresh the page while editing=false won't help because myReview exists; users would need to delete the review (no UI) to re-write. Therefore the bug effectively blocks the edit flow from the UI — though the API path PATCH-via-POST works (covered by backend test test_second_review_updates_not_duplicates)."
+}

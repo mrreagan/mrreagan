@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ShoppingBag, Lock } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { toast } from "sonner";
+import { AggregateRatingBadge } from "../ReviewSection";
 
 const FILTERS = [
   { id: "merch", label: "Public merch" },
@@ -46,6 +47,9 @@ export function ProductCard({ product }) {
           {isMaterial && <Lock size={14} strokeWidth={1.5} className="text-[#C9A961] shrink-0 mt-1" />}
         </div>
         <p className="text-xs text-[#5C6B6B] mt-1 line-clamp-2 flex-1">{product.description}</p>
+        <div className="mt-2">
+          <AggregateRatingBadge subjectType="product" subjectId={product.id} />
+        </div>
         <div className="mt-4 flex items-center justify-between">
           <span className="font-medium text-[#1A2424]">${product.price?.toFixed(2)}</span>
           {isMaterial ? (

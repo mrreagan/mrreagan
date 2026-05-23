@@ -34,6 +34,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminProducts from "./pages/AdminProducts";
 import AdminWorkshops from "./pages/AdminWorkshops";
 import PhotoModeration from "./pages/PhotoModeration";
+import ReviewsBrowser from "./pages/ReviewsBrowser";
 import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children, roles }) {
@@ -67,6 +68,7 @@ function AppRoutes() {
       <Route path="/facilitators/:slug" element={<FacilitatorProfile />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/reviews" element={<ReviewsBrowser />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 

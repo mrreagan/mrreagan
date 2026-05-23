@@ -212,17 +212,41 @@ class ChatMessage(ChatMessageCreate):
 
 # ============ REVIEWS ============
 class ReviewCreate(BaseModel):
-    workshop_id: str
+    # Universal review. Either supply workshop_id (back-compat) or {subject_type, subject_id}.
+    workshop_id: Optional[str] = None
+    subject_type: Optional[Literal["workshop", "product", "service"]] = None
+    subject_id: Optional[str] = None
     rating: int = Field(ge=1, le=5)
-    review_text: str
+    review_text: str = Field(min_length=10, max_length=4000)
     anonymous: bool = False
 
 
-class Review(ReviewCreate):
+class Review(BaseModel):
     id: str
-    user_id: str
+    subject_type: Literal["workshop", "product", "service"]
+    subject_id: str
+    subject_category: Optional[str] = None
+    partner_id: Optional[str] = None
+    workshop_id: Optional[str] = None  # mirrored when subject_type='workshop' for legacy queries
+    user_id: Optional[str] = None
     user_name: str
+    rating: int
+    review_text: str
+    anonymous: bool = False
+    verified_purchase: bool = False
+    moderated: bool = False
+    moderation_reason: Optional[str] = None
+    reported_count: int = 0
     created_at: str
+
+
+class ReviewReport(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class ReviewModerate(BaseModel):
+    moderated: bool
+    reason: Optional[str] = None
 
 
 # ============ IMPACT STATEMENTS ============
