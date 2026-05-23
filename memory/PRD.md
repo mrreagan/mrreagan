@@ -106,10 +106,28 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - Added "Manage workshops" + "Photo queue" quick-action buttons on FacilitatorDashboard.
 - Added "Photo Moderation" quick-action card on AdminDashboard overview.
 
+## Iteration 5 — Real-time chat over WebSocket (Mar 2026)
+- `WS /api/ws/chat/{workshop_id}` — cookie or `?token=` JWT auth; in-memory `ws_manager` room registry; group + DM frame types; typing + presence broadcasts; 4000-char content cap; persists to `db.chat_messages` before broadcast; REST GET/POST endpoints retained for fallback.
+- `useChatSocket` React hook — exponential 1/2/4/8s backoff capped 30s; 25s ping; `fallback` state after 3 failures so parent component can resume REST polling.
+- ChatTab integrates own bubble alignment, presence dot, typing indicator with 3-dot animation, DM thread filter.
+- Bumped to `v1.4.0`. 16/16 iter-5 pytest cases green (`/app/test_reports/iteration_5.json`).
+
+## Iteration 6A.1 — Universal Polymorphic Reviews (May 2026)
+- New `routers/reviews.py` — one collection covers workshops, products, future services. Each review carries `{subject_type, subject_id, subject_category, partner_id, verified_purchase, moderated, reports[]}`.
+- Endpoints: `POST /reviews` (create or update, idempotent per user+subject), `GET /reviews` (list with `subject_type+subject_id` or legacy `workshop_id`), `GET /reviews/search` (cross-site browse with category/min_rating/q filters, debounced), `GET /reviews/aggregate` (count + avg + verified_count), `POST /reviews/{id}/report`, `POST /reviews/{id}/moderate` (admin + ombudsman).
+- Workshops require paid registration to review; products allow any signed-in user but flag verified_purchase only for paid buyers.
+- Frontend: `ReviewSection` component (used in WorkshopHub Review tab + ProductDetail) with star input, anonymous toggle, edit-in-place, report-with-reason, admin Hide/Restore; `AggregateRatingBadge` for compact display on shop cards; new `/reviews` `ReviewsBrowser` cross-site search page.
+- Migration script `scripts/migrate_reviews_to_polymorphic.py` backfilled existing workshop reviews (already executed).
+- Bug fixed: `ReviewSection` was destructuring a non-existent `isAuthenticated` from AuthContext; replaced with `!!user`. Edit flow now renders form correctly on click.
+- Bumped to `v1.5.0`. Iter-6 testing: backend 16/16 PASS, frontend 8/8 flows verified after edit-flow fix (`/app/test_reports/iteration_6.json`).
+
 ## Phase 2 — Backlog (P0/P1)
 - **P0 (DONE in Iter 3)**: Email infrastructure via Resend (currently dry-run; flip `EMAIL_DRY_RUN=false` + add `RESEND_API_KEY` to go live)
-- **P0**: True WebSocket real-time chat (currently polling-based)
-- **P0**: Partner roles — facilitator partners, merchandise partners, community/service partners
+- **P0 (DONE in Iter 5)**: WebSocket real-time chat
+- **P0 (DONE in Iter 6A.1)**: Universal polymorphic reviews
+- **P0 (NEXT — 6A.2)**: Governance & Legal Architecture — 4 partner schema (Facilitator/Community/Research/Vendor), `governance_member` + `is_ombudsman` flags, admin console for global rev-share defaults, governance vote workflow, versioned universal indemnification, audit log
+- **P0 (6B)**: Partner Onboarding & Revenue — facilitator licensing, community referral tracking + payouts, vendor subscriptions + listings queue, research submissions, public `/partners` profiles
+- **P1 (6C)**: Communications — user↔partner messaging, partner↔partner messaging, ombudsman dashboard, dispute/escalation workflow
 - **P1**: Domain verification for `birthright.live` on Resend (DNS records — user action, takes 5 min)
 - **P1**: Photos & resources library per workshop; Workshop FAQ admin UI; Admin CRUD UIs for workshops/foundation content (products UI already shipped)
 - **P1**: SMS check-in reminders (Twilio)

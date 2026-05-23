@@ -118,7 +118,8 @@ function ReviewItem({ review, currentUserId, isAdmin, onReport, onModerate }) {
  * Use anywhere: workshop hubs, product details, future services.
  */
 export default function ReviewSection({ subjectType, subjectId, subjectLabel }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const [reviews, setReviews] = useState([]);
   const [agg, setAgg] = useState(null);
   const [loading, setLoading] = useState(true);
