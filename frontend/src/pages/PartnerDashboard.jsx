@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { CheckCircle2, Clock, XCircle, Pencil, Globe, Eye, EyeOff } from "lucide-react";
 import { SubscriptionStatusCard } from "./PartnerSubscribe";
+import PartnerEarningsCard from "../components/PartnerEarningsCard";
 
 const STATUS_BADGE = {
   pending:  { label: "Pending",  cls: "bg-[#C9A961]/15 text-[#8B7128] border-[#C9A961]/40", icon: Clock },
@@ -69,6 +70,7 @@ export default function PartnerDashboard() {
               <div key={p.id} className="space-y-3">
                 <ProfileCard profile={p} onChange={load} />
                 <SubscriptionStatusCard profile={p} subscription={activeSubByType[p.partner_type]} />
+                <PartnerEarningsCard profile={p} />
               </div>
             ))}
           </div>

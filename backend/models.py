@@ -531,3 +531,12 @@ class PartnerProfileUpdate(BaseModel):
 class SubscriptionCheckoutRequest(BaseModel):
     plan_id: str
     origin_url: str
+
+
+
+# ============ REFERRALS / PAYOUTS (Phase 6B.3) ============
+
+class PayoutMarkPaid(BaseModel):
+    method: Optional[str] = Field(default="manual", max_length=40)
+    reference: Optional[str] = Field(default="", max_length=200)
+    note: Optional[str] = Field(default="", max_length=2000)

@@ -44,6 +44,15 @@ def get_stripe(request: Request) -> StripeCheckout:
     return StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
 
+def _extract_referral_code(request: Request) -> Optional[str]:
+    """Read the referral cookie set by /api/r/{code} (if any)."""
+    val = request.cookies.get("birthright_ref")
+    if not val:
+        return None
+    val = val.strip().upper()
+    return val if val.isalnum() and len(val) == 8 else None
+
+
 @router.get("/sponsorship-tiers")
 async def get_sponsorship_tiers():
     return [{"id": k, **v} for k, v in SPONSORSHIP_TIERS.items()]
@@ -112,6 +121,9 @@ async def checkout_workshop(
         "user_id": user["id"],
         "pricing_tier": tier,
     }
+    ref_code = _extract_referral_code(request)
+    if ref_code:
+        metadata["referral_code"] = ref_code
     stripe_checkout = get_stripe(request)
     session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(
         CheckoutSessionRequest(
@@ -170,6 +182,9 @@ async def checkout_products(
     success_url = f"{data.origin_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}&type=order"
     cancel_url = f"{data.origin_url}/shop"
     metadata = {"type": "order", "user_id": user_id or "guest", "item_count": str(len(line_items))}
+    ref_code = _extract_referral_code(request)
+    if ref_code:
+        metadata["referral_code"] = ref_code
     stripe_checkout = get_stripe(request)
     session = await stripe_checkout.create_checkout_session(
         CheckoutSessionRequest(
@@ -313,6 +328,18 @@ async def _create_registration_from_txn(db, txn: dict) -> None:
         "created_at": now_iso(),
     }
     await db.registrations.insert_one(reg)
+    # Referral attribution (if a community partner code was on the checkout)
+    try:
+        from routers.referrals import resolve_referral_for_checkout, record_referral
+        attribution = await resolve_referral_for_checkout(db, meta.get("referral_code"))
+        if attribution and attribution["partner_user_id"] != meta["user_id"]:
+            workshop = await db.workshops.find_one({"id": meta["workshop_id"]}, {"_id": 0})
+            await record_referral(db, txn, attribution, {
+                "type": "workshop", "id": meta["workshop_id"],
+                "label": workshop["title"] if workshop else "",
+            })
+    except Exception as e:
+        logger.error(f"workshop referral attribution failed: {e}")
     # Send workshop confirmation email
     try:
         user = await db.users.find_one({"id": meta["user_id"]}, {"_id": 0, "password_hash": 0})
@@ -356,6 +383,18 @@ async def _create_order_from_txn(db, txn: dict) -> None:
         await db.products.update_one(
             {"id": item["product_id"]}, {"$inc": {"inventory": -item["quantity"]}}
         )
+    # Referral attribution
+    try:
+        from routers.referrals import resolve_referral_for_checkout, record_referral
+        meta = txn.get("metadata", {})
+        attribution = await resolve_referral_for_checkout(db, meta.get("referral_code"))
+        if attribution and attribution["partner_user_id"] != txn.get("user_id"):
+            await record_referral(db, txn, attribution, {
+                "type": "order", "id": order["id"],
+                "label": f"Order #{order['id'][:8]} ({len(items)} item{'' if len(items) == 1 else 's'})",
+            })
+    except Exception as e:
+        logger.error(f"order referral attribution failed: {e}")
     # Send order receipt
     try:
         if txn.get("user_id"):

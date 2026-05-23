@@ -44,6 +44,9 @@ import PartnerApply from "./pages/PartnerApply";
 import PartnerDashboard from "./pages/PartnerDashboard";
 import PartnerSubscribe from "./pages/PartnerSubscribe";
 import AdminPartners from "./pages/AdminPartners";
+import AdminPayouts from "./pages/AdminPayouts";
+import AdminReports from "./pages/AdminReports";
+import MyReports from "./pages/MyReports";
 import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children, roles }) {
@@ -120,6 +123,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/dashboard/reports"
+        element={
+          <ProtectedRoute>
+            <MyReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/facilitator"
         element={
           <ProtectedRoute roles={FACILITATOR_ROLES}>
@@ -172,6 +183,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminPartners />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/payouts"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminPayouts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/reports"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminReports />
           </ProtectedRoute>
         }
       />

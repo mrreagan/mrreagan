@@ -394,6 +394,12 @@ async def approve_application(
     from database import db
     app, applicant = await _load_approvable_application(db, app_id)
     profile_doc = await _upsert_partner_profile(db, app, applicant, user["id"])
+    # Mint referral code for the new profile (lazy on read otherwise)
+    try:
+        from routers.referrals import ensure_referral_code
+        await ensure_referral_code(db, profile_doc)
+    except Exception as e:
+        logger.error(f"referral code mint failed for {profile_doc.get('id')}: {e}")
     await db.partner_applications.update_one(
         {"id": app_id},
         {"$set": {
