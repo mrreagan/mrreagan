@@ -35,6 +35,38 @@ async def _ensure_workshop_access(db, workshop_id: str, user: dict, allow_facili
     return bool(reg)
 
 
+async def _notify_question_author_of_reply(db, parent_id: str, data: DiscussionCreate, current_user: dict, reply_id: str) -> None:
+    """If a facilitator/admin replies to a question, email the question's author
+    and mark the question answered. All failures are logged, never raised."""
+    try:
+        parent = await db.discussions.find_one({"id": parent_id})
+        if not parent or not parent.get("is_question"):
+            return
+        if parent["user_id"] == current_user["id"]:
+            return
+        # mark answered (do this regardless of email outcome)
+        await db.discussions.update_one({"id": parent["id"]}, {"$set": {"answered": True}})
+
+        author = await db.users.find_one({"id": parent["user_id"]}, {"_id": 0, "password_hash": 0})
+        workshop = await db.workshops.find_one({"id": data.workshop_id}, {"_id": 0})
+        if not (author and workshop and author.get("email")):
+            return
+        app_url = os.environ.get("PUBLIC_APP_URL", "https://birthright.live")
+        content = data.content or ""
+        excerpt = content[:280] + ("…" if len(content) > 280 else "")
+        subject, html, text = qa_reply_notification(
+            first_name=author["first_name"], workshop=workshop,
+            reply_excerpt=excerpt, app_url=app_url,
+        )
+        await send_email(
+            to=author["email"], subject=subject, html=html, text=text,
+            template_name="qa_reply",
+            metadata={"workshop_id": data.workshop_id, "discussion_id": reply_id},
+        )
+    except Exception as e:
+        logger.error(f"Q&A reply notification failed: {e}")
+
+
 # ========== DISCUSSIONS / Q&A ==========
 @router.post("/discussions")
 async def create_discussion(data: DiscussionCreate, user: dict = Depends(get_current_user)):
@@ -52,30 +84,8 @@ async def create_discussion(data: DiscussionCreate, user: dict = Depends(get_cur
     }
     await db.discussions.insert_one(doc)
     doc.pop("_id", None)
-    # If this is a facilitator/admin reply to a question, notify the question's author
-    try:
-        if data.parent_id and user["role"] in ("facilitator", "admin"):
-            parent = await db.discussions.find_one({"id": data.parent_id})
-            if parent and parent.get("is_question") and parent["user_id"] != user["id"]:
-                author = await db.users.find_one({"id": parent["user_id"]}, {"_id": 0, "password_hash": 0})
-                workshop = await db.workshops.find_one({"id": data.workshop_id}, {"_id": 0})
-                if author and workshop and author.get("email"):
-                    app_url = os.environ.get("PUBLIC_APP_URL", "https://birthright.live")
-                    excerpt = (data.content or "")[:280] + ("…" if len(data.content or "") > 280 else "")
-                    subject, html, text = qa_reply_notification(
-                        first_name=author["first_name"], workshop=workshop,
-                        reply_excerpt=excerpt, app_url=app_url,
-                    )
-                    await send_email(
-                        to=author["email"], subject=subject, html=html, text=text,
-                        template_name="qa_reply",
-                        metadata={"workshop_id": data.workshop_id, "discussion_id": doc["id"]},
-                    )
-            # mark question as answered
-            if parent and parent.get("is_question"):
-                await db.discussions.update_one({"id": parent["id"]}, {"$set": {"answered": True}})
-    except Exception as e:
-        logger.error(f"Q&A reply notification failed: {e}")
+    if data.parent_id and user["role"] in ("facilitator", "admin"):
+        await _notify_question_author_of_reply(db, data.parent_id, data, user, doc["id"])
     return doc
 
 

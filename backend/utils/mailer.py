@@ -39,36 +39,16 @@ def _is_real_send_enabled() -> bool:
     return is_real_send_enabled()
 
 
-async def send_email(
-    to: str | Iterable[str],
+def _build_log_doc(
+    *,
+    recipients: list[str],
+    sender: str,
+    reply: str,
     subject: str,
-    html: str,
-    text: Optional[str] = None,
-    reply_to: Optional[str] = None,
-    attachments: Optional[list[dict]] = None,
-    template_name: str = "generic",
-    metadata: Optional[dict] = None,
-) -> Optional[str]:
-    """Send (or dry-run-queue) one transactional email.
-
-    Args:
-        to: single email address or iterable of addresses
-        subject: subject line
-        html: HTML body (inline CSS only — see email clients limitations)
-        text: optional plaintext alt body
-        reply_to: optional reply-to override (defaults to REPLY_TO_EMAIL)
-        attachments: list of {"filename": str, "content": base64-str, "content_type": str}
-        template_name: short label recorded in email_log for analytics
-        metadata: optional dict persisted with the log entry
-
-    Returns:
-        Resend email id on real send, generated id on dry-run, or None on hard failure.
-    """
-    recipients = [to] if isinstance(to, str) else list(to)
-    sender = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
-    reply = reply_to or os.environ.get("REPLY_TO_EMAIL") or sender
-
-    log_doc = {
+    template_name: str,
+    metadata: Optional[dict],
+) -> dict:
+    return {
         "id": gen_id(),
         "to": recipients,
         "from": sender,
@@ -79,19 +59,18 @@ async def send_email(
         "created_at": now_iso(),
     }
 
-    if not _is_real_send_enabled():
-        # Queue locally for later replay + visibility
-        log_doc.update({
-            "status": "queued_dry_run",
-            "html_preview": html[:500],
-            "text_preview": (text or "")[:500],
-            "has_attachments": bool(attachments),
-        })
-        await db.outbound_emails.insert_one(log_doc)
-        logger.info(f"[DRY-RUN] queued email '{subject}' -> {recipients} (id={log_doc['id']})")
-        return log_doc["id"]
 
-    # Real send via Resend
+async def _real_send_via_resend(
+    *,
+    sender: str,
+    recipients: list[str],
+    subject: str,
+    html: str,
+    reply: str,
+    text: Optional[str],
+    attachments: Optional[list[dict]],
+) -> Optional[str]:
+    """Send via Resend SDK. Returns the resend email id, or None on failure."""
     resend.api_key = os.environ["RESEND_API_KEY"]
     params: dict = {
         "from": sender,
@@ -104,10 +83,49 @@ async def send_email(
         params["text"] = text
     if attachments:
         params["attachments"] = attachments
+    result = await asyncio.to_thread(resend.Emails.send, params)
+    return (result or {}).get("id")
+
+
+async def send_email(
+    to: str | Iterable[str],
+    subject: str,
+    html: str,
+    text: Optional[str] = None,
+    reply_to: Optional[str] = None,
+    attachments: Optional[list[dict]] = None,
+    template_name: str = "generic",
+    metadata: Optional[dict] = None,
+) -> Optional[str]:
+    """Send (or dry-run-queue) one transactional email.
+
+    Returns the Resend email id on real send, the generated id on dry-run,
+    or None on hard send failure.
+    """
+    recipients = [to] if isinstance(to, str) else list(to)
+    sender = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+    reply = reply_to or os.environ.get("REPLY_TO_EMAIL") or sender
+    log_doc = _build_log_doc(
+        recipients=recipients, sender=sender, reply=reply,
+        subject=subject, template_name=template_name, metadata=metadata,
+    )
+
+    if not is_real_send_enabled():
+        log_doc.update({
+            "status": "queued_dry_run",
+            "html_preview": html[:500],
+            "text_preview": (text or "")[:500],
+            "has_attachments": bool(attachments),
+        })
+        await db.outbound_emails.insert_one(log_doc)
+        logger.info(f"[DRY-RUN] queued email '{subject}' -> {recipients} (id={log_doc['id']})")
+        return log_doc["id"]
 
     try:
-        result = await asyncio.to_thread(resend.Emails.send, params)
-        email_id = (result or {}).get("id")
+        email_id = await _real_send_via_resend(
+            sender=sender, recipients=recipients, subject=subject, html=html,
+            reply=reply, text=text, attachments=attachments,
+        )
         log_doc.update({"status": "sent", "email_id": email_id})
         await db.email_log.insert_one(log_doc)
         logger.info(f"sent email '{subject}' -> {recipients} (resend_id={email_id})")

@@ -153,6 +153,58 @@ async def duplicate_workshop(
     return clone
 
 
+async def _refund_registration(db, reg: dict) -> dict:
+    """Refund one registration via Stripe (or short-circuit for seeded demo data).
+
+    Returns the refund result dict: {status, refund_id, amount, error}.
+    """
+    if reg.get("payment_session_id") and reg["payment_session_id"] != "seed_demo":
+        return await refund_session(reg["payment_session_id"])
+    return {
+        "status": "manual",
+        "refund_id": None,
+        "amount": reg.get("amount_paid", 0),
+        "error": "No real Stripe session (seeded)",
+    }
+
+
+async def _mark_registration_cancelled(db, reg: dict, refund: dict, amount: float) -> None:
+    await db.registrations.update_one(
+        {"id": reg["id"]},
+        {"$set": {
+            "payment_status": "cancelled",
+            "cancelled_at": now_iso(),
+            "cancelled_reason": "workshop_cancelled",
+            "refund_status": refund.get("status"),
+            "refund_id": refund.get("refund_id"),
+            "refund_amount": amount,
+            "refund_error": refund.get("error"),
+        }},
+    )
+
+
+async def _email_registrant_cancellation(
+    db, reg: dict, workshop: dict, refund: dict, amount: float, app_url: str
+) -> None:
+    """Best-effort email. Never raises."""
+    try:
+        u = await db.users.find_one({"id": reg["user_id"]}, {"_id": 0, "password_hash": 0})
+        if not (u and u.get("email")):
+            return
+        subj, html, text = workshop_cancelled(
+            first_name=u["first_name"], workshop=workshop,
+            refund_amount=amount, refund_status=refund.get("status", "pending"),
+            app_url=app_url,
+        )
+        await send_email(
+            to=u["email"], subject=subj, html=html, text=text,
+            template_name="workshop_cancelled",
+            metadata={"workshop_id": workshop["id"], "registration_id": reg["id"]},
+        )
+    except Exception as e:
+        logger.error(f"cancel email failed for reg {reg['id']}: {e}")
+
+
 @router.post("/{workshop_id}/cancel")
 async def cancel_workshop(
     workshop_id: str,
@@ -172,49 +224,17 @@ async def cancel_workshop(
         {"workshop_id": workshop_id, "payment_status": "paid"}, {"_id": 0}
     ).to_list(1000)
 
-    refund_results = []
     app_url = os.environ.get("PUBLIC_APP_URL", "https://birthright.live")
-    for r in regs:
-        # 1) refund
-        if r.get("payment_session_id") and r["payment_session_id"] != "seed_demo":
-            res = await refund_session(r["payment_session_id"])
-        else:
-            res = {"status": "manual", "refund_id": None,
-                   "amount": r.get("amount_paid", 0), "error": "No real Stripe session (seeded)"}
-        amount = res.get("amount") if res.get("amount") is not None else r.get("amount_paid", 0)
-        # 2) mark registration cancelled + record refund metadata
-        await db.registrations.update_one(
-            {"id": r["id"]},
-            {"$set": {
-                "payment_status": "cancelled",
-                "cancelled_at": now_iso(),
-                "cancelled_reason": "workshop_cancelled",
-                "refund_status": res.get("status"),
-                "refund_id": res.get("refund_id"),
-                "refund_amount": amount,
-                "refund_error": res.get("error"),
-            }},
-        )
-        # 3) email registrant
-        try:
-            u = await db.users.find_one({"id": r["user_id"]}, {"_id": 0, "password_hash": 0})
-            if u and u.get("email"):
-                subj, html, text = workshop_cancelled(
-                    first_name=u["first_name"], workshop=w,
-                    refund_amount=amount, refund_status=res.get("status", "pending"),
-                    app_url=app_url,
-                )
-                await send_email(
-                    to=u["email"], subject=subj, html=html, text=text,
-                    template_name="workshop_cancelled",
-                    metadata={"workshop_id": workshop_id, "registration_id": r["id"]},
-                )
-        except Exception as e:
-            logger.error(f"cancel email failed for reg {r['id']}: {e}")
+    refund_results = []
+    for reg in regs:
+        refund = await _refund_registration(db, reg)
+        amount = refund.get("amount") if refund.get("amount") is not None else reg.get("amount_paid", 0)
+        await _mark_registration_cancelled(db, reg, refund, amount)
+        await _email_registrant_cancellation(db, reg, w, refund, amount, app_url)
         refund_results.append({
-            "registration_id": r["id"], "user_id": r["user_id"],
-            "amount": amount, "status": res.get("status"),
-            "error": res.get("error"),
+            "registration_id": reg["id"], "user_id": reg["user_id"],
+            "amount": amount, "status": refund.get("status"),
+            "error": refund.get("error"),
         })
 
     # mark workshop cancelled (last, so failures above can be retried)

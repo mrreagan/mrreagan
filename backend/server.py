@@ -1,7 +1,7 @@
 """Birthright Foundation - Main FastAPI server."""
-import os
 import sys
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -22,7 +22,7 @@ app.mount("/api/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @api_router.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {
         "name": "Birthright Foundation API",
         "motto": "Secure Bonds > Thrive",
@@ -31,7 +31,7 @@ async def root():
 
 
 @api_router.get("/health")
-async def health():
+async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
@@ -68,7 +68,7 @@ api_router.include_router(audit_router)
 
 
 @api_router.post("/webhook/stripe")
-async def stripe_webhook_endpoint(request: Request):
+async def stripe_webhook_endpoint(request: Request) -> Any:
     return await stripe_webhook(request)
 
 
@@ -87,7 +87,7 @@ logger = logging.getLogger("birthright")
 
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     try:
         from seed_data import seed_if_empty
         await seed_if_empty(db)
@@ -102,7 +102,7 @@ async def startup_event():
 
 
 @app.on_event("shutdown")
-async def shutdown_event():
+async def shutdown_event() -> None:
     try:
         from utils.scheduler import stop_scheduler
         stop_scheduler()

@@ -1,5 +1,6 @@
 """Seed data for Birthright platform - idempotent. Split into helpers per data type."""
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from models import gen_id, now_iso
 from auth_utils import hash_password
 
@@ -8,7 +9,7 @@ def _iso(dt: datetime) -> str:
     return dt.isoformat()
 
 
-def _seed_user(email: str, name: tuple, role: str, profile: dict = None) -> dict:
+def _seed_user(email: str, name: tuple[str, str], role: str, profile: Optional[dict] = None) -> dict:
     """Build one user document. `name` is (first, last); `profile` carries optional fields."""
     profile = profile or {}
     first, last = name
@@ -29,7 +30,7 @@ def _seed_user(email: str, name: tuple, role: str, profile: dict = None) -> dict
 
 
 # ---- USERS ----
-def _build_seed_users():
+def _build_seed_users() -> list[dict]:
     return [
         _seed_user(
             "admin@birthright.org", ("Birthright", "Admin"), "admin",
@@ -58,7 +59,7 @@ def _build_seed_users():
 
 
 # ---- FOUNDATION CONTENT ----
-def _build_foundation_content():
+def _build_foundation_content() -> dict:
     return {
         "key": "content",
         "mission_statement": "Secure bonds are our birthright. We exist to empower everyone with the tools and support we all occasionally need to claim and recover our secure bonds with our precious people. So we can all thrive.",
@@ -76,7 +77,7 @@ def _build_foundation_content():
 
 
 # ---- GOVERNING MEMBERS ----
-def _build_governing_members():
+def _build_governing_members() -> list[dict]:
     return [
         {"id": gen_id(), "name": "Dr. Aurelia Mendez", "title": "Board Chair & Co-Founder", "bio": "Aurelia spent two decades in family medicine before turning her attention full-time to relational education. She holds a doctorate in clinical psychology.", "image_url": "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=600", "order": 1},
         {"id": gen_id(), "name": "James Reagan", "title": "Executive Director", "bio": "James leads the foundation's operations and partnerships. A long-time advocate of attachment-informed community work.", "image_url": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600", "order": 2},
@@ -90,7 +91,7 @@ _LOC_ADDR = "2148 W Earll Dr, Phoenix, AZ 85015"
 _LOC_MAP = "https://maps.google.com/?q=2148+W+Earll+Dr+Phoenix+AZ+85015"
 
 
-def _make_workshop(**kw):
+def _make_workshop(**kw) -> dict:
     """Build a workshop document with sensible defaults."""
     base = {
         "id": gen_id(),
@@ -106,7 +107,7 @@ def _make_workshop(**kw):
     return base
 
 
-def _foundations_workshop(now, fac_id):
+def _foundations_workshop(now: datetime, fac_id: str) -> dict:
     return _make_workshop(
         title="Foundations of Secure Bonds",
         slug="foundations-of-secure-bonds",
@@ -134,7 +135,7 @@ def _foundations_workshop(now, fac_id):
     )
 
 
-def _repair_workshop(now, fac_id):
+def _repair_workshop(now: datetime, fac_id: str) -> dict:
     return _make_workshop(
         title="Repair: The Conversation You Postponed",
         slug="repair-the-conversation-you-postponed",
@@ -153,7 +154,7 @@ def _repair_workshop(now, fac_id):
     )
 
 
-def _circle_workshop(now, fac_id):
+def _circle_workshop(now: datetime, fac_id: str) -> dict:
     return _make_workshop(
         title="Living the Work: Monthly Practice Circle",
         slug="living-the-work-monthly-circle",
@@ -171,7 +172,7 @@ def _circle_workshop(now, fac_id):
     )
 
 
-def _past_foundations_workshop(now, fac_id):
+def _past_foundations_workshop(now: datetime, fac_id: str) -> dict:
     return _make_workshop(
         title="Foundations of Secure Bonds (Spring Cohort)",
         slug="foundations-spring-cohort-past",
@@ -189,7 +190,7 @@ def _past_foundations_workshop(now, fac_id):
 
 
 # ---- WORKSHOPS ----
-def _build_workshops(now, fac1_id, fac2_id):
+def _build_workshops(now: datetime, fac1_id: str, fac2_id: str) -> tuple[list[dict], str, str, str, str]:
     workshops = [
         _foundations_workshop(now, fac1_id),
         _repair_workshop(now, fac2_id),
@@ -200,7 +201,7 @@ def _build_workshops(now, fac1_id, fac2_id):
 
 
 # ---- PRODUCTS ----
-def _build_products(w1_id, w2_id, w3_id):
+def _build_products(w1_id: str, w2_id: str, w3_id: str) -> list[dict]:
     return [
         {"id": gen_id(), "name": "Birthright Hardcover Journal", "description": "A linen-bound journal with prompts designed to deepen daily reflective practice. 200 lined pages.", "price": 38.00, "type": "merch", "workshop_id": None, "image_url": "https://images.unsplash.com/photo-1517091756889-bfa90c9ad4c2?w=800", "inventory": 50, "category": "journals", "created_at": now_iso()},
         {"id": gen_id(), "name": "Secure Bonds Mug (Ceramic)", "description": "Hand-glazed teal ceramic mug with the birthright flame stamped subtly on the base. 12oz.", "price": 24.00, "type": "merch", "workshop_id": None, "image_url": "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=800", "inventory": 75, "category": "home", "created_at": now_iso()},
@@ -216,7 +217,7 @@ def _build_products(w1_id, w2_id, w3_id):
 
 
 # ---- DEMO REGISTRATION + REVIEW + IMPACT ----
-def _build_demo_engagement(now, w4_id, participant_id):
+def _build_demo_engagement(now: datetime, w4_id: str, participant_id: str) -> tuple[dict, dict, dict]:
     reg = {
         "id": gen_id(), "workshop_id": w4_id, "user_id": participant_id,
         "pricing_tier": "early_bird", "amount_paid": 285.00,
@@ -243,7 +244,7 @@ def _build_demo_engagement(now, w4_id, participant_id):
 
 
 # ---- MAIN ENTRY ----
-async def seed_if_empty(db):
+async def seed_if_empty(db) -> None:
     if await db.users.count_documents({}) > 0:
         return
 

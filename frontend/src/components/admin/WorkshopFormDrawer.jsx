@@ -39,6 +39,54 @@ function fromIso(iso) {
   }
 }
 
+function buildWorkshopPayload(form, initial, currentUser, isFacilitator) {
+  return {
+    title: form.title.trim(),
+    slug: form.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-"),
+    short_description: form.short_description.trim(),
+    full_description: form.full_description.trim(),
+    facilitator_id: isFacilitator ? currentUser.id : form.facilitator_id,
+    location_name: form.location_name,
+    location_address: form.location_address,
+    map_url: form.map_url,
+    directions_notes: form.directions_notes,
+    start_date: toIso(form.start_date),
+    end_date: toIso(form.end_date),
+    capacity: parseInt(form.capacity, 10) || 1,
+    early_bird_price: parseFloat(form.early_bird_price) || 0,
+    regular_price: parseFloat(form.regular_price) || 0,
+    early_bird_until: form.early_bird_until ? toIso(form.early_bird_until) : null,
+    image_url: form.image_url,
+    materials_included: form.materials_included
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    faq: initial?.faq || [],
+    status: form.status,
+  };
+}
+
+function validateWorkshopPayload(form, payload, isEdit) {
+  if (!form.title.trim() || !form.slug.trim() || !form.short_description.trim()) {
+    return "Title, slug, and short description are required";
+  }
+  if (!isEdit && !payload.facilitator_id) return "Please select a facilitator";
+  if (!payload.start_date || !payload.end_date) return "Start and end dates are required";
+  return null;
+}
+
+async function persistWorkshop(payload, initial, isEdit) {
+  if (isEdit) {
+    const updateBody = { ...payload };
+    delete updateBody.slug;          // slug immutable after creation
+    delete updateBody.facilitator_id;
+    await api.put(`/workshops/${initial.id}`, updateBody);
+    return "Workshop updated";
+  }
+  await api.post("/workshops", payload);
+  return "Workshop created";
+}
+
 export default function WorkshopFormDrawer({ open, initial, facilitators, currentUser, onClose, onSaved }) {
   const isEdit = Boolean(initial?.id);
   const isFacilitator = currentUser?.role === "facilitator";
@@ -71,55 +119,13 @@ export default function WorkshopFormDrawer({ open, initial, facilitators, curren
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.slug.trim() || !form.short_description.trim()) {
-      toast.error("Title, slug, and short description are required");
-      return;
-    }
-    const payload = {
-      title: form.title.trim(),
-      slug: form.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-"),
-      short_description: form.short_description.trim(),
-      full_description: form.full_description.trim(),
-      facilitator_id: isFacilitator ? currentUser.id : form.facilitator_id,
-      location_name: form.location_name,
-      location_address: form.location_address,
-      map_url: form.map_url,
-      directions_notes: form.directions_notes,
-      start_date: toIso(form.start_date),
-      end_date: toIso(form.end_date),
-      capacity: parseInt(form.capacity, 10) || 1,
-      early_bird_price: parseFloat(form.early_bird_price) || 0,
-      regular_price: parseFloat(form.regular_price) || 0,
-      early_bird_until: form.early_bird_until ? toIso(form.early_bird_until) : null,
-      image_url: form.image_url,
-      materials_included: form.materials_included
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      faq: initial?.faq || [],
-      status: form.status,
-    };
-
-    if (!isEdit && !payload.facilitator_id) {
-      toast.error("Please select a facilitator");
-      return;
-    }
-    if (!payload.start_date || !payload.end_date) {
-      toast.error("Start and end dates are required");
-      return;
-    }
+    const payload = buildWorkshopPayload(form, initial, currentUser, isFacilitator);
+    const error = validateWorkshopPayload(form, payload, isEdit);
+    if (error) { toast.error(error); return; }
     setSaving(true);
     try {
-      if (isEdit) {
-        const updateBody = { ...payload };
-        delete updateBody.slug; // slug immutable after creation
-        delete updateBody.facilitator_id;
-        await api.put(`/workshops/${initial.id}`, updateBody);
-        toast.success("Workshop updated");
-      } else {
-        await api.post("/workshops", payload);
-        toast.success("Workshop created");
-      }
+      const message = await persistWorkshop(payload, initial, isEdit);
+      toast.success(message);
       onSaved();
       onClose();
     } catch (err) {
