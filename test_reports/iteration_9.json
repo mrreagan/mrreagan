@@ -1,0 +1,57 @@
+{
+  "summary": "Phase 6B.1 Partner Onboarding Foundation tested end-to-end. 34/34 backend pytest cases PASS (apply rules incl. facilitator presents_birthright_ip gate, my-applications/my-profiles, profile update + persistence via public GET, public directory filters/search/slug, admin invite, list enrichment, approve/reject incl. invite-without-user 400 branch, revoke→excluded from directory + 403 update, reinstate). Regression: /governance/defaults, /legal/indemnification/active, /reviews/search, /workshops all 200. Frontend: /partners loads with tabs+counts+search; Sam Rivera + Elena Hartwell cards visible; partner detail page renders; unknown slug shows friendly not-found; /partners/apply (anon) shows sign-in prompt; (signed-in demo) all 4 type pickers + facilitator subform with apply-facilitator-fields testid; submit without presents_birthright_ip shows the exact toast 'Please indicate whether you'll present Birthright IP materials.'; switching to Vendor swaps subforms correctly; /dashboard/partner shows the LIVE community profile card with Edit + View public + 'Apply for another type' CTAs; /admin/partners shows Pending/Approved/Rejected tabs, Vendor type filter, the two pending invites (new-vendor + iter9-vendor), and Invite partner modal flow creates a new pending invite that immediately appears in the list with success toast.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "PartnersDirectory partner-card badge",
+        "issue": "Partner type label on the listing cards renders clipped — shows 'RESEARC' and 'COMMUNIT' (last character 'H' / 'Y' cut off). Likely letter-spacing + overflow:hidden on the small badge. Reproduce: open /partners and inspect either card. Detail page renders the full word correctly.",
+        "selector": ".partner-card .type-label (no data-testid)",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/partners directory",
+        "issues": [
+          "Partners directory tabs, search input and partner card links do NOT expose data-testid attributes (e.g., partners-tab-community, partners-search, partner-card-<slug>). Functional but reduces test stability.",
+          "/admin/partners is missing data-testids for status tabs (admin-partners-tab-pending|approved|rejected), invite button (admin-partners-invite), invite modal, invite form fields (invite-email, invite-type-*, invite-submit), and the partner_type filter (admin-partners-type-filter). Tests fell back to text + native <select>."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter9_partners.py",
+    "/app/test_reports/pytest/iter9_results.xml"
+  ],
+  "action_items": [
+    "[LOW UI] Fix the partner_type badge clipping on PartnersDirectory cards ('RESEARC'/'COMMUNIT' visible last-char cutoff). Either remove letter-spacing on the badge or widen min-width / set overflow:visible.",
+    "[TEST QUALITY] Add data-testid attributes to PartnersDirectory tabs, search input, and partner cards; and to AdminPartners status tabs, type filter, invite button, invite modal + form fields. The current implementation works but is not testid-instrumented per the spec ('All interactive and key informational elements have data-testid')."
+  ],
+  "critical_code_review_comments": [
+    "routers/partners.py:117 — facilitator gate only triggers on apply(), not on subsequent profile updates; once approved, a facilitator could toggle presents_birthright_ip via meta — but PartnerProfileUpdate does not accept presents_birthright_ip so this is currently safe. Worth a comment.",
+    "routers/partners.py:331 — _unique_slug never increments slug when existing.id != exclude_id and a different profile already owns the same slug; the loop only breaks if existing.id == exclude_id, otherwise `i` increments but slug isn't appended properly until next iteration — code is correct but i is unused on the first miss; cosmetic.",
+    "routers/partners.py:289 — invite email body hard-codes https://birthright.live URLs. Should use an env-var FRONTEND_BASE_URL so dev/staging links work.",
+    "routers/partners.py:206 — public list query uses `public: True` literally; ensure all approve writes set public=True (they do at line 338). Good.",
+    "models.py:489 — website_url / sample_curriculum_url / sample_publications_url have no URL validation (accept any string). Consider HttpUrl for stronger validation.",
+    "Admin endpoints reject + revoke + reinstate do not enforce admin_note required for rejection/revocation. Audit trail would benefit from a minimum reason."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter9_partners.py (new)",
+    "/app/test_reports/pytest/iter9_results.xml (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (34/34)",
+    "frontend": "~95% (all core flows pass; minor badge clip + missing data-testids)"
+  },
+  "test_credentials": "Loaded from /app/memory/test_credentials.md (admin / elena / demo, password birthright2026).",
+  "seed_data_creation": "Tests mutate the partner state by design: (a) created an elena facilitator pending app (later rejected by test), (b) created an elena research pending app then approved → slug 'elena-hartwell-research' active, then revoked + reinstated (final state: ACTIVE). (c) Updated demo's community profile headline to 'Updated by iter9 test <hex>'. (d) Admin invited a unique iter9-vendor-* email plus another iter9-frontend-* invite via UI. All test data is idempotent-safe across reruns.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Demo's community profile headline now reads 'Updated by iter9 test <hex6>' rather than the original — adjust any assertion that expected the original Sam Rivera headline. A new 'elena-hartwell-research' active profile exists (so directory ALL count is now 2). Multiple iter9-* pending vendor invites exist; admin queue should be filtered as needed.",
+  "rca of the issue": "n/a — no blocking defects."
+}

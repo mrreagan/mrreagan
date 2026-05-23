@@ -225,6 +225,22 @@ export default function Dashboard() {
       />
       <JourneySection impactStatements={data.impact_statements} />
       <OrdersSection orders={data.orders} />
+      <section className="mt-14 card p-6 bg-[#FAF8F5] border-[#E5E1D8]" data-testid="dashboard-partner-cta">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <span className="label">Partner network</span>
+            <h3 className="font-serif text-xl mt-1">Carry this work forward</h3>
+            <p className="text-sm text-[#5C6B6B] max-w-xl mt-1">
+              Become a Birthright partner — facilitator, community ally, research collaborator, or vendor.
+              Manage applications and your public profile from your partner workspace.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link to="/dashboard/partner" className="btn-outline" data-testid="partner-workspace-link">Open workspace</Link>
+            <Link to="/partners/apply" className="btn-primary" data-testid="apply-partner-link">Apply</Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

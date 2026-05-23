@@ -473,3 +473,53 @@ class AuditLogEntry(BaseModel):
     target_id: Optional[str] = None
     metadata: dict = {}
     created_at: str
+
+
+
+# ============ PARTNERS (Phase 6B.1) ============
+
+PARTNER_STATUS = ("pending", "approved", "rejected", "revoked")
+
+
+class PartnerApplyData(BaseModel):
+    """Per-type application payload. Self-apply uses `partner_type` to pick fields."""
+    partner_type: Literal["facilitator", "community", "research", "vendor"]
+    headline: str = Field(min_length=5, max_length=160)
+    bio: str = Field(min_length=20, max_length=4000)
+    website_url: Optional[str] = None
+    location: Optional[str] = Field(default=None, max_length=120)
+    # Facilitator-specific
+    presents_birthright_ip: Optional[bool] = None
+    credentials: Optional[str] = Field(default=None, max_length=2000)
+    training_history: Optional[str] = Field(default=None, max_length=4000)
+    sample_curriculum_url: Optional[str] = None
+    # Community-specific
+    organization: Optional[str] = Field(default=None, max_length=200)
+    audience_size: Optional[int] = Field(default=None, ge=0)
+    referral_plan: Optional[str] = Field(default=None, max_length=2000)
+    # Research-specific
+    institution: Optional[str] = Field(default=None, max_length=200)
+    area_of_research: Optional[str] = Field(default=None, max_length=500)
+    sample_publications_url: Optional[str] = None
+    # Vendor-specific
+    business_name: Optional[str] = Field(default=None, max_length=200)
+    product_categories: Optional[str] = Field(default=None, max_length=500)
+
+
+class PartnerInviteCreate(BaseModel):
+    email: str = Field(min_length=3, max_length=200)
+    partner_type: Literal["facilitator", "community", "research", "vendor"]
+    admin_note: Optional[str] = Field(default="", max_length=1000)
+
+
+class PartnerApplicationDecision(BaseModel):
+    admin_note: Optional[str] = Field(default="", max_length=2000)
+
+
+class PartnerProfileUpdate(BaseModel):
+    headline: Optional[str] = Field(default=None, min_length=5, max_length=160)
+    bio: Optional[str] = Field(default=None, min_length=20, max_length=4000)
+    website_url: Optional[str] = None
+    location: Optional[str] = Field(default=None, max_length=120)
+    photo_url: Optional[str] = None
+    public: Optional[bool] = None

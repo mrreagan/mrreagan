@@ -12,6 +12,7 @@ const NAV = [
   { to: "/mission", label: "Mission" },
   { to: "/education", label: "Education" },
   { to: "/governance", label: "Governance" },
+  { to: "/partners", label: "Partners" },
   { to: "/sponsorship", label: "Sponsor" },
   { to: "/contact", label: "Contact" },
 ];
@@ -216,6 +217,7 @@ const FOOTER_EXPLORE = [
   { to: "/workshops", label: "Workshops" },
   { to: "/shop", label: "Shop" },
   { to: "/facilitators", label: "Facilitators" },
+  { to: "/partners", label: "Partners" },
   { to: "/sponsorship", label: "Sponsorship" },
 ];
 const FOOTER_FOUNDATION = [

@@ -38,6 +38,11 @@ import ReviewsBrowser from "./pages/ReviewsBrowser";
 import GovernanceProposals from "./pages/GovernanceProposals";
 import IndemnificationPage from "./pages/IndemnificationPage";
 import AdminGovernance from "./pages/AdminGovernance";
+import PartnersDirectory from "./pages/PartnersDirectory";
+import PartnerProfilePage from "./pages/PartnerProfilePage";
+import PartnerApply from "./pages/PartnerApply";
+import PartnerDashboard from "./pages/PartnerDashboard";
+import AdminPartners from "./pages/AdminPartners";
 import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children, roles }) {
@@ -74,6 +79,9 @@ function AppRoutes() {
       <Route path="/reviews" element={<ReviewsBrowser />} />
       <Route path="/governance/proposals" element={<GovernanceProposals />} />
       <Route path="/legal/indemnification" element={<IndemnificationPage />} />
+      <Route path="/partners" element={<PartnersDirectory />} />
+      <Route path="/partners/apply" element={<PartnerApply />} />
+      <Route path="/partners/:slug" element={<PartnerProfilePage />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -98,6 +106,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/partner"
+        element={
+          <ProtectedRoute>
+            <PartnerDashboard />
           </ProtectedRoute>
         }
       />
@@ -146,6 +162,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminGovernance />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/partners"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminPartners />
           </ProtectedRoute>
         }
       />
