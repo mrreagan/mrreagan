@@ -121,13 +121,24 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - Bug fixed: `ReviewSection` was destructuring a non-existent `isAuthenticated` from AuthContext; replaced with `!!user`. Edit flow now renders form correctly on click.
 - Bumped to `v1.5.0`. Iter-6 testing: backend 16/16 PASS, frontend 8/8 flows verified after edit-flow fix (`/app/test_reports/iteration_6.json`).
 
+## Iteration 7 — Phase 6A.2 Governance & Legal Architecture (May 2026)
+- **Backend models** (appended to `models.py`): `RevShareTier`, `GlobalDefaults*`, `Proposal`/`ProposalCreate`/`VoteCast`/`GovernanceVote`, `MemberFlagsUpdate`, `IndemnificationCreate`/`IndemnificationVersion`/`IndemnificationSignature`, `AuditLogEntry`. UserProfile now exposes `governance_member` + `is_ombudsman`.
+- **`utils/audit.py`** — append-only `log_action(db, actor, action, target_type, target_id, metadata)`. Fire-and-forget: never blocks the originating action.
+- **`routers/governance.py`** — `GET/PUT /api/governance/defaults` (admin write, public read); `GET/PUT /api/governance/members/{id}` (admin write, signed-in read; ombudsman implies member); `POST/GET /api/governance/proposals` + `/{id}` + `/{id}/vote` (re-cast updates same row) + `/{id}/close` (admin/ombudsman → passed/failed; proposer → withdrawn) + `/{id}/votes`. Default rev-share: facilitator 70 / community 10 / research 0 / vendor 80.
+- **`routers/legal.py`** — versioned universal indemnification. `GET /api/legal/indemnification/active` auto-bootstraps v1.0; `POST /versions` (admin) publishes new version + deactivates prior + updates global_defaults pointer; `POST /sign` is idempotent; `GET /my-status` flips signed→false when a new version is published (signatures bind to version_id).
+- **`routers/audit.py`** — `GET /api/audit?action_prefix=&actor_id=&target_type=&target_id=` (admin OR ombudsman only).
+- **`scripts/seed_governance_v1.py`** — idempotent: promotes admin + facilitators to `governance_member=True`, admin to `is_ombudsman=True`, seeds v1.0 indemnification placeholder, inserts global_defaults singleton.
+- **Frontend** — three new pages: `/governance/proposals` (list + create modal + detail modal with vote/withdraw/close + vote log), `/legal/indemnification` (active body + sign-with-checkbox + signed badge), `/admin/governance` (4 tabs: Defaults editor with add/remove tier per partner type; Members panel with toggle flags + user search via `/admin/users`; Indemnification panel with version list + publish new; Audit log viewer with action_prefix filter). Public `/governance` page now has two callout cards linking to the new screens; Admin Dashboard has a new "Governance & Legal" quick-action card.
+- **Bumped to `v1.6.0`.** Iter-7 testing: backend 30/30 PASS, frontend ~95% (all critical flows verified; only cosmetic data-testid renaming requests). Report at `/app/test_reports/iteration_7.json`.
+
 ## Phase 2 — Backlog (P0/P1)
-- **P0 (DONE in Iter 3)**: Email infrastructure via Resend (currently dry-run; flip `EMAIL_DRY_RUN=false` + add `RESEND_API_KEY` to go live)
+- **P0 (DONE in Iter 3)**: Email infrastructure via Resend (currently dry-run)
 - **P0 (DONE in Iter 5)**: WebSocket real-time chat
 - **P0 (DONE in Iter 6A.1)**: Universal polymorphic reviews
-- **P0 (NEXT — 6A.2)**: Governance & Legal Architecture — 4 partner schema (Facilitator/Community/Research/Vendor), `governance_member` + `is_ombudsman` flags, admin console for global rev-share defaults, governance vote workflow, versioned universal indemnification, audit log
-- **P0 (6B)**: Partner Onboarding & Revenue — facilitator licensing, community referral tracking + payouts, vendor subscriptions + listings queue, research submissions, public `/partners` profiles
+- **P0 (DONE in Iter 7 / 6A.2)**: Governance & Legal Architecture
+- **P0 (NEXT — 6B)**: Partner Onboarding & Revenue — facilitator licensing, community referral tracking + payouts, vendor subscriptions + listings queue, research submissions, public `/partners` profiles
 - **P1 (6C)**: Communications — user↔partner messaging, partner↔partner messaging, ombudsman dashboard, dispute/escalation workflow
+- **P1 (Tech debt)**: Rate-limit auth + chat WS; split AdminProducts/WorkshopFormDrawer/ReviewSection/ChatTab into smaller components; refactor `cancel_workshop`, `create_discussion`, `send_email`
 - **P1**: Domain verification for `birthright.live` on Resend (DNS records — user action, takes 5 min)
 - **P1**: Photos & resources library per workshop; Workshop FAQ admin UI; Admin CRUD UIs for workshops/foundation content (products UI already shipped)
 - **P1**: SMS check-in reminders (Twilio)
