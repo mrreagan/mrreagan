@@ -169,6 +169,28 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **6B.4** — Vendor autonomous catalog (vendor CRUD on own products) + admin override
 - **6B.5** — Research submissions queue + public listing
 
+## Iteration 10 — Phase 6B.2 Partner Subscriptions, Auto-Licensing, Dual-Tier Rev-Share (May 2026)
+- **Design decision**: v1 uses one-time Stripe payments for fixed-duration plans (NOT recurring Stripe Subscriptions). On payment success `partner_subscription.expires_at = now + duration_months`. License is active while `expires_at > now`. Clean upgrade path to true Stripe Subscriptions later.
+- **`routers/subscriptions.py`**: `GET /api/subscriptions/plans?partner_type=`, `POST /api/subscriptions/checkout` (gated: caller must have approved partner_profile of matching type), `GET /api/subscriptions/my` (hydrates plan + computed is_active). `create_subscription_from_txn` is **idempotent** by `payment_session_id`.
+- **`routers/checkout.py`**: registered `"subscription"` in `_PAID_HANDLERS` so existing Stripe webhook fulfilment dispatches to the subscriptions module without duplication.
+- **`utils/rev_share.py`**: `resolve_rev_share(db, user_id, partner_type, *, presents_birthright_ip=False)`. Precedence: active subscription → global_defaults → 0%. Facilitator dual-tier branching (`birthright_ip_pct` vs `other_content_pct`).
+- **`routers/partners.py`**: new `GET /api/partners/my-rev-share/{partner_type}?presents_birthright_ip=` for caller-visible rate preview.
+- **`scripts/seed_subscription_plans.py`** (idempotent): seeded 12 plans — Facilitator/Community/Research/Vendor × Monthly/Annual/2-Year. Examples:
+  - Facilitator: $99/mo (70/50%) · $999/yr (65/45%) · $1799/2yr (60/40%)
+  - Community: $29/mo (12%) · $299/yr (10%) · $549/2yr (8%)
+  - Research: $49/mo (0%) · $499/yr (0%) · $899/2yr (0%) — grant-funded by default
+  - Vendor: $49/mo (82%) · $499/yr (78%) · $899/2yr (75%)
+- **Frontend**:
+  - `/partners/subscribe?type=...` — plan picker with per-type tabs, "Most chosen" annual ribbon, facilitator dual-tier display (Birthright IP green, Own/other neutral). Banner when caller lacks approved profile.
+  - `SubscriptionStatusCard` exported from PartnerSubscribe — rendered in `/dashboard/partner` per profile: shows LICENSED + days-remaining countdown + Renew CTA when ≤30 days OR "NO ACTIVE SUBSCRIPTION" + View plans CTA.
+  - `/partners/apply` facilitator subform banner updated to link to `/partners/subscribe?type=facilitator` (no longer "coming soon").
+- **Bumped to `v1.8.0`.** Iter-10 testing: backend **19/19 PASS**, frontend **100%** (`/app/test_reports/iteration_10.json`). Zero defects.
+
+## Phase 6B sub-phases — remaining
+- **6B.3** — Community referrals: per-user code + `/r/{partner_slug}/{workshop_slug}` affiliate links + attribution captured at checkout + admin payout records
+- **6B.4** — Vendor autonomous catalog: vendors CRUD their own products tied to their PartnerProfile; admin can flag/override
+- **6B.5** — Research submissions queue + public listing on `/partners?tab=research`
+
 ## Phase 2 — Backlog (P0/P1)
 - **P0 (DONE in Iter 3)**: Email infrastructure via Resend (dry-run)
 - **P0 (DONE in Iter 5)**: WebSocket real-time chat
