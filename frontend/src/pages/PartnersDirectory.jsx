@@ -4,10 +4,10 @@ import api from "../lib/api";
 import { Users, Briefcase, Microscope, Store, Search } from "lucide-react";
 
 const TYPE_CONFIG = {
-  facilitator: { label: "Facilitators", icon: Users, color: "#476B6B", description: "Practitioners trained to lead Birthright workshops." },
-  community:   { label: "Community",    icon: Briefcase, color: "#C9A961", description: "Organizations and individuals who refer participants and amplify the work." },
-  research:    { label: "Research",     icon: Microscope, color: "#2E5C46", description: "Academic and clinical partners advancing attachment science." },
-  vendor:      { label: "Vendors",      icon: Store, color: "#B86A5C", description: "Aligned vendors of complementary materials and services." },
+  facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users, color: "#476B6B", description: "Practitioners trained to lead Birthright workshops." },
+  community:   { label: "Community",    singular: "Community",   icon: Briefcase, color: "#C9A961", description: "Organizations and individuals who refer participants and amplify the work." },
+  research:    { label: "Research",     singular: "Research",    icon: Microscope, color: "#2E5C46", description: "Academic and clinical partners advancing attachment science." },
+  vendor:      { label: "Vendors",      singular: "Vendor",      icon: Store, color: "#B86A5C", description: "Aligned vendors of complementary materials and services." },
 };
 
 export default function PartnersDirectory() {
@@ -109,7 +109,7 @@ function PartnerCard({ profile }) {
         )}
         <div className="flex-1 min-w-0">
           <p className="font-serif text-lg truncate">{profile.display_name}</p>
-          <p className="text-[10px] uppercase tracking-wider" style={{ color: cfg.color }}>{cfg.label.slice(0, -1)}</p>
+          <p className="text-[10px] uppercase tracking-wider" style={{ color: cfg.color }} data-testid={`partner-card-type-${profile.partner_type}`}>{cfg.singular}</p>
         </div>
       </div>
       <p className="font-medium text-sm mt-3 line-clamp-2">{profile.headline}</p>

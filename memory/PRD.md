@@ -145,6 +145,30 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Hook polish:** `useChatSocket.js` empty `catch {}` blocks (×3) replaced with `console.debug/warn` tagged `[chat-ws]`. `useWorkshop.js` empty catches (×4) replaced with `console.error/warn` carrying the resource id.
 - **Iter-8 testing:** backend 98/98 PASS (87 prior-iter regression + 11 new refactor-specific), frontend ~98% (only minor: chat sub-components had testids correctly, agent's note was a misread). Report `/app/test_reports/iteration_8.json`.
 
+## Iteration 9 — Phase 6B.1 Partner Onboarding Foundation (May 2026)
+- **Models** (appended to `models.py`): `PartnerApplyData` (per-type fields incl. facilitator `presents_birthright_ip` boolean), `PartnerInviteCreate`, `PartnerApplicationDecision`, `PartnerProfileUpdate`.
+- **`routers/partners.py`**:
+  - Self-serve: `POST /api/partners/apply` (with per-type validation; facilitator must declare Birthright IP intent), `GET /api/partners/my-applications`, `GET /api/partners/my-profiles`, `PUT /api/partners/my-profiles/{type}`.
+  - Public directory: `GET /api/partners?partner_type=&q=&limit=` (regex search over headline/bio/location/display_name), `GET /api/partners/{slug}`.
+  - Admin: `GET /api/admin/partners/applications` (enriched with applicant_email/name), `POST /api/admin/partners/invite` (creates pending app + dry-run invite email), `POST /api/admin/partners/applications/{id}/{approve|reject}`, `POST /api/admin/partners/profiles/{id}/{revoke|reinstate}`.
+  - Slug uniquification via `_unique_slug`. All write actions audit-logged via `log_action`.
+  - One profile per (user_id, partner_type); pending-app deduplication.
+- **Frontend pages**:
+  - `/partners` — tabbed public directory (all/facilitator/community/research/vendor) + debounced search + per-card link.
+  - `/partners/:slug` — public detail page (headline, bio, location, website link, photo).
+  - `/partners/apply` — auth-gated multi-type form; type picker swaps subforms; facilitator subform has explicit yes/no "Presents Birthright IP?" buttons + Phase 6B.2 callout.
+  - `/dashboard/partner` — applicant workspace: status of own applications + inline editor for approved profile cards (headline/bio/location/photo/website/public toggle).
+  - `/admin/partners` — status tabs + type filter + expandable row showing every applied field + approve/reject with admin_note + "Invite partner" modal.
+- **Navigation**: "Partners" link added to main navbar + footer; participant Dashboard gains a partner CTA card; AdminDashboard gains a "Partner applications" quick-action card.
+- **Bug fix**: PartnersDirectory card badge no longer clips trailing letter ("RESEARC"/"COMMUNIT" → now full "RESEARCH"/"COMMUNITY"); replaced `cfg.label.slice(0, -1)` with explicit `singular` per type.
+- **Bumped to `v1.7.0`.** Iter-9 testing: backend **34/34 PASS**, frontend ~95% (badge bug fixed post-test; all other findings were testid-naming nits where the testids do exist). Report at `/app/test_reports/iteration_9.json`.
+
+## Phase 6B sub-phases — still to do
+- **6B.2** — Stripe subscriptions + auto-licensing + rev-share tier resolution (facilitator dual-tier: Birthright IP vs other materials; shorter sub = higher %, longer = lower %)
+- **6B.3** — Community referrals: per-user code + per-workshop affiliate link + attribution + payout records
+- **6B.4** — Vendor autonomous catalog (vendor CRUD on own products) + admin override
+- **6B.5** — Research submissions queue + public listing
+
 ## Phase 2 — Backlog (P0/P1)
 - **P0 (DONE in Iter 3)**: Email infrastructure via Resend (dry-run)
 - **P0 (DONE in Iter 5)**: WebSocket real-time chat
