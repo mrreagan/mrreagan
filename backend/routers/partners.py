@@ -89,12 +89,14 @@ async def _enrich_app(db, app: dict) -> dict:
 
 # ============ APPLICANT-FACING ROUTES ============
 
-@router.post("/apply")
-async def apply(data: PartnerApplyData, user: dict = Depends(get_current_user)):
-    """Self-serve application. Caller picks partner_type via the payload."""
-    from database import db
+async def _validate_apply(db, user: dict, data: PartnerApplyData) -> None:
+    """Raise HTTPException if this user cannot file a new application of this type.
 
-    # Block if user already has an approved active profile for this type
+    Three rules:
+      1. No active profile of the same type already.
+      2. No pending application of the same type already.
+      3. Facilitators MUST declare Birthright IP intent.
+    """
     existing_profile = await db.partner_profiles.find_one({
         "user_id": user["id"], "partner_type": data.partner_type, "status": "active",
     })
@@ -103,7 +105,6 @@ async def apply(data: PartnerApplyData, user: dict = Depends(get_current_user)):
             status_code=400,
             detail=f"You already have an active {data.partner_type} partner profile.",
         )
-    # Block if pending application exists
     pending = await db.partner_applications.find_one({
         "user_id": user["id"], "partner_type": data.partner_type, "status": "pending",
     })
@@ -112,16 +113,16 @@ async def apply(data: PartnerApplyData, user: dict = Depends(get_current_user)):
             status_code=400,
             detail=f"You already have a pending {data.partner_type} application.",
         )
-
-    # Facilitators must state their intent re: Birthright IP
     if data.partner_type == "facilitator" and data.presents_birthright_ip is None:
         raise HTTPException(
             status_code=400,
             detail="Please indicate whether you intend to present Birthright IP materials.",
         )
 
+
+def _build_application_doc(user: dict, data: PartnerApplyData) -> dict:
     payload = data.model_dump()
-    app_doc = {
+    return {
         "id": gen_id(),
         "user_id": user["id"],
         "invitee_email": None,
@@ -134,6 +135,14 @@ async def apply(data: PartnerApplyData, user: dict = Depends(get_current_user)):
         "decided_at": None,
         "decided_by": None,
     }
+
+
+@router.post("/apply")
+async def apply(data: PartnerApplyData, user: dict = Depends(get_current_user)):
+    """Self-serve application. Caller picks partner_type via the payload."""
+    from database import db
+    await _validate_apply(db, user, data)
+    app_doc = _build_application_doc(user, data)
     await db.partner_applications.insert_one(dict(app_doc))
     await log_action(
         db, user, "partner.application.create",
@@ -142,6 +151,7 @@ async def apply(data: PartnerApplyData, user: dict = Depends(get_current_user)):
     )
     app_doc.pop("_id", None)
     return app_doc
+
 
 
 @router.get("/my-applications")
@@ -301,13 +311,8 @@ async def invite_partner(data: PartnerInviteCreate, user: dict = Depends(require
     return enriched
 
 
-@admin_router.post("/applications/{app_id}/approve")
-async def approve_application(
-    app_id: str,
-    data: PartnerApplicationDecision,
-    user: dict = Depends(require_roles("admin")),
-):
-    from database import db
+async def _load_approvable_application(db, app_id: str) -> tuple[dict, dict]:
+    """Fetch + validate that an application is approvable. Returns (app, applicant)."""
     app = await db.partner_applications.find_one({"id": app_id})
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -321,8 +326,11 @@ async def approve_application(
     applicant = await db.users.find_one({"id": app["user_id"]}, {"_id": 0, "password_hash": 0})
     if not applicant:
         raise HTTPException(status_code=400, detail="Applicant user not found")
+    return app, applicant
 
-    # Build profile (refresh existing inactive one if present)
+
+async def _upsert_partner_profile(db, app: dict, applicant: dict, admin_id: str) -> dict:
+    """Create or refresh the (user_id, partner_type) profile from an approved application."""
     display_name = f"{applicant['first_name']} {applicant['last_name']}".strip()
     base_slug = _slugify(f"{display_name}-{app['partner_type']}")
     existing = await db.partner_profiles.find_one({
@@ -345,22 +353,32 @@ async def approve_application(
         "photo_url": applicant.get("avatar_url"),
         "meta": app.get("data", {}),
         "approved_at": now,
-        "approved_by": user["id"],
+        "approved_by": admin_id,
         "created_at": existing.get("created_at") if existing else now,
         "updated_at": now,
     }
     if existing:
-        await db.partner_profiles.update_one(
-            {"id": existing["id"]}, {"$set": profile_doc}
-        )
+        await db.partner_profiles.update_one({"id": existing["id"]}, {"$set": profile_doc})
     else:
         await db.partner_profiles.insert_one(dict(profile_doc))
+    profile_doc.pop("_id", None)
+    return profile_doc
 
+
+@admin_router.post("/applications/{app_id}/approve")
+async def approve_application(
+    app_id: str,
+    data: PartnerApplicationDecision,
+    user: dict = Depends(require_roles("admin")),
+):
+    from database import db
+    app, applicant = await _load_approvable_application(db, app_id)
+    profile_doc = await _upsert_partner_profile(db, app, applicant, user["id"])
     await db.partner_applications.update_one(
         {"id": app_id},
         {"$set": {
             "status": "approved",
-            "decided_at": now,
+            "decided_at": now_iso(),
             "decided_by": user["id"],
             "admin_note": (data.admin_note or "").strip(),
         }},
@@ -370,7 +388,6 @@ async def approve_application(
         target_type="partner_application", target_id=app_id,
         metadata={"partner_type": app["partner_type"], "profile_id": profile_doc["id"]},
     )
-    profile_doc.pop("_id", None)
     return {"application_status": "approved", "profile": profile_doc}
 
 
