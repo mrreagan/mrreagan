@@ -110,6 +110,12 @@ async def startup_event() -> None:
     except Exception as e:
         logger.error(f"Seeding error: {e}")
     try:
+        from runtime_seed import ensure_catalog_seeded, repair_known_broken_images
+        await ensure_catalog_seeded(db)
+        await repair_known_broken_images(db)
+    except Exception as e:
+        logger.error(f"Runtime seed/repair error: {e}")
+    try:
         from utils.scheduler import start_scheduler
         start_scheduler()
     except Exception as e:

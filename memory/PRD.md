@@ -189,6 +189,15 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 ## Phase 6B sub-phases — remaining
 - **6B.5** — Research submissions queue + public listing on `/partners?tab=research`
 
+## Iteration 14 — Production catalog self-heal (May 2026)
+- **Problem:** Production `birthright.live` was missing 50 of the 60 AI-generated merch items, plus two items (Birthright Hardcover Journal, Enamel Pin — Flame) showed broken thumbnails. Root cause: the 50-item catalog was originally seeded via a manual one-time migration (`scripts/seed_merch_catalog.py`) that was never wired into the startup hook, so it never ran in production. The two items with broken thumbnails had legacy Unsplash CDN URLs in their `image_url` that had since 404'd.
+- **Fix:** New module `backend/runtime_seed.py` runs on EVERY startup (not just empty-DB):
+  - `ensure_catalog_seeded(db)` — reads `data/catalog.json`, inserts any items whose `slug` is missing from the products collection. Idempotent. Points `image_url` at the committed PNGs in `backend/static/products/<slug>.png` (no Gemini calls at runtime).
+  - `repair_known_broken_images(db)` — matches products by NAME (stable across environments since IDs differ) and rewrites `image_url` for any whose URL is external/empty/wrong. Currently heals "Birthright Hardcover Journal" and "Enamel Pin — Flame".
+- **Bonus:** Both regenerated PNGs renamed from `<slug>-<id_prefix>.png` to stable `<slug>.png` so the seed paths are stable across deploys.
+- **Wired** into `server.py` startup hook right after `seed_if_empty(db)`. Logs `inserted/skipped` and per-name repair counts.
+- All 52 product PNGs are committed to git, so production filesystem gets them automatically on deploy. No CDN dependency.
+
 ## Iteration 11 — Phase 6B.3 Community Referrals + Reporting MVP (May 2026)
 - **`routers/referrals.py`** — `GET /api/r/{code}` redirect-and-set-cookie (30-day max-age, samesite=lax, secure), `GET /api/referrals/my-link/{partner_type}`, `GET /api/referrals/my-earnings`, admin: `GET /api/admin/referrals?status=` filter, `GET /api/admin/referrals/payout-summary` per-partner aggregate w/ user enrichment, `POST /api/admin/referrals/{id}/mark-paid` (idempotent — 400 if already paid).
 - **`routers/reports.py`** — `GET /api/me/reports` returns `{engagement, finance, partner}` (partner is null when caller has no profile); `GET /api/admin/reports` returns `{engagement, revenue, payouts, top_partners, top_workshops}` (admin only).

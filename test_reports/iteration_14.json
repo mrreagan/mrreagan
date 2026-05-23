@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 14 — runtime_seed self-heal validation. NEW test file /app/backend/tests/test_iter14_runtime_seed.py (14 tests, all PASS). Verified: (1) startup-hook log lines for catalog seed + image repair present in backend logs; (2) GET /api/products returns 60 items including all 50 catalog.json slugs; (3) Birthright Hardcover Journal + Enamel Pin — Flame image_url point to committed /api/static/products/*.png and both PNGs serve 200 with non-zero bytes; (4) IDEMPOTENCY — deleted bonded-linen-retreat-robe, restarted backend, runtime_seed re-inserted it with correct image_url and product count restored to 60; (5) IDEMPOTENCY — overwrote Hardcover Journal image_url with stale Unsplash URL, restarted, repair_known_broken_images healed it back to /api/static/products/birthright-hardcover-journal.png. DB left intact after every test. Regression: 62/63 pre-existing iter5+iter11+iter12 tests pass — the single failure (test_iter11 test_elena_reports_partner_null) is a STALE pre-existing test unrelated to iter14 (Elena has a research partner profile per /app/memory/test_credentials.md and seeded fixtures; the assertion `data['partner'] is None` is contradicted by seed data, and iter14 never touched the partners collection).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/me/reports (Elena)", "issue": "Pre-existing stale test assertion in tests/test_iter11_referrals_reports.py::TestMyReports::test_elena_reports_partner_null — expects partner=None but seed makes Elena a research partner (active profile slug=elena-harlow-...). UNRELATED to iter14 runtime_seed change. Either update the test or change the seed."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter14_runtime_seed.py",
+    "/app/test_reports/pytest/iter14_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Fix the unrelated pre-existing stale test test_iter11_referrals_reports.py::TestMyReports::test_elena_reports_partner_null — either drop the assertion or expect the research-partner profile dict."
+  ],
+  "critical_code_review_comments": [
+    "runtime_seed.py is well-factored: uses slug as a stable key (correct choice given product IDs differ across envs); image repair matches on NAME with a guard that only updates rows whose URL doesn't already match the canonical path — safe to call on every boot.",
+    "Minor: the $or in repair_known_broken_images has a redundant clause — {image_url: {$ne: new_url}} alone would cover all three earlier cases. Functionally fine but slightly noisy. Not a bug.",
+    "ensure_catalog_seeded falls back to /api/static/products/_placeholder.png if the per-slug PNG is missing — good defensive default. The repo currently ships 52 PNGs (50 catalog + 2 repair targets), so the fallback should never fire in prod today.",
+    "server.py startup hook correctly wraps both calls in try/except — runtime_seed failures cannot break boot. Good.",
+    "No mongodb _id leakage observed in /api/products responses (products router already strips it). No async/await regressions. No env-var hardcoding.",
+    "Suggestion (not blocking): add a counter metric / explicit log line `image repair: 0 rows` when nothing is repaired, so absence is observable in prod logs (currently the function only logs on changes)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter14_runtime_seed.py"],
+  "success_rate": {"backend": "100% (14/14 iter14) + 62/63 regression (1 pre-existing stale)", "frontend": "skipped (not requested)"},
+  "test_credentials": "Used /app/memory/test_credentials.md (admin@birthright.org, elena@birthright.org, demo@birthright.org / birthright2026). Iter14 tests do not require auth — they hit public /api/products + /api/static/* + direct Mongo (MONGO_URL/DB_NAME from /app/backend/.env).",
+  "seed_data_creation": "None. Idempotency tests mutate DB (delete one product, then break one image_url) but each test has a try/finally that confirms runtime_seed restored state and additionally inserts/updates if the self-heal somehow failed. Post-test DB verified: 60 products, HJ/EP/bonded-linen all pointing at /api/static/products/<slug>.png.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter14 self-heal logic (runtime_seed.py) is production-ready and fully idempotent. Re-running tests/test_iter14_runtime_seed.py is safe — it restarts backend twice (once per idempotency test, ~6s total) and leaves DB clean. The unrelated iter11 stale test (test_elena_reports_partner_null) was present before this iteration and should be addressed separately by the main agent.",
+  "rca of the issue": "Original prod bug: 50 of 60 products were missing because the legacy seed only ran on empty DB (seed_if_empty) and two seeded products had Unsplash CDN URLs that 404'd. Fix: new runtime_seed module runs on every startup — ensure_catalog_seeded backfills the 50 slug-tagged catalog items from data/catalog.json (idempotent by `slug`), and repair_known_broken_images rewrites the 2 known stale image_urls to committed PNG paths (idempotent — only updates rows whose URL doesn't already match canonical). Both verified idempotent under destructive testing."
+}
