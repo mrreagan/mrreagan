@@ -148,15 +148,15 @@ export default function WorkshopFormDrawer({ open, initial, facilitators, curren
         <div className="grid grid-cols-2 gap-4">
           <label className="text-xs uppercase tracking-wider text-[#5C6B6B] col-span-2">
             Title
-            <input className="input-field mt-1" value={form.title} onChange={(e) => update("title", e.target.value)} required data-testid="ws-form-title" />
+            <input className="input-field mt-1" value={form.title} onChange={(e) => update("title", e.target.value)} data-testid="ws-form-title" />
           </label>
           <label className="text-xs uppercase tracking-wider text-[#5C6B6B] col-span-2">
             Slug (URL path)
-            <input className="input-field mt-1" value={form.slug} onChange={(e) => update("slug", e.target.value)} disabled={isEdit} placeholder="e.g. foundations-fall-2026" required data-testid="ws-form-slug" />
+            <input className="input-field mt-1" value={form.slug} onChange={(e) => update("slug", e.target.value)} disabled={isEdit} placeholder="e.g. foundations-fall-2026" data-testid="ws-form-slug" />
           </label>
           <label className="text-xs uppercase tracking-wider text-[#5C6B6B] col-span-2">
             Short description
-            <input className="input-field mt-1" value={form.short_description} onChange={(e) => update("short_description", e.target.value)} required data-testid="ws-form-short" />
+            <input className="input-field mt-1" value={form.short_description} onChange={(e) => update("short_description", e.target.value)} data-testid="ws-form-short" />
           </label>
           <label className="text-xs uppercase tracking-wider text-[#5C6B6B] col-span-2">
             Full description

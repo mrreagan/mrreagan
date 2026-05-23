@@ -131,14 +131,29 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend** — three new pages: `/governance/proposals` (list + create modal + detail modal with vote/withdraw/close + vote log), `/legal/indemnification` (active body + sign-with-checkbox + signed badge), `/admin/governance` (4 tabs: Defaults editor with add/remove tier per partner type; Members panel with toggle flags + user search via `/admin/users`; Indemnification panel with version list + publish new; Audit log viewer with action_prefix filter). Public `/governance` page now has two callout cards linking to the new screens; Admin Dashboard has a new "Governance & Legal" quick-action card.
 - **Bumped to `v1.6.0`.** Iter-7 testing: backend 30/30 PASS, frontend ~95% (all critical flows verified; only cosmetic data-testid renaming requests). Report at `/app/test_reports/iteration_7.json`.
 
+## Iteration 8 — Refactor / cleanup (May 2026)
+- **No new features.** Addresses code-review findings without changing public API contracts.
+- **Backend extractions:**
+  - `routers/community.py` — `_notify_question_author_of_reply` lifted out of `create_discussion`; orchestrator now ~12 lines, complexity drops from 16 to 4.
+  - `routers/workshops.py` — `_refund_registration`, `_mark_registration_cancelled`, `_email_registrant_cancellation` split from `cancel_workshop`. Loop body in `cancel_workshop` is now 3 calls + tally append.
+  - `utils/mailer.py` — `_build_log_doc` + `_real_send_via_resend` split from `send_email`. Public signature unchanged.
+- **Type hints:** added to `server.py` (root/health/startup/shutdown/stripe_webhook_endpoint) and `seed_data.py` (every public + helper function).
+- **Frontend component splits:**
+  - `components/ReviewSection.jsx` (was 291 LOC) → orchestrator at 158 LOC + `components/reviews/{StarRow,ReviewItem,ReviewForm,AggregateRatingBadge}.jsx`. `AggregateRatingBadge` re-exported from `ReviewSection` for back-compat.
+  - `components/workshop-hub/ChatTab.jsx` (was 274 LOC) → orchestrator at ~180 LOC + `components/workshop-hub/chat/{ConnectionPill,ParticipantsSidebar,MessagesList,TypingIndicator}.jsx`. View-match logic moved to top-level helpers; silent catches replaced with `console.error` carrying context.
+  - `components/admin/WorkshopFormDrawer.jsx` — extracted `buildWorkshopPayload`, `validateWorkshopPayload`, `persistWorkshop`. `submit()` is now 12 lines. Removed native `required` from title/slug/short-desc so the explicit Sonner toast actually runs.
+- **Hook polish:** `useChatSocket.js` empty `catch {}` blocks (×3) replaced with `console.debug/warn` tagged `[chat-ws]`. `useWorkshop.js` empty catches (×4) replaced with `console.error/warn` carrying the resource id.
+- **Iter-8 testing:** backend 98/98 PASS (87 prior-iter regression + 11 new refactor-specific), frontend ~98% (only minor: chat sub-components had testids correctly, agent's note was a misread). Report `/app/test_reports/iteration_8.json`.
+
 ## Phase 2 — Backlog (P0/P1)
-- **P0 (DONE in Iter 3)**: Email infrastructure via Resend (currently dry-run)
+- **P0 (DONE in Iter 3)**: Email infrastructure via Resend (dry-run)
 - **P0 (DONE in Iter 5)**: WebSocket real-time chat
 - **P0 (DONE in Iter 6A.1)**: Universal polymorphic reviews
 - **P0 (DONE in Iter 7 / 6A.2)**: Governance & Legal Architecture
+- **P0 (DONE in Iter 8)**: Code-review cleanup (component splits + helper extractions + type hints)
 - **P0 (NEXT — 6B)**: Partner Onboarding & Revenue — facilitator licensing, community referral tracking + payouts, vendor subscriptions + listings queue, research submissions, public `/partners` profiles
 - **P1 (6C)**: Communications — user↔partner messaging, partner↔partner messaging, ombudsman dashboard, dispute/escalation workflow
-- **P1 (Tech debt)**: Rate-limit auth + chat WS; split AdminProducts/WorkshopFormDrawer/ReviewSection/ChatTab into smaller components; refactor `cancel_workshop`, `create_discussion`, `send_email`
+- **P2 (Tech debt)**: Rate-limit auth + chat WS; flip `EMAIL_DRY_RUN=false` once Resend DNS verified; Redis pub/sub for `ws_manager.py` for horizontal scaling.
 - **P1**: Domain verification for `birthright.live` on Resend (DNS records — user action, takes 5 min)
 - **P1**: Photos & resources library per workshop; Workshop FAQ admin UI; Admin CRUD UIs for workshops/foundation content (products UI already shipped)
 - **P1**: SMS check-in reminders (Twilio)

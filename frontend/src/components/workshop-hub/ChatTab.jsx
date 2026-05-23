@@ -167,7 +167,7 @@ export default function ChatTab({ workshop, user }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" data-testid="tab-chat">
       <ParticipantsSidebar participants={participants} recipientId={recipientId} onSelect={setRecipientId} presenceIds={presenceIds} />
-      <div className="lg:col-span-3 card p-5 flex flex-col" style={{ minHeight: "500px" }}>
+      <div className="lg:col-span-3 card p-5 flex flex-col" style={{ minHeight: "500px" }} data-testid="chat-pane">
         <div className="flex items-center justify-between">
           <span className="label">{headerLabel}</span>
           <ConnectionPill status={status} />
