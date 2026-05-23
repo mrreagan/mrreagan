@@ -33,9 +33,25 @@ async def list_workshops(status: Optional[str] = None, search: Optional[str] = N
             {"short_description": {"$regex": search, "$options": "i"}},
         ]
     workshops = await db.workshops.find(query, {"_id": 0}).sort("start_date", 1).to_list(1000)
-    # enrich with facilitator info and registration count
+    # Batch-fetch all facilitators + registration counts to avoid N+1 queries.
+    facilitator_ids = list({w["facilitator_id"] for w in workshops if w.get("facilitator_id")})
+    fac_rows = await db.users.find(
+        {"id": {"$in": facilitator_ids}}, {"_id": 0, "password_hash": 0}
+    ).to_list(len(facilitator_ids) or 1) if facilitator_ids else []
+    facs_by_id = {f["id"]: f for f in fac_rows}
+
+    workshop_ids = [w["id"] for w in workshops]
+    counts_by_workshop = {wid: 0 for wid in workshop_ids}
+    if workshop_ids:
+        pipeline = [
+            {"$match": {"workshop_id": {"$in": workshop_ids}, "payment_status": "paid"}},
+            {"$group": {"_id": "$workshop_id", "n": {"$sum": 1}}},
+        ]
+        async for row in db.registrations.aggregate(pipeline):
+            counts_by_workshop[row["_id"]] = row["n"]
+
     for w in workshops:
-        fac = await db.users.find_one({"id": w["facilitator_id"]}, {"_id": 0, "password_hash": 0})
+        fac = facs_by_id.get(w.get("facilitator_id"))
         w["facilitator"] = (
             {
                 "id": fac["id"],
@@ -48,9 +64,7 @@ async def list_workshops(status: Optional[str] = None, search: Optional[str] = N
             if fac
             else None
         )
-        w["registered_count"] = await db.registrations.count_documents(
-            {"workshop_id": w["id"], "payment_status": "paid"}
-        )
+        w["registered_count"] = counts_by_workshop.get(w["id"], 0)
         w["spots_left"] = max(0, w["capacity"] - w["registered_count"])
         # Never expose check-in code in public list
         w.pop("check_in_code", None)
