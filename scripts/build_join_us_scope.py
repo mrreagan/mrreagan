@@ -86,11 +86,11 @@ before they apply.
 </div>
 
 <div class="role-card">
-<h3 class="role-title">🪶 Executive Director</h3>
-<div class="persona-meta"><span class="pill pill-open">Open Role</span> &nbsp; <span class="pill pill-equity">Equity in Mission</span> &nbsp; Time: ~15–20 hrs/week (intent to become full-time as funding allows)</div>
-<p><span class="b">Who you are:</span> An operations leader who can run a small nonprofit from cold start to first 1,000 active participants. You think in systems — facilitator pipelines, partner cohorts, fundraising cadence, financial reporting — but you also can write a thoughtful email to a partner you've never met. You've done early-stage org leadership before, ideally in mission-driven work.</p>
-<p><span class="b">What you'll do:</span> Lead day-to-day operations and partnerships. Own the foundation's relationships with facilitators, vendors, community partners, and research collaborators. Run the partner onboarding pipeline. Shepherd the foundation through its first founding-partner cohort and first independently-led workshops. Report to the Board Chair.</p>
-<p><span class="b">What you bring:</span> Prior nonprofit or mission-driven executive experience (ED, COO, or similar). Comfortable with technology platforms (you'll work day-to-day with the Birthright platform itself). Demonstrated fundraising or business-development capability. Capacity for a multi-year commitment.</p>
+<h3 class="role-title">🪶 Research Advisor</h3>
+<div class="persona-meta"><span class="pill pill-open">Open Role</span> &nbsp; <span class="pill pill-equity">Equity in Mission</span> &nbsp; Time: ~4–6 hrs/month + quarterly research-council meetings</div>
+<p><span class="b">Who you are:</span> A scholar of attachment, developmental psychology, family systems, or trauma-informed practice. Active or recently active in academic or applied research — peer-reviewed publications, IRB-supervised studies, or methodologically serious practitioner work. You believe the foundation's curriculum and impact claims should be grounded in evidence, and you're willing to shepherd that translation.</p>
+<p><span class="b">What you'll do:</span> Chair the foundation's research council. Vet incoming research-partner applications. Co-author the foundation's annual evidence brief. Advise on outcome-measurement instruments embedded in the workshop platform (pre/post surveys, longitudinal follow-up cadence). Guide the foundation's standards for what counts as a publishable "Birthright" research artifact and how DOIs are minted.</p>
+<p><span class="b">What you bring:</span> Doctorate in psychology, social work, family medicine, or related field. Active peer-reviewed publication record in attachment, relational, or developmental research. Comfortable with both quantitative and qualitative methods. Capacity to commit 3+ years.</p>
 </div>
 
 <div class="role-card">
