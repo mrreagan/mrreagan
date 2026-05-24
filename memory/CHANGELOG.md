@@ -8,6 +8,21 @@ because the git history was reinitialized on May 19, 2026.
 
 ---
 
+## v1.11.0 Step 1 — May 24, 2026 ~05:15 UTC · IN PROGRESS
+- LOCKED partner economy model committed (per pricing proposal v2):
+  - 13 subscription plans seeded with new rates (pre-traction × 0.5 fees;
+    Foundation IP share 50% → 42% → 35% by commitment; vendor 22 → 17 → 12;
+    community 8/10/12/14% to partner; research free + paid promotion).
+  - `seed_subscription_plans.py` rewritten with locked principles; idempotent
+    upsert that removes stale plans.
+  - New Pydantic models: `FeaturePartnerRequest`, `FoundingPartnerToggle`,
+    `RevShareOverride`, `OutboundClickRecord`, `PartnerSalesReportSubmit`,
+    `UserCreditEntry`.
+  - PartnerProfile extended via `runtime_seed.backfill_partner_economy_fields`:
+    14 new fields set with sensible defaults on every boot (idempotent).
+- 77/77 regression tests PASS (iter5 + iter11 + iter12 + iter14).
+- Bumped existing plan-count test from 12 → 13.
+
 ## v1.10.0 hotfix — May 23, 2026 ~11:00 UTC
 - Production catalog self-heal (`runtime_seed.py`) — auto-restores missing
   catalog products + repairs stale image URLs on every backend boot.

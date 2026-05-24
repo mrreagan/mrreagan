@@ -555,6 +555,66 @@ class PartnerProfileUpdate(BaseModel):
     location: Optional[str] = Field(default=None, max_length=120)
     photo_url: Optional[str] = None
     public: Optional[bool] = None
+    # v1.11.0 — outbound attribution
+    external_site_url: Optional[str] = None
+    external_platform: Optional[str] = Field(default=None, max_length=80)
+
+
+# ============ PARTNER ECONOMY (v1.11.0) ============
+
+class FeaturePartnerRequest(BaseModel):
+    """Admin: mark a partner profile as 'featured' for a window."""
+    until: str  # ISO datetime
+    mission_alignment: str = Field(default="", max_length=2000)
+    signature_content: Optional[str] = Field(default=None, max_length=4000)
+    video_url: Optional[str] = None
+    image_urls: list[str] = Field(default_factory=list, max_length=3)
+    custom_cta: Optional[str] = Field(default=None, max_length=200)
+
+
+class FoundingPartnerToggle(BaseModel):
+    expires_at: str  # ISO datetime — 5 years from grant by default
+
+
+class RevShareOverride(BaseModel):
+    """Per-partner override. Requires reason; audit-logged; respects 35% floor unless reason explicitly bypasses."""
+    foundation_ip_pct: Optional[float] = Field(default=None, ge=0, le=100)
+    non_ip_pct: Optional[float] = Field(default=None, ge=0, le=100)
+    off_site_pct: Optional[float] = Field(default=None, ge=0, le=100)
+    reason: str = Field(min_length=10, max_length=2000)
+    bypass_floor: bool = False
+
+
+class OutboundClickRecord(BaseModel):
+    """Single click-through to a partner's external site. Used for attribution + estimation."""
+    id: str
+    partner_id: str
+    partner_slug: str
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    dest_url: str
+    referrer: Optional[str] = None
+    utm_params: dict = {}
+    created_at: str
+
+
+class PartnerSalesReportSubmit(BaseModel):
+    """Partner self-reports a period of off-site sales attributable to Birthright."""
+    period_start: str  # ISO date
+    period_end: str
+    gross_revenue_usd: float = Field(ge=0)
+    attributed_orders: int = Field(default=0, ge=0)
+    note: Optional[str] = Field(default="", max_length=2000)
+
+
+class UserCreditEntry(BaseModel):
+    """Store credit ledger entry. Positive = credit added; negative = redeemed."""
+    id: str
+    user_id: str
+    amount_usd: float  # signed
+    reason: Literal["referral_earned", "redeemed", "admin_adjustment", "refund"]
+    source_id: Optional[str] = None  # referral_id / order_id / etc.
+    created_at: str
 
 
 

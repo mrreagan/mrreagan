@@ -342,11 +342,12 @@ class TestCookieCapture:
 # ============ REGRESSION: PHASE 6B.2 ============
 
 class TestRegression6B2:
-    def test_subscription_plans_returns_12(self):
+    def test_subscription_plans_returns_13(self):
+        # v1.11.0 LOCKED MODEL: 3 facilitator + 3 vendor + 4 community (incl Free Starter) + 3 research (incl Free Standard) = 13
         r = requests.get(f"{BASE_URL}/api/subscriptions/plans")
         assert r.status_code == 200
         plans = r.json()
-        assert len(plans) == 12
+        assert len(plans) == 13
 
     def test_partners_list(self):
         r = requests.get(f"{BASE_URL}/api/partners")

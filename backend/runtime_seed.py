@@ -132,3 +132,41 @@ async def repair_known_broken_images(db) -> int:
             logger.info(f"image repair: {result.modified_count}x {name!r} -> {new_url}")
             repaired += result.modified_count
     return repaired
+
+
+# ============ v1.11.0 PARTNER ECONOMY BACKFILL ============
+
+PARTNER_ECONOMY_DEFAULTS = {
+    "is_founding_partner": False,
+    "founding_rate_expires_at": None,
+    "featured_until": None,
+    "featured_mission_alignment": None,
+    "featured_signature_content": None,
+    "featured_video_url": None,
+    "featured_image_urls": [],
+    "featured_custom_cta": None,
+    "external_site_url": None,
+    "external_platform": None,
+    "rev_share_overrides": None,  # dict or null
+    "w9_status": "not_collected",  # not_collected | submitted | verified
+    "payout_threshold_usd": 50.0,
+    "payout_method": None,
+    "payout_address_snapshot": None,
+}
+
+
+async def backfill_partner_economy_fields(db) -> int:
+    """Add v1.11.0 partner-economy fields to any partner_profiles row missing them.
+    Idempotent — uses `$set` with `$exists: False` guards so existing values are untouched.
+    """
+    backfilled = 0
+    for field, default in PARTNER_ECONOMY_DEFAULTS.items():
+        result = await db.partner_profiles.update_many(
+            {field: {"$exists": False}},
+            {"$set": {field: default}},
+        )
+        backfilled += result.modified_count
+    if backfilled:
+        logger.info(f"partner economy backfill: set {backfilled} field-rows to defaults")
+    return backfilled
+
