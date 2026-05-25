@@ -3,11 +3,12 @@ import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "sonner";
 import {
   MessageSquare, Send, Flag, Archive, Shield, ArrowLeft, CheckCircle2,
-  XCircle, Lock, ExternalLink, AlertTriangle,
+  XCircle, Lock, ExternalLink, AlertTriangle, Scale,
 } from "lucide-react";
 
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
+import FileDisputeModal from "../components/FileDisputeModal";
 
 function fmtTime(iso) {
   if (!iso) return "";
@@ -130,6 +131,7 @@ export function MessageThread() {
   const [sending, setSending] = useState(false);
   const [flagOpen, setFlagOpen] = useState(false);
   const [flagReason, setFlagReason] = useState("");
+  const [disputeOpen, setDisputeOpen] = useState(false);
   const bottomRef = useRef(null);
   const wsRef = useRef(null);
 
@@ -263,6 +265,7 @@ export function MessageThread() {
             )}
           </div>
           <div className="flex items-center gap-1.5">
+            <IconBtn icon={Scale} label="Dispute" onClick={() => setDisputeOpen(true)} testid="file-dispute-from-thread" />
             <IconBtn icon={Flag} label="Flag" onClick={() => setFlagOpen(true)} testid="flag-thread" />
             <IconBtn icon={Archive} label="Archive" onClick={archive} testid="archive-thread" />
           </div>
@@ -364,6 +367,15 @@ export function MessageThread() {
           </div>
         </div>
       )}
+
+      <FileDisputeModal
+        open={disputeOpen}
+        onClose={() => setDisputeOpen(false)}
+        againstUserId={other.id}
+        againstUserName={other.name}
+        threadId={thread_id}
+        onFiled={(d) => navigate(`/dashboard/disputes/${d.id}`)}
+      />
     </div>
   );
 }

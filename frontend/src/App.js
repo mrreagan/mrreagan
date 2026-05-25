@@ -65,12 +65,18 @@ import PartnerPayouts from "./pages/PartnerPayouts";
 import Profile from "./pages/Profile";
 import Bookmarks from "./pages/Bookmarks";
 import Messages, { MessageThread } from "./pages/Messages";
+import MyDisputes from "./pages/MyDisputes";
+import DisputeDetail from "./pages/DisputeDetail";
+import OmbudsmanQueue from "./pages/OmbudsmanQueue";
 
-function ProtectedRoute({ children, roles }) {
+function ProtectedRoute({ children, roles, allowOmbudsman }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="container-page py-20">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />;
+  if (roles && !roles.includes(user.role)) {
+    if (allowOmbudsman && user.is_ombudsman) return children;
+    return <Navigate to="/dashboard" replace />;
+  }
   return children;
 }
 
@@ -333,6 +339,38 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MessageThread />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/disputes"
+        element={
+          <ProtectedRoute>
+            <MyDisputes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/disputes/:dispute_id"
+        element={
+          <ProtectedRoute>
+            <DisputeDetail adminMode={false} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/ombudsman"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES} allowOmbudsman>
+            <OmbudsmanQueue />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/disputes/:dispute_id"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES} allowOmbudsman>
+            <DisputeDetail adminMode={true} />
           </ProtectedRoute>
         }
       />

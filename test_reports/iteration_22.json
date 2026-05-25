@@ -1,0 +1,38 @@
+{
+  "summary": "Iter 22 Phase 6C.2 (Ombudsman queue) + 6C.3 (Disputes) — 34/34 backend pytest tests PASS in test_iter22_disputes.py covering: POST /api/disputes (success, self-dispute rejection 400, missing respondent 404, bad transaction 404, bad thread 404, title<5 chars 422, description<20 chars 422), GET /api/me/disputes (role=all|filed|against), GET /api/me/disputes/{id} (200 for filer/respondent, 403 for outsider Marcus), GET /api/admin/disputes (admin + ombudsman 200, regular user 403, status + assigned_to=unassigned filters), POST /admin/disputes/{id}/assign (rejects Marcus who is_ombudsman=false with 400, assigns to Elena 200, event 'assigned' pushed), POST /admin/disputes/{id}/status (under_review 200; terminal 'resolved' rejected with 400; note<3 chars 422), POST /admin/disputes/{id}/resolve (outcome=partial w/ financial_credit_usd=25.50 persists; double-resolve rejected 400; outcome=dismissed -> status=dismissed; note<10 chars 422; negative credit 422), GET /api/admin/ombudsman/queue (returns {disputes, flagged_threads, counts} for admin + ombudsman, 403 for regular user), GET /api/admin/ombudsman/users (Elena present, Marcus absent). Iter 21 DM regression (23/23) still passes. Frontend verified via Playwright: /dashboard/disputes renders 'My Disputes' header + ALL/FILED BY ME/ABOUT ME filter chips + empty-state 'No disputes here.' (then list with OPEN pill once dispute created). /dashboard/disputes/{id} renders title, OPEN status pill, FILED BY/ABOUT/ASSIGNED TO boxes (Sam Rivera, Elena Hartwell, Unassigned), Description card, Timeline with 'FILED' event entry. /admin/ombudsman shows 3 stat cards (OPEN DISPUTES=1, UNDER REVIEW=0, FLAGGED DM THREADS=1), Disputes list with Review link, Flagged DM threads list (incl. iter21 flagged thread with reason 'TEST_iter21 ombudsman please review' + 3 MSGS). /admin/disputes/{id} renders dispute detail PLUS 'Ombudsman actions' card: Assign-to-ombudsman select, Move status dropdown (Under review) + Update btn, Resolve/Dismiss section with Outcome select (Dismissed/Upheld/Partial), Financial credit $ input, Resolution rationale textarea (≥10 chars), Finalize btn. Messages thread header shows 'DISPUTE' icon button — clicking it opens FileDisputeModal pre-filled with thread_id ('This dispute is linked to the current conversation. The ombudsman can review the thread on flag.') and recipient (Elena Hartwell), category select, title input, description textarea, File dispute / Cancel buttons. User menu contains 'My Disputes' link. No critical bugs found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/partners/birthright-hub", "issues": ["Hard-coded slug 'birthright-hub' from problem statement returned 404 in this seed environment — could not directly verify 'File a dispute' link on a non-sample partner profile. Main agent should confirm the link renders on a real partner slug. Component logic in PartnerProfilePage.jsx was not exercised end-to-end."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter22_disputes.py",
+    "/app/test_reports/pytest/iter22_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Verify the 'Something wrong? File a dispute' link renders on an actual non-sample partner profile slug (couldn't reach /partners/birthright-hub — returned 404 in test seed)."
+  ],
+  "critical_code_review_comments": [
+    "disputes.py file_dispute does NOT enforce that against_user_id can't be filer's own id at the DB level (only Python-level check); fine for now since the only entry is this endpoint.",
+    "disputes.py _enrich_dispute joins users individually; for queue listings with many disputes (200 cap) it issues O(1) bulk find — acceptable. Good.",
+    "disputes.py admin_assign and admin_update_status correctly block re-assign/state-change once status is resolved/dismissed (admin_assign explicitly; admin_update_status implicitly because the status enum forbids re-entering terminal states from a terminal source — but note: an under_review→under_review no-op is technically allowed and will push a status_change event with from==to. Low priority; consider a guard to ignore no-op transitions to keep audit trail clean.)",
+    "disputes.py admin_resolve sets resolution.financial_credit_usd from data.financial_credit_usd directly — Pydantic ge=0 enforces non-negative. Good. Step-10 hand-off ready.",
+    "disputes.py ombudsman_queue: for non-admin ombudsman, dispute_q['$or'] is set to [assigned_to=me, unassigned]; ombudsman cannot see disputes assigned to OTHER ombudsmen — matches spec.",
+    "disputes.py: log_action audit entries written for file/assign/status/resolve — good.",
+    "FileDisputeModal correctly pre-fills thread_id (verified visually 'This dispute is linked to the current conversation').",
+    "Routes /admin/disputes/{id} (adminMode=true) and /dashboard/disputes/{id} both reuse DisputeDetail.jsx — confirmed by URL inspection. Ombudsman actions card renders only in admin mode. Good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter22_disputes.py"
+  ],
+  "success_rate": {"backend": "100% (34/34 iter22 + 23/23 iter21 regression)", "frontend": "100% (My Disputes list+empty state+chips, Dispute detail, Ombudsman queue + 3 stat cards + flagged thread, Admin dispute detail + Ombudsman actions card, FileDisputeModal pre-filled from thread, user-menu 'My Disputes' link all verified)"},
+  "test_credentials": "admin@birthright.org / birthright2026 (admin + is_ombudsman=true), demo@birthright.org / birthright2026 (filer), elena@birthright.org / birthright2026 (set is_ombudsman=true by fixture; reset to false on teardown), marcus@birthright.org / birthright2026 (regular non-ombudsman, used for forbidden + reject-assign).",
+  "seed_data_creation": "Module-scoped autouse fixture wipes db.disputes and sets db.users(elena@).is_ombudsman=true before tests, then resets elena.is_ombudsman=false + db.disputes.delete_many({}) on teardown. UI flow created an additional dispute (id d2f9b5fb-...) via fetch from page context — this is leftover state for the next agent to inspect if needed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All disputes endpoints + ombudsman queue verified end-to-end including the financial_credit_usd hand-off for Step 10. The iter21 flagged thread (id b12a84ee-9cb6-42ed-9e30-54f5122dc18c, demo↔Elena) was reused to verify FileDisputeModal pre-fills thread_id. Elena gets toggled to is_ombudsman=true during this test run via fixture autouse — fixture cleanup resets it back to false. If you re-run iter22, the fixture handles it; if you skip iter22 and run something that depends on Elena's ombudsman flag staying true, you may need to re-set it. /partners/birthright-hub returned 404 in seed env — could not verify the 'File a dispute' link on a real partner page.",
+  "rca_of_the_issue": "Not applicable — all features implemented per spec. Initial pytest collection failed because the testing process did not auto-load REACT_APP_BACKEND_URL/MONGO_URL from .env files; resolved by exporting both env files into the pytest invocation (standard pattern in this project). No code changes needed."
+}

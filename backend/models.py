@@ -850,6 +850,45 @@ class DmAcceptsToggle(BaseModel):
 # ============ END Phase 6C.1 ============
 
 
+# ============ DISPUTES (Phase 6C.3) ============
+
+DisputeStatus = Literal["open", "under_review", "resolved", "dismissed"]
+DisputeCategory = Literal["payment", "conduct", "content", "other"]
+
+
+class DisputeCreate(BaseModel):
+    """File a dispute. `against_user_id` is who the dispute is about.
+    `transaction_id` optionally ties it to a specific Stripe payment_transactions
+    row (sets up Step 10 clawback cascade)."""
+    against_user_id: str = Field(min_length=1, max_length=120)
+    category: DisputeCategory
+    title: str = Field(min_length=5, max_length=200)
+    description: str = Field(min_length=20, max_length=8000)
+    transaction_id: Optional[str] = Field(default=None, max_length=120)
+    thread_id: Optional[str] = Field(default=None, max_length=120)
+
+
+class DisputeAssign(BaseModel):
+    ombudsman_user_id: str = Field(min_length=1, max_length=120)
+
+
+class DisputeStatusUpdate(BaseModel):
+    status: DisputeStatus
+    note: str = Field(min_length=3, max_length=4000)
+
+
+class DisputeResolution(BaseModel):
+    """Final resolution. `outcome` is dismissed | upheld | partial. Optional
+    `financial_credit_usd` records that a refund or credit should follow when
+    Step 10 (clawback cascade) lands."""
+    outcome: Literal["dismissed", "upheld", "partial"]
+    resolution_note: str = Field(min_length=10, max_length=8000)
+    financial_credit_usd: Optional[float] = Field(default=None, ge=0)
+
+
+# ============ END Phase 6C.3 ============
+
+
 # ============ SHARES & BOOKMARKS (v1.11.0 Step 8.5) ============
 
 BookmarkableType = Literal[

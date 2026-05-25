@@ -4,6 +4,7 @@ import api from "../lib/api";
 import { Globe, MapPin, ArrowLeft, Sparkles } from "lucide-react";
 import ShareButton from "../components/ShareButton";
 import MessageButton from "../components/MessageButton";
+import FileDisputeModal from "../components/FileDisputeModal";
 
 const TYPE_LABEL = {
   facilitator: "Facilitator",
@@ -16,6 +17,7 @@ export default function PartnerProfilePage() {
   const { slug } = useParams();
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
+  const [disputeOpen, setDisputeOpen] = useState(false);
 
   useEffect(() => {
     api.get(`/partners/${slug}`)
@@ -98,6 +100,23 @@ export default function PartnerProfilePage() {
       <article className="prose prose-sm max-w-none mt-6 whitespace-pre-wrap font-sans text-sm" data-testid="partner-bio">
         {profile.bio}
       </article>
+      {!profile.is_sample && profile.user_id && (
+        <div className="mt-8 pt-4 border-t border-[#E5E1D8]">
+          <button
+            onClick={() => setDisputeOpen(true)}
+            className="text-[10px] uppercase tracking-wider text-[#5C6B6B] hover:text-[#9E3C3C] hover:underline"
+            data-testid="open-dispute-from-profile"
+          >
+            Something wrong? File a dispute
+          </button>
+        </div>
+      )}
+      <FileDisputeModal
+        open={disputeOpen}
+        onClose={() => setDisputeOpen(false)}
+        againstUserId={profile.user_id}
+        againstUserName={profile.display_name}
+      />
     </div>
   );
 }

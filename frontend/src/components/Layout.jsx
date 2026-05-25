@@ -95,6 +95,14 @@ function UserMenu({ user, onLogout }) {
           <Link to="/dashboard/bookmarks" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5]" data-testid="menu-bookmarks">
             My Bookmarks
           </Link>
+          <Link to="/dashboard/disputes" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5]" data-testid="menu-disputes">
+            My Disputes
+          </Link>
+          {user.is_ombudsman && (
+            <Link to="/admin/ombudsman" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5] text-[#476B6B] font-medium" data-testid="menu-ombudsman">
+              Ombudsman queue
+            </Link>
+          )}
           {user.role === "facilitator" && (
             <Link to="/facilitator" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5]" data-testid="menu-facilitator">
               Facilitator Dashboard
