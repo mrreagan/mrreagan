@@ -82,20 +82,22 @@ SHIPPED = [
      "Partner economy model overhaul: PartnerProfile gained 13 new fields (founding partner, featured-until, rev-share overrides, external site URL, payout fields, W9 status). Subscription tables regenerated with inverted pricing (longer commitment = lower fee and lower foundation take rate)."),
     ("v1.11.0-step1.5", "May 24, 2026", "Phase 6B.4.5b + 6B.4.5c (Iter 15)",
      "Join Us + Sample Partner Profiles. 3 open foundation roles (Board Chair & Co-Founder, Research Advisor, Director of Community Stewardship) with public /join-us listing, application form, and admin triage queue (6-status pipeline). 8 sample partner personas (2 per partner type) marked is_sample:true, hidden from default /partners directory, surfaced at /partners?samples=1 as a sales tool for founding-partner outreach. Governance page got SAMPLE ribbons on the 3 recruited-for board cards. Backend 21/21 PASS, frontend 100%."),
+    ("v1.11.0-step2+3", "May 25, 2026", "Iter 16",
+     "Outbound-click attribution + Off-site sales reconciliation. GET /api/out/{slug} redirect endpoint with UTM capture, IP/UA logging, host-locked dest param, fallback to /partners on 404. Outbound links surfaced on vendor + community partner cards/profile pages only. Partner self-report flow at /dashboard/partner/sales-reports with monthly defaults + HMAC webhook (per-partner secret, SHA-256 signed payload, rotate-anytime). Admin reconciliation at /admin/partner-sales-reports with approve/dispute/revise actions and optional override_gross/override_pct. Credits land in partner_off_site_credits with pct sourced from rev_share_overrides.off_site_pct → active subscription → global default. Backend 25/25 PASS, frontend 100%."),
 ]
 
 # Reverse so newest appears first
 SHIPPED_ROWS = list(reversed(SHIPPED))
 
 IN_PROGRESS = [
-    ("v1.11.0-step2", "Outbound-click attribution",
-     "GET /api/out/{partner_slug} redirect endpoint that logs to outbound_clicks (partner_id, user_id, session_id, referrer, UTM) and 302s to partner external_site_url. Frontend partner cards/profiles route external links through it."),
-    ("v1.11.0-step3", "Sales reconciliation",
-     "Partner-facing dashboard: self-report attributable off-site revenue per period (/api/partner-sales-reports). Admin reconciliation queue. Webhook stub at /api/webhooks/partner-sales/{slug} for partners on platforms that can POST automatically."),
+    ("v1.11.0-step4", "Featured-partner showcase",
+     "/featured page + featured ribbons across the directory. Admin can grant a 30/60/90 day featured window per partner with mission-alignment statement, signature content, video, image gallery, and custom CTA. Driven by partner_profiles.featured_until + featured_* fields already in the model."),
+    ("v1.11.0-step5", "Founding-partner gating",
+     "Surface is_founding_partner badge across directory + profile pages. Apply gates: founding-rate plan tiers, 5-year commitment defaults, expiration grace. Backfill existing partners flagged on the seed list."),
 ]
 
 BACKLOG = [
-    ("v1.11.0-steps 4–10", "Founding-partner gating, featured-partner UI, paid research promotion, payouts infra (W9/1099 collection), subscription UI parity, refund/clawback cascade, partnership agreement v2 with re-sign."),
+    ("v1.11.0-steps 4–10", "Featured-partner showcase, founding-partner gating, paid research promotion, /partners rebuild with 5-tab pattern, payouts infra (W9/1099 collection), subscription UI parity, refund/clawback cascade, partnership agreement v2 with re-sign."),
     ("Phase 6B.5", "Research submissions queue: data model, public listing, admin moderation, DOI minting. (Scope PDF already exists, paused pending v1.11.0.)"),
     ("Phase 6C", "Communications: user↔partner DMs, partner↔partner DMs, ombudsman dashboard, dispute/escalation workflow."),
     ("Phase 6B.6", "'More Info' / FAQ contextual modals site-wide. Depends on 6C for ombudsman endpoints."),
@@ -153,10 +155,11 @@ body = f"""
 {in_progress_block()}
 
 <div class="callout">
-Current sequence: finish <code>v1.11.0-step2</code> (outbound-click attribution) and
-<code>v1.11.0-step3</code> (sales reconciliation) before resuming <code>v1.11.0-steps 4–10</code>.
-Phase 6B.5 (Research submissions queue) is paused until v1.11.0 is fully shipped — scope PDF
-already exists at <code>birthright-phase-6b5-research-scope-v1.pdf</code>.
+Current sequence: <code>v1.11.0-step2</code> and <code>v1.11.0-step3</code> shipped together
+on May 25, 2026 (Iter 16). Next up: <code>v1.11.0-step4</code> (featured-partner showcase) and
+<code>v1.11.0-step5</code> (founding-partner gating). Phase 6B.5 (Research submissions queue)
+remains paused until v1.11.0 is fully shipped — scope PDF already exists at
+<code>birthright-phase-6b5-research-scope-v1.pdf</code>.
 </div>
 
 <h2>3 · Backlog</h2>

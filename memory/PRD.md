@@ -205,6 +205,30 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend** — `/dashboard/reports` (MyReports, engagement + spending + optional partner earnings), `/admin/reports` (Foundation reports), `/admin/payouts` (per-partner liability + earned/paid tabs + inline mark-paid form). `PartnerEarningsCard` shows pending/lifetime/paid + referral link + Copy + recent attributions — rendered only for community partner profiles.
 - **Bumped to `v1.9.0`.** Iter-11 testing: backend **25/25 PASS**, frontend **100%** (`/app/test_reports/iteration_11.json`). Zero defects.
 
+## Iteration 16 — v1.11.0 Step 2 + Step 3: Outbound Attribution + Off-Site Sales Reconciliation (May 25, 2026)
+- **Goal**: Capture revenue when users click through to a partner's external site, and let partners self-report off-site sales for credit.
+- **User decisions before build**:
+  - Outbound link visible on partner cards + detail pages, **only for vendor + community partner types**
+  - Self-reporting cadence: **free-form date range with monthly defaults** (1st → last day of current month pre-populated)
+  - Approval credits partner at `rev_share_overrides.off_site_pct` if set, else `resolve_rev_share` fallback (active subscription → global default)
+  - Webhook uses **HMAC SHA-256** signing with per-partner secret in `X-Birthright-Signature: sha256=<hex>` header (standard Stripe/GitHub/Shopify pattern)
+- **Backend new endpoints**:
+  - Outbound: `GET /api/out/{slug}` (302 redirect + log click with UTM/referrer/IP/UA), `GET /api/admin/outbound-clicks`, `GET /api/admin/outbound-clicks/summary`
+  - Partner sales (auth): `POST /api/partner-sales-reports?partner_type=...`, `GET /api/partner-sales-reports/my`, `GET /api/partner-sales-reports/my/webhook?partner_type=...`, `POST /api/partner-sales-reports/my/webhook/regenerate?partner_type=...`
+  - Admin: `GET /api/admin/partner-sales-reports?status=...`, `POST /api/admin/partner-sales-reports/{id}/decision?status=approve|dispute|revise`
+  - Webhook (public, HMAC-signed): `POST /api/webhooks/partner-sales/{slug}`
+- **New collections**: `outbound_clicks`, `partner_sales_reports`, `partner_off_site_credits`. New field on `partner_profiles`: `webhook_secret` (lazily minted on first webhook-info request).
+- **Approval logic**: `_approve_report()` resolves off_site_pct via `resolve_off_site_pct()` (`rev_share_overrides.off_site_pct` → active subscription pct → global default), computes payout, writes a `partner_off_site_credits` row with `source_type='off_site_sales_report'`, status='earned'. Admin can override gross or pct at approval time. Disputed and revised statuses don't credit. Approved/disputed are terminal.
+- **Outbound redirect safety**: `dest` query param honored ONLY if it shares the host of partner's `external_site_url` (prevents open-redirect abuse). Falls back to `/partners/<slug>` when no external URL is set. Unknown slug → `/partners`. Sample partners log clicks with `is_sample: true` for filtering analytics.
+- **HMAC signature flow**: Secret is `secrets.token_hex(32)` (64-char). Verified with `hmac.compare_digest` (constant-time). Partner can rotate anytime; old signatures immediately invalidated.
+- **Frontend**:
+  - Partner cards (`PartnersDirectory.jsx`) + detail (`PartnerProfilePage.jsx`) render outbound link **only for vendor + community** partner types; other types use plain `website_url` anchor
+  - `/dashboard/partner/sales-reports` — listing, monthly-defaulted submit modal, webhook card with hidden/reveal/copy/rotate
+  - `/admin/partner-sales-reports` — status tabs (submitted/approved/disputed/revised), detail modal with override fields, approve/revise/dispute actions
+  - Quick-action tiles added on `PartnerDashboard` (vendor+community only) and `AdminDashboard`
+- **Test coverage** — `/app/backend/tests/test_iter16_outbound_sales.py` 25/25 PASS. Full frontend flow verified (card gating, sales-reports UI end-to-end, webhook info reveal/rotate, admin decision actions, terminal-state guard).
+- **Iter-16 report**: `/app/test_reports/iteration_16.json` — backend 100% (25/25), frontend 100%, zero defects.
+
 ## Iteration 15 — Phase 6B.4.5b + 6B.4.5c "Join Us" + Sample Partner Profiles (May 24, 2026)
 - **Goal**: Sales-tool readiness for upcoming founding-partner outreach. Two related additions, one UI pass.
 - **Scope PDF**: `/app/backend/static/exports/birthright-join-us-scope-v1.pdf` (approved by user before build).
