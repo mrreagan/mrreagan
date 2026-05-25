@@ -8,7 +8,7 @@ import AgreementResignBanner from "./AgreementResignBanner";
 import AssistantWidget from "./AssistantWidget";
 
 const NAV_EXPLORE = [
-  { to: "/workshops",   label: "Workshops" },
+  { to: "/experiences", label: "Experiences" },
   { to: "/shop",        label: "Shop" },
   { to: "/facilitators",label: "Facilitators" },
   { to: "/partners",    label: "Partners" },
@@ -18,7 +18,6 @@ const NAV_EXPLORE = [
 const NAV_FOUNDATION = [
   { to: "/about",      label: "About" },
   { to: "/mission",    label: "Mission" },
-  { to: "/education",  label: "Education" },
   { to: "/governance", label: "Governance" },
   { to: "/research",   label: "Research" },
   { to: "/join-us",    label: "Join Us" },
@@ -145,13 +144,24 @@ function UserMenu({ user, onLogout }) {
 }
 
 // ---------- Auth buttons (signed-out state) ----------
+// "Sign in" is ALWAYS visible (including mobile) so users never have to hunt
+// inside the hamburger menu to log in. "Join" stays hidden on the smallest
+// screens to preserve room for the brand mark and cart.
 function AuthButtons() {
   return (
-    <div className="hidden sm:flex items-center gap-2">
-      <Link to="/login" className="btn-ghost" data-testid="header-login-link">
+    <div className="flex items-center gap-1 sm:gap-2">
+      <Link
+        to="/login"
+        className="text-sm font-medium text-[#1A2424] hover:text-[#476B6B] px-2 py-1 whitespace-nowrap"
+        data-testid="header-login-link"
+      >
         Sign in
       </Link>
-      <Link to="/register" className="btn-primary text-sm" data-testid="header-register-link">
+      <Link
+        to="/register"
+        className="btn-primary text-sm hidden sm:inline-flex"
+        data-testid="header-register-link"
+      >
         Join
       </Link>
     </div>
@@ -254,7 +264,7 @@ function FooterColumn({ heading, links }) {
 }
 
 const FOOTER_EXPLORE = [
-  { to: "/workshops", label: "Workshops" },
+  { to: "/experiences", label: "Experiences" },
   { to: "/shop", label: "Shop" },
   { to: "/facilitators", label: "Facilitators" },
   { to: "/partners", label: "Partners" },
@@ -263,7 +273,6 @@ const FOOTER_EXPLORE = [
 const FOOTER_FOUNDATION = [
   { to: "/about", label: "About" },
   { to: "/mission", label: "Mission" },
-  { to: "/education", label: "Education" },
   { to: "/governance", label: "Governance" },
   { to: "/join-us", label: "Join Us" },
   { to: "/contact", label: "Contact" },

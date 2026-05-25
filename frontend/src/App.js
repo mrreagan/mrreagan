@@ -13,10 +13,11 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import Mission from "./pages/Mission";
 import Governance from "./pages/Governance";
-import Education from "./pages/Education";
+import Education from "./pages/Education"; // eslint-disable-line no-unused-vars -- legacy import kept for emergency restore
 import Contact from "./pages/Contact";
-import Workshops from "./pages/Workshops";
+import Workshops from "./pages/Workshops"; // eslint-disable-line no-unused-vars -- legacy import kept for emergency restore
 import WorkshopDetail from "./pages/WorkshopDetail";
+import Experiences from "./pages/Experiences";
 import Shop from "./pages/Shop";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
@@ -97,9 +98,10 @@ function AppRoutes() {
       <Route path="/ai" element={<AiOverview />} />
       <Route path="/mission" element={<Mission />} />
       <Route path="/governance" element={<Governance />} />
-      <Route path="/education" element={<Education />} />
+      <Route path="/education" element={<Navigate to="/experiences" replace />} />
       <Route path="/contact" element={<Contact />} />
-      <Route path="/workshops" element={<Workshops />} />
+      <Route path="/experiences" element={<Experiences />} />
+      <Route path="/workshops" element={<Navigate to="/experiences" replace />} />
       <Route path="/workshops/:slug" element={<WorkshopDetail />} />
       <Route path="/shop" element={<Shop />} />
       <Route path="/shop/:id" element={<ProductDetail />} />

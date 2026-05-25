@@ -541,4 +541,18 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 
 
 ## Test credentials
+
+## v1.12.x — Experiences IA Consolidation + Mobile Sign-in (May 2026)
+- **New `/experiences` page** combining old Workshops + Education tabs.
+  - **Hero**: "A practice, not a curriculum" — pulls `education_structure` foundation copy.
+  - **Section 1 — Foundation library**: three-tier framework (Foundations / Practice / Living the Work) as the lead. Each tier card shows tagged foundation workshops; empty tiers show "in development" copy.
+  - **Foundation IP teaser**: "Seven Conversations in a Day" placeholder card in the Foundations tier until the workshop is created via the admin UI (one-day couples workshop, distilled from research-backed material; AI-assisted prompts; intentionally unbranded vs. external IP).
+  - **Section 2 — Community workshops**: all non-Foundation workshops (status filter + search) using the existing WorkshopCard.
+- **Workshop schema**: added optional `track` (`foundations|practice|living_the_work`) and `is_foundation` (bool, default False) to `WorkshopCreate`, `Workshop`, `WorkshopUpdate`.
+- **Admin Workshop form**: new "Foundation library tagging" panel with `is_foundation` checkbox + tier select (disabled until checkbox is on).
+- **Routes**: `/workshops` and `/education` now redirect to `/experiences`. `/workshops/:slug` detail page is unchanged. Removed "Workshops" and "Education" nav items; added single "Experiences" item.
+- **Mobile sign-in**: `Sign in` link is now always visible in the header (was previously hidden behind the hamburger on screens below 640px). `Join` button still hides on mobile to preserve room for the brand mark + cart + hamburger.
+- **Files**: new `/app/frontend/src/pages/Experiences.jsx`; edits to `App.js`, `Layout.jsx`, `WorkshopFormDrawer.jsx`, `models.py`.
+- **Verified**: `/experiences` renders cleanly desktop + mobile; tier teaser + 3 existing workshops appear in the right buckets; both redirects work; mobile menu lists "Experiences" only; mobile Sign in tappable at top-right (46x48 hit area).
+
 See `/app/memory/test_credentials.md`

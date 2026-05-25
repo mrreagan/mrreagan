@@ -75,6 +75,8 @@ class WorkshopCreate(BaseModel):
     faq: List[dict] = []
     check_in_code: Optional[str] = None  # auto-generated server-side if omitted
     status: Literal["draft", "upcoming", "in_progress", "completed", "cancelled"] = "upcoming"
+    track: Optional[Literal["foundations", "practice", "living_the_work"]] = None
+    is_foundation: bool = False
 
 
 class Workshop(WorkshopCreate):
@@ -101,6 +103,8 @@ class WorkshopUpdate(BaseModel):
     faq: Optional[List[dict]] = None
     check_in_code: Optional[str] = None
     status: Optional[str] = None
+    track: Optional[Literal["foundations", "practice", "living_the_work"]] = None
+    is_foundation: Optional[bool] = None
 
 
 # ============ REGISTRATIONS ============

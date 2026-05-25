@@ -21,6 +21,8 @@ const EMPTY = {
   image_url: "",
   materials_included: "",
   status: "upcoming",
+  track: "",
+  is_foundation: false,
 };
 
 function toIso(local) {
@@ -63,6 +65,8 @@ function buildWorkshopPayload(form, initial, currentUser, isFacilitator) {
       .filter(Boolean),
     faq: initial?.faq || [],
     status: form.status,
+    track: form.track || null,
+    is_foundation: Boolean(form.is_foundation),
   };
 }
 
@@ -238,6 +242,41 @@ export default function WorkshopFormDrawer({ open, initial, facilitators, curren
               <option value="completed">Completed</option>
             </select>
           </label>
+
+          <div className="col-span-2 rounded-lg border border-[#E5E1D8] p-4 bg-[#FAF8F5]">
+            <p className="label !mt-0 mb-3 text-[#C9A961]">Foundation library tagging</p>
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(form.is_foundation)}
+                onChange={(e) => update("is_foundation", e.target.checked)}
+                className="mt-1"
+                data-testid="ws-form-is-foundation"
+              />
+              <span>
+                <span className="font-medium">Mark as Foundation IP workshop</span>
+                <span className="block text-xs text-[#5C6B6B] mt-0.5">
+                  Foundation workshops appear in the three-tier framework on the Experiences page. Untagged
+                  workshops appear in the &quot;Community workshops&quot; bucket below.
+                </span>
+              </span>
+            </label>
+            <label className="block text-xs uppercase tracking-wider text-[#5C6B6B] mt-4">
+              Tier (only used when Foundation IP is checked)
+              <select
+                className="input-field mt-1"
+                value={form.track || ""}
+                onChange={(e) => update("track", e.target.value)}
+                data-testid="ws-form-track"
+                disabled={!form.is_foundation}
+              >
+                <option value="">— None —</option>
+                <option value="foundations">01 · Foundations (on-ramp immersion)</option>
+                <option value="practice">02 · Practice (skill labs for graduates)</option>
+                <option value="living_the_work">03 · Living the Work (community circles)</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {isEdit && initial?.check_in_code && (
