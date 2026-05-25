@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { Sparkles, Wallet, Plus, RefreshCw, AlertTriangle, LogIn } from "lucide-react";
 import api from "../lib/api";
+import { useAuth } from "../contexts/AuthContext";
 
 const STORE_KEY_AUTO = "ai_wallet_auto_recharge_v1";
 
 export default function AiWallet() {
+  const { user, loading: authLoading, logout, refreshUser } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
-  const [loadError, setLoadError] = useState(null); // { kind: "unavailable" | "auth" | "generic", message: string }
+  const [loadError, setLoadError] = useState(null); // { kind, message }
   const [busy, setBusy] = useState(false);
   const [pack, setPack] = useState(25);
   const [auto, setAuto] = useState({ enabled: false, threshold_usd: 5, amount_usd: 25 });
@@ -32,9 +36,16 @@ export default function AiWallet() {
             "AI Wallet isn’t available on this environment yet. If you’re viewing production, the latest backend may not be deployed — please redeploy or contact an admin.",
         });
       } else if (status === 401 || status === 403) {
+        // Re-verify with AuthContext before declaring a session-expired loop.
+        // If AuthContext STILL thinks the user is signed in, this is NOT a
+        // session issue — it's a backend/policy issue we shouldn't pretend
+        // to fix by bouncing them through /login.
+        await refreshUser();
+        // If the auth context still has a user after refresh, treat as backend error.
         setLoadError({
-          kind: "auth",
-          message: "Your session has expired. Please sign in again to view your AI Wallet.",
+          kind: "auth_unclear",
+          message:
+            "We couldn’t load your AI Wallet. If you’re signed in everywhere else, this is a temporary glitch — try again. If it persists, sign out and sign back in.",
         });
       } else {
         setLoadError({
@@ -46,7 +57,23 @@ export default function AiWallet() {
       }
     }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    // Wait for AuthContext to resolve before hitting the wallet endpoint —
+    // this prevents an early 401 race during page load.
+    if (authLoading) return;
+    if (!user) {
+      // Genuinely not signed in. Send them to login with a return path.
+      navigate("/login?next=/dashboard/ai-wallet", { replace: true });
+      return;
+    }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user]);
+
+  const handleHardSignOut = async () => {
+    await logout();
+    navigate("/login?next=/dashboard/ai-wallet", { replace: true });
+  };
 
   const topup = async () => {
     setBusy(true);
@@ -81,8 +108,7 @@ export default function AiWallet() {
   };
 
   if (loadError) {
-    const Icon = loadError.kind === "auth" ? LogIn : AlertTriangle;
-    const isAuth = loadError.kind === "auth";
+    const isAuthUnclear = loadError.kind === "auth_unclear";
     return (
       <div className="container-page py-12" data-testid="ai-wallet-error">
         <span className="label">Dashboard · AI Wallet</span>
@@ -92,22 +118,21 @@ export default function AiWallet() {
         <div className="divider-flame" />
         <div className="card p-6 max-w-2xl" data-testid={`ai-wallet-error-${loadError.kind}`}>
           <div className="flex items-start gap-3">
-            <Icon size={20} strokeWidth={1.4} className="text-[#9E3C3C] mt-0.5" />
+            <AlertTriangle size={20} strokeWidth={1.4} className="text-[#9E3C3C] mt-0.5" />
             <div>
               <p className="font-serif text-lg">
                 {loadError.kind === "unavailable" && "AI Wallet not yet available"}
-                {loadError.kind === "auth" && "Session expired"}
+                {loadError.kind === "auth_unclear" && "Couldn’t load AI Wallet"}
                 {loadError.kind === "generic" && "Something went wrong"}
               </p>
               <p className="text-sm text-[#5C6B6B] mt-1">{loadError.message}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                {isAuth ? (
-                  <a href="/login" className="btn-primary text-xs" data-testid="ai-wallet-signin-btn">
-                    Sign in again
-                  </a>
-                ) : (
-                  <button onClick={load} className="btn-primary text-xs" data-testid="ai-wallet-retry-btn">
-                    Try again
+                <button onClick={load} className="btn-primary text-xs" data-testid="ai-wallet-retry-btn">
+                  Try again
+                </button>
+                {isAuthUnclear && (
+                  <button onClick={handleHardSignOut} className="btn-outline text-xs inline-flex items-center gap-1" data-testid="ai-wallet-resignin-btn">
+                    <LogIn size={11} strokeWidth={1.6} /> Sign out & sign back in
                   </button>
                 )}
                 <a href="/ai" className="btn-outline text-xs" data-testid="ai-wallet-learn-btn">
@@ -121,7 +146,7 @@ export default function AiWallet() {
     );
   }
 
-  if (!data) return <p className="container-page py-12 text-sm text-[#5C6B6B]">Loading wallet…</p>;
+  if (authLoading || !data) return <p className="container-page py-12 text-sm text-[#5C6B6B]">Loading wallet…</p>;
   const w = data.wallet;
   const packs = data.topup_packs_usd || [10, 25, 50, 100];
 

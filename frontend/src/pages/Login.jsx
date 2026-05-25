@@ -18,7 +18,8 @@ export default function Login() {
     try {
       await login(email, password);
       toast.success("Welcome back");
-      const dest = location.state?.from || "/dashboard";
+      const next = new URLSearchParams(location.search).get("next");
+      const dest = next || location.state?.from || "/dashboard";
       navigate(dest);
     } catch (err) {
       toast.error(err.response?.data?.detail || "Login failed");

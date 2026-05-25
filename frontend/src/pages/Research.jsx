@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
-import { Microscope, BookOpen, Sparkles, ExternalLink as LinkIcon, Search, Clock } from "lucide-react";
+import { Microscope, BookOpen, Sparkles, ExternalLink as LinkIcon, Search, Clock, FlaskConical } from "lucide-react";
 import ShareButton from "../components/ShareButton";
+import ResearchAIPanel from "../components/ResearchAIPanel";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Research() {
+  const { user } = useAuth();
   const [artifacts, setArtifacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -30,7 +34,50 @@ export default function Research() {
         Peer-reviewed papers, practitioner briefs, and field reports from our research partners on attachment, relational repair, and family systems.
       </p>
 
-      <div className="mt-6 max-w-md relative">
+      {/* ------ Research Collaborator AI banner — distinct from the floating Concierge ------ */}
+      <section
+        className="mt-8 rounded-2xl border-2 border-[#1F3A3A] bg-[#0F2424] text-[#FAF8F5] p-6 md:p-8"
+        data-testid="research-ai-banner"
+      >
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 text-[#C9A961]">
+              <FlaskConical size={16} strokeWidth={1.5} />
+              <span className="label !mt-0 text-[#C9A961]">Research Collaborator</span>
+            </div>
+            <h2 className="font-serif text-2xl md:text-3xl mt-3 leading-tight !text-[#FAF8F5]">
+              A peer-level research collaborator for everyone, not just our partners.
+            </h2>
+            <p className="text-sm text-[#FAF8F5]/70 mt-3 leading-relaxed">
+              Synthesize literature, map the research landscape, generate research questions, critique
+              a draft’s methodology, summarize notes, and polish prose — backed by Claude Sonnet 4.5
+              and shaped by Birthright’s attachment-and-family-systems posture. Open to any signed-in
+              member; billed at 1× passthrough from your AI Wallet.
+            </p>
+          </div>
+          <div className="shrink-0">
+            {user ? (
+              <button
+                onClick={() => setAiOpen(true)}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-[#C9A961] text-[#0F2424] font-semibold text-sm hover:bg-[#D4B677] transition"
+                data-testid="research-ai-open-btn"
+              >
+                <FlaskConical size={14} strokeWidth={2} /> Open the Collaborator
+              </button>
+            ) : (
+              <Link
+                to="/login?next=/research"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-[#C9A961] text-[#0F2424] font-semibold text-sm hover:bg-[#D4B677] transition"
+                data-testid="research-ai-signin-btn"
+              >
+                Sign in to use it →
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-10 max-w-md relative">
         <Search size={14} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5C6B6B]" />
         <input
           value={q}
@@ -66,6 +113,9 @@ export default function Research() {
           </div>
         </section>
       )}
+
+      {/* Inline Research Collaborator panel (drawer, but for everyone now) */}
+      <ResearchAIPanel open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
   );
 }

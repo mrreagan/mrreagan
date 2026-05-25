@@ -44,15 +44,16 @@ FEATURE = "research_collab"
 router = APIRouter(prefix="/research-collab", tags=["research-collaborator"])
 
 
-async def _require_research_partner(db, user: dict) -> dict:
+async def _require_research_partner(db, user: dict) -> dict | None:
+    """Phase 6C.4 (revised May 28, 2026): Research Collaborator is open to ALL
+    signed-in members, not just formal research partners. The function name is
+    preserved so we don't churn callers; it now returns the partner profile if
+    one exists, else None, but never raises. Access is implicitly gated by the
+    `Depends(get_current_user)` on each endpoint.
+    """
     profile = await db.partner_profiles.find_one(
         {"user_id": user["id"], "partner_type": "research", "status": "active"}
     )
-    if not profile:
-        raise HTTPException(
-            status_code=403,
-            detail="Only active research partners can use the AI Research Collaborator",
-        )
     return profile
 
 

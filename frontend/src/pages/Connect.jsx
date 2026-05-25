@@ -67,6 +67,23 @@ export default function Connect() {
         )}
       </div>
 
+      {/* How Connect works — visible until the user has picked a channel */}
+      {!active && (
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6" data-testid="connect-howto">
+          {[
+            { n: "01", h: "Pick a channel", b: "#announcements for foundation-wide news. #general for open conversation. Private channels (locked) are role-gated to facilitators, partners, or alumni." },
+            { n: "02", h: "Chat in real time", b: "Messages persist and appear instantly for everyone watching. Presence shows who's online. Members can react with text and links; @-mentions and reactions are coming next." },
+            { n: "03", h: "Schedule meetings", b: "Each channel has a Meetings tab. Create a meeting with title, time, and location — anyone in the channel can download the .ics file and add it to Apple/Google/Outlook calendars." },
+          ].map((s) => (
+            <div key={s.n} className="card p-5">
+              <span className="label">{s.n}</span>
+              <p className="font-serif text-lg mt-1">{s.h}</p>
+              <p className="text-xs text-[#5C6B6B] mt-2 leading-relaxed">{s.b}</p>
+            </div>
+          ))}
+        </section>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-12 gap-0 md:gap-4 border border-[#E5E1D8] rounded-2xl overflow-hidden bg-white" style={{ minHeight: "70vh" }}>
         {/* ----- Sidebar ----- */}
         {(sidebarOpen || !active) && (
@@ -76,7 +93,17 @@ export default function Connect() {
               {loadingChannels ? (
                 <p className="text-xs text-[#5C6B6B]">Loading…</p>
               ) : channels.length === 0 ? (
-                <p className="text-xs text-[#5C6B6B]">No channels yet.</p>
+                <div className="text-xs text-[#5C6B6B]" data-testid="connect-no-channels">
+                  <p>No channels yet.</p>
+                  {user?.role === "admin" ? (
+                    <p className="mt-2">Click <strong>+ New channel</strong> above to create one.</p>
+                  ) : (
+                    <p className="mt-2">
+                      Channels are seeded by the backend. If you see this on the live site, the production
+                      deploy may be out of date — please redeploy or check with an admin.
+                    </p>
+                  )}
+                </div>
               ) : (
                 <ul className="space-y-1">
                   {channels.map((c) => (
@@ -107,8 +134,18 @@ export default function Connect() {
               onMeetingChanged={refreshChannels}
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center text-sm text-[#5C6B6B] p-8 text-center">
-              Pick a channel from the sidebar to start chatting.
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-sm text-[#5C6B6B] p-8 text-center">
+              <Hash size={32} strokeWidth={1.2} className="text-[#C9A961]" />
+              <p>Pick a channel from the sidebar to start chatting.</p>
+              {channels.length > 0 && (
+                <button
+                  onClick={() => setActive(channels[0].id)}
+                  className="btn-primary text-xs"
+                  data-testid="connect-jump-to-first"
+                >
+                  Jump into #{channels[0].slug}
+                </button>
+              )}
             </div>
           )}
         </section>

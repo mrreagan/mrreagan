@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, X, ClipboardCheck, Telescope, Map as MapIcon, HelpCircle, ScrollText, FileText, Tag, Wand2 } from "lucide-react";
+import { Sparkles, X, ClipboardCheck, Telescope, Map as MapIcon, HelpCircle, ScrollText, FileText, Tag, Wand2, FlaskConical } from "lucide-react";
 import api from "../lib/api";
 import AiOutOfFundsCard, { AiBalancePill } from "./AiOutOfFundsCard";
 
@@ -52,25 +52,25 @@ export default function ResearchAIPanel({ open, onClose, onPickResult }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex" data-testid="research-ai-panel">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="ml-auto relative bg-[#FAF8F5] w-full sm:w-[600px] h-full shadow-2xl flex flex-col">
-        <header className="px-5 py-4 border-b border-[#E5E1D8] bg-white">
+    <div className="fixed inset-0 z-[60] flex" data-testid="research-ai-panel">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="ml-auto relative bg-[#0F2424] text-[#FAF8F5] w-full sm:w-[640px] h-full shadow-2xl flex flex-col">
+        <header className="px-5 py-4 border-b border-[#1F3A3A] bg-[#0A1A1A]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles size={16} strokeWidth={1.5} className="text-[#C9A961]" />
-              <h2 className="font-serif text-lg">AI Research Collaborator</h2>
+              <FlaskConical size={16} strokeWidth={1.5} className="text-[#C9A961]" />
+              <h2 className="font-serif text-lg !text-[#FAF8F5]">Research Collaborator</h2>
             </div>
             <div className="flex items-center gap-2">
               {balance != null && (
                 <AiBalancePill balance={balance} onTopup={() => { onClose(); navigate("/dashboard/ai-wallet"); }} />
               )}
-              <button onClick={onClose} aria-label="Close" data-testid="research-ai-close" className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-[#E5E1D8] bg-white hover:bg-[#F4F1EA]">
+              <button onClick={onClose} aria-label="Close" data-testid="research-ai-close" className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-[#1F3A3A] bg-[#1A2424] text-[#FAF8F5] hover:bg-[#243333]">
                 <X size={13} strokeWidth={1.8} /> Close
               </button>
             </div>
           </div>
-          <p className="text-xs text-[#5C6B6B] mt-1">
+          <p className="text-xs text-[#FAF8F5]/60 mt-1">
             A peer collaborator for synthesis, landscape mapping, methodological critique, and drafting.
             Billed at 1× passthrough from your AI Wallet.
           </p>
@@ -88,7 +88,7 @@ export default function ResearchAIPanel({ open, onClose, onPickResult }) {
                       key={t.v}
                       onClick={() => setTab(t.v)}
                       className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-medium border transition inline-flex items-center gap-1 ${
-                        tab === t.v ? "bg-[#476B6B] text-white border-[#476B6B]" : "bg-white border-[#E5E1D8] hover:border-[#476B6B]"
+                        tab === t.v ? "bg-[#C9A961] text-[#0F2424] border-[#C9A961]" : "bg-[#1A2424] border-[#1F3A3A] text-[#FAF8F5] hover:border-[#C9A961]"
                       }`}
                       data-testid={`research-ai-tab-${t.v}`}
                     >
@@ -101,7 +101,7 @@ export default function ResearchAIPanel({ open, onClose, onPickResult }) {
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-5 bg-[#FAF8F5] text-[#1A2424]">
           {outOfFunds && <AiOutOfFundsCard balance={balance} minNeeded={outOfFunds.min} onClose={onClose} />}
           {tab === "synthesize" && <SynthesizePane onErr={handleErr} onPickResult={onPickResult} />}
           {tab === "landscape" && <LandscapePane onErr={handleErr} />}
