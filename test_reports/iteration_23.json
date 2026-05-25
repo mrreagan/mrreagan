@@ -1,0 +1,41 @@
+{
+  "summary": "Iter 23 v1.11.0 Step 10 — Refund/clawback cascade + Agreement v2 gate — 23/23 NEW backend tests PASS in test_iter23_refunds_agreement.py (and iter22 disputes regression 34/34 still passes; total 57/57). Verified end-to-end: (a) Agreement v2.0 published as active via runtime_seed (GET /api/legal/indemnification/active returns 2.0; admin versions list shows v1.0 active=false, v2.0 active=true). (b) Agreement gate enforced via utils/agreement_gate.require_active_agreement — unsigned demo gets HTTP 409 with structured detail {code:'agreement_required', active_version:'2.0', active_version_id:...} on POST /api/dm/threads and POST /api/subscriptions/checkout; non-gated endpoints (GET /api/subscriptions/me, POST /api/disputes) work fine without signing. (c) After POST /api/legal/indemnification/sign succeeds, the same POST /api/dm/threads returns 200 and POST /api/subscriptions/checkout no longer returns 409 (now returns plan-not-found error as expected). (d) POST /api/admin/refunds rejects unknown txn (400 'not found'), rejects already-refunded txn (400 'already refunded'), and is admin-only (demo → 403). (e) Workshop cascade verified at DB layer: registrations.status='cancelled', workshops.spots_left incremented +1, payment_transactions.payment_status='refunded' + refund_result populated. (f) Subscription cascade: partner_subscriptions.status='revoked' + expires_at set. (g) Featured slot: partner_profiles.featured_until pushed to now (verified non-2099 timestamp). (h) Research promotion: research_artifacts.is_promoted=false. (i) Order/sponsor/donation cascades all set status='refunded'. (j) Clawback: earned referral_payouts and partner_off_site_credits tied to the refunded session_id → status='reversed' + reverse_reason='refund cascade'; paid referral → enqueued in clawback_pending with status='pending_recovery'. (k) GET /api/admin/clawbacks enriches partner_name + partner_email correctly. (l) POST /api/admin/clawbacks/{id}/resolve flips status='recovered' (or written_off), rejects double-resolve (400), rejects note<3 chars (422). (m) GET /api/admin/refunds returns cascades sorted by created_at desc; ?txn_type=workshop filter is honored; GET /api/admin/refunds/{cascade_id} returns detail and 404 on missing. (n) Dispute→refund integration: POST /admin/disputes/{id}/resolve with trigger_refund_cascade=true requires d.transaction_id (400 if absent), rejects outcome='dismissed' (400), and on success fires the cascade, persists resolution.refund_cascade_id, pushes a 'resolved' event with refund_cascade_id, and the cascade row is recorded with dispute_id back-reference. (o) Side-effect of cascade verified in the dispute path (order.status='refunded' after dispute resolution).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter23_refunds_agreement.py",
+    "/app/test_reports/pytest/iter23_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "utils/refund_cascade.py: _reverse_side_effects for txn_type='research_promotion' resets is_promoted=False but the docstring also mentions resetting 'tier' — the code does not touch a tier field. Confirm if research_artifacts has a tier column that should also be cleared (low priority — currently no tier in cascade summary or models that I could see).",
+    "utils/refund_cascade.py: order/sponsor/donation branches do NOT short-circuit when the underlying record is already status='refunded' (only workshop and order have the guard, and even order's guard skips writing summary['order_id'] in that case but sponsor/donation overwrite refunded_at on re-runs). Combined with the txn-level 'already refunded' guard this is currently unreachable, but if you ever allow partial re-refunds, sponsor/donation should mirror the workshop/order guards.",
+    "utils/refund_cascade.py: workshop refund increments spots_left by 1 unconditionally — this assumes registrations always consume exactly 1 seat. If you ever add multi-seat registrations, store seats_purchased on the registration and $inc by that value.",
+    "routers/refunds.py: GET /api/admin/clawbacks enriches users with a single bulk find — good. However, list_clawbacks uses to_list(500) without pagination; consider a cursor or skip/limit when partner_off_site_credits grow.",
+    "routers/disputes.py admin_resolve: cascade is fired BEFORE the dispute status flip; if the cascade succeeds and the subsequent disputes.update_one fails, you'd have a cascade row with dispute_id pointing to a still-open dispute. Acceptable for now but worth a try/except + rollback note in a future hardening pass.",
+    "utils/agreement_gate.py: 'fail-open' behavior when no active version exists is intentional and called out in the docstring — good. Test 'GET endpoints not gated' passed because the gate is only attached to specific POST endpoints (DM threads + sub checkout) — correct per spec.",
+    "Spec said previous v1.0 should be inactive after v2 publish — verified. ensure_agreement_v2_published is idempotent (running twice produced no duplicate v2 row in this iteration's tests; v2 was already seeded).",
+    "models.RefundCascadeRequest.reason min_length=5 — short reasons like 'TEST' would be rejected. Acceptable, but consider exposing this constraint in the frontend tooltip when admins fill the refund modal.",
+    "models.ClawbackResolve.note min_length=3 is a bit lenient for an audit-trail field; consider bumping to 10 to match DisputeStatusUpdate.note (which is 3) / DisputeResolution.resolution_note (which is 10). Not a bug — consistency comment only."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter23_refunds_agreement.py"
+  ],
+  "success_rate": {
+    "backend": "100% (23/23 iter23 + 34/34 iter22 regression = 57/57)",
+    "frontend": "not tested (backend-only iteration per request)"
+  },
+  "test_credentials": "admin@birthright.org / birthright2026 (admin, signed v2.0 prior + via test_sign_then_dm_open_succeeds); demo@birthright.org / birthright2026 (NOT signed v2.0 at start of run; gets signed during TestAgreementSignUnblocks; fixture wipes demo's v2 signature at module-setup so the gate-block tests are deterministic across re-runs).",
+  "seed_data_creation": "Module fixture wipes demo's existing v2 signature at start and TEST_-prefixed synthetic data at end (payment_transactions with session_id ^sess_TEST_*, refund_cascades reason ^TEST_*, clawback_pending with session_id ^sess_TEST_*). Each side-effect test inserts its own registration/sub/profile/artifact/order/sponsor/donation row with payment_session_id matching the synthetic txn, then deletes it. Workshop spots_left is restored to its original value after the workshop refund test. Featured/research artifacts are deleted if test-created. NOTE: demo is left in a signed-v2 state after this run — re-running the suite is safe because the fixture wipes the signature on module setup.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All Step 10 cascade endpoints + Agreement v2 gate verified end-to-end. The fixture in test_iter23_refunds_agreement.py wipes demo's v2 signature on module setup so the 'gate blocks' tests are deterministic. If you re-run iter22 + iter23 in the same session, run iter23 LAST because TestAgreementSignUnblocks signs demo's v2 (which is what we want — iter22 disputes don't care). Real Stripe refund calls are skipped via skip_stripe=True for all synthetic txns. The cascade dispute integration test reuses session_id=sess_TEST_dispute_* and creates a matching order row. The runtime_seed.ensure_agreement_v2_published is idempotent and v2 was already seeded at server startup, so no extra steps needed. No code changes were made — only the test file was created.",
+  "rca_of_the_issue": "Not applicable — all Step 10 features land per spec. Initial 2 test failures were a test-fixture issue: disputes.py file_dispute validates that the transaction_id belongs to the filer; my synthetic txn was created without user_id, so the disputes endpoint returned 404 'Transaction not found or not yours'. Fix: pass user_id=demo_user['id'] into _mk_txn for the 2 dispute-integration tests. Re-ran → all 3 pass."
+}

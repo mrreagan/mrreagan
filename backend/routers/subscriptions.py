@@ -25,6 +25,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from auth_utils import get_current_user, require_roles
+from utils.agreement_gate import require_active_agreement
 from emergentintegrations.payments.stripe.checkout import (
     CheckoutSessionRequest,
     CheckoutSessionResponse,
@@ -73,7 +74,7 @@ async def list_plans(partner_type: Optional[str] = None):
 
 @router.post("/checkout")
 async def checkout_subscription(
-    data: SubscriptionCheckoutRequest, request: Request, user: dict = Depends(get_current_user)
+    data: SubscriptionCheckoutRequest, request: Request, user: dict = Depends(require_active_agreement)
 ):
     """Create a Stripe checkout for the chosen plan. The caller MUST have an
     approved partner profile of the plan's partner_type."""

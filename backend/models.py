@@ -884,6 +884,25 @@ class DisputeResolution(BaseModel):
     outcome: Literal["dismissed", "upheld", "partial"]
     resolution_note: str = Field(min_length=10, max_length=8000)
     financial_credit_usd: Optional[float] = Field(default=None, ge=0)
+    trigger_refund_cascade: bool = False
+
+
+class RefundCascadeRequest(BaseModel):
+    """Admin-initiated refund. Triggers full cascade (Stripe + side-effects + clawback)."""
+    txn_id: str = Field(min_length=1, max_length=120)
+    reason: str = Field(min_length=5, max_length=2000)
+    skip_stripe: bool = False
+
+
+class ClawbackResolve(BaseModel):
+    """Mark a clawback_pending row as resolved (recovered or written off)."""
+    status: Literal["recovered", "written_off"]
+    note: str = Field(min_length=3, max_length=2000)
+
+
+class AgreementSignGate(BaseModel):
+    """Check + force whether the active agreement requires fresh signing."""
+    force_resign: bool = False
 
 
 # ============ END Phase 6C.3 ============

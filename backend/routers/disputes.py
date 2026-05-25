@@ -234,23 +234,44 @@ async def admin_resolve(
     if d.get("status") in ("resolved", "dismissed"):
         raise HTTPException(status_code=400, detail=f"Dispute is already {d['status']}")
     final_status = "dismissed" if data.outcome == "dismissed" else "resolved"
+
+    # Optionally fire refund cascade against the linked transaction.
+    cascade_summary = None
+    if data.trigger_refund_cascade:
+        if not d.get("transaction_id"):
+            raise HTTPException(status_code=400, detail="Cannot trigger refund cascade — dispute has no linked transaction")
+        if data.outcome == "dismissed":
+            raise HTTPException(status_code=400, detail="Cannot refund a dismissed dispute")
+        from utils.refund_cascade import run_refund_cascade
+        try:
+            cascade_summary = await run_refund_cascade(
+                db, txn_id=d["transaction_id"], actor=user,
+                reason=f"Dispute resolution: {data.resolution_note.strip()[:200]}",
+                dispute_id=dispute_id,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Refund cascade failed: {e}")
+
     resolution = {
         "outcome": data.outcome,
         "note": data.resolution_note.strip(),
         "financial_credit_usd": data.financial_credit_usd,
         "resolved_by": user["id"],
         "resolved_at": now_iso(),
+        "refund_cascade_id": (cascade_summary or {}).get("id"),
     }
     event = {"at": now_iso(), "by": user["id"], "type": "resolved",
              "from": d["status"], "to": final_status,
-             "outcome": data.outcome, "note": data.resolution_note.strip()}
+             "outcome": data.outcome, "note": data.resolution_note.strip(),
+             "refund_cascade_id": (cascade_summary or {}).get("id")}
     await db.disputes.update_one(
         {"id": dispute_id},
         {"$set": {"status": final_status, "resolution": resolution, "updated_at": now_iso()},
          "$push": {"events": event}},
     )
     await log_action(db, user, "dispute.resolve", target_type="dispute", target_id=dispute_id,
-                    metadata={"outcome": data.outcome, "financial_credit_usd": data.financial_credit_usd})
+                    metadata={"outcome": data.outcome, "financial_credit_usd": data.financial_credit_usd,
+                              "refund_cascade_id": (cascade_summary or {}).get("id")})
     return await _enrich_dispute(db, await db.disputes.find_one({"id": dispute_id}, {"_id": 0}))
 
 

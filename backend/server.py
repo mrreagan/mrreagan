@@ -101,6 +101,10 @@ from routers.disputes import (
     admin_router as disputes_admin_router,
     ombudsman_router as ombudsman_router,
 )
+from routers.refunds import (
+    admin_router as refunds_admin_router,
+    clawback_router as clawback_router,
+)
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -156,6 +160,8 @@ api_router.include_router(disputes_router)
 api_router.include_router(disputes_my_router)
 api_router.include_router(disputes_admin_router)
 api_router.include_router(ombudsman_router)
+api_router.include_router(refunds_admin_router)
+api_router.include_router(clawback_router)
 
 
 @api_router.post("/webhook/stripe")
@@ -186,13 +192,14 @@ async def startup_event() -> None:
     except Exception as e:
         logger.error(f"Seeding error: {e}")
     try:
-        from runtime_seed import ensure_catalog_seeded, repair_known_broken_images, backfill_partner_economy_fields, ensure_foundation_roles_seeded, ensure_sample_partners_seeded, ensure_sample_research_artifacts
+        from runtime_seed import ensure_catalog_seeded, repair_known_broken_images, backfill_partner_economy_fields, ensure_foundation_roles_seeded, ensure_sample_partners_seeded, ensure_sample_research_artifacts, ensure_agreement_v2_published
         await ensure_catalog_seeded(db)
         await repair_known_broken_images(db)
         await backfill_partner_economy_fields(db)
         await ensure_foundation_roles_seeded(db)
         await ensure_sample_partners_seeded(db)
         await ensure_sample_research_artifacts(db)
+        await ensure_agreement_v2_published(db)
     except Exception as e:
         logger.error(f"Runtime seed/repair error: {e}")
     try:

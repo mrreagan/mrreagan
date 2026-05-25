@@ -49,6 +49,7 @@ from models import (
     DmAcceptsToggle, DmMessageCreate, DmThreadCreate, DmThreadFlag,
     gen_id, now_iso,
 )
+from utils.agreement_gate import require_active_agreement
 from utils.audit import log_action
 from utils.ws_manager import Connection, dm_registry
 
@@ -135,7 +136,7 @@ async def _enrich_thread(db, thread: dict, viewer_id: str) -> dict:
 # ============ THREADS ============
 
 @router.post("/threads")
-async def open_thread(data: DmThreadCreate, user: dict = Depends(get_current_user)):
+async def open_thread(data: DmThreadCreate, user: dict = Depends(require_active_agreement)):
     from database import db
     if data.recipient_id == user["id"]:
         raise HTTPException(status_code=400, detail="Cannot DM yourself")

@@ -535,3 +535,50 @@ async def ensure_sample_research_artifacts(db) -> int:
     return inserted
 
 
+
+
+AGREEMENT_V2_BODY = """# Universal Indemnification & Hold-Harmless Agreement (v2.0)
+
+**Updated May 25, 2026 — Birthright Foundation will replace this with counsel-reviewed copy before launch.**
+
+By accepting this agreement, you acknowledge that:
+
+1. **Voluntary participation.** Workshops, materials, and partner services are educational in nature. You participate at your own discretion.
+2. **No professional advice.** Content is not a substitute for licensed mental-health, medical, or legal advice.
+3. **Hold harmless.** You agree not to hold Birthright Foundation, its governing board, facilitators, vendors, research partners, or community partners liable for outcomes arising from your participation, except in cases of gross negligence or willful misconduct.
+4. **Respectful conduct.** You agree to abide by the community standards and to engage facilitators, fellow participants, and partners with respect. Boundary violations may be reported to the ombudsman.
+5. **Dispute resolution.** Disputes are first reviewed by the Birthright ombudsman. Resolution may include refunds via the platform's clawback cascade.
+6. **Refund cascade (v2 addition).** When a payment is refunded via dispute resolution or admin action, derived partner credits are reversed automatically. Already-paid credits are queued for recovery; you agree to good-faith cooperation in any such recovery.
+7. **Data & privacy.** Personal information you provide is governed by the Birthright privacy policy. Direct messages remain private unless flagged for ombudsman review.
+8. **Versioning.** This agreement is versioned. Substantive changes require re-signing before further partner-facing activity.
+"""
+
+
+async def ensure_agreement_v2_published(db) -> bool:
+    """Publish indemnification v2.0 if not already present. Idempotent. v1.0
+    remains in the version history; v2.0 becomes active. Existing v1.0
+    signatures are NOT auto-migrated — users must re-sign v2.
+    """
+    existing = await db.indemnification_versions.find_one({"version": "2.0"})
+    if existing:
+        return False
+    # Deactivate any prior versions
+    await db.indemnification_versions.update_many({"active": True}, {"$set": {"active": False}})
+    v2 = {
+        "id": gen_id(),
+        "version": "2.0",
+        "body": AGREEMENT_V2_BODY,
+        "summary_of_changes": (
+            "Adds explicit dispute-resolution / ombudsman language, the refund "
+            "cascade clause, DM privacy reference, and good-faith clawback "
+            "cooperation. Prior signatures (v1.0) do NOT carry over — partners "
+            "and active workshop participants must re-sign on next session."
+        ),
+        "active": True,
+        "created_by": "system",
+        "created_at": now_iso(),
+        "activated_at": now_iso(),
+    }
+    await db.indemnification_versions.insert_one(dict(v2))
+    logger.info("Published indemnification agreement v2.0 as active")
+    return True
