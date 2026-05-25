@@ -458,6 +458,18 @@ async def approve_application(
         metadata={"partner_type": app["partner_type"], "profile_id": profile_doc["id"], "founding_granted": founding_granted},
     )
     profile_doc = await db.partner_profiles.find_one({"id": profile_doc["id"]}, {"_id": 0, "webhook_secret": 0})
+
+    # Grant a small AI welcome credit so the partner can immediately try the
+    # Research Collaborator / Vendor PDM tools without first topping up.
+    try:
+        from utils.ai_billing import credit_wallet
+        await credit_wallet(
+            db, applicant["id"], 1.00,
+            source="welcome_credit", ref=f"welcome_{profile_doc['id']}",
+        )
+    except Exception as e:
+        logger.error(f"AI welcome credit grant failed for {applicant['id']}: {e}")
+
     return {"application_status": "approved", "profile": profile_doc, "founding_granted": founding_granted}
 
 

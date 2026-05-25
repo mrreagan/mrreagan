@@ -18,7 +18,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Sparkles, Send, X, ChevronDown, AlertCircle, CheckCircle2, Loader2, History } from "lucide-react";
+import { Sparkles, Send, X, ChevronDown, AlertCircle, CheckCircle2, Loader2, History, Wallet } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -228,8 +228,17 @@ export default function AssistantWidget() {
         }
       }
     } catch (e) {
+      const status = e?.response?.status;
       const detail = formatError(e);
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "system", kind: "error", content: detail }]);
+      if (status === 402) {
+        // Out-of-funds — render an in-panel card with TWO escapes so the user
+        // is never stranded on the assistant view.
+        const m = /min \$([0-9.]+)/i.exec(detail || "");
+        const minNeeded = m ? Number(m[1]) : 0.005;
+        setMessages((m) => [...m, { id: crypto.randomUUID(), role: "system", kind: "out_of_funds", content: detail, minNeeded }]);
+      } else {
+        setMessages((m) => [...m, { id: crypto.randomUUID(), role: "system", kind: "error", content: detail }]);
+      }
     } finally {
       setBusy(false);
     }
@@ -360,11 +369,30 @@ export default function AssistantWidget() {
 }
 
 function MessageBubble({ m, onAccept, onDecline, busy }) {
+  const navigate = useNavigate();
   if (m.role === "user") {
     return (
       <div className="flex justify-end" data-testid={`assistant-msg-user-${m.id}`}>
         <div className="max-w-[85%] px-3 py-2 rounded-2xl bg-[#476B6B] text-white text-sm">
           {m.content}
+        </div>
+      </div>
+    );
+  }
+  if (m.role === "system" && m.kind === "out_of_funds") {
+    return (
+      <div className="rounded-xl border border-[#C9A961] bg-[#FFF8E1] p-3" data-testid={`assistant-out-of-funds-${m.id}`}>
+        <div className="flex items-start gap-2 mb-2">
+          <Wallet size={14} strokeWidth={1.6} className="text-[#8B7128] mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-medium text-[#8B7128] text-sm">AI wallet is low</p>
+            <p className="text-xs text-[#5C6B6B] mt-1">{m.content}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => navigate("/dashboard/ai-wallet")} className="btn-primary text-xs" data-testid="assistant-out-of-funds-topup">
+            Top up now
+          </button>
         </div>
       </div>
     );

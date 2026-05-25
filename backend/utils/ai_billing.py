@@ -114,7 +114,7 @@ async def record_usage(
     db,
     user: dict,
     *,
-    feature: str,            # "concierge" | "research_assistant" | "vendor_pdm"
+    feature: str,            # "concierge" | "research_collab" | "vendor_pdm"
     model: str,
     tokens_in: int = 0,
     tokens_out: int = 0,
@@ -154,6 +154,12 @@ async def record_usage(
             "model": model,
             "created_at": now_iso(),
         })
+        # Fire-and-forget auto-recharge check (won't block the request).
+        try:
+            import asyncio
+            asyncio.create_task(maybe_send_auto_recharge_email(db, user["id"]))
+        except Exception as e:
+            logger.warning("auto-recharge dispatch failed: %s", e)
     event.pop("_id", None)
     return event
 
@@ -172,20 +178,113 @@ async def require_balance(db, user: Optional[dict], *, min_usd: float = 0.01, fe
 
 
 async def try_auto_recharge(db, user: dict, stripe_factory) -> Optional[str]:
-    """If wallet is below threshold and auto-recharge is enabled, queue a Stripe
-    session. Returns the session URL or None.
-
-    Stripe call is opt-in and async — callers can fire-and-forget.
-    """
+    """Deprecated — see maybe_send_auto_recharge_email instead."""
     w = await get_wallet(db, user["id"])
     if not w.get("auto_recharge_enabled"):
         return None
     if (w.get("balance_usd") or 0.0) > (w.get("auto_recharge_threshold_usd") or 0.0):
         return None
-    # Implementation note: actual Stripe checkout creation happens in the router
-    # (which has access to the request object). This helper only signals intent.
     await db.ai_wallets.update_one(
         {"user_id": user["id"]},
         {"$set": {"auto_recharge_last_triggered_at": now_iso()}},
     )
     return "needs_checkout"
+
+
+async def maybe_send_auto_recharge_email(db, user_id: str) -> Optional[str]:
+    """Background helper invoked after a usage debit. If the user has
+    auto-recharge enabled AND balance dipped below threshold AND we haven't
+    sent a top-up link in the last 4 hours, build a Stripe Checkout session
+    and email the partner a one-click "Top up now" link.
+
+    Returns the session URL if one was created, else None.
+    """
+    from datetime import datetime, timezone, timedelta
+    w = await db.ai_wallets.find_one({"user_id": user_id}, {"_id": 0})
+    if not w or not w.get("auto_recharge_enabled"):
+        return None
+    threshold = float(w.get("auto_recharge_threshold_usd") or 5.0)
+    if (w.get("balance_usd") or 0.0) > threshold:
+        return None
+    last = w.get("auto_recharge_last_email_at")
+    if last:
+        try:
+            last_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+            if (datetime.now(timezone.utc) - last_dt) < timedelta(hours=4):
+                return None
+        except Exception:
+            pass
+
+    user = await db.users.find_one({"id": user_id})
+    if not user or not user.get("email"):
+        return None
+    amount = float(w.get("auto_recharge_amount_usd") or 25.0)
+
+    # Build a Stripe Checkout session via the existing emergentintegrations SDK.
+    # We don't have a request object here so we use the static production URL
+    # baked into env (PUBLIC_APP_URL falls back to the preview origin).
+    try:
+        from emergentintegrations.payments.stripe.checkout import (
+            CheckoutSessionRequest, StripeCheckout,
+        )
+        stripe_key = os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY")
+        origin = os.environ.get("PUBLIC_APP_URL", "https://birthright.live").rstrip("/")
+        webhook_url = f"{origin}/api/webhook/stripe"
+        stripe = StripeCheckout(api_key=stripe_key, webhook_url=webhook_url)
+        metadata = {
+            "type": "ai_wallet_topup",
+            "user_id": user_id,
+            "amount_usd": str(amount),
+            "source": "auto_recharge",
+        }
+        sess = await stripe.create_checkout_session(CheckoutSessionRequest(
+            amount=amount, currency="usd",
+            success_url=f"{origin}/dashboard/ai-wallet?topup=success&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{origin}/dashboard/ai-wallet?topup=cancelled",
+            metadata=metadata,
+        ))
+        await db.payment_transactions.insert_one({
+            "id": gen_id(),
+            "session_id": sess.session_id,
+            "user_id": user_id,
+            "type": "ai_wallet_topup",
+            "amount": amount,
+            "currency": "usd",
+            "metadata": metadata,
+            "payment_status": "initiated",
+            "status": "open",
+            "created_at": now_iso(),
+        })
+    except Exception as e:
+        logger.exception("auto-recharge Stripe session failed: %s", e)
+        return None
+
+    # Email the link via the existing mailer.
+    try:
+        from utils.mailer import send_email
+        await send_email(
+            to=user["email"],
+            subject=f"Your Birthright AI Wallet — top up ${amount:.0f} to continue",
+            html=(
+                f"<p>Hi {user.get('first_name','there')},</p>"
+                f"<p>Your AI Wallet balance is ${float(w.get('balance_usd') or 0):.4f}, "
+                f"below your auto-recharge threshold of ${threshold:.0f}.</p>"
+                f"<p>Click the button below to top up ${amount:.0f} via Stripe and keep "
+                f"your AI features running.</p>"
+                f"<p><a href='{sess.url}' style='display:inline-block;padding:10px 18px;"
+                f"background:#476B6B;color:#FAF8F5;text-decoration:none;border-radius:6px'>"
+                f"Top up ${amount:.0f}</a></p>"
+                f"<p>This link expires in 24 hours.</p>"
+            ),
+            template_name="ai_wallet_auto_recharge",
+            metadata={"user_id": user_id, "amount_usd": amount, "session_id": sess.session_id},
+        )
+    except Exception as e:
+        logger.exception("auto-recharge email send failed: %s", e)
+
+    await db.ai_wallets.update_one(
+        {"user_id": user_id},
+        {"$set": {"auto_recharge_last_email_at": now_iso(),
+                  "auto_recharge_last_session_id": sess.session_id}},
+    )
+    return sess.url

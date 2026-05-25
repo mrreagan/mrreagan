@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { Sparkles, X, ClipboardCheck, Telescope, Map as MapIcon, HelpCircle, ScrollText, FileText, Tag, Wand2 } from "lucide-react";
 import api from "../lib/api";
+import AiOutOfFundsCard, { AiBalancePill } from "./AiOutOfFundsCard";
 
 /**
  * AI Research Collaborator panel — for research partners.
@@ -23,6 +25,30 @@ const TABS = [
 
 export default function ResearchAIPanel({ open, onClose, onPickResult }) {
   const [tab, setTab] = useState("synthesize");
+  const [balance, setBalance] = useState(null);
+  const [outOfFunds, setOutOfFunds] = useState(null); // {min} | null
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!open) return;
+    setOutOfFunds(null);
+    api.get("/ai-wallet/me").then((r) => setBalance(r.data?.wallet?.balance_usd ?? 0)).catch(() => setBalance(null));
+  }, [open]);
+
+  // Shared 402 catcher — every pane calls this on errors. If it's a balance
+  // issue, set the panel-level out-of-funds card (with a back-to-page button)
+  // instead of letting an opaque toast strand the user.
+  const handleErr = (e) => {
+    const status = e?.response?.status;
+    const detail = e?.response?.data?.detail || e?.message || "Failed";
+    if (status === 402) {
+      const m = /min \$([0-9.]+)/i.exec(detail);
+      setOutOfFunds({ min: m ? Number(m[1]) : 0.01 });
+      return;
+    }
+    toast.error(detail);
+  };
+
   if (!open) return null;
 
   return (
@@ -35,9 +61,14 @@ export default function ResearchAIPanel({ open, onClose, onPickResult }) {
               <Sparkles size={16} strokeWidth={1.5} className="text-[#C9A961]" />
               <h2 className="font-serif text-lg">AI Research Collaborator</h2>
             </div>
-            <button onClick={onClose} aria-label="Close" data-testid="research-ai-close">
-              <X size={18} strokeWidth={1.5} />
-            </button>
+            <div className="flex items-center gap-2">
+              {balance != null && (
+                <AiBalancePill balance={balance} onTopup={() => { onClose(); navigate("/dashboard/ai-wallet"); }} />
+              )}
+              <button onClick={onClose} aria-label="Close" data-testid="research-ai-close" className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-[#E5E1D8] bg-white hover:bg-[#F4F1EA]">
+                <X size={13} strokeWidth={1.8} /> Close
+              </button>
+            </div>
           </div>
           <p className="text-xs text-[#5C6B6B] mt-1">
             A peer collaborator for synthesis, landscape mapping, methodological critique, and drafting.
@@ -71,13 +102,14 @@ export default function ResearchAIPanel({ open, onClose, onPickResult }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
-          {tab === "synthesize" && <SynthesizePane onPickResult={onPickResult} />}
-          {tab === "landscape" && <LandscapePane />}
-          {tab === "questions" && <QuestionsPane />}
-          {tab === "critique" && <CritiquePane />}
-          {tab === "summarize" && <SummarizePane onPickResult={onPickResult} />}
-          {tab === "tags" && <TagsPane onPickResult={onPickResult} />}
-          {tab === "polish" && <PolishPane onPickResult={onPickResult} />}
+          {outOfFunds && <AiOutOfFundsCard balance={balance} minNeeded={outOfFunds.min} onClose={onClose} />}
+          {tab === "synthesize" && <SynthesizePane onErr={handleErr} onPickResult={onPickResult} />}
+          {tab === "landscape" && <LandscapePane onErr={handleErr} />}
+          {tab === "questions" && <QuestionsPane onErr={handleErr} />}
+          {tab === "critique" && <CritiquePane onErr={handleErr} />}
+          {tab === "summarize" && <SummarizePane onErr={handleErr} onPickResult={onPickResult} />}
+          {tab === "tags" && <TagsPane onErr={handleErr} onPickResult={onPickResult} />}
+          {tab === "polish" && <PolishPane onErr={handleErr} onPickResult={onPickResult} />}
         </div>
       </div>
     </div>
@@ -100,7 +132,7 @@ function MarkdownPane({ text }) {
 
 // ============ INQUIRY PANES ============
 
-function SynthesizePane({ onPickResult }) {
+function SynthesizePane({ onErr, onPickResult }) {
   const [topic, setTopic] = useState("");
   const [lens, setLens] = useState("");
   const [depth, setDepth] = useState("standard");
@@ -112,7 +144,7 @@ function SynthesizePane({ onPickResult }) {
     try {
       const r = await api.post("/research-collab/synthesize-literature", { topic, lens, depth });
       setOut(r.data.markdown); setCost(r.data.cost_usd);
-    } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+    } catch (e) { onErr(e); }
     finally { setBusy(false); }
   };
   return (
@@ -147,7 +179,7 @@ function SynthesizePane({ onPickResult }) {
   );
 }
 
-function LandscapePane() {
+function LandscapePane({ onErr }) {
   const [topic, setTopic] = useState("");
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState(null);
@@ -157,7 +189,7 @@ function LandscapePane() {
     try {
       const r = await api.post("/research-collab/map-landscape", { topic });
       setData(r.data); setCost(r.data.cost_usd);
-    } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+    } catch (e) { onErr(e); }
     finally { setBusy(false); }
   };
   return (
@@ -194,7 +226,7 @@ function Section({ title, items }) {
   );
 }
 
-function QuestionsPane() {
+function QuestionsPane({ onErr }) {
   const [domain, setDomain] = useState("");
   const [understanding, setUnderstanding] = useState("");
   const [count, setCount] = useState(6);
@@ -206,7 +238,7 @@ function QuestionsPane() {
     try {
       const r = await api.post("/research-collab/generate-questions", { domain, current_understanding: understanding, count: Number(count) });
       setData(r.data); setCost(r.data.cost_usd);
-    } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+    } catch (e) { onErr(e); }
     finally { setBusy(false); }
   };
   return (
@@ -252,7 +284,7 @@ function QuestionsPane() {
   );
 }
 
-function CritiquePane() {
+function CritiquePane({ onErr }) {
   const [text, setText] = useState("");
   const [focus, setFocus] = useState("full");
   const [busy, setBusy] = useState(false);
@@ -263,7 +295,7 @@ function CritiquePane() {
     try {
       const r = await api.post("/research-collab/critique-methodology", { draft_text: text, focus });
       setOut(r.data.markdown); setCost(r.data.cost_usd);
-    } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+    } catch (e) { onErr(e); }
     finally { setBusy(false); }
   };
   return (
@@ -293,7 +325,7 @@ function CritiquePane() {
 
 // ============ DRAFTING PANES ============
 
-function SummarizePane({ onPickResult }) {
+function SummarizePane({ onErr, onPickResult }) {
   const [notes, setNotes] = useState("");
   const [target, setTarget] = useState(180);
   const [busy, setBusy] = useState(false);
@@ -304,7 +336,7 @@ function SummarizePane({ onPickResult }) {
     try {
       const r = await api.post("/research-collab/summarize-notes", { notes, target_words: Number(target) });
       setOut(r.data.summary); setCost(r.data.cost_usd);
-    } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+    } catch (e) { onErr(e); }
     finally { setBusy(false); }
   };
   return (
@@ -337,7 +369,7 @@ function SummarizePane({ onPickResult }) {
   );
 }
 
-function TagsPane({ onPickResult }) {
+function TagsPane({ onErr, onPickResult }) {
   const [title, setTitle] = useState("");
   const [abstract, setAbstract] = useState("");
   const [busy, setBusy] = useState(false);
@@ -348,7 +380,7 @@ function TagsPane({ onPickResult }) {
     try {
       const r = await api.post("/research-collab/suggest-tags", { title, abstract });
       setData(r.data); setCost(r.data.cost_usd);
-    } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+    } catch (e) { onErr(e); }
     finally { setBusy(false); }
   };
   return (
@@ -378,7 +410,7 @@ function TagsPane({ onPickResult }) {
   );
 }
 
-function PolishPane({ onPickResult }) {
+function PolishPane({ onErr, onPickResult }) {
   const [text, setText] = useState("");
   const [style, setStyle] = useState("academic");
   const [busy, setBusy] = useState(false);
@@ -389,7 +421,7 @@ function PolishPane({ onPickResult }) {
     try {
       const r = await api.post("/research-collab/polish-draft", { text, style });
       setOut(r.data.polished); setCost(r.data.cost_usd);
-    } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+    } catch (e) { onErr(e); }
     finally { setBusy(false); }
   };
   return (

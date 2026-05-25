@@ -9,6 +9,27 @@ import api from "../lib/api";
  */
 export default function VendorPDMPanel({ open, onClose, onPickResult }) {
   const [tab, setTab] = useState("desc");
+  const [balance, setBalance] = useState(null);
+  const [outOfFunds, setOutOfFunds] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!open) return;
+    setOutOfFunds(null);
+    api.get("/ai-wallet/me").then((r) => setBalance(r.data?.wallet?.balance_usd ?? 0)).catch(() => setBalance(null));
+  }, [open]);
+
+  const handleErr = (e) => {
+    const status = e?.response?.status;
+    const detail = e?.response?.data?.detail || e?.message || "Failed";
+    if (status === 402) {
+      const m = /min \$([0-9.]+)/i.exec(detail);
+      setOutOfFunds({ min: m ? Number(m[1]) : 0.01 });
+      return;
+    }
+    toast.error(detail);
+  };
+
   return open ? (
     <div className="fixed inset-0 z-50 flex" data-testid="vendor-pdm-panel">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -18,7 +39,14 @@ export default function VendorPDMPanel({ open, onClose, onPickResult }) {
             <Sparkles size={16} strokeWidth={1.5} className="text-[#C9A961]" />
             <h2 className="font-serif text-lg">Product Development AI</h2>
           </div>
-          <button onClick={onClose} aria-label="Close" data-testid="vendor-pdm-close"><X size={18} strokeWidth={1.5} /></button>
+          <div className="flex items-center gap-2">
+            {balance != null && (
+              <AiBalancePill balance={balance} onTopup={() => { onClose(); navigate("/dashboard/ai-wallet"); }} />
+            )}
+            <button onClick={onClose} aria-label="Close" data-testid="vendor-pdm-close" className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-[#E5E1D8] bg-white hover:bg-[#F4F1EA]">
+              <X size={13} strokeWidth={1.8} /> Close
+            </button>
+          </div>
         </header>
         <div className="px-5 pt-3 flex flex-wrap gap-2" data-testid="vendor-pdm-tabs">
           {[
@@ -40,10 +68,11 @@ export default function VendorPDMPanel({ open, onClose, onPickResult }) {
           ))}
         </div>
         <div className="flex-1 overflow-y-auto p-5">
-          {tab === "desc" && <DescPane onPickResult={onPickResult} />}
-          {tab === "price" && <PricePane />}
-          {tab === "blurb" && <BlurbPane onPickResult={onPickResult} />}
-          {tab === "image" && <ImagePane onPickResult={onPickResult} />}
+          {outOfFunds && <AiOutOfFundsCard balance={balance} minNeeded={outOfFunds.min} onClose={onClose} />}
+          {tab === "desc" && <DescPane onErr={handleErr} onPickResult={onPickResult} />}
+          {tab === "price" && <PricePane onErr={handleErr} />}
+          {tab === "blurb" && <BlurbPane onErr={handleErr} onPickResult={onPickResult} />}
+          {tab === "image" && <ImagePane onErr={handleErr} onPickResult={onPickResult} />}
         </div>
       </div>
     </div>
@@ -55,7 +84,7 @@ function CostPill({ cost }) {
   return <span className="text-[10px] uppercase tracking-wider text-[#5C6B6B]" data-testid="cost-pill">billed ${cost.toFixed(4)}</span>;
 }
 
-function DescPane({ onPickResult }) {
+function DescPane({ onErr, onPickResult }) {
   const [brief, setBrief] = useState("");
   const [category, setCategory] = useState("merch");
   const [busy, setBusy] = useState(false);
@@ -67,7 +96,7 @@ function DescPane({ onPickResult }) {
       const r = await api.post("/vendor-ai/write-description", { brief, category, target_words: 120 });
       setOut(r.data.description); setCost(r.data.cost_usd);
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Failed");
+      onErr(e);
     } finally { setBusy(false); }
   };
   return (
@@ -94,7 +123,7 @@ function DescPane({ onPickResult }) {
   );
 }
 
-function PricePane() {
+function PricePane({ onErr }) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("merch");
   const [busy, setBusy] = useState(false);
@@ -106,7 +135,7 @@ function PricePane() {
       const r = await api.post("/vendor-ai/suggest-price", { description, category });
       setData(r.data); setCost(r.data.cost_usd);
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Failed");
+      onErr(e);
     } finally { setBusy(false); }
   };
   return (
@@ -135,7 +164,7 @@ function PricePane() {
   );
 }
 
-function BlurbPane({ onPickResult }) {
+function BlurbPane({ onErr, onPickResult }) {
   const [description, setDescription] = useState("");
   const [audience, setAudience] = useState("general");
   const [busy, setBusy] = useState(false);
@@ -147,7 +176,7 @@ function BlurbPane({ onPickResult }) {
       const r = await api.post("/vendor-ai/marketing-blurb", { description, audience, max_chars: 240 });
       setOut(r.data.blurb); setCost(r.data.cost_usd);
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Failed");
+      onErr(e);
     } finally { setBusy(false); }
   };
   return (
@@ -174,7 +203,7 @@ function BlurbPane({ onPickResult }) {
   );
 }
 
-function ImagePane({ onPickResult }) {
+function ImagePane({ onErr, onPickResult }) {
   const [prompt, setPrompt] = useState("");
   const [slug, setSlug] = useState("vendor");
   const [busy, setBusy] = useState(false);
@@ -186,7 +215,7 @@ function ImagePane({ onPickResult }) {
       const r = await api.post("/vendor-ai/generate-image", { prompt, slug });
       setUrl(r.data.image_url); setCost(r.data.cost_usd);
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Image generation failed");
+      onErr(e);
     } finally { setBusy(false); }
   };
   return (

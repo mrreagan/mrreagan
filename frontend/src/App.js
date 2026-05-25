@@ -73,6 +73,7 @@ import AgreementPage from "./pages/AgreementPage";
 import AdminResearch from "./pages/AdminResearch";
 import AiWallet from "./pages/AiWallet";
 import AdminAiUsage from "./pages/AdminAiUsage";
+import AiOverview from "./pages/AiOverview";
 
 function ProtectedRoute({ children, roles, allowOmbudsman }) {
   const { user, loading } = useAuth();
@@ -93,6 +94,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
+      <Route path="/ai" element={<AiOverview />} />
       <Route path="/mission" element={<Mission />} />
       <Route path="/governance" element={<Governance />} />
       <Route path="/education" element={<Education />} />
