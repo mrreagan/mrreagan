@@ -271,7 +271,7 @@ export default function AssistantWidget() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 print:hidden" data-testid="assistant-panel">
+    <div className="fixed inset-0 z-[60] print:hidden" data-testid="assistant-panel">
       <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
       <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[420px] bg-[#FAF8F5] shadow-2xl flex flex-col">
         <header className="flex items-center justify-between px-5 py-4 border-b border-[#E5E1D8] bg-white">
@@ -334,7 +334,7 @@ export default function AssistantWidget() {
 
         <form
           onSubmit={(e) => { e.preventDefault(); send(); }}
-          className="border-t border-[#E5E1D8] p-3 bg-white"
+          className="border-t border-[#E5E1D8] p-3 bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           data-testid="assistant-form"
         >
           <div className="flex gap-2">
