@@ -4,6 +4,7 @@ import { BrandLogo } from "./BrandLogo";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { ShoppingBag, Menu, X, User, LogOut, ChevronDown } from "lucide-react";
+import AgreementResignBanner from "./AgreementResignBanner";
 
 const NAV = [
   { to: "/workshops", label: "Workshops" },
@@ -281,6 +282,7 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      <AgreementResignBanner />
       <main className="flex-1" data-testid="main-content">
         {children}
       </main>

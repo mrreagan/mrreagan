@@ -1,0 +1,46 @@
+{
+  "summary": "Frontend-only UI verification for Birthright v1.11.0 Step 10 (Refund/Clawback Cascade + Agreement v2). All 10 UI checks across /admin/refunds, /legal/agreement, AgreementResignBanner, and ProtectedRoute behavior pass.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_results": {
+    "logged_out_banner_hidden": "PASS — [data-testid=agreement-resign-banner] not rendered when no user",
+    "admin_login": "PASS — admin@birthright.org logs in and lands at /dashboard",
+    "admin_dashboard_quickaction": "PASS — 'Refunds & Clawbacks' Link (text: 'Refunds & ClawbacksFire refund cascades, resolve clawbacks') points to /admin/refunds and navigates correctly",
+    "admin_refunds_page_load": "PASS — [data-testid=admin-refunds-page] renders with tabs 'Cascades (3)' and 'Pending clawbacks (0)' plus Fire refund cascade button",
+    "refund_modal_open": "PASS — clicking [data-testid=open-refund-modal] opens [data-testid=refund-modal] with refund-txn-id, refund-reason, refund-skip-stripe, refund-confirm",
+    "refund_modal_validation_empty_txn": "PASS — empty txn_id triggers 'Transaction ID and reason (≥ 5 chars) required' toast and no API call",
+    "refund_modal_validation_short_reason": "PASS — txn_id='txn_test_123' + reason='abc' (3 chars) also rejected with same validation toast",
+    "refund_modal_close": "PASS — X (aria-label=Close) closes the modal cleanly",
+    "tab_switching": "PASS — clicking refund-tab-clawbacks/refund-tab-cascades switches view",
+    "resolve_clawback_modal": "NOT TESTED — DB has 0 pending_recovery clawbacks (empty-state). Empty state message 'No clawbacks.' renders correctly. Resolve button is only rendered for status==='pending_recovery' rows; code path & data-testids (resolve-clawback-{id}, resolve-clawback-modal, clawback-status-select, clawback-resolve-note, clawback-resolve-confirm) are present in source. This is an acceptable empty-state outcome per the review request.",
+    "agreement_page_load": "PASS — /legal/agreement renders [data-testid=agreement-page] with version body (v2.0) and 'What changed' summary card",
+    "agreement_admin_already_signed": "PASS — admin shows [data-testid=agreement-already-signed] with date instead of the accept button (expected since admin pre-signed)",
+    "agreement_resign_banner_admin": "PASS — banner hidden for admin (status.signed=true), expected behavior",
+    "protected_route_non_admin": "PASS — demo@birthright.org accessing /admin/refunds is redirected to /dashboard; [data-testid=admin-refunds-page] not rendered",
+    "agreement_resign_banner_demo": "PASS (conditional) — banner did NOT show for demo user, meaning either demo has signed v2.0 already (seeded) OR there is no active_version mismatch. Banner mount logic in Layout.jsx and the gating condition (!user || !status?.active_version || status.signed || dismissed) are correct. Dismiss/localStorage path could not be exercised because banner did not render."
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AdminRefunds.jsx: button to Fire refund cascade is at top-right of the page even when the resolve-clawback modal is closed — UX-wise fine.",
+    "AgreementResignBanner.jsx swallows /legal/indemnification/my-status errors silently with .catch(() => {}). Consider logging non-401 errors for observability (minor).",
+    "AgreementPage.jsx returns plain text 'Loading…' when version is null. If the user is not logged in or no active version exists, GET /legal/indemnification/active may 401/404 and only a toast 'Could not load agreement' shows while the page stays stuck on 'Loading…'. Consider a graceful 'No active agreement version' fallback. Not blocking for Step 10 since admin has an active v2.0.",
+    "AdminRefunds.jsx fireCascade trims txn_id/reason but does not disable the Confirm button on validation failure — fine since validation guards the network call.",
+    "Modals use fixed z-50 overlays — confirmed not blocking other interactive elements after close. No overlay z-index issues seen."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "skipped (per request)", "frontend": "100% on testable flows (15/15 PASS, 1 not testable due to empty DB state)"},
+  "test_credentials": "Used admin@birthright.org / birthright2026 and demo@birthright.org / birthright2026 from /app/memory/test_credentials.md (file present and intact, not modified).",
+  "seed_data_creation": "None. Did not fire actual refund cascade (avoided Stripe call per instructions). DB currently has 3 cascades and 0 pending clawbacks.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Step 10 UI fully validated for admin path. Resolve-clawback modal flow needs at least one pending_recovery clawback in DB to exercise end-to-end. To test, either (a) fire a real refund cascade against a payment that produced paid partner credits, or (b) seed a clawback document with status='pending_recovery'. AgreementResignBanner dismiss-and-localStorage persistence path also needs an unsigned active_version for the test user; consider seeding a v3.0 active agreement (without auto-signing demo@) to exercise the banner show/dismiss/reload cycle.",
+  "rca of the issue": "N/A — no issues found."
+}
