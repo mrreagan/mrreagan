@@ -1,0 +1,33 @@
+# Ruff configuration for the Birthright backend.
+#
+# Notes:
+#  - Tests are allowed cosmetic deviations (long lines, multiple statements per line,
+#    etc.). They're scratch surfaces for hypothesis-driven debugging.
+#  - Test fixture strings flagged by some external scanners as "hardcoded secrets"
+#    (e.g. test_iter5_chat_ws.py) are intentional mocks. They never reach Stripe,
+#    Resend, or any real third party.
+#  - We DO NOT change `is None` / `is not None` to `== None`. PEP 8 explicitly
+#    requires the `is`/`is not` form for singleton comparisons.
+
+target-version = "py311"
+line-length = 120
+
+[lint]
+# Default rule set: pyflakes + pycodestyle errors. Skip stylistic-only rules
+# that fight PEP 8 (E711 None comparison is enforced, not disabled).
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",  # line-too-long (line-length above already raises threshold)
+    "W291", "W292", "W293",  # trailing-whitespace cosmetics
+]
+
+[lint.per-file-ignores]
+# Tests get full latitude:
+#   E701/E702: multiple-statements-on-one-line (common in compact pytest setups)
+#   F401:     unused imports (fixtures often appear unused to lint)
+#   F841:     unused local variables (kept for readability in test ARRANGE blocks)
+#   S105/S106: hardcoded passwords in tests (intentional mocks, never real)
+"tests/**" = ["E701", "E702", "F401", "F841", "S105", "S106"]
+
+[lint.isort]
+known-first-party = ["routers", "utils", "models", "auth_utils", "database"]
