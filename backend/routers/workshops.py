@@ -10,6 +10,8 @@ from auth_utils import get_current_user, require_roles
 from utils.mailer import send_email
 from utils.email_templates import workshop_cancelled
 from utils.refunds import refund_session
+from utils.calendar_qr import build_ics
+from fastapi.responses import Response
 
 logger = logging.getLogger("birthright.workshops")
 router = APIRouter(prefix="/workshops", tags=["workshops"])
@@ -116,6 +118,24 @@ async def get_workshop(workshop_id: str):
     # Don't expose check_in_code to public
     w.pop("check_in_code", None)
     return w
+
+
+@router.get("/{workshop_id}/ics")
+async def workshop_ics(workshop_id: str):
+    """Public .ics calendar download for any workshop (by id or slug)."""
+    from database import db
+    w = await db.workshops.find_one({"id": workshop_id}, {"_id": 0})
+    if not w:
+        w = await db.workshops.find_one({"slug": workshop_id}, {"_id": 0})
+    if not w:
+        raise HTTPException(status_code=404, detail="Workshop not found")
+    ics_bytes = build_ics(w)
+    safe_slug = (w.get("slug") or w.get("id") or "workshop").replace("/", "-")
+    return Response(
+        content=ics_bytes,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f'attachment; filename="{safe_slug}.ics"'},
+    )
 
 
 @router.post("")

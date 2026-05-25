@@ -88,16 +88,18 @@ SHIPPED = [
      "Featured-Partner Showcase + Founding-Partner gating. Self-serve featured slots at $99/30 days via Stripe (random shuffle on /featured, gold ribbon across directory, editable content while window active). Admin grant/revoke + comped slots. Founding-Partner program: opt-in checkbox on /partners/apply with public 'X/cap' counter and progress bar; auto-grant on application approval if cap has room (5-year locked rate); admin cap controls + grant/revoke endpoints. Founding badges visible across directory + profile pages (including samples). Backend 20/20 PASS, frontend 100% after Founding badge + nested-anchor fixes."),
     ("v1.11.0-step6+7", "May 25, 2026", "Iter 18",
      "Paid Research Promotion + Payouts scaffolding. New /research public page with Promoted top section + general listing; partner-side CRUD at /dashboard/partner/research with tiered Stripe checkout ($49 brief / $149 peer-reviewed paper / 30 days). Stripe webhook fulfillment for `research_promotion` type; activate_research_promotion extends promoted_until on paid. Admin tier-override + free promotion grant/revoke. /partners directory got a Featured strip at top (auto-hidden in samples mode). Payouts UI: /dashboard/partner/payouts with 3 tabs (Ledger from referrals + off-site credits, W9 form persisted + signed, Payout method capture — Stripe Connect account OR encrypted ACH using Fernet PAYOUT_ENCRYPTION_KEY). Admin endpoints: list credits, mark-paid (one-way), view W9 (audit-logged). 2 sample research artifacts seeded. Header nav tightened to fit 11 items with no overlap on 1280px+, mobile menu activates below xl breakpoint. Backend 32/32 PASS, frontend 100%."),
+    ("v1.11.0-step8+8.5", "May 25, 2026", "Iter 19",
+     "Disbursement orchestration + Universal Share & Save System. Step 8: admin disbursement-settings (next_disbursement_date, cadence, partner-visible notes) at /admin/payouts; ready-to-pay aggregation gated to W9 + payout method on file; CSV export of pending payouts; partner email notification on mark-paid (`disbursement_notification` template). Step 8.5: ShareButton component (Copy/QR/Email/SMS/Bookmark/ICS/Cite icons context-aware) with `?via=` referral attribution that sets the birthright_ref cookie when sharer is an active community partner. Backend: POST /api/shares/log (anon-friendly), GET/POST/DELETE /api/me/bookmarks (polymorphic), GET /api/research/{id}/cite?format=apa7|bibtex, GET /api/workshops/{id}/ics, GET /api/me/share-token. New pages: /dashboard/bookmarks. Share buttons placed on workshop detail, product detail, research artifacts, partner profiles, join-us roles. Privacy matrix respected: no share on workshop materials, ledger rows, W9, payout methods, admin dashboards. qrcode.react npm pkg installed for client-side QR rendering."),
 ]
 
 # Reverse so newest appears first
 SHIPPED_ROWS = list(reversed(SHIPPED))
 
 IN_PROGRESS = [
-    ("v1.11.0-step8", "Disbursement orchestration",
-     "Wire admin 'mark-paid' to a partner-facing notification, build a CSV export of pending payouts (W9 + method on file), add a 'next disbursement date' settings row in foundation_settings. Stripe Connect transfer call is still optional — manual bank rails remain primary."),
     ("v1.11.0-step9", "Subscription UI parity",
      "Revoke, prorate, mid-flight plan change. Currently subscriptions are one-time-payment-as-recurring with manual renewal; bring the UI in line with what partners expect on a real subscription product."),
+    ("v1.11.0-step10", "Refund/clawback cascade + Partnership agreement v2",
+     "Cascade refunds back through credits + payouts and require partners to re-sign agreement v2 on next login."),
 ]
 
 BACKLOG = [

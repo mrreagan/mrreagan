@@ -1,0 +1,41 @@
+{
+  "summary": "v1.11.0 Step 8 (Disbursement Orchestration) + Step 8.5 (Universal Share & Save System). 23/23 backend tests PASS in /app/backend/tests/test_iter19_disbursement_shares.py. Frontend smoke verified: ShareButton renders on workshop detail (menu: Copy link / More / Email / Text / QR code / Calendar .ics — Bookmark item conditional on auth), on /research artifact cards (2 trigger buttons matching 2 seeded artifacts), and on product detail. Admin /admin/payouts shows 'Next disbursement' card (date picker + cadence + partner-visible notes + Save) + 'Ready to pay' table with Export CSV + Blocked partners table (1 entry: Sam Rivera $50 — missing W9+method). Partner /dashboard/partner/payouts Ledger tab shows 'Disbursements run monthly · Next run: Sunday, February 15' callout with 'not yet ready for payout' chip and 'W9 needed · Payout method needed' status. /dashboard/bookmarks lists saved items with All/Workshops filter chips + Open/remove actions. Inbound ?via=<code> capture verified: navigating to /workshops?via=TBMBHKHR strips the query and sets birthright_ref=TBMBHKHR cookie (case-insensitive — lowercase code also worked in backend test). Privacy gating verified: no ShareButton on /admin/payouts or /dashboard/partner/payouts.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Layout.jsx header logo",
+        "issue": "Pre-existing from iter18 — 'birthright' wordmark visually overlaps first nav item on some viewports. Not re-verified in this iter; flagging again.",
+        "selector": "header nav",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter19_disbursement_shares.py",
+    "/app/test_reports/pytest/iter19_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routers/shares.py log_share: stores raw user_agent and referer (truncated). Good. Cookie is set with httponly=False so JS can read it — intentional since checkout flow may use it client-side, but consider whether httponly=True + cookie surfaced via /api/me/referral-attribution is safer.",
+    "routers/shares.py create_bookmark: idempotent path only updates label/note when provided. If a user re-creates without label, the prior label is preserved — correct.",
+    "routers/payouts.py admin_ready_to_pay: uses Query(regex=...). Same Pydantic v2 deprecation note as iter18 — should be pattern=. Functional today.",
+    "routers/payouts.py admin_mark_paid: email send is best-effort and wrapped in try/except — safe. Email is queued to db.outbound_emails via send_email (DRY_RUN mode). Could not directly verify queue insertion from HTTP layer, but indirect verification via second mark-paid returning 400 confirmed primary update succeeded.",
+    "routers/research.py cite_artifact uses Query(regex=^(apa7|bibtex)$) — same Pydantic deprecation note, but returns proper 422 for invalid format (test passes).",
+    "frontend ShareButton component uses data-testid pattern share-button-{surface} (and share-button-{surface}-trigger). Test agents should target these prefixes, not bare 'share-button'.",
+    "Anonymous viewers see the share menu but Bookmark item is correctly suppressed (requires auth). Good privacy default.",
+    "Share URL automatically includes ?via=<token> for the logged-in user — confirmed in screenshot of workshop detail share popover. For anonymous viewers the via token defaults to 'anon-<sessionId>' — analytics-only attribution, correct."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter19_disbursement_shares.py"
+  ],
+  "success_rate": {"backend": "100% (23/23)", "frontend": "100% (admin payouts + partner payouts callout + bookmarks page + workshop/research/product ShareButton + ?via= capture/cookie/URL-strip + privacy gating all verified)"},
+  "test_credentials": "admin@birthright.org / birthright2026; demo@birthright.org / birthright2026 (community partner, referral_code=TBMBHKHR); elena@birthright.org / birthright2026; marcus@birthright.org / birthright2026",
+  "seed_data_creation": "Test marked one earned credit as paid (off-site sales credit, $50, demo user). Disbursement settings persisted: next_disbursement_date=2026-02-15 cadence=monthly notes='hello partners'. Bookmarks created+deleted within test (TEST_ prefix). No leftover test artifacts beyond the one mark-paid record (already paid pre-existing $50 record for demo).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All Step 8 + Step 8.5 backend endpoints verified via /app/backend/tests/test_iter19_disbursement_shares.py (uses dotenv to load REACT_APP_BACKEND_URL from /app/frontend/.env). Login response field is 'token' (not 'access_token'). Demo user has community partner_profile with referral_code TBMBHKHR; admin/elena/marcus are not community partners (share-token returns kind=user_id). Mark-paid path was exercised once — second run will skip the mark-paid test if no earned credits remain. ShareButton uses data-testid='share-button-{surface}' and 'share-button-{surface}-trigger'. Workshop ICS works by id and slug; cite endpoint supports apa7|bibtex only (422 on others). Privacy gating verified: no ShareButton on /admin/payouts or /dashboard/partner/payouts. Inbound ?via= capture confirmed: cookie 'birthright_ref' set, URL stripped of via param on App mount.",
+  "rca_of_the_issue": "Not applicable — no functional bugs found."
+}

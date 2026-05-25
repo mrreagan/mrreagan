@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { Microscope, BookOpen, Sparkles, ExternalLink as LinkIcon, Search, Clock } from "lucide-react";
+import ShareButton from "../components/ShareButton";
 
 export default function Research() {
   const [artifacts, setArtifacts] = useState([]);
@@ -111,15 +112,25 @@ function ArtifactCard({ artifact, highlight }) {
       )}
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#E5E1D8]">
         {artifact.doi && <span className="text-[10px] text-[#5C6B6B] font-mono">DOI: {artifact.doi}</span>}
-        <a
-          href={artifact.full_text_url}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="text-sm text-[#476B6B] hover:underline inline-flex items-center gap-1 ml-auto"
-          data-testid={`research-link-${artifact.id}`}
-        >
-          Read full text <LinkIcon size={12} strokeWidth={1.5} />
-        </a>
+        <div className="flex items-center gap-2 ml-auto">
+          <ShareButton
+            surface="research"
+            surfaceId={artifact.id}
+            path={`/research#${artifact.id}`}
+            title={artifact.title}
+            emailSubject={`Birthright research: ${artifact.title}`}
+            size="sm"
+          />
+          <a
+            href={artifact.full_text_url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-sm text-[#476B6B] hover:underline inline-flex items-center gap-1"
+            data-testid={`research-link-${artifact.id}`}
+          >
+            Read full text <LinkIcon size={12} strokeWidth={1.5} />
+          </a>
+        </div>
       </div>
     </article>
   );

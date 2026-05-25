@@ -9,19 +9,29 @@ Payout method (Stripe Connect account ID or manual ACH) is stored on
 (key from `PAYOUT_ENCRYPTION_KEY` env var).
 
 Admins can mark credits as paid via `POST /api/admin/payouts/credits/{id}/mark-paid`.
+
+v1.11.0 Step 8 extensions:
+- `GET /api/admin/payouts/disbursement-settings` + PUT — admin-set next disbursement date
+- `GET /api/me/payouts/next-disbursement` — partner-visible date
+- `GET /api/admin/payouts/ready-to-pay[?source=&format=csv|json]` — gated to W9+method on file
+- Mark-paid now triggers a partner notification email (best-effort)
 """
 from __future__ import annotations
 
+import csv
+import io
 import logging
 import os
 from typing import Optional
 
 from cryptography.fernet import Fernet
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from auth_utils import get_current_user, require_roles
-from models import PayoutMarkPaid, PayoutMethodSet, W9Form, gen_id, now_iso
+from models import DisbursementSettings, PayoutMarkPaid, PayoutMethodSet, W9Form, gen_id, now_iso
 from utils.audit import log_action
+from utils.mailer import send_email
 
 logger = logging.getLogger("birthright.payouts")
 
@@ -92,9 +102,39 @@ async def my_ledger(user: dict = Depends(get_current_user)):
 
     earned = sum(e["amount_usd"] for e in entries if e["status"] == "earned")
     paid = sum(e["amount_usd"] for e in entries if e["status"] == "paid")
+
+    # Surface upcoming disbursement date if admin has set one
+    settings_doc = await db.foundation_settings.find_one(
+        {"key": "disbursement_settings"}, {"_id": 0}
+    )
+    next_disbursement = (settings_doc or {}).get("next_disbursement_date")
+    cadence = (settings_doc or {}).get("cadence", "monthly")
+
+    # W9 + method status for the partner's own awareness
+    w9_on_file = await db.partner_w9_forms.find_one({"user_id": user["id"]}) is not None
+    method_on_file = await db.partner_payout_methods.find_one({"user_id": user["id"]}) is not None
+
     return {
         "totals": {"earned_unpaid": round(earned, 2), "paid_lifetime": round(paid, 2), "all_time": round(earned + paid, 2)},
         "entries": entries,
+        "next_disbursement_date": next_disbursement,
+        "cadence": cadence,
+        "ready_for_payout": w9_on_file and method_on_file,
+        "w9_on_file": w9_on_file,
+        "method_on_file": method_on_file,
+    }
+
+
+@my_router.get("/next-disbursement")
+async def my_next_disbursement(user: dict = Depends(get_current_user)):
+    from database import db
+    doc = await db.foundation_settings.find_one(
+        {"key": "disbursement_settings"}, {"_id": 0}
+    )
+    return {
+        "next_disbursement_date": (doc or {}).get("next_disbursement_date"),
+        "cadence": (doc or {}).get("cadence", "monthly"),
+        "notes": (doc or {}).get("notes", ""),
     }
 
 
@@ -222,6 +262,32 @@ async def admin_mark_paid(
         target_type=source, target_id=credit_id,
         metadata={"amount": existing.get("amount_usd"), "reference": data.reference, "method": data.method},
     )
+
+    # Fire-and-forget partner notification email
+    try:
+        partner_user_id = existing.get("partner_user_id")
+        if partner_user_id:
+            partner = await db.users.find_one({"id": partner_user_id}, {"_id": 0})
+            if partner:
+                from utils.email_templates import disbursement_notification
+                app_url = os.environ.get("PUBLIC_APP_URL", "https://birthright.live")
+                subj, html, text = disbursement_notification(
+                    first_name=partner.get("first_name", "there"),
+                    amount=float(existing.get("amount_usd") or 0),
+                    method=data.method or "manual",
+                    reference=data.reference or "",
+                    note=(data.note or "").strip(),
+                    source=source,
+                    app_url=app_url,
+                )
+                await send_email(
+                    to=partner["email"], subject=subj, html=html, text=text,
+                    template_name="disbursement_notification",
+                    metadata={"credit_id": credit_id, "source": source},
+                )
+    except Exception as e:
+        logger.warning(f"disbursement notification email failed: {e}")
+
     return await collection.find_one({"id": credit_id}, {"_id": 0})
 
 
@@ -238,3 +304,151 @@ async def admin_get_w9(user_id: str, user: dict = Depends(require_roles("admin")
         metadata={"viewed_user_id": user_id},
     )
     return w9
+
+
+# ============ DISBURSEMENT ORCHESTRATION (v1.11.0 Step 8) ============
+
+@admin_router.get("/disbursement-settings")
+async def admin_get_disbursement_settings(user: dict = Depends(require_roles("admin"))):
+    from database import db
+    doc = await db.foundation_settings.find_one(
+        {"key": "disbursement_settings"}, {"_id": 0}
+    )
+    return {
+        "next_disbursement_date": (doc or {}).get("next_disbursement_date"),
+        "cadence": (doc or {}).get("cadence", "monthly"),
+        "notes": (doc or {}).get("notes", ""),
+    }
+
+
+@admin_router.put("/disbursement-settings")
+async def admin_set_disbursement_settings(
+    data: DisbursementSettings,
+    user: dict = Depends(require_roles("admin")),
+):
+    from database import db
+    payload = {
+        "next_disbursement_date": data.next_disbursement_date,
+        "cadence": data.cadence or "monthly",
+        "notes": (data.notes or "").strip(),
+        "updated_at": now_iso(),
+        "updated_by": user["id"],
+    }
+    await db.foundation_settings.update_one(
+        {"key": "disbursement_settings"},
+        {"$set": {"key": "disbursement_settings", **payload}},
+        upsert=True,
+    )
+    await log_action(
+        db, user, "admin.disbursement_settings.update",
+        metadata=payload,
+    )
+    return payload
+
+
+@admin_router.get("/ready-to-pay")
+async def admin_ready_to_pay(
+    format: str = Query("json", regex="^(json|csv)$"),
+    user: dict = Depends(require_roles("admin")),
+):
+    """Returns earned credits whose partner has BOTH W9 + payout method on file.
+
+    Optionally returns CSV stream for direct disbursement run.
+    """
+    from database import db
+
+    on_site = await db.referral_payouts.find(
+        {"status": "earned"}, {"_id": 0}
+    ).sort("earned_at", 1).to_list(5000)
+    off_site = await db.partner_off_site_credits.find(
+        {"status": "earned"}, {"_id": 0}
+    ).sort("earned_at", 1).to_list(5000)
+    for r in on_site:
+        r["source"] = "on_site_referral"
+    for r in off_site:
+        r["source"] = "off_site_credit"
+    raw = on_site + off_site
+
+    # Determine which partners are ready (W9 + method on file)
+    partner_ids = list({r.get("partner_user_id") for r in raw if r.get("partner_user_id")})
+    w9_set = set()
+    method_set = set()
+    if partner_ids:
+        async for w in db.partner_w9_forms.find({"user_id": {"$in": partner_ids}}, {"user_id": 1}):
+            w9_set.add(w["user_id"])
+        async for m in db.partner_payout_methods.find({"user_id": {"$in": partner_ids}}, {"user_id": 1, "method_type": 1}):
+            method_set.add(m["user_id"])
+    ready_ids = w9_set & method_set
+
+    users = {}
+    if partner_ids:
+        async for u in db.users.find(
+            {"id": {"$in": partner_ids}},
+            {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "email": 1},
+        ):
+            users[u["id"]] = u
+    methods = {}
+    if partner_ids:
+        async for m in db.partner_payout_methods.find(
+            {"user_id": {"$in": partner_ids}}, {"_id": 0}
+        ):
+            methods[m["user_id"]] = m.get("method_type") or "manual_ach"
+
+    rows = []
+    for r in raw:
+        pid = r.get("partner_user_id")
+        u = users.get(pid, {})
+        is_ready = pid in ready_ids
+        rows.append({
+            "credit_id": r["id"],
+            "source": r["source"],
+            "partner_user_id": pid,
+            "partner_name": f"{u.get('first_name','')} {u.get('last_name','')}".strip(),
+            "partner_email": u.get("email", ""),
+            "amount_usd": float(r.get("amount_usd") or 0),
+            "earned_at": r.get("earned_at"),
+            "rev_share_pct": r.get("rev_share_pct"),
+            "source_type": r.get("source_type"),
+            "source_id": r.get("source_id"),
+            "method_type": methods.get(pid, ""),
+            "w9_on_file": pid in w9_set,
+            "method_on_file": pid in method_set,
+            "ready_to_pay": is_ready,
+        })
+
+    if format == "csv":
+        ready_rows = [r for r in rows if r["ready_to_pay"]]
+        buf = io.StringIO()
+        writer = csv.DictWriter(
+            buf,
+            fieldnames=[
+                "credit_id", "source", "partner_user_id", "partner_name",
+                "partner_email", "amount_usd", "earned_at", "rev_share_pct",
+                "source_type", "source_id", "method_type",
+            ],
+            extrasaction="ignore",
+        )
+        writer.writeheader()
+        for r in ready_rows:
+            writer.writerow(r)
+        await log_action(
+            db, user, "admin.ready_to_pay.export_csv",
+            metadata={"row_count": len(ready_rows), "total_usd": round(sum(r["amount_usd"] for r in ready_rows), 2)},
+        )
+        buf.seek(0)
+        return StreamingResponse(
+            iter([buf.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="birthright-disbursement-ready.csv"'},
+        )
+
+    ready = [r for r in rows if r["ready_to_pay"]]
+    blocked = [r for r in rows if not r["ready_to_pay"]]
+    return {
+        "ready_total_usd": round(sum(r["amount_usd"] for r in ready), 2),
+        "blocked_total_usd": round(sum(r["amount_usd"] for r in blocked), 2),
+        "ready_count": len(ready),
+        "blocked_count": len(blocked),
+        "ready": ready,
+        "blocked": blocked,
+    }

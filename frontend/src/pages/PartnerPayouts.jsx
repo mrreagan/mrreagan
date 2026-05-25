@@ -75,8 +75,40 @@ export default function PartnerPayouts() {
 
 function Ledger({ ledger }) {
   if (!ledger) return <p className="text-sm text-[#5C6B6B] mt-6">Loading...</p>;
+  const isReady = ledger.ready_for_payout;
   return (
     <div className="mt-6 space-y-4" data-testid="ledger-tab">
+      {(ledger.next_disbursement_date || !isReady) && (
+        <div
+          className={`card p-4 ${isReady ? "border-[#2E5C46] bg-[#F4F8F4]" : "border-[#C9A961] bg-[#FFFBEF]"}`}
+          data-testid="next-disbursement-card"
+        >
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
+                {ledger.cadence ? `Disbursements run ${ledger.cadence}` : "Disbursements"}
+              </p>
+              {ledger.next_disbursement_date ? (
+                <p className="font-serif text-lg" data-testid="next-disbursement-date">
+                  Next run: {new Date(ledger.next_disbursement_date).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+                </p>
+              ) : (
+                <p className="font-serif text-lg">Next run not yet scheduled</p>
+              )}
+            </div>
+            {!isReady && (
+              <p className="text-xs text-[#8B7128] max-w-xs" data-testid="payout-not-ready">
+                You're not yet ready for payout. {!ledger.w9_on_file && "W9 needed. "}{!ledger.method_on_file && "Payout method needed."}
+              </p>
+            )}
+            {isReady && (
+              <p className="text-xs text-[#2E5C46] inline-flex items-center gap-1" data-testid="payout-ready">
+                <CheckCircle2 size={12} strokeWidth={1.5} /> Ready for disbursement
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       <div className="grid sm:grid-cols-3 gap-3">
         <Stat label="Earned, unpaid" value={`$${ledger.totals.earned_unpaid.toFixed(2)}`} testid="totals-earned" />
         <Stat label="Paid lifetime" value={`$${ledger.totals.paid_lifetime.toFixed(2)}`} testid="totals-paid" />

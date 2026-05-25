@@ -12,7 +12,7 @@ import logging
 
 from database import db, client  # single source of truth for MongoDB
 
-app = FastAPI(title="Birthright API", version="1.10.0")
+app = FastAPI(title="Birthright API", version="1.11.0")
 api_router = APIRouter(prefix="/api")
 
 # Serve product mockup images & other static assets at /api/static/*
@@ -26,7 +26,7 @@ async def root() -> dict[str, str]:
     return {
         "name": "Birthright Foundation API",
         "motto": "Secure Bonds > Thrive",
-        "version": "1.10.0",
+        "version": "1.11.0",
     }
 
 
@@ -85,6 +85,10 @@ from routers.payouts import (
     my_router as payouts_my_router,
     admin_router as payouts_admin_router,
 )
+from routers.shares import (
+    public_router as shares_public_router,
+    my_router as shares_my_router,
+)
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -129,6 +133,8 @@ api_router.include_router(research_my_router)
 api_router.include_router(research_admin_router)
 api_router.include_router(payouts_my_router)
 api_router.include_router(payouts_admin_router)
+api_router.include_router(shares_public_router)
+api_router.include_router(shares_my_router)
 
 
 @api_router.post("/webhook/stripe")

@@ -123,6 +123,74 @@ async def get_artifact(artifact_id: str):
     return a
 
 
+def _cite_apa7(a: dict) -> str:
+    """Build an APA 7th-edition reference string. Best-effort given freeform authors field."""
+    authors = (a.get("authors") or "").strip()
+    year = ""
+    if a.get("publication_date"):
+        year = a["publication_date"][:4]
+    title = (a.get("title") or "").strip().rstrip(".")
+    doi = (a.get("doi") or "").strip()
+    url = (a.get("full_text_url") or "").strip()
+    pub = "Birthright Foundation."
+    parts = []
+    if authors:
+        parts.append(authors + ".")
+    if year:
+        parts.append(f"({year}).")
+    if title:
+        parts.append(f"{title}.")
+    parts.append(pub)
+    if doi:
+        parts.append(f"https://doi.org/{doi}" if not doi.lower().startswith("http") else doi)
+    elif url:
+        parts.append(url)
+    return " ".join(parts)
+
+
+def _cite_bibtex(a: dict) -> str:
+    """Build a BibTeX @article (or @misc for briefs) entry."""
+    authors = (a.get("authors") or "").strip()
+    year = (a.get("publication_date") or "")[:4]
+    title = (a.get("title") or "").replace("{", "").replace("}", "")
+    doi = (a.get("doi") or "").strip()
+    url = (a.get("full_text_url") or "").strip()
+    tier = a.get("tier", "brief")
+    entry = "article" if tier == "paper" else "misc"
+    # citekey: first author surname + year + first word of title
+    first_author = authors.split(",")[0].strip().split(" ")[-1].lower() if authors else "anon"
+    first_title = (title.split(" ")[0] if title else "untitled").lower()
+    key = f"{first_author}{year}{first_title}".replace(".", "").replace("'", "")
+    lines = [f"@{entry}{{{key},"]
+    if authors:
+        lines.append(f"  author = {{{authors}}},")
+    if title:
+        lines.append(f"  title = {{{title}}},")
+    if year:
+        lines.append(f"  year = {{{year}}},")
+    lines.append("  publisher = {Birthright Foundation},")
+    if doi:
+        lines.append(f"  doi = {{{doi}}},")
+    if url:
+        lines.append(f"  url = {{{url}}},")
+    lines.append("}")
+    return "\n".join(lines)
+
+
+@public_router.get("/{artifact_id}/cite")
+async def cite_artifact(
+    artifact_id: str,
+    format: str = Query("apa7", regex="^(apa7|bibtex)$"),
+):
+    """Return a formatted citation string. Increments view counter (best-effort)."""
+    from database import db
+    a = await db.research_artifacts.find_one({"id": artifact_id, "status": "published"}, {"_id": 0})
+    if not a:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    citation = _cite_apa7(a) if format == "apa7" else _cite_bibtex(a)
+    return {"format": format, "citation": citation, "artifact_id": artifact_id}
+
+
 # ============ PARTNER-FACING ============
 
 @my_router.get("")

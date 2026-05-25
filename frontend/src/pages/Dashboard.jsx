@@ -241,6 +241,18 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+      <section className="mt-6 card p-6" data-testid="dashboard-bookmarks-cta">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <span className="label">Saved across the site</span>
+            <h3 className="font-serif text-xl mt-1">My bookmarks</h3>
+            <p className="text-sm text-[#5C6B6B] max-w-xl mt-1">
+              Workshops, partners, research, open roles — anything you saved with the bookmark icon lives here.
+            </p>
+          </div>
+          <Link to="/dashboard/bookmarks" className="btn-outline" data-testid="bookmarks-open-link">Open bookmarks</Link>
+        </div>
+      </section>
     </div>
   );
 }

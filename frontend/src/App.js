@@ -7,6 +7,7 @@ import "@/App.css";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
 import Layout from "./components/Layout";
+import { captureInboundVia } from "./lib/shareUtils";
 
 import Home from "./pages/Home";
 import About from "./pages/About";
@@ -61,6 +62,7 @@ import Research from "./pages/Research";
 import PartnerResearch from "./pages/PartnerResearch";
 import PartnerPayouts from "./pages/PartnerPayouts";
 import Profile from "./pages/Profile";
+import Bookmarks from "./pages/Bookmarks";
 
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth();
@@ -300,12 +302,22 @@ function AppRoutes() {
         }
       />
 
+      <Route
+        path="/dashboard/bookmarks"
+        element={
+          <ProtectedRoute>
+            <Bookmarks />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 function App() {
+  React.useEffect(() => { captureInboundVia(); }, []);
   return (
     <div className="App">
       <BrowserRouter>

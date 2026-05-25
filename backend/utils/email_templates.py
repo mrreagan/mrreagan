@@ -267,3 +267,36 @@ def workshop_cancelled(
         "If you'd like to be notified when it returns, reply to this email."
     )
     return subject, _shell(subject, f"{workshop['title']} has been cancelled.", body), text
+
+
+def disbursement_notification(
+    *, first_name: str, amount: float, method: str, reference: str,
+    note: str, source: str, app_url: str,
+) -> tuple[str, str, str]:
+    """Email a partner when an earned credit is marked paid."""
+    subject = f"A disbursement is on the way — {_money(amount)}"
+    source_label = "on-site referral" if source == "on_site_referral" else "off-site sales credit"
+    ref_html = f'<tr><td style="color:{SMOKE};padding:4px 0;width:140px;">Reference</td><td>{reference}</td></tr>' if reference else ""
+    note_html = f'<p style="color:{SMOKE};font-size:13px;margin-top:14px;">Note from the foundation: <em>{note}</em></p>' if note else ""
+    body = f"""
+        <p style="font-family:Georgia,serif;font-size:22px;color:{INK};margin:0 0 8px;">A disbursement is on the way, {first_name}.</p>
+        <p>We've marked one of your earned credits as paid. Funds were sent via <strong>{method}</strong>.</p>
+        <table width="100%" style="margin-top:18px;font-family:Arial,sans-serif;font-size:14px;">
+          <tr><td style="color:{SMOKE};padding:4px 0;width:140px;">Amount</td><td><strong>{_money(amount)}</strong></td></tr>
+          <tr><td style="color:{SMOKE};padding:4px 0;">Source</td><td>{source_label}</td></tr>
+          <tr><td style="color:{SMOKE};padding:4px 0;">Method</td><td>{method}</td></tr>
+          {ref_html}
+        </table>
+        {note_html}
+        {_button(f"{app_url}/dashboard/partner/payouts", "View my ledger")}
+        <p style="font-size:13px;color:{SMOKE};margin-top:18px;">Thank you for the work you're doing. If anything looks off, just reply to this email and a human will follow up.</p>
+    """
+    text = (
+        f"A disbursement is on the way, {first_name}.\n\n"
+        f"Amount: {_money(amount)}\nSource: {source_label}\nMethod: {method}\n"
+        + (f"Reference: {reference}\n" if reference else "")
+        + (f"\nNote: {note}\n" if note else "")
+        + f"\nView your ledger: {app_url}/dashboard/partner/payouts"
+    )
+    return subject, _shell(subject, f"Disbursement of {_money(amount)} sent.", body), text
+

@@ -5,6 +5,7 @@ import { useCart } from "../contexts/CartContext";
 import { toast } from "sonner";
 import { ShoppingBag, Lock, ArrowLeft } from "lucide-react";
 import ReviewSection, { AggregateRatingBadge } from "../components/ReviewSection";
+import ShareButton from "../components/ShareButton";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -79,6 +80,18 @@ export default function ProductDetail() {
           )}
 
           <p className="text-xs text-[#5C6B6B] mt-6">{p.inventory} in stock</p>
+          {p.type !== "workshop_material" && (
+            <div className="mt-4">
+              <ShareButton
+                surface="product"
+                surfaceId={p.id}
+                path={`/shop/${p.id}`}
+                title={p.name}
+                emailSubject={`From the Birthright shop: ${p.name}`}
+                showLabel
+              />
+            </div>
+          )}
         </div>
       </div>
 

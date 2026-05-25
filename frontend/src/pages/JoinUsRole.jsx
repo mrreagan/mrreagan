@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import api from "../lib/api";
 import { ArrowLeft, Heart, Clock, CheckCircle2 } from "lucide-react";
+import ShareButton from "../components/ShareButton";
 
 export default function JoinUsRole() {
   const { slug } = useParams();
@@ -103,6 +104,17 @@ export default function JoinUsRole() {
           </div>
           <h1 className="editorial-h1" data-testid="role-detail-title">{role.title}</h1>
           <p className="text-lg text-[#476B6B] mt-3 leading-snug">{role.headline}</p>
+          <div className="mt-4">
+            <ShareButton
+              surface="foundation_role"
+              surfaceId={role.slug}
+              path={`/join-us/${role.slug}`}
+              title={role.title}
+              emailSubject={`Open role at Birthright: ${role.title}`}
+              showLabel
+              align="left"
+            />
+          </div>
 
           <div className="mt-8 space-y-6">
             <Section title="Who you are" body={role.who_you_are} />

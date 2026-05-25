@@ -796,3 +796,47 @@ class PayoutMarkPaid(BaseModel):
     method: Optional[str] = Field(default="manual", max_length=40)
     reference: Optional[str] = Field(default="", max_length=200)
     note: Optional[str] = Field(default="", max_length=2000)
+
+
+# ============ SHARES & BOOKMARKS (v1.11.0 Step 8.5) ============
+
+BookmarkableType = Literal[
+    "workshop", "product", "research", "partner", "facilitator",
+    "foundation_role", "proposal", "impact_statement",
+]
+ShareSurface = Literal[
+    "workshop", "product", "research", "partner", "facilitator",
+    "foundation_role", "proposal", "impact_statement", "page",
+]
+ShareChannel = Literal[
+    "copy_link", "qr", "email", "sms", "ics", "cite", "download",
+    "native_share", "facebook", "twitter", "linkedin", "messenger",
+    "whatsapp", "bookmark",
+]
+
+
+class ShareLogCreate(BaseModel):
+    """Anon or auth event — caller hits this when a share affordance is used,
+    or when a page loads with `?via=` to attribute the inbound visit."""
+    surface: ShareSurface
+    surface_id: Optional[str] = Field(default=None, max_length=200)
+    channel: ShareChannel
+    via: Optional[str] = Field(default=None, max_length=100)  # referral code OR user id OR anon-XXX
+    path: Optional[str] = Field(default=None, max_length=600)
+    session_id: Optional[str] = Field(default=None, max_length=100)
+
+
+class BookmarkCreate(BaseModel):
+    subject_type: BookmarkableType
+    subject_id: str = Field(min_length=1, max_length=120)
+    label: Optional[str] = Field(default=None, max_length=300)
+    note: Optional[str] = Field(default=None, max_length=1000)
+
+
+# ============ DISBURSEMENT (v1.11.0 Step 8) ============
+
+class DisbursementSettings(BaseModel):
+    """Admin-set foundation-wide disbursement schedule."""
+    next_disbursement_date: Optional[str] = Field(default=None, max_length=40)  # ISO date
+    cadence: Optional[str] = Field(default="monthly", max_length=40)
+    notes: Optional[str] = Field(default="", max_length=600)

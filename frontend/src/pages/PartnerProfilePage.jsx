@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { Globe, MapPin, ArrowLeft, Sparkles } from "lucide-react";
+import ShareButton from "../components/ShareButton";
 
 const TYPE_LABEL = {
   facilitator: "Facilitator",
@@ -73,10 +74,22 @@ export default function PartnerProfilePage() {
       <div className="divider-flame" />
       <p className="font-serif text-xl">{profile.headline}</p>
 
-      <div className="flex flex-wrap gap-4 mt-4 text-xs text-[#5C6B6B]">
+      <div className="flex flex-wrap gap-4 mt-4 text-xs text-[#5C6B6B] items-center">
         {profile.location && <span className="inline-flex items-center gap-1"><MapPin size={11} strokeWidth={1.5} /> {profile.location}</span>}
         {profile.website_url && (
           <ExternalLink profile={profile} testid="partner-website-link" />
+        )}
+        {!profile.is_sample && (
+          <div className="ml-auto">
+            <ShareButton
+              surface="partner"
+              surfaceId={profile.slug}
+              path={`/partners/${profile.slug}`}
+              title={profile.display_name}
+              emailSubject={`Birthright partner: ${profile.display_name}`}
+              size="sm"
+            />
+          </div>
         )}
       </div>
 

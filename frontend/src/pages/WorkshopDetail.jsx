@@ -11,6 +11,7 @@ import {
   LocationCard,
 } from "../components/workshop/WorkshopSections";
 import WorkshopRegistrationPanel from "../components/workshop/WorkshopRegistrationPanel";
+import ShareButton from "../components/ShareButton";
 
 export default function WorkshopDetail() {
   const { slug } = useParams();
@@ -44,9 +45,19 @@ export default function WorkshopDetail() {
 
       <section className="container-page py-16 grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-8 space-y-12">
-          <div>
+          <div className="flex items-center justify-between">
             <span className="label">About this workshop</span>
-            <p className="text-base text-[#1A2424] mt-4 leading-relaxed whitespace-pre-line">
+            <ShareButton
+              surface="workshop"
+              surfaceId={workshop.id}
+              path={`/workshops/${workshop.slug}`}
+              title={workshop.title}
+              emailSubject={`Workshop: ${workshop.title}`}
+              showLabel
+            />
+          </div>
+          <div>
+            <p className="text-base text-[#1A2424] leading-relaxed whitespace-pre-line">
               {workshop.full_description}
             </p>
           </div>
