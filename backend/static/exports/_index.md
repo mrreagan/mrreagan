@@ -15,7 +15,7 @@ https://birthright-hub.preview.emergentagent.com/api/static/exports/_index.html
 
 | File | Description |
 |---|---|
-| `birthright-versions.pdf` | Tight version index of every shipped version + in-progress + backlog. Last refreshed May 25, 2026 (includes Phase 6C.1 / Iter 21 Direct Messaging). |
+| `birthright-versions.pdf` | Tight version index of every shipped version + in-progress + backlog. Last refreshed May 25, 2026 (includes Phase 6C.2 + 6C.3 / Iter 22 Ombudsman + Disputes). |
 
 ## Proposals & scopes
 

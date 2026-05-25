@@ -208,9 +208,9 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 ## Backlog — prioritized
 
 ### Phase 6C (multi-iteration roadmap)
-1. ~~**6C.1** — User↔Partner + Partner↔Partner DMs (opt-in 1b, ombudsman metadata-only 2c)~~ ✅ **SHIPPED in Iter 21**
-2. **6C.2** — Ombudsman queue at `/admin/ombudsman` (dedicated UI for flagged threads, ombudsman role tagging on users)
-3. **6C.3** — Disputes workflow (file → under_review → resolved/dismissed, tied to a transaction so Step 10 clawback can hook in)
+1. ~~**6C.1** — User↔Partner + Partner↔Partner DMs~~ ✅ **SHIPPED in Iter 21**
+2. ~~**6C.2** — Ombudsman queue at `/admin/ombudsman`~~ ✅ **SHIPPED in Iter 22**
+3. ~~**6C.3** — Disputes workflow~~ ✅ **SHIPPED in Iter 22**
 
 ### v1.11.0 wrap-up (sequencing locked)
 1. ~~**`v1.11.0-step8`** — Disbursement orchestration~~ ✅ **SHIPPED in Iter 19**
@@ -234,6 +234,38 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend**: `/research` page with promoted top + listing/search; `/dashboard/partner/research` CRUD + promote checkout; `/dashboard/partner/payouts` 3 tabs (Ledger / W9 / Method); `/partners` Featured strip at top; nav tightened to `xl:flex` + `gap-0.5` to fit 11 items.
 - **Test coverage**: `/app/test_reports/iteration_18.json` — backend 32/32 PASS, frontend 100%. Pre-existing iter17 header overlap fixed.
 - **Documentation**: `birthright-v1.11-step6-7-scope-v1.pdf` (171 KB) + refreshed `birthright-versions.pdf` (266 KB).
+
+## Iteration 22 — Phase 6C.2 + 6C.3 Ombudsman Queue + Disputes Workflow (May 25, 2026)
+- **Goal**: Close out Phase 6C (the user-protection layer) by giving the platform a formal way to file, route, and resolve conflicts between members. Sets up Step 10's clawback cascade by recording optional `financial_credit_usd` on resolutions.
+- **Disputes model** (`disputes` collection):
+  - id, filed_by, against_user_id, category (`payment|conduct|content|other`), title, description
+  - status (`open|under_review|resolved|dismissed`), assigned_ombudsman_id
+  - Optional `transaction_id` (FK to payment_transactions, validated as caller's own) + `thread_id` (FK to dm_threads, validated as participant)
+  - `events[]` audit-trail (filed → assigned → status_change → resolved), `resolution` snapshot when terminal
+- **REST surface**:
+  - `POST /api/disputes` — file (self-dispute rejected; FK validations)
+  - `GET /api/me/disputes?role=all|filed|against` — my involved disputes
+  - `GET /api/me/disputes/{id}` — caller must be filer or respondent
+  - `GET /api/admin/disputes` (filter status, assigned_to=me|unassigned) — admin OR `is_ombudsman=true` required
+  - `POST /api/admin/disputes/{id}/assign` — target must have `is_ombudsman=true`
+  - `POST /api/admin/disputes/{id}/status` — non-terminal status changes; note ≥ 3 chars
+  - `POST /api/admin/disputes/{id}/resolve` — outcome (`dismissed|upheld|partial`) + resolution_note ≥ 10 chars + optional `financial_credit_usd`
+- **Ombudsman queue** (Phase 6C.2):
+  - `GET /api/admin/ombudsman/queue` — aggregates open + under_review disputes plus flagged DM threads from iter 21. Ombudsmen see only their assigned + unassigned; admin sees all.
+  - `GET /api/admin/ombudsman/users` — list of users with `is_ombudsman=true` (powers assign dropdown).
+- **Frontend**:
+  - `/dashboard/disputes` MyDisputes page with type filter chips (All/Filed by me/About me) and status pills.
+  - `/dashboard/disputes/{id}` DisputeDetail with timeline, linked thread/transaction, resolution block.
+  - `/admin/ombudsman` OmbudsmanQueue with 3 stat cards (open / under_review / flagged_threads) and 2 lists (disputes + flagged threads).
+  - `/admin/disputes/{id}` reuses DisputeDetail with `adminMode=true`, exposing Assign + Move-status + Resolve action cards.
+  - `FileDisputeModal` drop-in component — wired from thread header (pre-fills thread_id + recipient) and from `/partners/{slug}` bottom link.
+  - Layout user menu adds **My Disputes**; users with `is_ombudsman=true` also see **Ombudsman queue** styled with accent color.
+  - Admin Dashboard gains an **Ombudsman queue** QuickActionCard.
+  - `ProtectedRoute` now supports `allowOmbudsman` prop so non-admin ombudsmen can access `/admin/ombudsman` + `/admin/disputes/{id}`.
+- **Models**: `DisputeCreate`, `DisputeAssign`, `DisputeStatusUpdate`, `DisputeResolution`, `DisputeStatus`, `DisputeCategory` Literals.
+- **Test coverage** — `/app/backend/tests/test_iter22_disputes.py` 34/34 PASS. Full flow tested: file → invalid inputs (self, missing respondent, bad txn/thread, short title/description) → admin list → assign (rejects non-ombudsman target) → status update (rejects terminal statuses) → resolve (3 outcomes, with/without credit) → idempotency (rejects double-resolve). Ombudsman queue scoping tested for admin vs ombudsman-only visibility. No regressions in iter 17-21.
+- **Iter-22 report**: `/app/test_reports/iteration_22.json` — zero issues, no retest needed.
+- **Documentation**: `birthright-versions.pdf` refreshed (362 KB), `_index.md` updated.
 
 ## Iteration 21 — Phase 6C.1 Direct Messaging (May 25, 2026)
 - **Goal**: User↔Partner and Partner↔Partner direct messages with privacy patterns set up for ombudsman + disputes work in later iterations.
