@@ -8,11 +8,11 @@ import AgreementResignBanner from "./AgreementResignBanner";
 import AssistantWidget from "./AssistantWidget";
 
 const NAV_EXPLORE = [
-  { to: "/experiences", label: "Experiences" },
-  { to: "/shop",        label: "Shop" },
+  { to: "/experiences", label: "Workshop" },
+  { to: "/shop",        label: "Store" },
   { to: "/facilitators",label: "Facilitators" },
-  { to: "/partners",    label: "Partners" },
-  { to: "/sponsorship", label: "Sponsorship" },
+  { to: "/partners",    label: "Partner" },
+  { to: "/sponsorship", label: "Sponsor" },
 ];
 
 const NAV_FOUNDATION = [
@@ -264,11 +264,11 @@ function FooterColumn({ heading, links }) {
 }
 
 const FOOTER_EXPLORE = [
-  { to: "/experiences", label: "Experiences" },
-  { to: "/shop", label: "Shop" },
+  { to: "/experiences", label: "Workshop" },
+  { to: "/shop", label: "Store" },
   { to: "/facilitators", label: "Facilitators" },
-  { to: "/partners", label: "Partners" },
-  { to: "/sponsorship", label: "Sponsorship" },
+  { to: "/partners", label: "Partner" },
+  { to: "/sponsorship", label: "Sponsor" },
 ];
 const FOOTER_FOUNDATION = [
   { to: "/about", label: "About" },

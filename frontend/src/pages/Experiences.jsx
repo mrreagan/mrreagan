@@ -105,7 +105,7 @@ export default function Experiences() {
       {/* ---------- Hero ---------- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
         <div className="lg:col-span-6">
-          <span className="label">Experiences</span>
+          <span className="label">Workshop</span>
           <h1 className="editorial-h1 mt-3">A practice, not a curriculum.</h1>
           <div className="divider-flame" />
           <p className="text-base text-[#1A2424] leading-relaxed">
