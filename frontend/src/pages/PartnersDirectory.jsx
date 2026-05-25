@@ -16,10 +16,31 @@ export default function PartnersDirectory() {
   const [searchParams, setSearchParams] = useSearchParams();
   const samplesMode = searchParams.get("samples") === "1";
 
-  const [partnerType, setPartnerType] = useState("all");
-  const [q, setQ] = useState("");
+  // Initialize filters from URL so the AI Concierge (and any deep link) can
+  // land users directly on a filtered view, e.g. /partners?partner_type=vendor.
+  const validTypes = ["all", "facilitator", "vendor", "community", "research"];
+  const initialType = (() => {
+    const t = searchParams.get("partner_type");
+    return validTypes.includes(t) ? t : "all";
+  })();
+  const [partnerType, setPartnerType] = useState(initialType);
+  const [q, setQ] = useState(searchParams.get("q") || "");
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Keep URL in sync when filters change (so refresh / share preserves view).
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (partnerType !== "all") next.set("partner_type", partnerType);
+    else next.delete("partner_type");
+    if (q.trim().length >= 2) next.set("q", q.trim());
+    else next.delete("q");
+    // Avoid replacing the URL on the very first render if nothing changed.
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partnerType, q]);
 
   useEffect(() => {
     setLoading(true);

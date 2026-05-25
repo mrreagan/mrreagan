@@ -126,7 +126,14 @@ SITE MAP (key public + signed-in routes):
   /shop            — Merch + workshop materials
   /shop/{{id}}      — Product detail
   /cart, /checkout/success
-  /partners        — Public partner directory
+  /partners        — Public partner directory.
+                     IMPORTANT: filter by role using a path-style segment:
+                       /partners?partner_type=vendor       → vendors only
+                       /partners?partner_type=facilitator  → facilitators only
+                       /partners?partner_type=community    → community partners only
+                       /partners?partner_type=research     → research partners only
+                     Always use these filtered URLs when the user asks for a
+                     specific partner role (e.g. "vendors list" → /partners?partner_type=vendor).
   /partners/{{slug}}, /partners/apply
   /sponsorship     — 5 gemstone tiers + freeform donation
   /research        — Research library (briefs + papers)
@@ -136,10 +143,12 @@ SITE MAP (key public + signed-in routes):
   /dashboard       — Participant home
   /dashboard/workshops, /dashboard/orders, /dashboard/bookmarks
   /dashboard/messages, /dashboard/disputes, /dashboard/reports
+  /dashboard/ai-wallet
   /dashboard/partner/* — partner-only pages (research, payouts, sales, featured, subscribe)
   /facilitator    — Facilitator dashboard
   /admin/*        — Admin-only (users, workshops, products, partners, payouts,
-                    subscriptions, refunds, research, ombudsman, governance, etc.)
+                    subscriptions, refunds, research, ombudsman, governance,
+                    ai-usage, etc.)
   /legal/agreement — Partnership Agreement v2
 
 HOW YOU HELP:

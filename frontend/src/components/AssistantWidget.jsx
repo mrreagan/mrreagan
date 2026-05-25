@@ -63,12 +63,15 @@ export default function AssistantWidget() {
     if (open) setTimeout(() => inputRef.current?.focus(), 100);
   }, [open]);
 
-  // Keyboard shortcut: `/` toggles (when not typing in another input)
+  // Keyboard shortcut: `/` toggles (when not typing in another input,
+  // OR when the assistant input itself is empty — lets mobile users escape).
   useEffect(() => {
     const onKey = (e) => {
       const target = e.target;
-      const inField = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
-      if (e.key === "/" && !inField && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const isAssistantInput = target && target.dataset && target.dataset.testid === "assistant-input";
+      const inOtherField = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) && !isAssistantInput;
+      const assistantInputIsEmpty = isAssistantInput && !target.value;
+      if (e.key === "/" && !inOtherField && (!isAssistantInput || assistantInputIsEmpty) && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         setOpen((v) => !v);
       } else if (e.key === "Escape" && open) {
@@ -98,6 +101,10 @@ export default function AssistantWidget() {
         const p = directive.params?.path;
         if (typeof p === "string" && p.startsWith("/")) {
           navigate(p);
+          // Auto-close so the user actually SEES the page they asked for.
+          // Otherwise the fullscreen mobile panel hides the new page.
+          setOpen(false);
+          toast.success(`Navigated to ${p}`);
           return true;
         }
         return false;
@@ -138,7 +145,7 @@ export default function AssistantWidget() {
       }
       case "register_for_workshop": {
         const wid = directive.params?.workshop_id;
-        if (wid) { navigate(`/workshops/${wid}`); return true; }
+        if (wid) { navigate(`/workshops/${wid}`); setOpen(false); toast.success(`Navigated to /workshops/${wid}`); return true; }
         return false;
       }
       default:
@@ -294,8 +301,13 @@ export default function AssistantWidget() {
                 <History size={16} strokeWidth={1.5} />
               </button>
             )}
-            <button onClick={() => setOpen(false)} className="text-[#5C6B6B] hover:text-[#1A2424]" data-testid="assistant-close-btn" aria-label="Close">
-              <X size={18} strokeWidth={1.5} />
+            <button
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-[#E5E1D8] bg-white text-[#1A2424] hover:bg-[#F4F1EA] active:bg-[#E5E1D8]"
+              data-testid="assistant-close-btn"
+              aria-label="Close"
+            >
+              <X size={14} strokeWidth={1.8} /> Close
             </button>
           </div>
         </header>
