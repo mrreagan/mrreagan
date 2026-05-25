@@ -8,25 +8,25 @@ import AgreementResignBanner from "./AgreementResignBanner";
 import AssistantWidget from "./AssistantWidget";
 
 const NAV_EXPLORE = [
-  { to: "/experiences", label: "Workshop" },
+  { to: "/experiences", label: "Heal" },
+  { to: "/shop",        label: "Equip" },
   { to: "/research",    label: "Research" },
-  { to: "/shop",        label: "Store" },
   { to: "/partners",    label: "Partner" },
   { to: "/sponsorship", label: "Sponsor" },
+  { to: "/governance",  label: "Lead" },
+  { to: "/join-us",     label: "Join" },
+  { to: "/contact",     label: "Connect" },
 ];
 
 const NAV_FOUNDATION = [
-  { to: "/about",      label: "About" },
-  { to: "/mission",    label: "Mission" },
-  { to: "/governance", label: "Governance" },
-  { to: "/join-us",    label: "Join Us" },
-  { to: "/contact",    label: "Contact" },
+  { to: "/about",   label: "About" },
+  { to: "/mission", label: "Mission" },
 ];
 
 // Flattened list still used by the desktop top bar so the existing
-// horizontal nav layout doesn't shift mid-session. Order matches the
-// EXPLORE→FOUNDATION reading order.
-const NAV = [...NAV_EXPLORE, ...NAV_FOUNDATION];
+// horizontal nav layout doesn't shift mid-session. Desktop shows only
+// the primary 8 verbs; About/Mission live in the mobile drawer + footer.
+const NAV = [...NAV_EXPLORE];
 
 // ---------- Cart icon button ----------
 function CartButton({ count }) {
@@ -263,18 +263,18 @@ function FooterColumn({ heading, links }) {
 }
 
 const FOOTER_EXPLORE = [
-  { to: "/experiences", label: "Workshop" },
+  { to: "/experiences", label: "Heal" },
+  { to: "/shop", label: "Equip" },
   { to: "/research", label: "Research" },
-  { to: "/shop", label: "Store" },
   { to: "/partners", label: "Partner" },
   { to: "/sponsorship", label: "Sponsor" },
+  { to: "/governance", label: "Lead" },
+  { to: "/join-us", label: "Join" },
+  { to: "/contact", label: "Connect" },
 ];
 const FOOTER_FOUNDATION = [
   { to: "/about", label: "About" },
   { to: "/mission", label: "Mission" },
-  { to: "/governance", label: "Governance" },
-  { to: "/join-us", label: "Join Us" },
-  { to: "/contact", label: "Contact" },
 ];
 
 export function Footer() {
