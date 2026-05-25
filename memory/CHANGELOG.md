@@ -8,6 +8,34 @@ because the git history was reinitialized on May 19, 2026.
 
 ---
 
+## Phase 6C.4 — May 25, 2026 · COMPLETE (AI Wallet + AI Research Collaborator + Vendor PDM AI)
+- **AI cost metering & wallet** (`utils/ai_billing.py`, `routers/ai_wallet.py`):
+  per-call cost computation from a model price table, partner wallet with
+  balance/topup/spend ledgers, Stripe top-ups ($10/$25/$50/$100 packs),
+  auto-recharge opt-in, admin grant + usage report endpoints. 1× passthrough.
+- **AI Research Collaborator** (`routers/research_ai.py` at `/api/research-collab/*`)
+  positioned as a peer collaborator (not secretary) per founder direction.
+  7 capabilities in 2 groups:
+    - **Inquiry**: synthesize-literature, map-landscape, generate-questions,
+      critique-methodology (genuine scholar-grade prompts anchored to attachment
+      theory, family systems, intergenerational trauma).
+    - **Drafting**: summarize-notes, suggest-tags, polish-draft.
+- **Vendor PDM AI** (`routers/vendor_ai.py` at `/api/vendor-ai/*`):
+  write-description, suggest-price, marketing-blurb, generate-image (Nano Banana).
+- **Concierge metering**: balance-gated only for partner/facilitator roles;
+  participants & anonymous visitors remain foundation-funded.
+- **Replay last conversation** button (`/api/assistant/my-sessions/last`).
+- **Admin AI usage report** at `/admin/ai-usage` — per-user × feature breakdown
+  + active-wallet table + day-window filter (7/30/90/365).
+- **Test coverage**: backend `test_iter27_ai_billing.py` 23/23 PASS, including
+  live Claude calls for synthesize-literature and write-description. Frontend
+  iter-27 ~85% PASS — two lucide-react import bugs (`History`, `ImageIcon`)
+  caught and fixed by the testing agent; live UI screenshot then confirmed
+  the AI Research Collaborator panel renders correctly with the expected
+  Inquiry/Drafting groupings + scholar-grade markdown output for "attachment
+  repair in adoptive families" (Verrier, Rutter, Dozier, Juffer & van IJzendoorn,
+  Zeanah, Brodzinsky — all real, real-cited, not fabricated).
+
 ## Phase 6B.6 — May 25, 2026 · COMPLETE (AI Concierge — agentic site-wide guide)
 - **Pivoted away from static FAQ modals** at user request — replaced with a
   full agentic AI guide.

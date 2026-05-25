@@ -42,6 +42,7 @@ Prioritized list of remaining work. Updated May 25, 2026.
 ---
 
 ## DONE — recent
+- Phase 6C.4 (AI Wallet + Research Collaborator + Vendor PDM AI) — May 25, 2026
 - Phase 6B.6 (AI Concierge — agentic site-wide guide) — May 25, 2026
 - Multi-team Test Plan PDF (11 suites, AI-test-paths included) — May 25, 2026
 - Phase 6B.5 (Research moderation queue) — May 25, 2026
