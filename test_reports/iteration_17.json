@@ -1,0 +1,74 @@
+{
+  "summary": "v1.11.0 Step 4 (Featured) + Step 5 (Founding) — full backend + frontend smoke test. 20/22 backend tests pass (2 skipped: sample-profile 400 path requires seeded sample profile under test user; apply_as_founding flag persistence skipped because demo already has profiles for vendor/community/facilitator). Frontend pages load correctly with proper empty states, stats, and admin controls. One frontend rendering concern: '★ Founding Partner' badge does not appear on sample partner cards in /partners directory even though 4 sample personas have is_founding_partner=true.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/founding-partners/stats",
+        "issue": "_taken_count does not exclude is_sample profiles, so seeded sample personas count against the public cap (currently shows 4/50 with no real partners). This is documented behavior in the spec — the implementation matches Q3 acceptance — but the user-facing optics may look like 4 paying founders exist when in fact they are all sample personas. Consider either (a) excluding is_sample from _taken_count, or (b) excluding sample personas from the public stats while still gating grants on the unfiltered count."
+      },
+      {
+        "endpoint": "/api/partners/apply",
+        "issue": "Could not directly verify apply_as_founding_partner persistence end-to-end via /api/partners/apply because demo user already holds community/vendor/facilitator records (apply returns 400). Code inspection confirms PartnerApplyData.apply_as_founding_partner is on the model and partners.py line 417 reads app['data']['apply_as_founding_partner'] for auto-grant on approve. Recommend adding a unit test that uses an admin invite path or a fresh user."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "PartnersDirectory.jsx",
+        "issue": "'★ Founding' badge does not render on partner cards in /partners (and likely /partners/<slug>) even when is_founding_partner=true. Verified by enabling the 'view sample profiles' toggle: 4 seeded sample personas (Dr. Imani Okafor, etc.) display the 'SAMPLE' pill but no Founding ribbon. Body text scan returned 0 occurrences of 'Founding' and 0 of '★' on the directory. Featured ribbon also did not appear (expected, no active featured slots).",
+        "selector": "[data-testid='partner-card-founding-badge']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Layout.jsx CartProvider tree",
+        "issue": "Console hydration error: '<a> cannot be a descendant of <a>' — nested anchor in Layout/Cart subtree. Causes hydration warning on every page; harmless visually but noisy and a known React 19 footgun.",
+        "selector": "a > a",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/admin/featured",
+        "issues": [
+          "Founding-Partners card and Active-Featured-Slots card look clean. 'Update cap' button + input alignment good. 'Grant comped slot' modal not tested with full submission flow (requires real non-sample profile)."
+        ]
+      },
+      {
+        "screen": "/featured",
+        "issues": [
+          "Empty-state copy is clear; sparkle icon + 'Browse all partners' CTA is well-balanced."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter17_featured_founding.py",
+    "/app/test_reports/pytest/iter17_results.xml"
+  ],
+  "action_items": [
+    "Fix PartnersDirectory.jsx so '★ Founding Partner' badge renders for is_founding_partner=true profiles. Verify the prop is being passed through; check whether the badge is gated on !is_sample which would suppress it on seeded personas (per Q3 ask, founding badge SHOULD appear on sample cards since they are illustrative).",
+    "Fix nested <a> inside <a> hydration warning emitted from Layout/Cart subtree.",
+    "(Optional / product) Decide whether founding-partners/stats.taken should exclude is_sample. Currently 4 sample personas count toward the public 4/50 number. The user spec said current behavior is acceptable; flagging for visibility.",
+    "(Optional) Add a fresh-user fixture so backend tests can exercise the apply_as_founding_partner persistence path end-to-end."
+  ],
+  "critical_code_review_comments": [
+    "routers/featured.py: list_featured uses a correct $or to exclude is_sample, but the public list filter does NOT include is_founding_partner — that is correct (Featured ≠ Founding) but worth a comment.",
+    "routers/featured.py activate_featured_from_txn: handles re-purchase extension correctly (extends from current_until if still active). Good.",
+    "routers/founding.py _taken_count: does not filter is_sample (intentional per spec) but does filter status=active and expiration. Sound.",
+    "routers/partners.py approve_application: auto-grants founding flag only when cap has room — returns founding_granted:false otherwise (good degraded behavior, admin can still grant manually).",
+    "models.FeaturedContentUpdate: video_url/custom_cta_url accept any string — consider adding HttpUrl validation, otherwise PUT will accept malformed URLs and break the card on the public page."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter17_featured_founding.py"
+  ],
+  "success_rate": {"backend": "100% (20/20 executed; 2 documented skips)", "frontend": "85% (load + admin UI verified; founding badge bug observed)"},
+  "test_credentials": "admin@birthright.org / birthright2026; demo@birthright.org / birthright2026 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "No new seed required. Tests use existing demo + admin accounts. Test creates/cleans up its own grants on demo's community profile.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite at /app/backend/tests/test_iter17_featured_founding.py — 20 passing, 2 skipped. The 2 skips: (1) sample-profile 400 path on /me/featured/checkout — needs a sample profile owned by a test user, currently no such fixture; (2) apply_as_founding_partner persistence via /api/partners/apply — demo user already has profiles, so apply returns 400. Frontend bug to retest: 'Founding' badge on /partners cards (currently 0 occurrences in body text despite 4 seeded founding samples). Stripe checkout creates a real session; the test does not redeem the session — webhook fulfillment is exercised indirectly via the admin grant endpoint which performs the same featured_until + content updates as activate_featured_from_txn.",
+  "rca_of_the_issue": "Founding badge missing on directory cards — likely root cause is one of: (a) /api/partners GET endpoint not projecting is_founding_partner into the card payload, or (b) PartnersDirectory.jsx not rendering the badge when is_sample=true (filtering it out as part of the SAMPLE pill display). To confirm: hit GET /api/partners and inspect the response shape for is_founding_partner on any sample partner; then check PartnersDirectory card render block for a conditional that suppresses founding when is_sample."
+}

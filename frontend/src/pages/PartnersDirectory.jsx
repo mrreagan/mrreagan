@@ -139,17 +139,31 @@ function PartnerCard({ profile, sampleMode }) {
   const cfg = TYPE_CONFIG[profile.partner_type] || TYPE_CONFIG.community;
   const Icon = cfg.icon;
   const isSample = profile.is_sample;
+  const isFeatured = profile.featured_until && new Date(profile.featured_until) > new Date();
+  const isFounding = profile.is_founding_partner;
   return (
     <Link
       to={`/partners/${profile.slug}`}
-      className={`card p-5 hover:border-[#476B6B] transition block relative ${isSample ? "ring-1 ring-[#C9A961]/40" : ""}`}
+      className={`card p-5 hover:border-[#476B6B] transition block relative ${isSample ? "ring-1 ring-[#C9A961]/40" : ""} ${isFeatured ? "ring-2 ring-[#C9A961]" : ""}`}
       data-testid={`partner-card-${profile.slug}`}
     >
-      {isSample && (
-        <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold bg-[#C9A961] text-[#1A2424]" data-testid={`sample-ribbon-${profile.slug}`}>
-          <Sparkles size={9} strokeWidth={2} /> Sample
-        </span>
-      )}
+      <div className="absolute top-3 right-3 flex flex-col gap-1 items-end">
+        {isFeatured && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold bg-[#C9A961] text-[#1A2424]" data-testid={`featured-ribbon-${profile.slug}`}>
+            <Sparkles size={9} strokeWidth={2} /> Featured
+          </span>
+        )}
+        {isSample && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold bg-[#C9A961] text-[#1A2424]" data-testid={`sample-ribbon-${profile.slug}`}>
+            <Sparkles size={9} strokeWidth={2} /> Sample
+          </span>
+        )}
+        {isFounding && !isSample && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold bg-[#2E5C46] text-white" data-testid={`founding-ribbon-${profile.slug}`}>
+            ★ Founding
+          </span>
+        )}
+      </div>
       <div className="flex items-center gap-3">
         {profile.photo_url ? (
           <img src={profile.photo_url} alt="" className="w-12 h-12 rounded-full object-cover" />

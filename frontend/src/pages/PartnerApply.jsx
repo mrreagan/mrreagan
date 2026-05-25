@@ -33,6 +33,8 @@ const EMPTY = {
   // vendor
   business_name: "",
   product_categories: "",
+  // founding partner request
+  apply_as_founding_partner: false,
 };
 
 export default function PartnerApply() {
@@ -76,6 +78,7 @@ export default function PartnerApply() {
       });
       if (form.audience_size !== "") payload.audience_size = parseInt(form.audience_size, 10) || 0;
       if (form.partner_type === "facilitator") payload.presents_birthright_ip = form.presents_birthright_ip;
+      payload.apply_as_founding_partner = !!form.apply_as_founding_partner;
       await api.post("/partners/apply", payload);
       toast.success("Application submitted. We'll be in touch.");
       navigate("/dashboard/partner");
@@ -245,10 +248,56 @@ export default function PartnerApply() {
           </fieldset>
         )}
 
+        <FoundingPartnerOptIn checked={form.apply_as_founding_partner} onChange={(v) => update("apply_as_founding_partner", v)} />
+
         <button type="submit" disabled={submitting} className="btn-primary" data-testid="apply-submit">
           {submitting ? "Submitting..." : "Submit application"}
         </button>
       </form>
     </div>
+  );
+}
+
+function FoundingPartnerOptIn({ checked, onChange }) {
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    api.get("/founding-partners/stats").then((r) => setStats(r.data)).catch(() => {});
+  }, []);
+  if (!stats) return null;
+  const pct = stats.cap > 0 ? Math.min(100, Math.round((stats.taken / stats.cap) * 100)) : 0;
+  return (
+    <fieldset className="card p-5 bg-[#FFFBEF] border-l-4 border-[#C9A961]" data-testid="apply-founding-section">
+      <legend className="label px-1 text-[#8B7128]">★ Founding Partner program</legend>
+      <p className="text-sm text-[#1A2424] leading-relaxed">
+        Founding Partners get a <strong>locked rev-share rate for 5 years</strong>, a visible badge across the directory, and a permanent seat in our origin story.
+      </p>
+      <div className="mt-3">
+        <div className="flex justify-between text-xs text-[#5C6B6B]">
+          <span data-testid="founding-counter">{stats.taken}/{stats.cap} seats taken</span>
+          <span>{stats.available} remaining</span>
+        </div>
+        <div className="h-2 bg-[#E5E1D8] rounded-full mt-1 overflow-hidden">
+          <div className="h-full bg-[#C9A961]" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+      {stats.is_open ? (
+        <label className="flex items-start gap-2 mt-4 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            className="mt-1"
+            data-testid="apply-founding-checkbox"
+          />
+          <span className="text-sm text-[#1A2424]">
+            <strong>I'd like to be considered for Founding Partner status.</strong> If accepted alongside my application, my locked rate runs for 5 years from approval.
+          </span>
+        </label>
+      ) : (
+        <p className="text-sm text-[#9E3C3C] mt-4" data-testid="apply-founding-full">
+          All Founding Partner seats are currently filled. You can still apply as a standard partner.
+        </p>
+      )}
+    </fieldset>
   );
 }

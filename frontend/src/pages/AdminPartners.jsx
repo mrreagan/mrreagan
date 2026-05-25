@@ -139,6 +139,11 @@ function ApplicationRow({ app, onUpdate }) {
           {app.data?.product_categories && <DetailRow label="Categories" value={app.data.product_categories} />}
           {app.data?.website_url && <DetailRow label="Website" value={app.data.website_url} link />}
           {app.data?.location && <DetailRow label="Location" value={app.data.location} />}
+          {app.data?.apply_as_founding_partner && (
+            <div className="px-2 py-1.5 rounded bg-[#FFFBEF] border-l-4 border-[#C9A961] text-xs text-[#8B7128]" data-testid={`founding-requested-${app.id}`}>
+              ★ Applicant requested <strong>Founding Partner</strong> status. Approving will auto-grant the flag if a seat is available.
+            </div>
+          )}
           {app.admin_note && <DetailRow label="Admin note" value={app.admin_note} />}
 
           {app.status === "pending" && (

@@ -536,6 +536,8 @@ class PartnerApplyData(BaseModel):
     # Vendor-specific
     business_name: Optional[str] = Field(default=None, max_length=200)
     product_categories: Optional[str] = Field(default=None, max_length=500)
+    # Founding-partner request flag (v1.11.0 step 5)
+    apply_as_founding_partner: bool = False
 
 
 class PartnerInviteCreate(BaseModel):
@@ -570,6 +572,32 @@ class FeaturePartnerRequest(BaseModel):
     video_url: Optional[str] = None
     image_urls: list[str] = Field(default_factory=list, max_length=3)
     custom_cta: Optional[str] = Field(default=None, max_length=200)
+
+
+class FeaturedContentUpdate(BaseModel):
+    """Partner-facing: edit their own featured content while the window is active."""
+    mission_alignment: Optional[str] = Field(default=None, max_length=2000)
+    signature_content: Optional[str] = Field(default=None, max_length=4000)
+    video_url: Optional[str] = Field(default=None, max_length=600)
+    image_urls: Optional[list[str]] = Field(default=None, max_length=3)
+    custom_cta: Optional[str] = Field(default=None, max_length=200)
+    custom_cta_url: Optional[str] = Field(default=None, max_length=600)
+
+
+class FeatureCheckoutRequest(BaseModel):
+    partner_type: str  # which of caller's profiles to feature
+    origin_url: str
+    # The partner can pre-fill content here so it's ready the moment payment clears
+    mission_alignment: Optional[str] = Field(default="", max_length=2000)
+    signature_content: Optional[str] = Field(default=None, max_length=4000)
+    video_url: Optional[str] = Field(default=None, max_length=600)
+    image_urls: list[str] = Field(default_factory=list, max_length=3)
+    custom_cta: Optional[str] = Field(default=None, max_length=200)
+    custom_cta_url: Optional[str] = Field(default=None, max_length=600)
+
+
+class FoundingPartnerCapUpdate(BaseModel):
+    cap: int = Field(ge=1, le=10000)
 
 
 class FoundingPartnerToggle(BaseModel):

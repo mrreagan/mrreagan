@@ -56,6 +56,18 @@ export default function PartnerProfilePage() {
         <div className="flex-1 min-w-0">
           <span className="label">{TYPE_LABEL[profile.partner_type] || "Partner"}</span>
           <h1 className="editorial-h1 mt-1">{profile.display_name}</h1>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {profile.featured_until && new Date(profile.featured_until) > new Date() && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-[#C9A961] text-[#1A2424]" data-testid="featured-badge">
+                <Sparkles size={10} strokeWidth={2} /> Featured partner
+              </span>
+            )}
+            {profile.is_founding_partner && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-[#2E5C46] text-white" data-testid="founding-badge">
+                ★ Founding Partner
+              </span>
+            )}
+          </div>
         </div>
       </div>
       <div className="divider-flame" />

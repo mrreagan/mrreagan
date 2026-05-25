@@ -67,6 +67,15 @@ from routers.partner_sales import (
     admin_router as partner_sales_admin_router,
     webhook_router as partner_sales_webhook_router,
 )
+from routers.featured import (
+    public_router as featured_public_router,
+    my_router as featured_my_router,
+    admin_router as featured_admin_router,
+)
+from routers.founding import (
+    public_router as founding_public_router,
+    admin_router as founding_admin_router,
+)
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -101,6 +110,11 @@ api_router.include_router(outbound_admin_router)
 api_router.include_router(partner_sales_my_router)
 api_router.include_router(partner_sales_admin_router)
 api_router.include_router(partner_sales_webhook_router)
+api_router.include_router(featured_public_router)
+api_router.include_router(featured_my_router)
+api_router.include_router(featured_admin_router)
+api_router.include_router(founding_public_router)
+api_router.include_router(founding_admin_router)
 
 
 @api_router.post("/webhook/stripe")

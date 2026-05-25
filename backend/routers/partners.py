@@ -55,6 +55,7 @@ _APP_DATA_FIELDS = (
     "organization", "audience_size", "referral_plan",
     "institution", "area_of_research", "sample_publications_url",
     "business_name", "product_categories",
+    "apply_as_founding_partner",
 )
 
 
@@ -411,6 +412,26 @@ async def approve_application(
         await ensure_referral_code(db, profile_doc)
     except Exception as e:
         logger.error(f"referral code mint failed for {profile_doc.get('id')}: {e}")
+
+    # Auto-grant founding-partner status if requested and cap allows
+    founding_granted = False
+    requested_founding = bool(app.get("data", {}).get("apply_as_founding_partner"))
+    if requested_founding:
+        try:
+            from routers.founding import _get_cap, _taken_count, DEFAULT_GRANT_YEARS
+            from datetime import datetime, timedelta, timezone
+            cap = await _get_cap(db)
+            taken = await _taken_count(db)
+            if taken < cap:
+                expires = (datetime.now(timezone.utc) + timedelta(days=DEFAULT_GRANT_YEARS * 365)).isoformat()
+                await db.partner_profiles.update_one(
+                    {"id": profile_doc["id"]},
+                    {"$set": {"is_founding_partner": True, "founding_rate_expires_at": expires, "updated_at": now_iso()}},
+                )
+                founding_granted = True
+        except Exception as e:
+            logger.error(f"founding grant failed for {profile_doc['id']}: {e}")
+
     await db.partner_applications.update_one(
         {"id": app_id},
         {"$set": {
@@ -418,14 +439,16 @@ async def approve_application(
             "decided_at": now_iso(),
             "decided_by": user["id"],
             "admin_note": (data.admin_note or "").strip(),
+            "founding_granted_on_approve": founding_granted,
         }},
     )
     await log_action(
         db, user, "partner.application.approve",
         target_type="partner_application", target_id=app_id,
-        metadata={"partner_type": app["partner_type"], "profile_id": profile_doc["id"]},
+        metadata={"partner_type": app["partner_type"], "profile_id": profile_doc["id"], "founding_granted": founding_granted},
     )
-    return {"application_status": "approved", "profile": profile_doc}
+    profile_doc = await db.partner_profiles.find_one({"id": profile_doc["id"]}, {"_id": 0, "webhook_secret": 0})
+    return {"application_status": "approved", "profile": profile_doc, "founding_granted": founding_granted}
 
 
 @admin_router.post("/applications/{app_id}/reject")

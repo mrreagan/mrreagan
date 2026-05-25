@@ -454,6 +454,15 @@ async def _create_subscription_from_txn(db, txn: dict) -> None:
 _PAID_HANDLERS["subscription"] = _create_subscription_from_txn
 
 
+async def _activate_featured_from_txn(db, txn: dict) -> None:
+    """Dispatch to featured module."""
+    from routers.featured import activate_featured_from_txn
+    await activate_featured_from_txn(db, txn)
+
+
+_PAID_HANDLERS["featured_slot"] = _activate_featured_from_txn
+
+
 async def _process_paid_transaction(txn: dict):
     """Handle side-effects of a successful payment by dispatching to the correct handler."""
     from database import db

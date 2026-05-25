@@ -90,6 +90,19 @@ export default function PartnerDashboard() {
               <span className="text-xs text-[#476B6B]">Open →</span>
             </Link>
           )}
+          {profiles.some((p) => p.status === "active" && !p.is_sample) && (
+            <Link
+              to="/dashboard/partner/featured"
+              className="card p-5 mt-4 flex items-center justify-between hover:border-[#476B6B] transition"
+              data-testid="featured-slot-link"
+            >
+              <div>
+                <p className="font-serif text-lg">★ Featured slot</p>
+                <p className="text-xs text-[#5C6B6B] mt-1">Buy a 30-day spotlight on /featured. Random rotation, gold ribbon, your content.</p>
+              </div>
+              <span className="text-xs text-[#476B6B]">Open →</span>
+            </Link>
+          )}
         </section>
       )}
 
