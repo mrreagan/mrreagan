@@ -105,6 +105,7 @@ from routers.refunds import (
     admin_router as refunds_admin_router,
     clawback_router as clawback_router,
 )
+from routers.assistant import router as assistant_router
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -162,6 +163,7 @@ api_router.include_router(disputes_admin_router)
 api_router.include_router(ombudsman_router)
 api_router.include_router(refunds_admin_router)
 api_router.include_router(clawback_router)
+api_router.include_router(assistant_router)
 
 
 @api_router.post("/webhook/stripe")

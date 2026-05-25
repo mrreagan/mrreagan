@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { ShoppingBag, Menu, X, User, LogOut, ChevronDown } from "lucide-react";
 import AgreementResignBanner from "./AgreementResignBanner";
+import AssistantWidget from "./AssistantWidget";
 
 const NAV_EXPLORE = [
   { to: "/workshops",   label: "Workshops" },
@@ -306,6 +307,7 @@ export default function Layout({ children }) {
         {children}
       </main>
       <Footer />
+      <AssistantWidget />
     </div>
   );
 }

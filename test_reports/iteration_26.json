@@ -1,0 +1,25 @@
+{
+  "summary": "Phase 6B.6 AI Concierge — frontend E2E tests for AssistantWidget all PASS. Verified floating button presence on /, /workshops, /shop, /partners, /research; '/' opens panel; Esc closes; required testids (assistant-input/send-btn/close-btn/messages); agentic navigate ('take me to workshops' → URL changes to /workshops); search_workshops and search_research return result summaries; forbidden actions (change role, delete account) are refused politely with NO confirm card emitted; tier=confirm bookmark workshop renders yellow [data-testid=confirm-card-bookmark] with accept+decline buttons and decline causes no side effect; multi-turn memory carries workshops context across turns; UI does not break on short/special-char messages; session_id persists in localStorage as 'bright_assistant_session_id'; PDF GET /api/static/exports/birthright-test-plan.pdf returns 200, application/pdf, 775264 bytes. Floating button positioned at bottom-20 right-5 (y=959 in 1080 viewport) — above the Emergent badge as designed and does not intercept it.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AssistantWidget bookmark flow", "issues": ["Minor UX note (NOT a regression): when the first message in a session is one that triggers an auto-navigate (e.g. 'I want to learn about repair workshops' → auto-runs Browse all upcoming workshops which navigates to /workshops), the page_context for subsequent 'bookmark this workshop' turns is no longer the workshop detail page, so the assistant asks the user to specify which workshop. Sending 'bookmark this workshop' as the first message on a workshop detail page works perfectly and renders [data-testid=confirm-card-bookmark]. This is correct behavior given the architecture; just worth noting for product."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_26.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AssistantWidget.jsx line 375: clicking decline mutates `action._done = 'declined'` directly without setState, so the card UI does not re-render to show the declined state. Functional impact is small (the action is not executed and no side effect occurs, which is what matters), but the 'No thanks' button remains active-looking instead of switching to a 'Done/declined' indicator. Consider lifting decline state into messages via setMessages to provide proper visual feedback.",
+    "AssistantWidget.jsx greeting effect (line 228) re-runs only when `open` toggles to true with messages.length===0. After a refresh, the panel re-greets and prior history isn't reloaded; this is documented behavior in the request, but consider surfacing a hint like 'starting a new conversation — your session id is preserved' so users aren't surprised."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100%"},
+  "test_credentials": "admin@birthright.org / birthright2026 used for the bookmark + multi-turn test",
+  "seed_data_creation": "None — used existing seeded workshop 'foundations-of-secure-bonds'",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All Phase 6B.6 acceptance criteria verified end-to-end against the live preview URL. The Claude Sonnet 4.5 backend is non-deterministic so tests assert on intent (action types, testid prefixes, presence of result-count substring) rather than exact reply text. When testing confirm cards, send the confirm-tier message FIRST on the relevant detail page; otherwise an earlier auto-navigate may move you off the contextual page.",
+  "rca of the issue": "n/a — no bugs reproduced; all happy-path and forbidden-path flows behaved as specified."
+}
