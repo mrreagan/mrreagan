@@ -49,6 +49,10 @@ import AdminReports from "./pages/AdminReports";
 import MyReports from "./pages/MyReports";
 import VendorProducts from "./pages/VendorProducts";
 import AdminVendorProducts from "./pages/AdminVendorProducts";
+import JoinUs from "./pages/JoinUs";
+import JoinUsRole from "./pages/JoinUsRole";
+import AdminFoundationRoles from "./pages/AdminFoundationRoles";
+import AdminFoundationApplications from "./pages/AdminFoundationApplications";
 import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children, roles }) {
@@ -89,6 +93,8 @@ function AppRoutes() {
       <Route path="/partners/apply" element={<PartnerApply />} />
       <Route path="/partners/subscribe" element={<PartnerSubscribe />} />
       <Route path="/partners/:slug" element={<PartnerProfilePage />} />
+      <Route path="/join-us" element={<JoinUs />} />
+      <Route path="/join-us/:slug" element={<JoinUsRole />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -217,6 +223,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminVendorProducts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/foundation-roles"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminFoundationRoles />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/foundation-applications"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminFoundationApplications />
           </ProtectedRoute>
         }
       />

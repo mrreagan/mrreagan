@@ -55,6 +55,12 @@ from routers.subscriptions import router as subscriptions_router
 from routers.referrals import public_router as referrals_public_router, my_router as referrals_my_router, admin_router as referrals_admin_router
 from routers.reports import my_router as reports_my_router, admin_router as reports_admin_router
 from routers.vendor_catalog import vendor_router as vendor_catalog_router, admin_router as vendor_catalog_admin_router
+from routers.foundation_roles import (
+    public_router as foundation_roles_public_router,
+    applications_router as foundation_roles_apps_router,
+    admin_router as foundation_roles_admin_router,
+    admin_apps_router as foundation_roles_admin_apps_router,
+)
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -80,6 +86,10 @@ api_router.include_router(reports_my_router)
 api_router.include_router(reports_admin_router)
 api_router.include_router(vendor_catalog_router)
 api_router.include_router(vendor_catalog_admin_router)
+api_router.include_router(foundation_roles_public_router)
+api_router.include_router(foundation_roles_apps_router)
+api_router.include_router(foundation_roles_admin_router)
+api_router.include_router(foundation_roles_admin_apps_router)
 
 
 @api_router.post("/webhook/stripe")
@@ -110,10 +120,12 @@ async def startup_event() -> None:
     except Exception as e:
         logger.error(f"Seeding error: {e}")
     try:
-        from runtime_seed import ensure_catalog_seeded, repair_known_broken_images, backfill_partner_economy_fields
+        from runtime_seed import ensure_catalog_seeded, repair_known_broken_images, backfill_partner_economy_fields, ensure_foundation_roles_seeded, ensure_sample_partners_seeded
         await ensure_catalog_seeded(db)
         await repair_known_broken_images(db)
         await backfill_partner_economy_fields(db)
+        await ensure_foundation_roles_seeded(db)
+        await ensure_sample_partners_seeded(db)
     except Exception as e:
         logger.error(f"Runtime seed/repair error: {e}")
     try:

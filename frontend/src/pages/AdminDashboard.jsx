@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../lib/api";
 import { Link } from "react-router-dom";
-import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale, Briefcase, BarChart3, Wallet, Store } from "lucide-react";
+import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale, Briefcase, BarChart3, Wallet, Store, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 // ---------- Stat card ----------
@@ -59,6 +59,8 @@ function OverviewTab() {
       <QuickActionCard to="/admin/photos" icon={Camera} title="Photo Moderation" description="Approve participant uploads" />
       <QuickActionCard to="/admin/governance" icon={Scale} title="Governance & Legal" description="Defaults, members, indemnification, audit" />
       <QuickActionCard to="/admin/partners" icon={Briefcase} title="Partner applications" description="Approve, reject, invite partners" />
+      <QuickActionCard to="/admin/foundation-roles" icon={UserPlus} title="Foundation roles" description="Open board seats & job descriptions" />
+      <QuickActionCard to="/admin/foundation-applications" icon={UserPlus} title="Role applications" description="Triage applicants for open board seats" />
       <QuickActionCard to="/admin/vendor-products" icon={Store} title="Vendor catalog" description="Moderate vendor-submitted products" />
       <QuickActionCard to="/admin/payouts" icon={Wallet} title="Partner payouts" description="Referral ledger & mark paid" />
       <QuickActionCard to="/admin/reports" icon={BarChart3} title="Foundation reports" description="Engagement, revenue, payouts" />

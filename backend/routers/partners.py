@@ -229,23 +229,34 @@ async def update_my_profile(
 async def list_public_partners(
     partner_type: Optional[str] = None,
     q: Optional[str] = None,
+    samples: int = Query(0, ge=0, le=1),
     limit: int = Query(60, ge=1, le=200),
 ):
-    """Public partner directory. Only `status=active` and `public=true` rows."""
+    """Public partner directory. Only `status=active` and `public=true` rows.
+    By default excludes sample personas. Pass `samples=1` to return ONLY samples."""
     from database import db
     query: dict = {"status": "active", "public": True}
+    if samples == 1:
+        query["is_sample"] = True
+    else:
+        query["$or"] = [{"is_sample": {"$ne": True}}, {"is_sample": {"$exists": False}}]
     if partner_type:
         if partner_type not in PARTNER_TYPE_VALUES:
             raise HTTPException(status_code=400, detail="Invalid partner_type")
         query["partner_type"] = partner_type
     if q and len(q.strip()) >= 2:
         rx = re.escape(q.strip())
-        query["$or"] = [
+        # Combine with existing $or if present
+        text_or = [
             {"headline": {"$regex": rx, "$options": "i"}},
             {"bio": {"$regex": rx, "$options": "i"}},
             {"location": {"$regex": rx, "$options": "i"}},
             {"display_name": {"$regex": rx, "$options": "i"}},
         ]
+        if "$or" in query:
+            query = {"$and": [{"$or": query.pop("$or")}, {"$or": text_or}, query]}
+        else:
+            query["$or"] = text_or
     profiles = await db.partner_profiles.find(
         query, {"_id": 0, "meta": 0}
     ).sort("approved_at", -1).to_list(limit)

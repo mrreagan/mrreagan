@@ -618,6 +618,55 @@ class UserCreditEntry(BaseModel):
 
 
 
+# ============ FOUNDATION ROLES (Phase 6B.4.5b) ============
+
+class FoundationRoleCreate(BaseModel):
+    slug: str = Field(min_length=2, max_length=80)
+    title: str = Field(min_length=3, max_length=200)
+    headline: str = Field(min_length=5, max_length=400)
+    who_you_are: str = Field(min_length=10, max_length=4000)
+    what_youll_do: str = Field(min_length=10, max_length=4000)
+    what_you_bring: str = Field(min_length=10, max_length=4000)
+    time_commitment: Optional[str] = Field(default="", max_length=200)
+    compensation_summary: str = Field(default="Equity in mission — Birthright is a not-for-profit and does not currently provide monetary compensation.", max_length=600)
+    order: int = 0
+    open: bool = True
+    seeded_member_id: Optional[str] = None  # link to existing governing_member row for SAMPLE ribbon
+
+
+class FoundationRoleUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=3, max_length=200)
+    headline: Optional[str] = Field(default=None, min_length=5, max_length=400)
+    who_you_are: Optional[str] = Field(default=None, min_length=10, max_length=4000)
+    what_youll_do: Optional[str] = Field(default=None, min_length=10, max_length=4000)
+    what_you_bring: Optional[str] = Field(default=None, min_length=10, max_length=4000)
+    time_commitment: Optional[str] = Field(default=None, max_length=200)
+    compensation_summary: Optional[str] = Field(default=None, max_length=600)
+    order: Optional[int] = None
+    open: Optional[bool] = None
+
+
+class FoundationRole(FoundationRoleCreate):
+    id: str
+    created_at: str
+    updated_at: str
+
+
+class FoundationRoleApplicationSubmit(BaseModel):
+    role_slug: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=2, max_length=200)
+    email: EmailStr
+    current_role: Optional[str] = Field(default="", max_length=300)
+    why_drawn: str = Field(min_length=20, max_length=6000)
+    resume_url: Optional[str] = Field(default=None, max_length=600)
+    linkedin_url: Optional[str] = Field(default=None, max_length=600)
+    phone: Optional[str] = Field(default=None, max_length=40)
+
+
+class FoundationRoleApplicationDecision(BaseModel):
+    admin_note: Optional[str] = Field(default="", max_length=2000)
+
+
 # ============ SUBSCRIPTIONS (Phase 6B.2) ============
 
 class SubscriptionCheckoutRequest(BaseModel):

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
-import { Users, Briefcase, Microscope, Store, Search } from "lucide-react";
+import { Users, Briefcase, Microscope, Store, Search, Sparkles } from "lucide-react";
 
 const TYPE_CONFIG = {
   facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users, color: "#476B6B", description: "Practitioners trained to lead Birthright workshops." },
@@ -11,6 +11,9 @@ const TYPE_CONFIG = {
 };
 
 export default function PartnersDirectory() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const samplesMode = searchParams.get("samples") === "1";
+
   const [partnerType, setPartnerType] = useState("all");
   const [q, setQ] = useState("");
   const [partners, setPartners] = useState([]);
@@ -21,16 +24,27 @@ export default function PartnersDirectory() {
     const params = new URLSearchParams();
     if (partnerType !== "all") params.set("partner_type", partnerType);
     if (q.trim().length >= 2) params.set("q", q.trim());
+    if (samplesMode) params.set("samples", "1");
     api.get(`/partners?${params}`)
       .then((r) => setPartners(r.data))
       .finally(() => setLoading(false));
-  }, [partnerType, q]);
+  }, [partnerType, q, samplesMode]);
 
   const counts = useMemo(() => {
     const c = { all: partners.length };
     for (const p of partners) c[p.partner_type] = (c[p.partner_type] || 0) + 1;
     return c;
   }, [partners]);
+
+  const toggleSamples = () => {
+    if (samplesMode) {
+      const p = new URLSearchParams(searchParams);
+      p.delete("samples");
+      setSearchParams(p);
+    } else {
+      setSearchParams({ samples: "1" });
+    }
+  };
 
   return (
     <div className="container-page py-12" data-testid="partners-directory">
@@ -41,6 +55,24 @@ export default function PartnersDirectory() {
         The people and organizations who carry Birthright's work into communities, classrooms, and clinics. Want to join us?{" "}
         <Link to="/partners/apply" className="text-[#476B6B] underline" data-testid="apply-cta">Apply to partner</Link>.
       </p>
+
+      {samplesMode && (
+        <div className="mt-6 card p-5 bg-[#FFFBEF] border-l-4 border-[#C9A961]" data-testid="samples-banner">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="label text-[#8B7128] inline-flex items-center gap-1">
+                <Sparkles size={12} strokeWidth={1.5} /> Sample profiles
+              </p>
+              <p className="text-sm text-[#1A2424] mt-1">
+                These are illustrative partner personas to show prospective partners what a great Birthright profile looks like. None are real, active partners yet.
+              </p>
+            </div>
+            <button onClick={toggleSamples} className="btn-outline text-sm" data-testid="exit-samples">
+              View real partners →
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-2" data-testid="partner-type-tabs">
         {["all", ...Object.keys(TYPE_CONFIG)].map((t) => {
@@ -62,6 +94,15 @@ export default function PartnersDirectory() {
             </button>
           );
         })}
+        {!samplesMode && (
+          <button
+            onClick={toggleSamples}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-medium border border-[#C9A961] text-[#8B7128] hover:bg-[#FFFBEF] transition ml-1"
+            data-testid="show-samples"
+          >
+            <Sparkles size={11} strokeWidth={1.5} /> View sample profiles
+          </button>
+        )}
         <div className="ml-auto relative">
           <Search size={14} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5C6B6B]" />
           <input
@@ -87,18 +128,28 @@ export default function PartnersDirectory() {
             <p className="text-xs text-[#5C6B6B] mt-2">Help us build the network — <Link to="/partners/apply" className="underline text-[#476B6B]">apply</Link>.</p>
           </div>
         ) : (
-          partners.map((p) => <PartnerCard key={p.id} profile={p} />)
+          partners.map((p) => <PartnerCard key={p.id} profile={p} sampleMode={samplesMode} />)
         )}
       </div>
     </div>
   );
 }
 
-function PartnerCard({ profile }) {
+function PartnerCard({ profile, sampleMode }) {
   const cfg = TYPE_CONFIG[profile.partner_type] || TYPE_CONFIG.community;
   const Icon = cfg.icon;
+  const isSample = profile.is_sample;
   return (
-    <Link to={`/partners/${profile.slug}`} className="card p-5 hover:border-[#476B6B] transition block" data-testid={`partner-card-${profile.slug}`}>
+    <Link
+      to={`/partners/${profile.slug}`}
+      className={`card p-5 hover:border-[#476B6B] transition block relative ${isSample ? "ring-1 ring-[#C9A961]/40" : ""}`}
+      data-testid={`partner-card-${profile.slug}`}
+    >
+      {isSample && (
+        <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold bg-[#C9A961] text-[#1A2424]" data-testid={`sample-ribbon-${profile.slug}`}>
+          <Sparkles size={9} strokeWidth={2} /> Sample
+        </span>
+      )}
       <div className="flex items-center gap-3">
         {profile.photo_url ? (
           <img src={profile.photo_url} alt="" className="w-12 h-12 rounded-full object-cover" />
