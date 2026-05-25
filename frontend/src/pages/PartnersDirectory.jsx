@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import { Users, Briefcase, Microscope, Store, Search, Sparkles } from "lucide-react";
 
@@ -136,15 +136,20 @@ export default function PartnersDirectory() {
 }
 
 function PartnerCard({ profile, sampleMode }) {
+  const navigate = useNavigate();
   const cfg = TYPE_CONFIG[profile.partner_type] || TYPE_CONFIG.community;
   const Icon = cfg.icon;
   const isSample = profile.is_sample;
   const isFeatured = profile.featured_until && new Date(profile.featured_until) > new Date();
   const isFounding = profile.is_founding_partner;
+  const goToProfile = () => navigate(`/partners/${profile.slug}`);
   return (
-    <Link
-      to={`/partners/${profile.slug}`}
-      className={`card p-5 hover:border-[#476B6B] transition block relative ${isSample ? "ring-1 ring-[#C9A961]/40" : ""} ${isFeatured ? "ring-2 ring-[#C9A961]" : ""}`}
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={goToProfile}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") goToProfile(); }}
+      className={`card p-5 hover:border-[#476B6B] transition block relative cursor-pointer ${isSample ? "ring-1 ring-[#C9A961]/40" : ""} ${isFeatured ? "ring-2 ring-[#C9A961]" : ""}`}
       data-testid={`partner-card-${profile.slug}`}
     >
       <div className="absolute top-3 right-3 flex flex-col gap-1 items-end">
@@ -158,7 +163,7 @@ function PartnerCard({ profile, sampleMode }) {
             <Sparkles size={9} strokeWidth={2} /> Sample
           </span>
         )}
-        {isFounding && !isSample && (
+        {isFounding && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold bg-[#2E5C46] text-white" data-testid={`founding-ribbon-${profile.slug}`}>
             ★ Founding
           </span>
@@ -192,6 +197,6 @@ function PartnerCard({ profile, sampleMode }) {
           Visit external site →
         </a>
       )}
-    </Link>
+    </div>
   );
 }

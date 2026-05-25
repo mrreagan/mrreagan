@@ -84,16 +84,18 @@ SHIPPED = [
      "Join Us + Sample Partner Profiles. 3 open foundation roles (Board Chair & Co-Founder, Research Advisor, Director of Community Stewardship) with public /join-us listing, application form, and admin triage queue (6-status pipeline). 8 sample partner personas (2 per partner type) marked is_sample:true, hidden from default /partners directory, surfaced at /partners?samples=1 as a sales tool for founding-partner outreach. Governance page got SAMPLE ribbons on the 3 recruited-for board cards. Backend 21/21 PASS, frontend 100%."),
     ("v1.11.0-step2+3", "May 25, 2026", "Iter 16",
      "Outbound-click attribution + Off-site sales reconciliation. GET /api/out/{slug} redirect endpoint with UTM capture, IP/UA logging, host-locked dest param, fallback to /partners on 404. Outbound links surfaced on vendor + community partner cards/profile pages only. Partner self-report flow at /dashboard/partner/sales-reports with monthly defaults + HMAC webhook (per-partner secret, SHA-256 signed payload, rotate-anytime). Admin reconciliation at /admin/partner-sales-reports with approve/dispute/revise actions and optional override_gross/override_pct. Credits land in partner_off_site_credits with pct sourced from rev_share_overrides.off_site_pct → active subscription → global default. Backend 25/25 PASS, frontend 100%."),
+    ("v1.11.0-step4+5", "May 25, 2026", "Iter 17",
+     "Featured-Partner Showcase + Founding-Partner gating. Self-serve featured slots at $99/30 days via Stripe (random shuffle on /featured, gold ribbon across directory, editable content while window active). Admin grant/revoke + comped slots. Founding-Partner program: opt-in checkbox on /partners/apply with public 'X/cap' counter and progress bar; auto-grant on application approval if cap has room (5-year locked rate); admin cap controls + grant/revoke endpoints. Founding badges visible across directory + profile pages (including samples). Backend 20/20 PASS, frontend 100% after Founding badge + nested-anchor fixes."),
 ]
 
 # Reverse so newest appears first
 SHIPPED_ROWS = list(reversed(SHIPPED))
 
 IN_PROGRESS = [
-    ("v1.11.0-step4", "Featured-partner showcase",
-     "/featured page + featured ribbons across the directory. Admin can grant a 30/60/90 day featured window per partner with mission-alignment statement, signature content, video, image gallery, and custom CTA. Driven by partner_profiles.featured_until + featured_* fields already in the model."),
-    ("v1.11.0-step5", "Founding-partner gating",
-     "Surface is_founding_partner badge across directory + profile pages. Apply gates: founding-rate plan tiers, 5-year commitment defaults, expiration grace. Backfill existing partners flagged on the seed list."),
+    ("v1.11.0-step6", "Paid research promotion",
+     "Research-only featured surface on /research with a separate sponsorship cost — surfaces papers, briefs, and research-partner content above the main directory feed."),
+    ("v1.11.0-step7", "/partners 5-tab rebuild + payouts UI",
+     "Combine the current /partners directory, /featured, /join-us, and admin-only triage into a unified navigation pattern. Begins the payouts/W9 infrastructure work."),
 ]
 
 BACKLOG = [
@@ -155,10 +157,10 @@ body = f"""
 {in_progress_block()}
 
 <div class="callout">
-Current sequence: <code>v1.11.0-step2</code> and <code>v1.11.0-step3</code> shipped together
-on May 25, 2026 (Iter 16). Next up: <code>v1.11.0-step4</code> (featured-partner showcase) and
-<code>v1.11.0-step5</code> (founding-partner gating). Phase 6B.5 (Research submissions queue)
-remains paused until v1.11.0 is fully shipped — scope PDF already exists at
+Current sequence: <code>v1.11.0-step4+5</code> shipped together on May 25, 2026 (Iter 17). Next up:
+<code>v1.11.0-step6</code> (paid research promotion) and <code>v1.11.0-step7</code> (/partners
+unified rebuild + payouts UI scaffolding). Phase 6B.5 (Research submissions queue) remains
+paused until v1.11.0 is fully shipped — scope PDF already exists at
 <code>birthright-phase-6b5-research-scope-v1.pdf</code>.
 </div>
 

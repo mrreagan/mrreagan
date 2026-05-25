@@ -205,6 +205,35 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend** — `/dashboard/reports` (MyReports, engagement + spending + optional partner earnings), `/admin/reports` (Foundation reports), `/admin/payouts` (per-partner liability + earned/paid tabs + inline mark-paid form). `PartnerEarningsCard` shows pending/lifetime/paid + referral link + Copy + recent attributions — rendered only for community partner profiles.
 - **Bumped to `v1.9.0`.** Iter-11 testing: backend **25/25 PASS**, frontend **100%** (`/app/test_reports/iteration_11.json`). Zero defects.
 
+## Iteration 17 — v1.11.0 Step 4 + Step 5: Featured Showcase + Founding Partner Gating (May 25, 2026)
+- **Goal**: Self-serve featured slots (revenue + visibility) and a public Founding-Partner program with a visible cap.
+- **User decisions**:
+  - Featured = **self-serve paid at $99 / 30 days flat**, Stripe checkout, admin can revoke or comp
+  - Featured sort = **random shuffle** on every page load (no auction)
+  - Founding Partner = **public CTA + visible "X/cap" counter** on `/partners/apply`; default cap = 50; locked rate for 5 years on approval
+- **New backend endpoints**:
+  - Featured public: `GET /api/featured`, `GET /api/featured/pricing`
+  - Featured partner (auth): `GET /api/me/featured?partner_type=...`, `PUT /api/me/featured?partner_type=...`, `POST /api/me/featured/checkout`
+  - Featured admin: `POST /api/admin/featured/{profile_id}/grant`, `POST /api/admin/featured/{profile_id}/revoke[?reason=]`, `GET /api/admin/featured[?include_expired=true]`
+  - Founding public: `GET /api/founding-partners/stats` → `{cap, taken, available, is_open}`
+  - Founding admin: `PUT /api/admin/founding-partners/cap`, `POST /api/admin/founding-partners/{profile_id}/grant`, `POST /api/admin/founding-partners/{profile_id}/revoke`
+- **Stripe fulfillment**: `_PAID_HANDLERS["featured_slot"] = activate_featured_from_txn` extends `featured_until` by `duration_days` (preserving any remaining time if already featured) and writes a `featured_slot_purchases` audit row. Content captured in checkout payload is applied to the profile on payment success.
+- **Approval auto-grant**: When admin approves a partner application that has `apply_as_founding_partner=true`, the profile flag flips to `is_founding_partner=True` with `founding_rate_expires_at = now + 5y` — but only if `_taken_count < cap`. Otherwise approval still succeeds without the flag; response includes `founding_granted: bool`.
+- **New collections**: `featured_slot_purchases`. New fields on `partner_profiles`: `featured_revoke_reason`. New field on `foundation_settings`: keys `featured_pricing` and `founding_partner_cap`.
+- **Frontend**:
+  - `/featured` — public showcase with random shuffle, sparkle-styled cards, mission-alignment block, signature content, video link, image gallery (up to 3), custom CTA
+  - `/partners` directory — gold Featured ribbon (with `ring-2 ring-[#C9A961]` border), gold Sample ribbon, green ★ Founding ribbon. Cards now use a `role="link"` div instead of `<Link>` to avoid nested-anchor warnings while keeping inner outbound `<a>` clickable
+  - `/partners/<slug>` — Featured + Founding badges next to the partner name
+  - `/partners/apply` — Founding-Partner opt-in section with cap progress bar; "all seats filled" lockout when full
+  - `/dashboard/partner/featured` — buy/extend slot card + editable content form (tabs if multiple partner types); sample partners blocked server-side
+  - `/admin/featured` — founding stats card with cap-update control, active featured slots list with revoke, "Grant comped slot" modal taking profile_id + days + mission
+  - `/admin/partners` application card now shows "★ Applicant requested Founding Partner" banner when set
+  - Nav: "Featured" added between Partners and Join Us; partner-dashboard tile linking to featured slot management
+- **Test coverage** — `/app/test_reports/iteration_17.json`. Backend 20/20 PASS (2 documented skips for paths requiring fresh fixtures); frontend 100% after fixing two issues flagged by the testing agent:
+  1. Founding badge now appears on sample personas (gated incorrectly before)
+  2. Nested `<a>` warning eliminated by converting `PartnerCard` wrapper to a `role="link"` div
+- **PDF index refreshed**: `birthright-versions.pdf` (256 KB) now lists iter-15/16/17 as shipped with steps 6+7 in progress.
+
 ## Iteration 16 — v1.11.0 Step 2 + Step 3: Outbound Attribution + Off-Site Sales Reconciliation (May 25, 2026)
 - **Goal**: Capture revenue when users click through to a partner's external site, and let partners self-report off-site sales for credit.
 - **User decisions before build**:
