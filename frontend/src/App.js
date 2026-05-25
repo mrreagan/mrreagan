@@ -68,6 +68,8 @@ import Messages, { MessageThread } from "./pages/Messages";
 import MyDisputes from "./pages/MyDisputes";
 import DisputeDetail from "./pages/DisputeDetail";
 import OmbudsmanQueue from "./pages/OmbudsmanQueue";
+import AdminRefunds from "./pages/AdminRefunds";
+import AgreementPage from "./pages/AgreementPage";
 
 function ProtectedRoute({ children, roles, allowOmbudsman }) {
   const { user, loading } = useAuth();
@@ -371,6 +373,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES} allowOmbudsman>
             <DisputeDetail adminMode={true} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/refunds"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminRefunds />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/legal/agreement"
+        element={
+          <ProtectedRoute>
+            <AgreementPage />
           </ProtectedRoute>
         }
       />
