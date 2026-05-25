@@ -8,7 +8,7 @@ import AgreementResignBanner from "./AgreementResignBanner";
 import AssistantWidget from "./AssistantWidget";
 
 const NAV_EXPLORE = [
-  { to: "/experiences", label: "Heal" },
+  { to: "/experiences", label: "Practice" },
   { to: "/shop",        label: "Equip" },
   { to: "/research",    label: "Research" },
   { to: "/partners",    label: "Partner" },
@@ -263,7 +263,7 @@ function FooterColumn({ heading, links }) {
 }
 
 const FOOTER_EXPLORE = [
-  { to: "/experiences", label: "Heal" },
+  { to: "/experiences", label: "Practice" },
   { to: "/shop", label: "Equip" },
   { to: "/research", label: "Research" },
   { to: "/partners", label: "Partner" },
