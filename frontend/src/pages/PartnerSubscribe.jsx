@@ -139,7 +139,73 @@ function RevShareInfo({ plan }) {
 }
 
 // Compact card to embed in the partner workspace dashboard
-export function SubscriptionStatusCard({ profile, subscription }) {
+export function SubscriptionStatusCard({ profile, subscription, onChanged }) {
+  const [showActions, setShowActions] = React.useState(false);
+  const [showChange, setShowChange] = React.useState(false);
+  const [cancelOpen, setCancelOpen] = React.useState(false);
+  const [reason, setReason] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [plans, setPlans] = React.useState([]);
+  const [previewing, setPreviewing] = React.useState(null);
+  const [preview, setPreview] = React.useState(null);
+
+  const loadPlans = async () => {
+    try {
+      const { data } = await api.get(`/subscriptions/plans?partner_type=${profile.partner_type}`);
+      setPlans(data);
+    } catch { /* ignore */ }
+  };
+
+  const previewChange = async (planId) => {
+    if (!subscription) return;
+    setPreviewing(planId);
+    setPreview(null);
+    try {
+      const { data } = await api.get(`/subscriptions/${subscription.id}/change-preview?new_plan_id=${planId}`);
+      setPreview(data);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Preview failed");
+    } finally {
+      setPreviewing(null);
+    }
+  };
+
+  const confirmChange = async () => {
+    if (!preview || !subscription) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/subscriptions/${subscription.id}/change-plan`, {
+        new_plan_id: preview.new_plan_id,
+        origin_url: window.location.origin,
+      });
+      if (data.checkout_required) {
+        window.location.href = data.url;
+      } else {
+        toast.success("Plan changed — credit covered the new plan");
+        if (onChanged) onChanged();
+        setShowChange(false); setShowActions(false); setPreview(null);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not change plan");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitCancel = async () => {
+    setBusy(true);
+    try {
+      await api.post(`/subscriptions/${subscription.id}/cancel`, { reason });
+      toast.success("Cancellation recorded — your license remains active until the current expiry.");
+      if (onChanged) onChanged();
+      setCancelOpen(false); setShowActions(false);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Cancel failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!subscription || !subscription.is_active) {
     return (
       <div className="card p-4 bg-[#FAF8F5] border-[#C9A961]/40" data-testid={`sub-status-${profile.partner_type}-inactive`}>
@@ -152,11 +218,12 @@ export function SubscriptionStatusCard({ profile, subscription }) {
   const expires = new Date(subscription.expires_at);
   const daysLeft = Math.ceil((expires - new Date()) / (1000 * 60 * 60 * 24));
   const expiringSoon = daysLeft <= 30;
+  const isCancelled = subscription.status === "cancelled";
   return (
     <div className="card p-4" data-testid={`sub-status-${profile.partner_type}-active`}>
       <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-[#2E5C46]">
-          <CheckCircle2 size={11} strokeWidth={2} /> Licensed
+        <span className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider ${isCancelled ? "text-[#B86A5C]" : "text-[#2E5C46]"}`}>
+          <CheckCircle2 size={11} strokeWidth={2} /> {isCancelled ? "Licensed (cancellation queued)" : "Licensed"}
         </span>
         <span className={`text-[10px] uppercase tracking-wider ${expiringSoon ? "text-[#B86A5C]" : "text-[#5C6B6B]"}`}>
           {daysLeft} day{daysLeft === 1 ? "" : "s"} left
@@ -164,10 +231,97 @@ export function SubscriptionStatusCard({ profile, subscription }) {
       </div>
       <p className="font-medium text-sm mt-2">{subscription.plan?.name || "Active subscription"}</p>
       <p className="text-xs text-[#5C6B6B]">Expires {expires.toLocaleDateString()}</p>
-      {expiringSoon && (
-        <Link to={`/partners/subscribe?type=${profile.partner_type}`} className="btn-outline text-xs mt-3 inline-block" data-testid={`renew-${profile.partner_type}`}>
-          Renew now
-        </Link>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {expiringSoon && (
+          <Link to={`/partners/subscribe?type=${profile.partner_type}`} className="btn-outline text-xs" data-testid={`renew-${profile.partner_type}`}>
+            Renew
+          </Link>
+        )}
+        <button
+          onClick={() => { setShowActions((v) => !v); if (!plans.length) loadPlans(); }}
+          className="btn-outline text-xs"
+          data-testid={`manage-sub-${profile.partner_type}`}
+        >
+          Manage
+        </button>
+      </div>
+
+      {showActions && (
+        <div className="mt-3 pt-3 border-t border-[#E5E1D8] space-y-2" data-testid={`manage-panel-${profile.partner_type}`}>
+          {!showChange && !cancelOpen && (
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={() => setShowChange(true)} className="btn-outline text-xs" data-testid={`change-plan-${profile.partner_type}`}>
+                Change plan
+              </button>
+              {!isCancelled && (
+                <button onClick={() => setCancelOpen(true)} className="btn-outline text-xs text-[#9E3C3C] border-[#9E3C3C]/40" data-testid={`cancel-sub-${profile.partner_type}`}>
+                  Cancel renewal
+                </button>
+              )}
+            </div>
+          )}
+          {showChange && (
+            <div className="space-y-2" data-testid={`change-panel-${profile.partner_type}`}>
+              <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">Switch to:</p>
+              {plans.filter((p) => p.id !== subscription.plan_id).map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 border border-[#E5E1D8] rounded p-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium truncate">{p.name}</p>
+                    <p className="text-[10px] text-[#5C6B6B]">${p.price_usd} · {p.duration_months}mo</p>
+                  </div>
+                  <button
+                    onClick={() => previewChange(p.id)}
+                    disabled={previewing === p.id}
+                    className="text-[10px] uppercase tracking-wider text-[#476B6B] hover:underline"
+                    data-testid={`preview-change-${p.id}`}
+                  >
+                    {previewing === p.id ? "…" : "Preview"}
+                  </button>
+                </div>
+              ))}
+              {preview && (
+                <div className="card p-3 bg-[#FAF8F5]" data-testid={`change-preview-${profile.partner_type}`}>
+                  <p className="text-xs font-medium">{preview.new_plan_name}</p>
+                  <table className="text-xs w-full mt-2">
+                    <tbody>
+                      <tr><td className="text-[#5C6B6B]">New plan price</td><td className="text-right">${preview.new_plan_price_usd.toFixed(2)}</td></tr>
+                      <tr><td className="text-[#5C6B6B]">Prorated credit</td><td className="text-right text-[#2E5C46]">− ${preview.prorated_credit_usd.toFixed(2)}</td></tr>
+                      <tr className="font-medium border-t border-[#E5E1D8]"><td>Due today</td><td className="text-right">${preview.amount_due_usd.toFixed(2)}</td></tr>
+                    </tbody>
+                  </table>
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={confirmChange} disabled={busy} className="btn-primary text-xs" data-testid={`confirm-change-${profile.partner_type}`}>
+                      {busy ? "Saving…" : preview.amount_due_usd > 0 ? "Continue to checkout" : "Apply free upgrade"}
+                    </button>
+                    <button onClick={() => { setPreview(null); }} className="btn-outline text-xs">Back</button>
+                  </div>
+                </div>
+              )}
+              <button onClick={() => { setShowChange(false); setPreview(null); }} className="text-[10px] uppercase tracking-wider text-[#5C6B6B] hover:underline">Close</button>
+            </div>
+          )}
+          {cancelOpen && (
+            <div className="space-y-2" data-testid={`cancel-panel-${profile.partner_type}`}>
+              <p className="text-xs text-[#1A2424]">
+                Your license stays active until <strong>{expires.toLocaleDateString()}</strong>. No refunds — but you won't be prompted to renew.
+              </p>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="What's prompting this? (optional, helps us improve)"
+                className="input-field text-xs w-full"
+                rows={3}
+                data-testid={`cancel-reason-${profile.partner_type}`}
+              />
+              <div className="flex gap-2">
+                <button onClick={submitCancel} disabled={busy} className="btn-primary text-xs bg-[#9E3C3C] hover:bg-[#7E2C2C]" data-testid={`confirm-cancel-${profile.partner_type}`}>
+                  {busy ? "Saving…" : "Confirm cancel"}
+                </button>
+                <button onClick={() => setCancelOpen(false)} className="btn-outline text-xs">Back</button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

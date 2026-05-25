@@ -46,6 +46,7 @@ import PartnerDashboard from "./pages/PartnerDashboard";
 import PartnerSubscribe from "./pages/PartnerSubscribe";
 import AdminPartners from "./pages/AdminPartners";
 import AdminPayouts from "./pages/AdminPayouts";
+import AdminSubscriptions from "./pages/AdminSubscriptions";
 import AdminReports from "./pages/AdminReports";
 import MyReports from "./pages/MyReports";
 import VendorProducts from "./pages/VendorProducts";
@@ -210,6 +211,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminPayouts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/subscriptions"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminSubscriptions />
           </ProtectedRoute>
         }
       />

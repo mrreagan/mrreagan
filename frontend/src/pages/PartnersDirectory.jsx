@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import { Users, Briefcase, Microscope, Store, Search, Sparkles } from "lucide-react";
+import ShareButton from "../components/ShareButton";
 
 const TYPE_CONFIG = {
   facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users, color: "#476B6B", description: "Practitioners trained to lead Birthright workshops." },
@@ -196,6 +197,19 @@ function PartnerCard({ profile, sampleMode }) {
         >
           Visit external site →
         </a>
+      )}
+      {!isSample && (
+        <div className="mt-3 flex items-center justify-end">
+          <ShareButton
+            surface="partner"
+            surfaceId={profile.slug}
+            path={`/partners/${profile.slug}`}
+            title={profile.display_name}
+            emailSubject={`Birthright partner: ${profile.display_name}`}
+            size="sm"
+            stopPropagation
+          />
+        </div>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { Vote, FileText, ArrowRight } from "lucide-react";
+import ShareButton from "../components/ShareButton";
 
 export default function Governance() {
   const [members, setMembers] = useState([]);
@@ -88,6 +89,17 @@ export default function Governance() {
                 ) : (
                   <p className="text-sm text-[#5C6B6B] mt-3 leading-relaxed">{m.bio}</p>
                 )}
+                <div className="mt-4 flex items-center justify-end">
+                  <ShareButton
+                    surface="partner"
+                    surfaceId={`board-${m.id}`}
+                    path={`/governance#${m.id}`}
+                    title={`${m.name} — ${m.title}`}
+                    emailSubject={`Birthright governance: ${m.name}`}
+                    size="sm"
+                    allowBookmark={false}
+                  />
+                </div>
               </div>
             </div>
           );

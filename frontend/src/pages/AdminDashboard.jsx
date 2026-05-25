@@ -62,7 +62,8 @@ function OverviewTab() {
       <QuickActionCard to="/admin/foundation-roles" icon={UserPlus} title="Foundation roles" description="Open board seats & job descriptions" />
       <QuickActionCard to="/admin/foundation-applications" icon={UserPlus} title="Role applications" description="Triage applicants for open board seats" />
       <QuickActionCard to="/admin/vendor-products" icon={Store} title="Vendor catalog" description="Moderate vendor-submitted products" />
-      <QuickActionCard to="/admin/payouts" icon={Wallet} title="Partner payouts" description="Referral ledger & mark paid" />
+      <QuickActionCard to="/admin/payouts" icon={Wallet} title="Partner payouts" description="Referral ledger & disbursements" />
+      <QuickActionCard to="/admin/subscriptions" icon={Wallet} title="Subscriptions" description="Active, cancelled, revoke + refund" />
       <QuickActionCard to="/admin/partner-sales-reports" icon={ExternalLink} title="Off-site sales reports" description="Reconcile partner-reported revenue" />
       <QuickActionCard to="/admin/featured" icon={Sparkles} title="Featured & Founding" description="Grant/revoke featured slots, founding-partner cap" />
       <QuickActionCard to="/admin/reports" icon={BarChart3} title="Foundation reports" description="Engagement, revenue, payouts" />

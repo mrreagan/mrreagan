@@ -69,7 +69,7 @@ export default function PartnerDashboard() {
             {profiles.map((p) => (
               <div key={p.id} className="space-y-3">
                 <ProfileCard profile={p} onChange={load} />
-                <SubscriptionStatusCard profile={p} subscription={activeSubByType[p.partner_type]} />
+                <SubscriptionStatusCard profile={p} subscription={activeSubByType[p.partner_type]} onChanged={load} />
                 <PartnerEarningsCard profile={p} />
               </div>
             ))}

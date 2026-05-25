@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { Calendar, Users, ArrowRight, Search, Star } from "lucide-react";
+import ShareButton from "../components/ShareButton";
 
 const formatDate = (iso) => {
   if (!iso) return "";
@@ -80,37 +81,56 @@ export default function Workshops() {
         <p className="text-sm text-[#5C6B6B] mt-12" data-testid="workshops-empty">No workshops match your search.</p>
       ) : (
         <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="workshops-list">
-          {workshops.map((w) => (
-            <Link
-              key={w.id}
-              to={`/workshops/${w.slug}`}
-              className="card card-hover overflow-hidden block"
-              data-testid={`workshop-card-${w.slug}`}
-            >
-              <div className="aspect-[4/3] bg-[#E5E1D8] relative overflow-hidden">
-                <img src={w.image_url} alt={w.title} className="w-full h-full object-cover" />
-                <div className="absolute top-4 left-4">{statusBadge(w.status)}</div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-3 text-xs text-[#5C6B6B] mb-2">
-                  <span className="inline-flex items-center gap-1"><Calendar size={12} strokeWidth={1.5} />{formatDate(w.start_date)}</span>
-                  {w.status === "upcoming" && (
-                    <span className="inline-flex items-center gap-1"><Users size={12} strokeWidth={1.5} />{w.spots_left} of {w.capacity}</span>
-                  )}
-                </div>
-                <h3 className="font-serif text-2xl mb-2 leading-tight">{w.title}</h3>
-                <p className="text-sm text-[#5C6B6B] line-clamp-3">{w.short_description}</p>
-                <div className="mt-5 pt-4 border-t border-[#E5E1D8] flex items-center justify-between">
-                  <span className="text-sm font-medium text-[#476B6B]">
-                    {w.status === "upcoming" ? `From $${w.early_bird_price?.toFixed(0)}` : `$${w.regular_price?.toFixed(0)}`}
-                  </span>
-                  <ArrowRight size={16} strokeWidth={1.5} className="text-[#C9A961]" />
-                </div>
-              </div>
-            </Link>
-          ))}
+          {workshops.map((w) => <WorkshopCard key={w.id} w={w} />)}
         </div>
       )}
+    </div>
+  );
+}
+
+function WorkshopCard({ w }) {
+  const navigate = useNavigate();
+  const go = () => navigate(`/workshops/${w.slug}`);
+  return (
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={go}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") go(); }}
+      className="card card-hover overflow-hidden block cursor-pointer"
+      data-testid={`workshop-card-${w.slug}`}
+    >
+      <div className="aspect-[4/3] bg-[#E5E1D8] relative overflow-hidden">
+        <img src={w.image_url} alt={w.title} className="w-full h-full object-cover" />
+        <div className="absolute top-4 left-4">{statusBadge(w.status)}</div>
+      </div>
+      <div className="p-6">
+        <div className="flex items-center gap-3 text-xs text-[#5C6B6B] mb-2">
+          <span className="inline-flex items-center gap-1"><Calendar size={12} strokeWidth={1.5} />{formatDate(w.start_date)}</span>
+          {w.status === "upcoming" && (
+            <span className="inline-flex items-center gap-1"><Users size={12} strokeWidth={1.5} />{w.spots_left} of {w.capacity}</span>
+          )}
+        </div>
+        <h3 className="font-serif text-2xl mb-2 leading-tight">{w.title}</h3>
+        <p className="text-sm text-[#5C6B6B] line-clamp-3">{w.short_description}</p>
+        <div className="mt-5 pt-4 border-t border-[#E5E1D8] flex items-center justify-between gap-2">
+          <span className="text-sm font-medium text-[#476B6B]">
+            {w.status === "upcoming" ? `From $${w.early_bird_price?.toFixed(0)}` : `$${w.regular_price?.toFixed(0)}`}
+          </span>
+          <div className="flex items-center gap-2">
+            <ShareButton
+              surface="workshop"
+              surfaceId={w.id}
+              path={`/workshops/${w.slug}`}
+              title={w.title}
+              emailSubject={`Workshop: ${w.title}`}
+              size="sm"
+              stopPropagation
+            />
+            <ArrowRight size={16} strokeWidth={1.5} className="text-[#C9A961]" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

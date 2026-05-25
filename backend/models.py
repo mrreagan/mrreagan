@@ -789,6 +789,25 @@ class SubscriptionCheckoutRequest(BaseModel):
     origin_url: str
 
 
+class SubscriptionPlanChangeRequest(BaseModel):
+    """Mid-flight plan change. Pro-rates the unused remainder of the active
+    subscription as credit toward the new plan's Stripe checkout amount."""
+    new_plan_id: str
+    origin_url: str
+
+
+class SubscriptionCancelRequest(BaseModel):
+    """Partner-initiated cancel. The paid window stays active to expires_at;
+    no auto-prompts to renew after that. Optional reason for retention insight."""
+    reason: Optional[str] = Field(default="", max_length=2000)
+
+
+class AdminSubscriptionRevokeRequest(BaseModel):
+    """Admin revoke. Optional refund flag. Reason is required."""
+    reason: str = Field(min_length=3, max_length=2000)
+    refund: bool = False
+
+
 
 # ============ REFERRALS / PAYOUTS (Phase 6B.3) ============
 

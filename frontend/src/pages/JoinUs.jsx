@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { ArrowRight, Heart, Clock } from "lucide-react";
+import ShareButton from "../components/ShareButton";
 
 export default function JoinUs() {
   const [roles, setRoles] = useState([]);
@@ -89,16 +90,26 @@ function RoleCard({ role }) {
           </div>
         </div>
 
-        <div className="mt-6 pt-5 border-t border-[#E5E1D8] flex items-center justify-between">
+        <div className="mt-6 pt-5 border-t border-[#E5E1D8] flex items-center justify-between gap-3 flex-wrap">
           <p className="text-xs text-[#5C6B6B] max-w-md">{role.compensation_summary}</p>
-          <Link
-            to={`/join-us/${role.slug}`}
-            className="btn-primary inline-flex items-center gap-2 text-sm"
-            data-testid={`apply-${role.slug}`}
-          >
-            Apply for this role
-            <ArrowRight size={14} strokeWidth={1.5} />
-          </Link>
+          <div className="flex items-center gap-2">
+            <ShareButton
+              surface="foundation_role"
+              surfaceId={role.slug}
+              path={`/join-us/${role.slug}`}
+              title={role.title}
+              emailSubject={`Open role at Birthright: ${role.title}`}
+              size="sm"
+            />
+            <Link
+              to={`/join-us/${role.slug}`}
+              className="btn-primary inline-flex items-center gap-2 text-sm"
+              data-testid={`apply-${role.slug}`}
+            >
+              Apply for this role
+              <ArrowRight size={14} strokeWidth={1.5} />
+            </Link>
+          </div>
         </div>
       </div>
     </div>

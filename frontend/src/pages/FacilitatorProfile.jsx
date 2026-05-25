@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { Star, Calendar } from "lucide-react";
+import ShareButton from "../components/ShareButton";
 
 const formatDate = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -39,6 +40,17 @@ export default function FacilitatorProfile() {
               <span className="text-xs text-[#5C6B6B]">({f.reviews?.length} reviews)</span>
             </div>
           )}
+          <div className="mt-4">
+            <ShareButton
+              surface="facilitator"
+              surfaceId={slug}
+              path={`/facilitators/${slug}`}
+              title={`${f.first_name} ${f.last_name}`}
+              emailSubject={`Birthright facilitator: ${f.first_name} ${f.last_name}`}
+              showLabel
+              align="left"
+            />
+          </div>
           <p className="text-base text-[#1A2424] mt-6 leading-relaxed">{f.bio}</p>
 
           {f.workshops?.length > 0 && (

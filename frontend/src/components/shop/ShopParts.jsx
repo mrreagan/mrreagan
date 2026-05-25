@@ -4,6 +4,7 @@ import { ShoppingBag, Lock } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { toast } from "sonner";
 import { AggregateRatingBadge } from "../ReviewSection";
+import ShareButton from "../ShareButton";
 
 const FILTERS = [
   { id: "merch", label: "Public merch" },
@@ -63,24 +64,36 @@ export function ProductCard({ product }) {
         <div className="mt-2">
           <AggregateRatingBadge subjectType="product" subjectId={product.id} />
         </div>
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between gap-2">
           <span className="font-medium text-[#1A2424]">${product.price?.toFixed(2)}</span>
-          {isMaterial ? (
-            <Link to={`/shop/${product.id}`} className="text-xs text-[#476B6B] font-medium hover:underline">
-              Participants only
-            </Link>
-          ) : (
-            <button
-              onClick={() => {
-                addItem(product);
-                toast.success(`Added ${product.name}`);
-              }}
-              className="text-xs flex items-center gap-1.5 bg-[#476B6B] text-white px-3 py-1.5 rounded-full hover:bg-[#3A5858] transition"
-              data-testid={`product-add-${product.id}`}
-            >
-              <ShoppingBag size={12} strokeWidth={1.5} /> Add
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {!isMaterial && (
+              <ShareButton
+                surface="product"
+                surfaceId={product.id}
+                path={`/shop/${product.id}`}
+                title={product.name}
+                emailSubject={`From the Birthright shop: ${product.name}`}
+                size="sm"
+              />
+            )}
+            {isMaterial ? (
+              <Link to={`/shop/${product.id}`} className="text-xs text-[#476B6B] font-medium hover:underline">
+                Participants only
+              </Link>
+            ) : (
+              <button
+                onClick={() => {
+                  addItem(product);
+                  toast.success(`Added ${product.name}`);
+                }}
+                className="text-xs flex items-center gap-1.5 bg-[#476B6B] text-white px-3 py-1.5 rounded-full hover:bg-[#3A5858] transition"
+                data-testid={`product-add-${product.id}`}
+              >
+                <ShoppingBag size={12} strokeWidth={1.5} /> Add
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,35 @@
+{
+  "summary": "Iter 20 v1.11.0 Step 9 + Universal Share placement audit. 16/16 backend tests PASS in /app/backend/tests/test_iter20_subs_step9.py. ShareButton placement verified on all listed surfaces (partners=3, governance(partner)=4, join-us(foundation_role)=3, workshops=3, shop=56 across cards+details, facilitators=3, research=2). Workshop_material PDP correctly hides ShareButton (0 triggers on /shop/{material_id}). New Print + Download QR menu items rendered with data-testid share-print-{surface} and share-download-qr-{surface} (verified on workshop card). Admin /admin/subscriptions page renders STATUS + PARTNER TYPE filter dropdowns, ACTIVE pill, and REVOKE button per row. AdminDashboard QuickActionCard 'Subscriptions' wired to /admin/subscriptions in AdminDashboard.jsx line 66. Backend Step 9 endpoints all return correct shapes: cancel (200 + idempotent 400), change-preview (returns 7 expected keys, rejects cross-partner-type 400), change-plan free path (checkout_required=false, supersedes old sub, creates new with supersedes_subscription_id), admin list (enriched with partner_name/email/plan/is_active, filterable, 403 for non-admin), admin revoke (422 for short reason, 200 for valid; both with and without refund record refund field — refund_session catch-block correctly stores {status:error,...} when Stripe session missing). All 5 iter19 regressions (shares.log with via=community-code sets birthright_ref cookie, /me/bookmarks, /admin/payouts/ready-to-pay, /research/{id}/cite?format=apa7, /workshops/{id}/ics) PASS.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter20_subs_step9.py",
+    "/app/test_reports/pytest/iter20_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routers/subscriptions.py change_plan free-upgrade path correctly marks the old sub superseded AND create_subscription_from_txn also marks it superseded — this is a double-write but idempotent ($set with same status). Harmless but a single source of truth would be cleaner.",
+    "routers/subscriptions.py admin_revoke_subscription wraps refund_session in try/except — good. Records refund_result as None when payment_session_id starts with 'comp_change_' (synthetic free-upgrade session) — correct, no money to refund there.",
+    "routers/subscriptions.py _prorated_credit uses (expires-now).days vs (expires-started).days — this is integer-day arithmetic; for sub-day precision use total_seconds(). Acceptable for v1.",
+    "ShopParts.jsx correctly gates ShareButton with !isMaterial check (line 70). Verified material PDP shows 0 share triggers.",
+    "Governance.jsx uses surface='partner' for board cards — note for next agent: same surface name as PartnersDirectory cards. ShareButton testid is therefore 'share-button-partner-trigger' on both surfaces. If you need to differentiate, consider 'board' surface.",
+    "JoinUs.jsx uses surface='foundation_role' — testid is 'share-button-foundation_role-trigger' (with underscore).",
+    "AdminSubscriptions.jsx renders status pills, two select filters, and per-row Revoke action (screenshot confirms). Modal revoke with reason+refund is wired per spec.",
+    "Backend log_action calls in cancel/change-plan/admin_revoke pass user dict — consistent with other routers.",
+    "models.py AdminSubscriptionRevokeRequest validates reason min_length=3 — correctly returns 422 on short reason (test confirms)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter20_subs_step9.py"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% (all targeted ShareButton surfaces + workshop_material exclusion + Print/Download QR menu items + Admin Subscriptions page + Admin Dashboard QuickAction all verified)"},
+  "test_credentials": "admin@birthright.org / birthright2026; demo@birthright.org / birthright2026 (community partner, referral_code TBMBHKHR)",
+  "seed_data_creation": "Three TEST_SUB_* partner_subscriptions inserted directly into mongo via fixture (one for cancel, one for change-plan free upgrade, one for revoke-without-refund). A fourth inserted for revoke-with-refund. Synthetic comp_change_TEST_SUB_* successor cleaned up in test body. Fixture teardown deletes all TEST_SUB_* and TEST_SESSION_* docs.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Step 9 endpoints all PASS. Surface naming gotcha: Governance uses surface='partner' (NOT 'board'); JoinUs uses surface='foundation_role' (NOT 'role'). ShareButton testid pattern remains 'share-button-{surface}-trigger'. New universal channels: 'share-print-{surface}' and 'share-download-qr-{surface}' confirmed on workshop card. Workshop_material products correctly suppress ShareButton on both card and detail surfaces. Demo user's existing community subscription (auto-seeded Sam Rivera / community Starter Free) shows in /admin/subscriptions list. Admin route /admin/subscriptions confirmed working. Free upgrade path inserts a new active sub with supersedes_subscription_id and marks predecessor status=superseded (verified via direct mongo read in test). Refund test path: refund result is recorded regardless of Stripe outcome (status:error if session not in Stripe).",
+  "rca_of_the_issue": "Not applicable — all features verified working as specified."
+}

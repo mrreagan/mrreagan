@@ -21,7 +21,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   Share2, Copy, QrCode, Mail, MessageSquare, Bookmark, BookmarkCheck,
-  CalendarPlus, Quote, Check, X,
+  CalendarPlus, Quote, Check, X, Printer, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -63,10 +63,12 @@ export default function ShareButton({
   allowBookmark = true,
   allowCalendar,           // auto-true for workshop unless explicitly false
   allowCite,               // auto-true for research unless explicitly false
+  allowPrint = true,       // universal — opens browser print
   bookmarkLabel,
   align = "right",
   size = "default",        // 'sm' | 'default'
   className = "",
+  stopPropagation = false, // when nested inside clickable cards
 }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -77,6 +79,7 @@ export default function ShareButton({
   const [citeFormat, setCiteFormat] = useState(null);
   const [citeText, setCiteText] = useState("");
   const rootRef = useRef(null);
+  const qrRef = useRef(null);
 
   const isWorkshop = surface === "workshop";
   const isResearch = surface === "research";
@@ -169,6 +172,50 @@ export default function ShareButton({
     fireLog("ics");
   };
 
+  const handlePrint = () => {
+    fireLog("download");  // log as download-channel event
+    setOpen(false);
+    // give the menu a tick to close before printing
+    setTimeout(() => { try { window.print(); } catch { /* ignore */ } }, 80);
+  };
+
+  const handleDownloadQr = () => {
+    if (!shareUrl) return;
+    // Find the SVG inside the QR container and rasterize to PNG via canvas
+    const svgEl = qrRef.current?.querySelector("svg");
+    if (!svgEl) {
+      toast.error("Open the QR preview first");
+      setShowQr(true);
+      return;
+    }
+    try {
+      const xml = new XMLSerializer().serializeToString(svgEl);
+      const svg64 = btoa(unescape(encodeURIComponent(xml)));
+      const img = new Image();
+      img.onload = () => {
+        const scale = 4;
+        const canvas = document.createElement("canvas");
+        canvas.width = (svgEl.viewBox?.baseVal?.width || svgEl.clientWidth || 200) * scale;
+        canvas.height = (svgEl.viewBox?.baseVal?.height || svgEl.clientHeight || 200) * scale;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#FAF8F5";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const a = document.createElement("a");
+        const safeName = (title || surface).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        a.download = `birthright-qr-${safeName || "share"}.png`;
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+        toast.success("QR PNG downloaded");
+        fireLog("download");
+      };
+      img.onerror = () => toast.error("Could not export QR");
+      img.src = `data:image/svg+xml;base64,${svg64}`;
+    } catch (e) {
+      toast.error("Could not export QR");
+    }
+  };
+
   const handleCite = async (format) => {
     if (!surfaceId) return;
     try {
@@ -212,10 +259,16 @@ export default function ShareButton({
       : "px-3 py-1.5 text-xs";
 
   return (
-    <div ref={rootRef} className={`relative inline-block ${className}`} data-testid={`share-button-${surface}`}>
+    <div
+      ref={rootRef}
+      className={`relative inline-block ${className}`}
+      data-testid={`share-button-${surface}`}
+      onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
+      onKeyDown={stopPropagation ? (e) => e.stopPropagation() : undefined}
+    >
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => { if (stopPropagation) e.stopPropagation(); setOpen((v) => !v); }}
         className={`inline-flex items-center gap-1.5 rounded-full border border-[#E5E1D8] bg-white hover:border-[#476B6B] hover:bg-[#FAF8F5] transition ${sizeCls}`}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -244,6 +297,10 @@ export default function ShareButton({
             <Action onClick={handleEmail} icon={Mail} label="Email" testid={`share-email-${surface}`} />
             <Action onClick={handleSms} icon={MessageSquare} label="Text" testid={`share-sms-${surface}`} />
             <Action onClick={() => setShowQr((v) => !v)} icon={QrCode} label="QR code" testid={`share-qr-${surface}`} />
+            <Action onClick={handleDownloadQr} icon={Download} label="Download QR" testid={`share-download-qr-${surface}`} />
+            {allowPrint && (
+              <Action onClick={handlePrint} icon={Printer} label="Print" testid={`share-print-${surface}`} />
+            )}
             {bookmarkable && (
               <Action
                 onClick={handleBookmarkToggle}
@@ -265,11 +322,17 @@ export default function ShareButton({
           </div>
 
           {showQr && shareUrl && (
-            <div className="mt-3 p-3 bg-[#FAF8F5] border border-[#E5E1D8] rounded text-center" data-testid={`share-qr-preview-${surface}`}>
+            <div ref={qrRef} className="mt-3 p-3 bg-[#FAF8F5] border border-[#E5E1D8] rounded text-center" data-testid={`share-qr-preview-${surface}`}>
               <div className="bg-white inline-block p-2 border border-[#E5E1D8]">
                 <QRCodeSVG value={shareUrl} size={132} bgColor="#FAF8F5" fgColor="#1A2424" level="M" />
               </div>
               <p className="mt-2 text-[10px] uppercase tracking-wider text-[#5C6B6B]">Scan to open</p>
+            </div>
+          )}
+          {/* Hidden QR for instant Download QR — always rendered when URL ready */}
+          {!showQr && shareUrl && (
+            <div ref={qrRef} style={{ position: "absolute", left: "-9999px", top: "-9999px" }} aria-hidden="true">
+              <QRCodeSVG value={shareUrl} size={132} bgColor="#FAF8F5" fgColor="#1A2424" level="M" />
             </div>
           )}
 

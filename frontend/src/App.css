@@ -3,3 +3,17 @@
   min-height: 100vh;
   background-color: var(--bg);
 }
+
+/* Print rules — clean output for partners, board members, and roles */
+@media print {
+  body { background: #fff !important; }
+  header, footer, nav, .no-print,
+  [data-testid^="share-button-"],
+  [data-testid="header-nav"],
+  [data-testid="cart-link"],
+  [aria-label="Cart"] { display: none !important; }
+  .card { box-shadow: none !important; border-color: #ccc !important; }
+  a[href]:after { content: " (" attr(href) ")"; font-size: 9px; color: #666; }
+  a[href^="#"]:after, a[href^="/"]:after { content: ""; }
+}
+
