@@ -74,6 +74,7 @@ export default function PartnerDashboard() {
               </div>
             ))}
           </div>
+          <DmPreferencesCard />
           {profiles.some((p) => p.status === "active" && (p.partner_type === "vendor" || p.partner_type === "community")) && (
             <Link
               to="/dashboard/partner/sales-reports"
@@ -251,3 +252,48 @@ function ProfileCard({ profile, onChange }) {
     </div>
   );
 }
+
+
+function DmPreferencesCard() {
+  const [prefs, setPrefs] = useState([]);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    api.get("/me/dm/preferences").then((r) => setPrefs(r.data)).catch(() => {});
+  }, []);
+  const allOpen = prefs.length > 0 && prefs.every((p) => p.accepts_new_dms !== false);
+  const toggle = async () => {
+    setSaving(true);
+    try {
+      const next = !allOpen;
+      await api.put("/me/dm/preferences", { accepts_new_dms: next });
+      setPrefs(prefs.map((p) => ({ ...p, accepts_new_dms: next })));
+      toast.success(next ? "Accepting new direct messages" : "New DMs paused — existing threads still work");
+    } catch {
+      toast.error("Could not save");
+    } finally {
+      setSaving(false);
+    }
+  };
+  if (prefs.length === 0) return null;
+  return (
+    <div className="card p-5 mt-4" data-testid="dm-preferences-card">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="font-serif text-lg">Direct messages</p>
+          <p className="text-xs text-[#5C6B6B] mt-1">
+            Control whether new strangers can DM you. {allOpen ? "You're currently accepting new messages." : "You're currently paused — existing conversations still work."}
+          </p>
+        </div>
+        <button
+          onClick={toggle}
+          disabled={saving}
+          className={`btn-outline text-xs ${allOpen ? "text-[#9E3C3C] border-[#9E3C3C]/40" : "text-[#2E5C46] border-[#2E5C46]/40"}`}
+          data-testid="dm-prefs-toggle"
+        >
+          {saving ? "…" : allOpen ? "Pause new DMs" : "Accept new DMs"}
+        </button>
+      </div>
+    </div>
+  );
+}
+

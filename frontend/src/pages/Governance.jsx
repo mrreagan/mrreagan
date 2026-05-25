@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { Vote, FileText, ArrowRight } from "lucide-react";
 import ShareButton from "../components/ShareButton";
+import MessageButton from "../components/MessageButton";
 
 export default function Governance() {
   const [members, setMembers] = useState([]);
@@ -89,7 +90,8 @@ export default function Governance() {
                 ) : (
                   <p className="text-sm text-[#5C6B6B] mt-3 leading-relaxed">{m.bio}</p>
                 )}
-                <div className="mt-4 flex items-center justify-end">
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  {m.id && <MessageButton recipientId={m.id} recipientName={m.name} size="sm" />}
                   <ShareButton
                     surface="partner"
                     surfaceId={`board-${m.id}`}

@@ -84,5 +84,7 @@ class ChatRoomRegistry:
                 self._rooms.pop(workshop_id, None)
 
 
-# singleton
+# singleton — workshop chat rooms
 registry = ChatRoomRegistry()
+# singleton — DM threads (reuses WorkshopRoom semantics; key is dm thread id)
+dm_registry = ChatRoomRegistry()

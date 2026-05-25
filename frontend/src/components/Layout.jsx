@@ -89,6 +89,12 @@ function UserMenu({ user, onLogout }) {
           <Link to="/dashboard" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5]" data-testid="menu-dashboard">
             My Dashboard
           </Link>
+          <Link to="/dashboard/messages" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5]" data-testid="menu-messages">
+            Messages
+          </Link>
+          <Link to="/dashboard/bookmarks" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5]" data-testid="menu-bookmarks">
+            My Bookmarks
+          </Link>
           {user.role === "facilitator" && (
             <Link to="/facilitator" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5]" data-testid="menu-facilitator">
               Facilitator Dashboard

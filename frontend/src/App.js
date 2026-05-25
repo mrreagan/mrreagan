@@ -64,6 +64,7 @@ import PartnerResearch from "./pages/PartnerResearch";
 import PartnerPayouts from "./pages/PartnerPayouts";
 import Profile from "./pages/Profile";
 import Bookmarks from "./pages/Bookmarks";
+import Messages, { MessageThread } from "./pages/Messages";
 
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth();
@@ -316,6 +317,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Bookmarks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/messages"
+        element={
+          <ProtectedRoute>
+            <Messages />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/messages/:thread_id"
+        element={
+          <ProtectedRoute>
+            <MessageThread />
           </ProtectedRoute>
         }
       />

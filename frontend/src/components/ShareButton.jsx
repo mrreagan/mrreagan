@@ -21,7 +21,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   Share2, Copy, QrCode, Mail, MessageSquare, Bookmark, BookmarkCheck,
-  CalendarPlus, Quote, Check, X, Printer, Download,
+  CalendarPlus, Quote, Check, X, Printer, Download, Send,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -78,6 +78,8 @@ export default function ShareButton({
   const [bookmarkRow, setBookmarkRow] = useState(null);
   const [citeFormat, setCiteFormat] = useState(null);
   const [citeText, setCiteText] = useState("");
+  const [showSendToPartner, setShowSendToPartner] = useState(false);
+  const [partnerThreads, setPartnerThreads] = useState([]);
   const rootRef = useRef(null);
   const qrRef = useRef(null);
 
@@ -181,7 +183,6 @@ export default function ShareButton({
 
   const handleDownloadQr = () => {
     if (!shareUrl) return;
-    // Find the SVG inside the QR container and rasterize to PNG via canvas
     const svgEl = qrRef.current?.querySelector("svg");
     if (!svgEl) {
       toast.error("Open the QR preview first");
@@ -213,6 +214,37 @@ export default function ShareButton({
       img.src = `data:image/svg+xml;base64,${svg64}`;
     } catch (e) {
       toast.error("Could not export QR");
+    }
+  };
+
+  const openSendToPartner = async () => {
+    if (!user) {
+      toast.message("Sign in to send to a partner", { description: "Open a thread with any Birthright partner." });
+      return;
+    }
+    setShowSendToPartner(true);
+    if (partnerThreads.length === 0) {
+      try {
+        const { data } = await api.get("/dm/threads");
+        // Only show active threads where the other participant is a partner
+        const filtered = (data || []).filter((t) =>
+          (t.status === "active" || t.status === "pending") && t.other_participant?.partner_type
+        );
+        setPartnerThreads(filtered);
+      } catch { /* silent */ }
+    }
+  };
+  const sendToThread = async (threadId, otherName) => {
+    if (!shareUrl) return;
+    const message = `${title ? title + "\n" : ""}${shareUrl}`;
+    try {
+      await api.post(`/dm/threads/${threadId}/messages`, { content: message });
+      toast.success(`Sent to ${otherName}`);
+      fireLog("native_share");
+      setShowSendToPartner(false);
+      setOpen(false);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not send");
     }
   };
 
@@ -301,6 +333,9 @@ export default function ShareButton({
             {allowPrint && (
               <Action onClick={handlePrint} icon={Printer} label="Print" testid={`share-print-${surface}`} />
             )}
+            {user && (
+              <Action onClick={openSendToPartner} icon={Send} label="To a partner" testid={`share-send-partner-${surface}`} />
+            )}
             {bookmarkable && (
               <Action
                 onClick={handleBookmarkToggle}
@@ -320,6 +355,32 @@ export default function ShareButton({
               </>
             )}
           </div>
+
+          {showSendToPartner && (
+            <div className="mt-3 p-3 bg-[#FAF8F5] border border-[#E5E1D8] rounded" data-testid={`send-to-partner-${surface}`}>
+              <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B] mb-2">Send link to:</p>
+              {partnerThreads.length === 0 ? (
+                <p className="text-[11px] text-[#5C6B6B]">
+                  No open partner threads. Visit a partner profile and click <strong>Message</strong> first.
+                </p>
+              ) : (
+                <ul className="space-y-1 max-h-40 overflow-y-auto">
+                  {partnerThreads.map((t) => (
+                    <li key={t.id}>
+                      <button
+                        onClick={() => sendToThread(t.id, t.other_participant.name)}
+                        className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white border border-transparent hover:border-[#E5E1D8] flex items-center justify-between gap-2"
+                        data-testid={`send-target-${t.id}`}
+                      >
+                        <span className="truncate">{t.other_participant.name}</span>
+                        <span className="text-[9px] uppercase text-[#C9A961]">{t.other_participant.partner_type}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {showQr && shareUrl && (
             <div ref={qrRef} className="mt-3 p-3 bg-[#FAF8F5] border border-[#E5E1D8] rounded text-center" data-testid={`share-qr-preview-${surface}`}>

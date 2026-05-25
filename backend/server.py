@@ -89,6 +89,12 @@ from routers.shares import (
     public_router as shares_public_router,
     my_router as shares_my_router,
 )
+from routers.dm import (
+    router as dm_router,
+    my_prefs_router as dm_my_prefs_router,
+    admin_router as dm_admin_router,
+    ws_router as dm_ws_router,
+)
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -136,6 +142,10 @@ api_router.include_router(payouts_my_router)
 api_router.include_router(payouts_admin_router)
 api_router.include_router(shares_public_router)
 api_router.include_router(shares_my_router)
+api_router.include_router(dm_router)
+api_router.include_router(dm_my_prefs_router)
+api_router.include_router(dm_admin_router)
+api_router.include_router(dm_ws_router)
 
 
 @api_router.post("/webhook/stripe")

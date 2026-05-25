@@ -1,0 +1,36 @@
+{
+  "summary": "Iter 21 Phase 6C.1 Direct Messaging — 23/23 backend tests PASS in test_iter21_dm.py. All DM REST endpoints verified: POST /api/dm/threads (idempotent open, sender==recipient 400, recipient not found 404, pending status when recipient research-only with accepts=false), GET/PUT /api/me/dm/preferences (community=true vendor=false defaults confirmed, Elena research=false confirmed, toggle updates profiles_updated count), POST /threads/{id}/messages (403 while pending for sender, recipient reply auto-flips to active), POST /accept (only recipient), /block, /archive (removes from inbox), /flag (reason min_length=3 enforced via 422, sets ombudsman_flagged=true), /read (zeros unread + adds to read_by). Admin: GET /admin/dm/threads masks last_message_preview as '[hidden — not flagged]' for unflagged rows; GET /admin/dm/threads/{id} returns messages=null+bodies_locked=true when unflagged and full messages list when flagged; non-admin gets 401/403. All 5 iter18-20 regression endpoints PASS (disbursement-settings, admin/subscriptions, me/bookmarks, shares/log, workshops/{id}/ics). Frontend verified via Playwright: /dashboard/messages inbox renders thread row with RESEARCH partner_type label + FLAGGED badge + unread badge '1', thread detail renders bubble alignment (own=right teal, other=left white) with 4 messages, composer + Send button functional, Flag/Archive buttons in header, ?to=<user_id> deep link auto-opens existing thread (idempotent), DmPreferencesCard renders on /dashboard/partner with 'Accept new DMs' button (paused state correct), user menu dropdown contains Messages + Bookmarks links, MessageButton renders on /partners directory, ShareButton 'To a partner' menu item appears for logged-in user. No critical bugs found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter21_dm.py",
+    "/app/test_reports/pytest/iter21_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routers/dm.py _recipient_accepts has subtle precedence: when accepts_new_dms is None it falls through to the partner_type-default branch but does NOT short-circuit return on True for non-fac/community types — instead it loops; when accepts_new_dms is True it short-circuits return True. End result is correct for current types but consider explicit per-type default lookup table for clarity.",
+    "routers/dm.py _recipient_accepts: 'If no partner profile, fall back to True' means a sender (partner) can open thread to any non-partner user as active — matches spec (admins, regular users always accept). Good.",
+    "routers/dm.py open_thread idempotency: re-opening an ARCHIVED thread returns it with status='archived'. The frontend Messages.jsx doesn't have a special UI affordance to un-archive — currently archived threads are filtered from inbox listing but if a user navigates via deep-link or MessageButton again, they hit the archived thread and cannot send (status != 'active' silently disables composer). Consider auto-reactivating archived threads on re-open, or surface 'This thread was archived — reactivate?' UI.",
+    "routers/dm.py send_message — when pending and recipient posts, status flips to 'active' via a single update_one. Good. No race condition guard but unlikely under realistic load.",
+    "routers/dm.py block_thread checks initiator_id == user but error message says 'Only the recipient can block' — semantically clean. However the BLOCK endpoint never validates thread.status, so a recipient can block an already-archived thread. Low-impact but worth a status guard.",
+    "routers/dm.py flag_thread allows any participant (initiator or recipient) to flag — correct per spec.",
+    "routers/dm.py WS dm_ws: REST persistence is the source of truth, WS only broadcasts. Good separation. Typing events broadcast without rate-limit; consider throttling if abuse seen.",
+    "routers/dm.py admin endpoints correctly write audit log entries (dm.flag, dm.admin_view) with metadata.",
+    "frontend Messages.jsx ?to= deep link is idempotent — correct. But if user passes ?initial=<text> on a re-open of an EXISTING active thread, initial_message is silently dropped (open_thread only posts initial_message when creating new thread OR when thread is active and initial_message provided — see line 156-160 of dm.py). Actually it DOES post on existing+active — verified. Good.",
+    "frontend uses bubble alignment own=right + teal/white as specified — verified in screenshot."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter21_dm.py"
+  ],
+  "success_rate": {"backend": "100% (23/23)", "frontend": "100% (inbox, thread, composer, Flag/Archive, deep link, DmPreferencesCard, user menu dropdown, MessageButton, ShareButton 'To a partner' all verified)"},
+  "test_credentials": "admin@birthright.org / birthright2026; demo@birthright.org / birthright2026 (community+vendor partner); elena@birthright.org / birthright2026 (research partner, accepts_new_dms=false)",
+  "seed_data_creation": "Module-scoped autouse fixture wipes all dm_threads + dm_messages and restores seed defaults for demo (community=true, vendor=false) and Elena (research=false) before tests. Throwaway thread demo→admin created in archive test (then archived). Test thread demo→Elena is left in flagged state for next agent to inspect via admin endpoint.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "DM module fully tested. Existing test thread: demo↔Elena (id varies per fixture-cleanup run, look up via /api/admin/dm/threads — should be flagged with ombudsman_flagged=true after test_flag_thread runs). Routes: PartnerDashboard is at /dashboard/partner (NOT /partner-dashboard). MessageButton renders 1 instance per partner directory card. ShareButton 'To a partner' menu item appears only when logged in. WebSocket /api/ws/dm/{thread_id} accepts cookie or ?token= JWT; non-participants get WS_1008_POLICY_VIOLATION (verified via _ws_authenticate code review — not directly probed by HTTP test). DmPreferencesCard 'Pause new DMs' / 'Accept new DMs' button toggles ALL of caller's active partner_profiles in one shot — there is no per-profile UI control (architectural choice).",
+  "rca_of_the_issue": "Not applicable — all features working as specified. Note: PUT /api/me/dm/preferences applies the toggle globally across all of a partner's profiles. Initial test run state pollution was resolved by adding a module-scope mongo cleanup fixture that restores seed defaults; tests now run deterministically end-to-end."
+}

@@ -560,6 +560,8 @@ class PartnerProfileUpdate(BaseModel):
     # v1.11.0 — outbound attribution
     external_site_url: Optional[str] = None
     external_platform: Optional[str] = Field(default=None, max_length=80)
+    # Phase 6C.1 — DM opt-in
+    accepts_new_dms: Optional[bool] = None
 
 
 # ============ PARTNER ECONOMY (v1.11.0) ============
@@ -815,6 +817,37 @@ class PayoutMarkPaid(BaseModel):
     method: Optional[str] = Field(default="manual", max_length=40)
     reference: Optional[str] = Field(default="", max_length=200)
     note: Optional[str] = Field(default="", max_length=2000)
+
+
+# ============ DIRECT MESSAGES (Phase 6C.1) ============
+
+DmThreadStatus = Literal["pending", "active", "blocked", "archived"]
+
+
+class DmThreadCreate(BaseModel):
+    """Open or fetch a thread with another user. First message body is optional —
+    if provided, we attempt to send it immediately (rejected with `pending` if the
+    recipient has `accepts_new_dms=False`)."""
+    recipient_id: str = Field(min_length=1, max_length=120)
+    initial_message: Optional[str] = Field(default=None, min_length=1, max_length=4000)
+    # Optional context — the share URL or surface that triggered the message
+    share_url: Optional[str] = Field(default=None, max_length=600)
+
+
+class DmMessageCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class DmThreadFlag(BaseModel):
+    """Anyone in the thread can flag it for ombudsman review."""
+    reason: str = Field(min_length=3, max_length=2000)
+
+
+class DmAcceptsToggle(BaseModel):
+    accepts_new_dms: bool
+
+
+# ============ END Phase 6C.1 ============
 
 
 # ============ SHARES & BOOKMARKS (v1.11.0 Step 8.5) ============

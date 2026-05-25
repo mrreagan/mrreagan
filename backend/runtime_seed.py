@@ -166,6 +166,18 @@ async def backfill_partner_economy_fields(db) -> int:
             {"$set": {field: default}},
         )
         backfilled += result.modified_count
+    # Phase 6C.1 — DM opt-in default depends on partner_type
+    open_types = ["facilitator", "community"]
+    closed_types = ["research", "vendor"]
+    r1 = await db.partner_profiles.update_many(
+        {"accepts_new_dms": {"$exists": False}, "partner_type": {"$in": open_types}},
+        {"$set": {"accepts_new_dms": True}},
+    )
+    r2 = await db.partner_profiles.update_many(
+        {"accepts_new_dms": {"$exists": False}, "partner_type": {"$in": closed_types}},
+        {"$set": {"accepts_new_dms": False}},
+    )
+    backfilled += r1.modified_count + r2.modified_count
     if backfilled:
         logger.info(f"partner economy backfill: set {backfilled} field-rows to defaults")
     return backfilled

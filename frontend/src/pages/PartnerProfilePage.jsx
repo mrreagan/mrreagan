@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { Globe, MapPin, ArrowLeft, Sparkles } from "lucide-react";
 import ShareButton from "../components/ShareButton";
+import MessageButton from "../components/MessageButton";
 
 const TYPE_LABEL = {
   facilitator: "Facilitator",
@@ -80,7 +81,8 @@ export default function PartnerProfilePage() {
           <ExternalLink profile={profile} testid="partner-website-link" />
         )}
         {!profile.is_sample && (
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <MessageButton recipientId={profile.user_id} recipientName={profile.display_name} size="sm" />
             <ShareButton
               surface="partner"
               surfaceId={profile.slug}

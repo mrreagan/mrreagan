@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import { Users, Briefcase, Microscope, Store, Search, Sparkles } from "lucide-react";
 import ShareButton from "../components/ShareButton";
+import MessageButton from "../components/MessageButton";
 
 const TYPE_CONFIG = {
   facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users, color: "#476B6B", description: "Practitioners trained to lead Birthright workshops." },
@@ -199,7 +200,16 @@ function PartnerCard({ profile, sampleMode }) {
         </a>
       )}
       {!isSample && (
-        <div className="mt-3 flex items-center justify-end">
+        <div className="mt-3 flex items-center justify-end gap-2">
+          {profile.user_id && (
+            <MessageButton
+              recipientId={profile.user_id}
+              recipientName={profile.display_name}
+              size="sm"
+              showLabel={false}
+              stopPropagation
+            />
+          )}
           <ShareButton
             surface="partner"
             surfaceId={profile.slug}
