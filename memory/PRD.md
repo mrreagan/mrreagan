@@ -205,6 +205,23 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend** — `/dashboard/reports` (MyReports, engagement + spending + optional partner earnings), `/admin/reports` (Foundation reports), `/admin/payouts` (per-partner liability + earned/paid tabs + inline mark-paid form). `PartnerEarningsCard` shows pending/lifetime/paid + referral link + Copy + recent attributions — rendered only for community partner profiles.
 - **Bumped to `v1.9.0`.** Iter-11 testing: backend **25/25 PASS**, frontend **100%** (`/app/test_reports/iteration_11.json`). Zero defects.
 
+## Backlog — prioritized
+
+### v1.11.0 wrap-up (sequencing locked)
+1. **`v1.11.0-step8`** — Disbursement orchestration (CSV export of pending payouts gated to W9+method on file, partner notification on mark-paid, "next disbursement date" setting)
+2. **`v1.11.0-step8.5`** — **Universal Share & Save System** *(NEW, inserted May 25, 2026 per founder request)*. Sharing infrastructure across all public surfaces, with privacy gating. Inserted here to (a) close the founding-partner referral flywheel now that payouts infra is live, and (b) avoid retrofitting share icons into Phase 6C messaging and Phase 6B.5 research moderation later. Icons: Share2, Bookmark, Copy, QrCode, Mail, CalendarPlus, Quote (Cite), Download. New backend endpoints: `POST /api/shares/log`, `GET/POST/DELETE /api/me/bookmarks`, `GET /api/research/{id}/cite?format=...`, `GET /api/workshops/{id}/ics`. Privacy gating per surface — workshop materials, financial ledger, W9, payout methods, admin dashboards have NO share affordances. Personal impact statements default private with opt-in share toggle.
+3. **`v1.11.0-step9`** — Subscription UI parity (revoke, prorate, mid-flight plan change)
+4. **`v1.11.0-step10`** — Refund/clawback cascade + Partnership Agreement v2 with re-sign requirement
+
+### After v1.11.0
+5. **Phase 6B.5** — Research moderation queue (scope PDF exists; benefits from share/cite icons being live on artifacts already)
+6. **Phase 6C** — Communications (user↔partner DMs, partner↔partner DMs, ombudsman, disputes). The "Share to DM" pathway hooks the Step 8.5 share component
+7. **Phase 6B.6** — "More Info" / FAQ contextual modals site-wide
+8. **Advanced cross-site search & comparisons** — relies on shareable filter URLs from Step 8.5
+9. **`/music`** curated mood/activation playlist library
+10. **Email live mode flip** (`EMAIL_DRY_RUN=false`) once Resend DNS clears on birthright.live
+11. **Tech hardening** — rate limits, Redis pub/sub for WS scaling, admin self-demotion guard, Stripe webhook signature verification audit, sponsorship tier upgrade flow, Twilio SMS check-in reminders, multi-language (en/es)
+
 ## Iteration 18 — v1.11.0 Step 6 + Step 7: Paid Research Promotion + Payouts Scaffolding (May 25, 2026)
 - **Goal**: Research artifacts with tiered paid promotion + first piece of payouts infrastructure (ledger + W9 + payout method)
 - **User decisions**:
