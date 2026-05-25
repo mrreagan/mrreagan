@@ -607,6 +607,15 @@ class PartnerSalesReportSubmit(BaseModel):
     note: Optional[str] = Field(default="", max_length=2000)
 
 
+class PartnerSalesReportDecision(BaseModel):
+    """Admin reviews a submitted partner sales report. Approving credits the partner
+    at off_site_pct (overrides first, else global default for that partner_type).
+    Disputing requires a reason."""
+    admin_note: Optional[str] = Field(default="", max_length=2000)
+    override_gross_usd: Optional[float] = Field(default=None, ge=0)
+    override_pct: Optional[float] = Field(default=None, ge=0, le=100)
+
+
 class UserCreditEntry(BaseModel):
     """Store credit ledger entry. Positive = credit added; negative = redeemed."""
     id: str

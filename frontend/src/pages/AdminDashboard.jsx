@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../lib/api";
 import { Link } from "react-router-dom";
-import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale, Briefcase, BarChart3, Wallet, Store, UserPlus } from "lucide-react";
+import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale, Briefcase, BarChart3, Wallet, Store, UserPlus, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 // ---------- Stat card ----------
@@ -63,6 +63,7 @@ function OverviewTab() {
       <QuickActionCard to="/admin/foundation-applications" icon={UserPlus} title="Role applications" description="Triage applicants for open board seats" />
       <QuickActionCard to="/admin/vendor-products" icon={Store} title="Vendor catalog" description="Moderate vendor-submitted products" />
       <QuickActionCard to="/admin/payouts" icon={Wallet} title="Partner payouts" description="Referral ledger & mark paid" />
+      <QuickActionCard to="/admin/partner-sales-reports" icon={ExternalLink} title="Off-site sales reports" description="Reconcile partner-reported revenue" />
       <QuickActionCard to="/admin/reports" icon={BarChart3} title="Foundation reports" description="Engagement, revenue, payouts" />
       <QuickActionCard to="/admin/content" icon={Heart} title="Foundation Content" description="Mission, about, governance" />
     </div>

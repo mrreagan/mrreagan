@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
-import { CheckCircle2, Clock, XCircle, Pencil, Globe, Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, Pencil, Globe, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { SubscriptionStatusCard } from "./PartnerSubscribe";
 import PartnerEarningsCard from "../components/PartnerEarningsCard";
 
@@ -74,6 +74,22 @@ export default function PartnerDashboard() {
               </div>
             ))}
           </div>
+          {profiles.some((p) => p.status === "active" && (p.partner_type === "vendor" || p.partner_type === "community")) && (
+            <Link
+              to="/dashboard/partner/sales-reports"
+              className="card p-5 mt-4 flex items-center justify-between hover:border-[#476B6B] transition"
+              data-testid="off-site-sales-link"
+            >
+              <div>
+                <p className="font-serif text-lg flex items-center gap-2">
+                  <ExternalLink size={16} strokeWidth={1.5} className="text-[#C9A961]" />
+                  Off-site sales reporting
+                </p>
+                <p className="text-xs text-[#5C6B6B] mt-1">Report attributable revenue from your own site. Get credited at your off-site rev-share rate.</p>
+              </div>
+              <span className="text-xs text-[#476B6B]">Open →</span>
+            </Link>
+          )}
         </section>
       )}
 

@@ -61,6 +61,12 @@ from routers.foundation_roles import (
     admin_router as foundation_roles_admin_router,
     admin_apps_router as foundation_roles_admin_apps_router,
 )
+from routers.outbound import router as outbound_router, admin_router as outbound_admin_router
+from routers.partner_sales import (
+    my_router as partner_sales_my_router,
+    admin_router as partner_sales_admin_router,
+    webhook_router as partner_sales_webhook_router,
+)
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -90,6 +96,11 @@ api_router.include_router(foundation_roles_public_router)
 api_router.include_router(foundation_roles_apps_router)
 api_router.include_router(foundation_roles_admin_router)
 api_router.include_router(foundation_roles_admin_apps_router)
+api_router.include_router(outbound_router)
+api_router.include_router(outbound_admin_router)
+api_router.include_router(partner_sales_my_router)
+api_router.include_router(partner_sales_admin_router)
+api_router.include_router(partner_sales_webhook_router)
 
 
 @api_router.post("/webhook/stripe")

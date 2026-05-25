@@ -77,3 +77,25 @@ async def resolve_rev_share(
         "tier_key": "default",
         "duration_months": None,
     }
+
+
+async def resolve_off_site_pct(db, profile: dict) -> dict:
+    """Resolve the off-site rev-share % for an off-site sales report.
+
+    Precedence:
+      1. `profile.rev_share_overrides.off_site_pct` if set
+      2. The partner's resolved on-site pct via `resolve_rev_share` (active sub or global)
+    """
+    overrides = profile.get("rev_share_overrides") or {}
+    if overrides.get("off_site_pct") is not None:
+        return {
+            "pct": float(overrides["off_site_pct"]),
+            "source": "override",
+            "tier_key": "off_site_override",
+        }
+    base = await resolve_rev_share(db, profile["user_id"], profile["partner_type"])
+    return {
+        "pct": base["pct"],
+        "source": f"fallback_{base['source']}",
+        "tier_key": base["tier_key"],
+    }

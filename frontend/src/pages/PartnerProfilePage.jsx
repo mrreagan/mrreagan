@@ -64,9 +64,7 @@ export default function PartnerProfilePage() {
       <div className="flex flex-wrap gap-4 mt-4 text-xs text-[#5C6B6B]">
         {profile.location && <span className="inline-flex items-center gap-1"><MapPin size={11} strokeWidth={1.5} /> {profile.location}</span>}
         {profile.website_url && (
-          <a href={profile.website_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#476B6B] hover:underline" data-testid="partner-website-link">
-            <Globe size={11} strokeWidth={1.5} /> Website
-          </a>
+          <ExternalLink profile={profile} testid="partner-website-link" />
         )}
       </div>
 
@@ -74,5 +72,39 @@ export default function PartnerProfilePage() {
         {profile.bio}
       </article>
     </div>
+  );
+}
+
+const OUTBOUND_TYPES = new Set(["vendor", "community"]);
+
+function ExternalLink({ profile, testid }) {
+  // Vendors + community partners route through /api/out/{slug} for attribution.
+  // Other types use a plain external link.
+  const useOutbound = OUTBOUND_TYPES.has(profile.partner_type);
+  if (useOutbound) {
+    const apiBase = process.env.REACT_APP_BACKEND_URL || "";
+    const href = `${apiBase}/api/out/${profile.slug}`;
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="inline-flex items-center gap-1 text-[#476B6B] hover:underline"
+        data-testid={testid}
+      >
+        <Globe size={11} strokeWidth={1.5} /> Visit external site
+      </a>
+    );
+  }
+  return (
+    <a
+      href={profile.website_url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1 text-[#476B6B] hover:underline"
+      data-testid={testid}
+    >
+      <Globe size={11} strokeWidth={1.5} /> Website
+    </a>
   );
 }

@@ -53,6 +53,8 @@ import JoinUs from "./pages/JoinUs";
 import JoinUsRole from "./pages/JoinUsRole";
 import AdminFoundationRoles from "./pages/AdminFoundationRoles";
 import AdminFoundationApplications from "./pages/AdminFoundationApplications";
+import PartnerSalesReports from "./pages/PartnerSalesReports";
+import AdminPartnerSalesReports from "./pages/AdminPartnerSalesReports";
 import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children, roles }) {
@@ -223,6 +225,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminVendorProducts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/partner/sales-reports"
+        element={
+          <ProtectedRoute>
+            <PartnerSalesReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/partner-sales-reports"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminPartnerSalesReports />
           </ProtectedRoute>
         }
       />

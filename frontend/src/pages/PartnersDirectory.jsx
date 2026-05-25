@@ -166,6 +166,18 @@ function PartnerCard({ profile, sampleMode }) {
       <p className="font-medium text-sm mt-3 line-clamp-2">{profile.headline}</p>
       <p className="text-xs text-[#5C6B6B] mt-2 line-clamp-3">{profile.bio}</p>
       {profile.location && <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B] mt-3">📍 {profile.location}</p>}
+      {(profile.partner_type === "vendor" || profile.partner_type === "community") && profile.website_url && (
+        <a
+          href={`${process.env.REACT_APP_BACKEND_URL || ""}/api/out/${profile.slug}`}
+          target="_blank"
+          rel="noreferrer noopener"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider mt-3 text-[#476B6B] hover:underline"
+          data-testid={`outbound-link-${profile.slug}`}
+        >
+          Visit external site →
+        </a>
+      )}
     </Link>
   );
 }

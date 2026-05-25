@@ -1,0 +1,27 @@
+{
+  "summary": "Iter16 — v1.11.0 Step 2 + 3 (outbound-click attribution + off-site sales reconciliation). Created /app/backend/tests/test_iter16_outbound_sales.py with 25 tests, ALL PASS. Frontend flows verified end-to-end: partner cards/details, partner dashboard sales-reports page, admin reports page.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter16_outbound_sales.py",
+    "/app/test_reports/pytest/iter16_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Outbound endpoint correctly returns 302 to /partners on unknown slug (graceful, no crash). Cross-host dest is correctly ignored and falls back to external_site_url. Same-host dest is honored verbatim. UTM params are persisted into outbound_clicks.utm_params dict; user_agent is truncated to 500 chars; is_sample flag is preserved.",
+    "resolve_off_site_pct precedence is correct: profile.rev_share_overrides.off_site_pct > resolve_rev_share (active subscription > global default). Admin override_pct sets pct_source='admin_override' which correctly overrides resolution.",
+    "Terminal-state guard prevents double-approve/dispute (400). Admin decisions: approve creates partner_off_site_credits row, dispute and revise do NOT. credit_id is stamped back on the report.",
+    "Webhook HMAC verification uses hmac.compare_digest (constant-time). Per-partner secret is auto-minted on first GET /my/webhook; the same secret returned on repeat calls (idempotent). Wrong/missing signature → 401. Slug without minted secret → 400.",
+    "PartnerProfilePage ExternalLink helper routes vendor/community through /api/out/{slug} (data-testid='partner-website-link', text='Visit external site'); facilitator/research keep plain 'Website' link.",
+    "PartnerCard outbound link is gated on partner_type IN (vendor,community) AND website_url present — correct gating; facilitator + research cards do NOT show the link.",
+    "Admin tile 'Off-site sales reports' present on /admin and navigates to /admin/partner-sales-reports. Page lists reports with status tabs (submitted/approved/disputed/revised) and per-row testids 'admin-report-{id}'.",
+    "Partner dashboard at /dashboard/partner/sales-reports renders profile-type tabs (Community + Vendor) for demo user (who has both profiles), shows 'Submit a report' CTA, Your-Reports list with status pills + payout values, and Auto-report Webhook card with endpoint/secret reveal/rotate."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter16_outbound_sales.py"],
+  "success_rate": {"backend": "100% (25/25)", "frontend": "100% — outbound link gating on cards + detail page verified, partner sales-reports UI fully functional, admin reports page lists submitted+approved with status tabs and admin tile linking present"},
+  "test_credentials": "Used admin@birthright.org / demo@birthright.org (both birthright2026). demo user has community + vendor partner profiles already seeded.",
+  "seed_data_creation": "Submitted ~6 TEST_ iter16 partner_sales_reports against demo user's community + vendor profiles (period_start/period_end across 2026-01..2026-06). 3 were transitioned: one approved (community 2026-05), one disputed (vendor 2026-04), one revised (vendor 2026-03), one approved-with-override (community 2026-02 at 25% pct, 50.00 payout). 2 webhook secrets were minted on demo's community profile and 1 rotated. partner_off_site_credits collection has 2 new earned-status rows from the iter16 approvals. All test rows are prefixed 'TEST iter16' in the note field for easy cleanup.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "test_iter16_outbound_sales.py is idempotent and safe to re-run; it creates fresh reports per run, transitions them, and asserts. Demo user community/vendor secrets are now minted in the partner_profiles collection — webhook tests will continue to work. If retesting the 'partner without minted secret' branch, pick a fresh sample partner slug (e.g. sample-hearth-practice was used and may now have a secret if testing repeated). The double_approve guard relies on the community report from the same run, which is fine because each run creates new reports."
+}
