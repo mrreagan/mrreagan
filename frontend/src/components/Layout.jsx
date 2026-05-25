@@ -11,7 +11,6 @@ const NAV_EXPLORE = [
   { to: "/experiences", label: "Workshop" },
   { to: "/research",    label: "Research" },
   { to: "/shop",        label: "Store" },
-  { to: "/facilitators",label: "Facilitators" },
   { to: "/partners",    label: "Partner" },
   { to: "/sponsorship", label: "Sponsor" },
 ];
@@ -267,7 +266,6 @@ const FOOTER_EXPLORE = [
   { to: "/experiences", label: "Workshop" },
   { to: "/research", label: "Research" },
   { to: "/shop", label: "Store" },
-  { to: "/facilitators", label: "Facilitators" },
   { to: "/partners", label: "Partner" },
   { to: "/sponsorship", label: "Sponsor" },
 ];
