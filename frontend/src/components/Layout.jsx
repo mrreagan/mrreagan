@@ -9,6 +9,7 @@ import AssistantWidget from "./AssistantWidget";
 
 const NAV_EXPLORE = [
   { to: "/experiences", label: "Workshop" },
+  { to: "/research",    label: "Research" },
   { to: "/shop",        label: "Store" },
   { to: "/facilitators",label: "Facilitators" },
   { to: "/partners",    label: "Partner" },
@@ -19,7 +20,6 @@ const NAV_FOUNDATION = [
   { to: "/about",      label: "About" },
   { to: "/mission",    label: "Mission" },
   { to: "/governance", label: "Governance" },
-  { to: "/research",   label: "Research" },
   { to: "/join-us",    label: "Join Us" },
   { to: "/contact",    label: "Contact" },
 ];
@@ -265,6 +265,7 @@ function FooterColumn({ heading, links }) {
 
 const FOOTER_EXPLORE = [
   { to: "/experiences", label: "Workshop" },
+  { to: "/research", label: "Research" },
   { to: "/shop", label: "Store" },
   { to: "/facilitators", label: "Facilitators" },
   { to: "/partners", label: "Partner" },
