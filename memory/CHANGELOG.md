@@ -8,6 +8,34 @@ because the git history was reinitialized on May 19, 2026.
 
 ---
 
+## Phase 6C.5 — May 25, 2026 · COMPLETE (AI UX hardening — escape paths, discoverability, welcome credit, auto-recharge wiring)
+- **Fixes the user-reported critical bug**: AI Concierge panel was stuck open
+  after navigation on mobile (masking the new page) AND error states had no
+  escape path. After this round: every action that navigates auto-closes the
+  panel + emits a "Navigated to /…" toast; every error state has a clearly
+  labeled "Top up / Back to page" pair of buttons; close button is a larger
+  "✕ Close" pill instead of a small icon.
+- **Out-of-funds card** (`components/AiOutOfFundsCard.jsx`) — shared across
+  Concierge, Research Collaborator, Vendor PDM. Renders inline when backend
+  returns 402, with both Top-up (navigates) and Back-to-page (onClose) buttons.
+- **Pre-flight balance pill** in Research + Vendor drawer headers — shows
+  live wallet balance, clicking opens /dashboard/ai-wallet.
+- **Welcome credit** — admin partner-application approval now grants $1 to
+  the new partner's AI wallet (idempotent via `ref=welcome_{profile_id}`).
+- **Auto-recharge wiring complete** — `record_usage` now fires an async task
+  to build a Stripe Checkout session + email the partner a top-up link
+  (4-hour cooldown).
+- **Public /ai marketing page** — three tool cards, pricing pillars, cost
+  table, CTAs for sign-in + partner apply.
+- **System prompt update** — Claude now knows `/partners?partner_type=...`
+  filtered routes + `/dashboard/ai-wallet` for top-ups.
+- **PartnersDirectory** reads filter from URL searchParams + syncs back on
+  change — enables Concierge deep links + shareable filtered views.
+- **Test coverage**: backend 29/29 PASS (23 iter27 regression + 6 new iter28);
+  frontend 100% PASS on bug-fix scenarios (navigate-and-auto-close, escape
+  buttons visible on mobile 390x844, /ai page renders, balance pill renders
+  in drawer for elena@, welcome credit confirmed end-to-end).
+
 ## Phase 6C.4 — May 25, 2026 · COMPLETE (AI Wallet + AI Research Collaborator + Vendor PDM AI)
 - **AI cost metering & wallet** (`utils/ai_billing.py`, `routers/ai_wallet.py`):
   per-call cost computation from a model price table, partner wallet with
