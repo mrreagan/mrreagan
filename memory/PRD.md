@@ -470,6 +470,13 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **AdminDashboard quick-actions** updated: Vendor catalog, Partner payouts, Foundation reports cards added.
 - **Bumped to `v1.10.0`.** Iter-12 backend **22/22 PASS**, iter-13 frontend retest **100% PASS** (`/app/test_reports/iteration_12.json` + `/app/test_reports/iteration_13.json`). Zero outstanding defects.
 
+## v1.11.0 Step 10 — Refund/Clawback Cascade + Agreement v2 (May 25, 2026)
+- **Refund cascade engine** (`utils/refund_cascade.py`): given a `payment_transactions.id`, refunds the Stripe charge AND undoes all side-effects of the original payment (registrations, subscriptions, featured slots, promotions). Reverses derived partner credits in `user_credit_ledger`; already-paid credits are queued in `paid_credit_clawbacks` (status `pending_recovery`) for admin to resolve as recovered/written-off.
+- **Endpoints**: `POST /api/admin/refunds` (admin-only, requires `{txn_id, reason, skip_stripe?}`), `GET /api/admin/refunds`, `GET /api/admin/clawbacks`, `POST /api/admin/clawbacks/{id}/resolve` (`{status: recovered|written_off, note}`). All actions audit-logged.
+- **Agreement v2 gate** (`utils/agreement_gate.py`): `require_active_agreement` dependency on sensitive partner routes — `POST /api/dm/threads`, `POST /api/disputes`, `POST /api/subscriptions/checkout`. Blocks with 412 until partner signs the active version. Endpoints: `GET /api/legal/indemnification/active`, `GET /api/legal/indemnification/my-status`, `POST /api/legal/indemnification/sign`.
+- **Frontend**: `/admin/refunds` (cascades table + pending-clawbacks list + "Fire refund cascade" modal + "Resolve clawback" modal); `/legal/agreement` (full body, summary-of-changes card, accept button or already-signed badge); top-of-layout `AgreementResignBanner` for users with unsigned active version (dismissable via localStorage). Admin Dashboard gains a "Refunds & Clawbacks" QuickActionCard (RotateCcw icon).
+- **Test coverage**: backend iter-23 57/57 PASS (`test_iter23_refunds_agreement.py`); frontend iter-24 15/15 testable flows PASS (1 not-testable due to empty pending-clawbacks DB state — acceptable empty-state).
+
 ## Phase 2 — Backlog (P0/P1)
 - **P0 (DONE in Iter 3)**: Email infrastructure via Resend (dry-run)
 - **P0 (DONE in Iter 5)**: WebSocket real-time chat

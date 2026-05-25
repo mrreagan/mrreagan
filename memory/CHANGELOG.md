@@ -8,6 +8,35 @@ because the git history was reinitialized on May 19, 2026.
 
 ---
 
+## v1.11.0 Step 10 — May 25, 2026 · COMPLETE (Refund/Clawback Cascade + Agreement v2)
+- Backend (iter 23): 57/57 PASS — Stripe refund cascades, credit reversal,
+  paid-credit clawback queue, agreement-gate middleware for partner-sensitive
+  endpoints (DMs, disputes, subscription checkout). Endpoints:
+  `POST /api/admin/refunds`, `GET /api/admin/refunds`, `GET /api/admin/clawbacks`,
+  `POST /api/admin/clawbacks/{id}/resolve`,
+  `GET /api/legal/indemnification/active|my-status`, `POST .../sign`.
+- Frontend (iter 24): 15/15 testable UI flows PASS (1 not-testable due to empty
+  pending-clawbacks state — acceptable). New pages: `/admin/refunds`,
+  `/legal/agreement`. New `AgreementResignBanner` mounted in Layout (gated by
+  unsigned active version, dismissable with localStorage). Admin Dashboard now
+  shows a "Refunds & Clawbacks" QuickActionCard.
+- Files added: `pages/AdminRefunds.jsx`, `pages/AgreementPage.jsx`,
+  `components/AgreementResignBanner.jsx`, `utils/refund_cascade.py`,
+  `utils/agreement_gate.py`, `routers/refunds.py`.
+
+## Phase 6C (Communications) — May 25, 2026 · COMPLETE
+- 6C.1 Direct Messaging: User↔Partner and Partner↔Partner threads with
+  WebSocket reuse, `accepts_status` gating, ombudsman-flagging.
+- 6C.2 Ombudsman Role + Queue (`/admin/ombudsman`) with disputes + flagged DMs.
+- 6C.3 Disputes Workflow (`/dashboard/disputes`, `/admin/ombudsman`), with
+  `trigger_refund_cascade` outcome wiring into v1.11.0 Step 10.
+
+## v1.11.0 Steps 8, 8.5, 9 — May 24-25, 2026 · COMPLETE
+- Step 8: Disbursement orchestration (admin-ready-to-pay queue + Stripe payout).
+- Step 8.5: Universal Share & Save System (ShareButton w/ QR/Print/Download/
+  Send-to-partner) wired across product/workshop/partner/proposal pages.
+- Step 9: Subscription UI parity — cancel, change plan, view history.
+
 ## v1.11.0 Step 1 — May 24, 2026 ~05:15 UTC · IN PROGRESS
 - LOCKED partner economy model committed (per pricing proposal v2):
   - 13 subscription plans seeded with new rates (pre-traction × 0.5 fees;
