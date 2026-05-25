@@ -127,6 +127,9 @@ function UserMenu({ user, onLogout }) {
           <Link to="/profile" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5] border-t border-[#E5E1D8]" data-testid="menu-profile">
             Edit Profile
           </Link>
+          <Link to="/dashboard/ai-wallet" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5] border-t border-[#E5E1D8]" data-testid="menu-ai-wallet">
+            AI Wallet
+          </Link>
           <button
             onClick={handleLogout}
             className="w-full text-left px-4 py-3 text-sm hover:bg-[#FAF8F5] border-t border-[#E5E1D8] flex items-center gap-2 text-[#9E3C3C]"

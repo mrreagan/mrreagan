@@ -71,6 +71,8 @@ import OmbudsmanQueue from "./pages/OmbudsmanQueue";
 import AdminRefunds from "./pages/AdminRefunds";
 import AgreementPage from "./pages/AgreementPage";
 import AdminResearch from "./pages/AdminResearch";
+import AiWallet from "./pages/AiWallet";
+import AdminAiUsage from "./pages/AdminAiUsage";
 
 function ProtectedRoute({ children, roles, allowOmbudsman }) {
   const { user, loading } = useAuth();
@@ -390,6 +392,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminResearch />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/ai-usage"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminAiUsage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/ai-wallet"
+        element={
+          <ProtectedRoute>
+            <AiWallet />
           </ProtectedRoute>
         }
       />

@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
-import { ArrowLeft, Plus, Pencil, Trash2, ShoppingBag, Search, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, ShoppingBag, Search, AlertTriangle, Eye, EyeOff, Bot } from "lucide-react";
+import VendorPDMPanel from "../components/VendorPDMPanel";
 
 const EMPTY = {
   name: "",
@@ -141,6 +142,7 @@ export default function VendorProducts() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [pdmOpen, setPdmOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -207,11 +209,27 @@ export default function VendorProducts() {
           </p>
         </div>
         {!accessDenied && (
-          <button onClick={openNew} className="btn-primary" data-testid="vendor-product-new-button">
-            <Plus size={16} strokeWidth={1.5} /> New product
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setPdmOpen(true)} className="btn-outline inline-flex items-center gap-2" data-testid="vendor-pdm-open">
+              <Bot size={14} strokeWidth={1.5} /> Product AI
+            </button>
+            <button onClick={openNew} className="btn-primary" data-testid="vendor-product-new-button">
+              <Plus size={16} strokeWidth={1.5} /> New product
+            </button>
+          </div>
         )}
       </div>
+      <VendorPDMPanel open={pdmOpen} onClose={() => setPdmOpen(false)} onPickResult={(r) => {
+        if (typeof r === "string") {
+          if (r.startsWith("/api/") || r.startsWith("http")) {
+            setForm((f) => ({ ...f, image_url: r }));
+          } else if (r.length > 60) {
+            setForm((f) => ({ ...f, description: r }));
+          }
+        }
+        setPdmOpen(false);
+        setDrawerOpen(true);
+      }} />
 
       {accessDenied ? (
         <div className="card p-10 mt-10 text-center" data-testid="vendor-access-denied">

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import api from "../lib/api";
-import { Plus, Pencil, Trash2, Sparkles, X, BookOpen, Microscope } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, X, BookOpen, Microscope, Bot } from "lucide-react";
+import ResearchAIPanel from "../components/ResearchAIPanel";
 
 const EMPTY = {
   title: "",
@@ -34,6 +35,7 @@ export default function PartnerResearch() {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
   const [promoting, setPromoting] = useState(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -131,11 +133,19 @@ export default function PartnerResearch() {
       </p>
       <div className="divider-flame" />
 
-      <div className="flex justify-end mb-3">
+      <div className="flex justify-end mb-3 gap-2">
+        <button onClick={() => setAiOpen(true)} className="btn-outline inline-flex items-center gap-2" data-testid="research-ai-open">
+          <Bot size={14} strokeWidth={1.5} /> Research Collaborator
+        </button>
         <button onClick={startNew} className="btn-primary inline-flex items-center gap-2" data-testid="new-artifact-btn">
           <Plus size={14} strokeWidth={1.5} /> New artifact
         </button>
       </div>
+      <ResearchAIPanel open={aiOpen} onClose={() => setAiOpen(false)} onPickResult={(r) => {
+        if (typeof r === "string") setForm((f) => ({ ...f, abstract: r }));
+        else if (r && Array.isArray(r.tags)) setForm((f) => ({ ...f, tags: r.tags.join(", "), categories: (r.categories || []).join(", ") }));
+        setAiOpen(false);
+      }} />
 
       <div className="space-y-3" data-testid="my-artifacts-list">
         {artifacts.length === 0 && (

@@ -106,6 +106,12 @@ from routers.refunds import (
     clawback_router as clawback_router,
 )
 from routers.assistant import router as assistant_router
+from routers.ai_wallet import (
+    my_router as ai_wallet_my_router,
+    admin_router as ai_wallet_admin_router,
+)
+from routers.research_ai import router as research_ai_router
+from routers.vendor_ai import router as vendor_ai_router
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -164,6 +170,10 @@ api_router.include_router(ombudsman_router)
 api_router.include_router(refunds_admin_router)
 api_router.include_router(clawback_router)
 api_router.include_router(assistant_router)
+api_router.include_router(ai_wallet_my_router)
+api_router.include_router(ai_wallet_admin_router)
+api_router.include_router(research_ai_router)
+api_router.include_router(vendor_ai_router)
 
 
 @api_router.post("/webhook/stripe")

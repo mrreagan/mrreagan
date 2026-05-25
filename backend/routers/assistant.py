@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 from auth_utils import get_current_user_optional, get_current_user
 from models import gen_id, now_iso
 from utils.audit import log_action
+from utils.ai_billing import record_usage, require_balance
 
 load_dotenv()
 
@@ -278,6 +279,10 @@ async def chat(req: ChatRequest, user: Optional[dict] = Depends(get_current_user
     if not EMERGENT_LLM_KEY:
         raise HTTPException(status_code=503, detail="Assistant not configured (missing EMERGENT_LLM_KEY)")
     from database import db
+    # Concierge is free for participants & anonymous visitors (foundation absorbs cost).
+    # Partners pay through their AI wallet — they use Research/Vendor AI in volume too.
+    if user and user.get("role") in ("partner", "facilitator"):
+        await require_balance(db, user, min_usd=0.005, feature="AI Concierge")
     session_id = req.session_id or f"asst_{uuid.uuid4().hex}"
 
     # Persist user turn
@@ -319,6 +324,17 @@ async def chat(req: ChatRequest, user: Optional[dict] = Depends(get_current_user
         raise HTTPException(status_code=502, detail=f"Assistant temporarily unavailable: {e}") from e
 
     reply_text, proposed = _parse_actions(str(raw_reply or ""))
+
+    # Meter usage (estimated tokens; LlmChat doesn't surface usage from Anthropic).
+    # Only debits partner/facilitator wallets — participants & anonymous are foundation-funded.
+    tokens_in_estimate = (len(system_prompt) + len(req.message)) // 4
+    tokens_out_estimate = len(str(raw_reply or "")) // 4
+    if user and user.get("role") in ("partner", "facilitator"):
+        await record_usage(
+            db, user, feature="concierge", model=MODEL_NAME,
+            tokens_in=tokens_in_estimate, tokens_out=tokens_out_estimate,
+            meta={"session_id": session_id, "actions_emitted": [a.type for a in proposed]},
+        )
 
     # Persist assistant turn (with parsed actions for replay/audit)
     await db.assistant_messages.insert_one({
@@ -610,6 +626,23 @@ async def get_session(session_id: str, user: Optional[dict] = Depends(get_curren
         if owners and (not user or user["id"] not in owners):
             raise HTTPException(status_code=403, detail="Not your session")
     return {"session_id": session_id, "messages": rows}
+
+
+@router.get("/my-sessions/last")
+async def my_last_session(user: dict = Depends(get_current_user)):
+    """Returns the most recent session (id + messages) for the logged-in user.
+    Used by the Concierge 'Replay last conversation' button."""
+    from database import db
+    last = await db.assistant_messages.find_one(
+        {"user_id": user["id"]}, {"_id": 0}, sort=[("created_at", -1)]
+    )
+    if not last:
+        return {"session_id": None, "messages": []}
+    sid = last["session_id"]
+    rows = await db.assistant_messages.find(
+        {"session_id": sid}, {"_id": 0}
+    ).sort("created_at", 1).to_list(200)
+    return {"session_id": sid, "messages": rows}
 
 
 @router.get("/my-sessions")

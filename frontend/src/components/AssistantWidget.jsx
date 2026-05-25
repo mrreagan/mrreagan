@@ -18,7 +18,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Sparkles, Send, X, ChevronDown, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Sparkles, Send, X, ChevronDown, AlertCircle, CheckCircle2, Loader2, History } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -263,9 +263,41 @@ export default function AssistantWidget() {
             <Sparkles size={16} strokeWidth={1.5} className="text-[#C9A961]" />
             <h2 className="font-serif text-lg">Birthright Concierge</h2>
           </div>
-          <button onClick={() => setOpen(false)} className="text-[#5C6B6B] hover:text-[#1A2424]" data-testid="assistant-close-btn" aria-label="Close">
-            <X size={18} strokeWidth={1.5} />
-          </button>
+          <div className="flex items-center gap-2">
+            {user && (
+              <button
+                onClick={async () => {
+                  try {
+                    const r = await api.get("/assistant/my-sessions/last");
+                    const rows = r.data.messages || [];
+                    if (rows.length === 0) {
+                      toast.info("No previous conversation");
+                      return;
+                    }
+                    setSessionId(r.data.session_id);
+                    saveSessionId(r.data.session_id);
+                    setMessages(rows.map((m) => ({
+                      id: m.id,
+                      role: m.role,
+                      content: m.content,
+                      actions: m.proposed_actions || [],
+                    })));
+                  } catch {
+                    toast.error("Couldn't load last conversation");
+                  }
+                }}
+                title="Replay your last conversation"
+                aria-label="Replay last conversation"
+                className="text-[#5C6B6B] hover:text-[#1A2424]"
+                data-testid="assistant-replay-btn"
+              >
+                <History size={16} strokeWidth={1.5} />
+              </button>
+            )}
+            <button onClick={() => setOpen(false)} className="text-[#5C6B6B] hover:text-[#1A2424]" data-testid="assistant-close-btn" aria-label="Close">
+              <X size={18} strokeWidth={1.5} />
+            </button>
+          </div>
         </header>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4" data-testid="assistant-messages">

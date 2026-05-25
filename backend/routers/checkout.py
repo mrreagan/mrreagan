@@ -471,6 +471,14 @@ async def _activate_research_promotion(db, txn: dict) -> None:
 _PAID_HANDLERS["research_promotion"] = _activate_research_promotion
 
 
+async def _credit_ai_wallet_topup(db, txn: dict) -> None:
+    from routers.ai_wallet import credit_topup_from_txn
+    await credit_topup_from_txn(db, txn)
+
+
+_PAID_HANDLERS["ai_wallet_topup"] = _credit_ai_wallet_topup
+
+
 async def _process_paid_transaction(txn: dict):
     """Handle side-effects of a successful payment by dispatching to the correct handler."""
     from database import db
