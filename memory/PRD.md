@@ -209,9 +209,9 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 
 ### v1.11.0 wrap-up (sequencing locked)
 1. ~~**`v1.11.0-step8`** — Disbursement orchestration~~ ✅ **SHIPPED in Iter 19**
-2. ~~**`v1.11.0-step8.5`** — **Universal Share & Save System**~~ ✅ **SHIPPED in Iter 19**
-3. **`v1.11.0-step9`** — Subscription UI parity (revoke, prorate, mid-flight plan change) — **NEXT**
-4. **`v1.11.0-step10`** — Refund/clawback cascade + Partnership Agreement v2 with re-sign requirement
+2. ~~**`v1.11.0-step8.5`** — **Universal Share & Save System**~~ ✅ **SHIPPED in Iter 19 + completed in Iter 20**
+3. ~~**`v1.11.0-step9`** — Subscription UI parity~~ ✅ **SHIPPED in Iter 20**
+4. **`v1.11.0-step10`** — Refund/clawback cascade + Partnership Agreement v2 with re-sign requirement — **NEXT**
 
 ### After v1.11.0
 5. **Phase 6B.5** — Research moderation queue (scope PDF exists; benefits from share/cite icons being live on artifacts already)
@@ -229,6 +229,22 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend**: `/research` page with promoted top + listing/search; `/dashboard/partner/research` CRUD + promote checkout; `/dashboard/partner/payouts` 3 tabs (Ledger / W9 / Method); `/partners` Featured strip at top; nav tightened to `xl:flex` + `gap-0.5` to fit 11 items.
 - **Test coverage**: `/app/test_reports/iteration_18.json` — backend 32/32 PASS, frontend 100%. Pre-existing iter17 header overlap fixed.
 - **Documentation**: `birthright-v1.11-step6-7-scope-v1.pdf` (171 KB) + refreshed `birthright-versions.pdf` (266 KB).
+
+## Iteration 20 — v1.11.0 Step 9 + Universal Share Placement Audit (May 25, 2026)
+- **Goal**: Two combined deliverables. (A) Close out the universal Share/Print/Download coverage user demanded — every public-facing surface (cards + details) gets a ShareButton, plus universal Print and Download QR PNG channels. (B) v1.11.0 Step 9 — Subscription UI parity: partner cancel/change + admin revoke/refund.
+- **Step 9 — Subscription UI Parity**:
+  - **Partner-side cancel** — `POST /api/subscriptions/{id}/cancel`. Non-destructive: license stays active until `expires_at`; status flips to `cancelled`; optional reason recorded for retention insight.
+  - **Mid-flight plan change** — `GET /api/subscriptions/{id}/change-preview?new_plan_id=X` returns prorated math; `POST /api/subscriptions/{id}/change-plan` either (a) fulfills synthetically with no Stripe call when credit ≥ new price (free upgrade), or (b) opens a Stripe checkout for the delta. Webhook handler now respects `supersedes_subscription_id` and marks the predecessor `superseded`.
+  - **Admin panel** — `GET /api/admin/subscriptions` (filter by status/partner_type) + `POST /api/admin/subscriptions/{id}/revoke` (reason ≥ 3 chars required, optional Stripe refund). Status pills: active / cancelling / superseded / expired / revoked.
+  - Frontend: `SubscriptionStatusCard` extended with **Manage** button → opens panel with Change plan + Cancel renewal flows. New `/admin/subscriptions` page (table + filter chips + revoke modal). Admin Dashboard gains Subscriptions QuickAction.
+- **Universal Share/Print/Download placement audit**:
+  - `ShareButton` now also on: **partner directory cards** (non-sample), **governance board member cards**, **join-us list cards**, **workshops list cards**, **shop product cards** (non-material), **facilitators list + detail**, in addition to the iter-19 placements.
+  - `ShareButton` gained **Print** (window.print, paired with @media print CSS in App.css that hides nav/footer/share menu) and **Download QR PNG** (rasterizes the hidden SVG to a 4× canvas PNG so first click always works).
+  - `stopPropagation` prop on `ShareButton` for cases where it sits inside a clickable card.
+  - Workshops list converted from `<Link>` cards to `role="link"` divs with `useNavigate` so ShareButton can stop click propagation.
+- **Models**: `SubscriptionCancelRequest`, `SubscriptionPlanChangeRequest`, `AdminSubscriptionRevokeRequest`.
+- **Test coverage** — `/app/backend/tests/test_iter20_subs_step9.py` 16/16 PASS. ShareButton placement verified across all listed surfaces (partners=3, governance=4, join-us=3, workshops=3, shop=56 card+detail buttons, facilitators, research). No regressions. Zero issues in `/app/test_reports/iteration_20.json`.
+- **Documentation**: `birthright-versions.pdf` refreshed (340 KB), `_index.md` updated.
 
 ## Iteration 19 — v1.11.0 Step 8 + Step 8.5: Disbursement Orchestration + Universal Share & Save System (May 25, 2026)
 - **Goal**: Close the loop on partner financial operations (admin can run real disbursements with a CSV export gated to W9+method on file) AND launch the universal share/save flywheel that ties social sharing to community-partner referral attribution.
