@@ -20,7 +20,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from auth_utils import get_current_user, require_roles
+from auth_utils import require_roles
 from models import (
     FoundationRoleApplicationDecision,
     FoundationRoleApplicationSubmit,
