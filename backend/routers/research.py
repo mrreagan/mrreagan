@@ -92,17 +92,14 @@ async def list_artifacts(
             {"authors": {"$regex": rx, "$options": "i"}},
         ]
     rows = await db.research_artifacts.find(query, {"_id": 0}).to_list(limit)
-    # Sort: promoted first (by promoted_until desc), then by publication_date desc
+    # Promoted first (by promoted_until desc), then by publication_date desc.
     now = _now_utc_iso()
+    promoted, others = [], []
     for r in rows:
-        r["_is_promoted"] = bool(r.get("promoted_until") and r["promoted_until"] > now)
-    rows.sort(key=lambda r: (not r["_is_promoted"], r.get("promoted_until") or "", r.get("publication_date") or ""), reverse=False)
-    rows.sort(key=lambda r: (not r["_is_promoted"], (r.get("publication_date") or "")), reverse=False)
-    # Simpler sort: split into promoted (newest first) and the rest (newest pub date first)
-    promoted = sorted([r for r in rows if r["_is_promoted"]], key=lambda r: r.get("promoted_until") or "", reverse=True)
-    others = sorted([r for r in rows if not r["_is_promoted"]], key=lambda r: r.get("publication_date") or "", reverse=True)
-    for r in promoted + others:
-        r.pop("_is_promoted", None)
+        is_promoted = bool(r.get("promoted_until") and r["promoted_until"] > now)
+        (promoted if is_promoted else others).append(r)
+    promoted.sort(key=lambda r: r.get("promoted_until") or "", reverse=True)
+    others.sort(key=lambda r: r.get("publication_date") or "", reverse=True)
     return promoted + others
 
 

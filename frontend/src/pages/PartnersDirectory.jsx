@@ -17,7 +17,6 @@ export default function PartnersDirectory() {
   const [partnerType, setPartnerType] = useState("all");
   const [q, setQ] = useState("");
   const [partners, setPartners] = useState([]);
-  const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,12 +29,6 @@ export default function PartnersDirectory() {
       .then((r) => setPartners(r.data))
       .finally(() => setLoading(false));
   }, [partnerType, q, samplesMode]);
-
-  // Featured strip (only when not in samples mode)
-  useEffect(() => {
-    if (samplesMode) { setFeatured([]); return; }
-    api.get("/featured").then((r) => setFeatured(r.data || []));
-  }, [samplesMode]);
 
   const counts = useMemo(() => {
     const c = { all: partners.length };
@@ -79,36 +72,6 @@ export default function PartnersDirectory() {
             </button>
           </div>
         </div>
-      )}
-
-      {!samplesMode && featured.length > 0 && (
-        <section className="mt-8 mb-2" data-testid="featured-strip">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles size={14} strokeWidth={1.5} className="text-[#C9A961]" />
-              <p className="label text-[#8B7128]">Featured this month</p>
-            </div>
-            <Link to="/featured" className="text-xs text-[#476B6B] hover:underline" data-testid="see-all-featured">See all featured →</Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {featured.slice(0, 4).map((p) => (
-              <Link key={p.id} to={`/partners/${p.slug}`} className="card p-3 hover:border-[#C9A961] transition ring-1 ring-[#C9A961]/30" data-testid={`featured-strip-${p.slug}`}>
-                <div className="flex items-center gap-2">
-                  {p.photo_url ? (
-                    <img src={p.photo_url} alt="" className="w-8 h-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#F4F1EA]" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-serif text-sm truncate">{p.display_name}</p>
-                    <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">{p.partner_type}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-[#1A2424] mt-2 line-clamp-2">{p.headline}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
       )}
 
       <div className="mt-6 flex flex-wrap items-center gap-2" data-testid="partner-type-tabs">

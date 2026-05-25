@@ -55,7 +55,6 @@ import AdminFoundationRoles from "./pages/AdminFoundationRoles";
 import AdminFoundationApplications from "./pages/AdminFoundationApplications";
 import PartnerSalesReports from "./pages/PartnerSalesReports";
 import AdminPartnerSalesReports from "./pages/AdminPartnerSalesReports";
-import Featured from "./pages/Featured";
 import PartnerFeatured from "./pages/PartnerFeatured";
 import AdminFeatured from "./pages/AdminFeatured";
 import Research from "./pages/Research";
@@ -103,7 +102,7 @@ function AppRoutes() {
       <Route path="/partners/:slug" element={<PartnerProfilePage />} />
       <Route path="/join-us" element={<JoinUs />} />
       <Route path="/join-us/:slug" element={<JoinUsRole />} />
-      <Route path="/featured" element={<Featured />} />
+      <Route path="/featured" element={<Navigate to="/partners" replace />} />
       <Route path="/research" element={<Research />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />

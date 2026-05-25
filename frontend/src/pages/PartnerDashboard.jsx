@@ -98,7 +98,7 @@ export default function PartnerDashboard() {
             >
               <div>
                 <p className="font-serif text-lg">★ Featured slot</p>
-                <p className="text-xs text-[#5C6B6B] mt-1">Buy a 30-day spotlight on /featured. Random rotation, gold ribbon, your content.</p>
+                <p className="text-xs text-[#5C6B6B] mt-1">Buy a 30-day spotlight pinned to the top of /partners. Gold ribbon, your content, random rotation.</p>
               </div>
               <span className="text-xs text-[#476B6B]">Open →</span>
             </Link>

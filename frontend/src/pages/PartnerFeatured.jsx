@@ -115,8 +115,7 @@ export default function PartnerFeatured() {
       <h1 className="editorial-h1 mt-2">Featured slot</h1>
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B] max-w-2xl">
-        Promote your work in the spotlight section of Birthright. Featured partners appear on{" "}
-        <a href="/featured" className="text-[#476B6B] underline">/featured</a> and carry a gold ribbon across the directory.
+        Promote your work in the spotlight section of Birthright. Featured partners are pinned to the top of <a href="/partners" className="text-[#476B6B] underline">/partners</a> and carry a gold ribbon across the directory.
       </p>
 
       {profiles.length > 1 && (
@@ -214,8 +213,8 @@ function SlotCard({ state, onPurchase, purchasing }) {
         </div>
         <p className="text-xs text-[#5C6B6B] mt-2">Your slot runs until <strong>{until.toLocaleDateString()}</strong>.</p>
         <p className="text-2xl font-serif text-[#8B7128] mt-3">{daysLeft} days left</p>
-        <a href="/featured" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-[#476B6B] hover:underline mt-3" data-testid="view-featured-page">
-          <LinkIcon size={11} strokeWidth={1.5} /> See yourself on /featured
+        <a href="/partners" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-[#476B6B] hover:underline mt-3" data-testid="view-featured-page">
+          <LinkIcon size={11} strokeWidth={1.5} /> See your card on /partners
         </a>
         <button onClick={onPurchase} disabled={purchasing} className="btn-outline w-full mt-5 text-sm" data-testid="extend-slot">
           {purchasing ? "Loading..." : `Extend (+${state.pricing.duration_days} days for $${state.pricing.price_usd})`}
@@ -233,10 +232,10 @@ function SlotCard({ state, onPurchase, purchasing }) {
       <p className="text-xs text-[#5C6B6B]">{state.pricing.duration_days} days · Stripe checkout</p>
 
       <ul className="text-xs text-[#5C6B6B] mt-4 space-y-2 list-disc list-inside">
-        <li>Gold ribbon across the directory</li>
-        <li>Featured card on /featured with your content + CTA</li>
+        <li>Pinned to the top of /partners across all type tabs</li>
+        <li>Gold ribbon + ring across every directory card</li>
         <li>Edit content freely while slot is active</li>
-        <li>Random rotation order — no auction</li>
+        <li>Random rotation among other featured partners</li>
       </ul>
 
       <button onClick={onPurchase} disabled={purchasing} className="btn-primary w-full mt-5" data-testid="purchase-slot">

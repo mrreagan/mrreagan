@@ -261,7 +261,17 @@ async def list_public_partners(
     profiles = await db.partner_profiles.find(
         query, {"_id": 0, "meta": 0}
     ).sort("approved_at", -1).to_list(limit)
-    return profiles
+    # Pin currently-featured partners to the top (within the active filter).
+    from datetime import datetime, timezone
+    now_iso_str = datetime.now(timezone.utc).isoformat()
+    featured, rest = [], []
+    for p in profiles:
+        if p.get("featured_until") and p["featured_until"] > now_iso_str:
+            featured.append(p)
+        else:
+            rest.append(p)
+    featured.sort(key=lambda p: p.get("featured_until") or "", reverse=True)
+    return featured + rest
 
 
 @router.get("/{slug}")
