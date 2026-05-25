@@ -174,8 +174,8 @@ export default function AssistantWidget() {
         if (Array.isArray(data.result)) summary += ` — ${data.result.length} result(s)`;
         setMessages((m) => [...m, { id: crypto.randomUUID(), role: "system", kind: "ok", content: summary, payload: data.result }]);
       }
-      // Mark action as confirmed locally
-      setMessages((m) => m.map((mm) => mm.actions ? { ...mm, actions: mm.actions.map((a) => a.id === action.id ? { ...a, _done: true } : a) } : mm));
+      // Mark action as accepted locally
+      setMessages((m) => m.map((mm) => mm.actions ? { ...mm, actions: mm.actions.map((a) => a.id === action.id ? { ...a, _done: "accepted" } : a) } : mm));
     } catch (e) {
       const detail = formatError(e);
       setMessages((m) => [...m, { id: crypto.randomUUID(), role: "system", kind: "error", content: detail }]);
@@ -184,6 +184,10 @@ export default function AssistantWidget() {
       setBusy(false);
     }
   }, [sessionId, runDirective]);
+
+  const declineAction = useCallback((action) => {
+    setMessages((m) => m.map((mm) => mm.actions ? { ...mm, actions: mm.actions.map((a) => a.id === action.id ? { ...a, _done: "declined" } : a) } : mm));
+  }, []);
 
   const send = useCallback(async (text) => {
     const msg = (text ?? input).trim();
@@ -266,7 +270,7 @@ export default function AssistantWidget() {
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4" data-testid="assistant-messages">
           {messages.map((m) => (
-            <MessageBubble key={m.id} m={m} onAccept={execAction} busy={busy} />
+            <MessageBubble key={m.id} m={m} onAccept={execAction} onDecline={declineAction} busy={busy} />
           ))}
           {busy && (
             <div className="flex items-center gap-2 text-xs text-[#5C6B6B]" data-testid="assistant-busy">
@@ -311,7 +315,7 @@ export default function AssistantWidget() {
   );
 }
 
-function MessageBubble({ m, onAccept, busy }) {
+function MessageBubble({ m, onAccept, onDecline, busy }) {
   if (m.role === "user") {
     return (
       <div className="flex justify-end" data-testid={`assistant-msg-user-${m.id}`}>
@@ -338,13 +342,13 @@ function MessageBubble({ m, onAccept, busy }) {
         {m.content}
       </div>
       {Array.isArray(m.actions) && m.actions.filter((a) => a.tier === "confirm").map((a) => (
-        <ConfirmCard key={a.id} action={a} onAccept={onAccept} busy={busy} />
+        <ConfirmCard key={a.id} action={a} onAccept={onAccept} onDecline={onDecline} busy={busy} />
       ))}
     </div>
   );
 }
 
-function ConfirmCard({ action, onAccept, busy }) {
+function ConfirmCard({ action, onAccept, onDecline, busy }) {
   return (
     <div className="rounded-xl border border-[#C9A961] bg-[#FFF8E1] p-3 text-sm flex flex-col gap-2" data-testid={`confirm-card-${action.type}`}>
       <div className="flex items-start gap-2">
@@ -357,9 +361,13 @@ function ConfirmCard({ action, onAccept, busy }) {
         </div>
       </div>
       <div className="flex gap-2 justify-end">
-        {action._done ? (
+        {action._done === "accepted" ? (
           <span className="text-xs text-[#2E5C46] inline-flex items-center gap-1" data-testid={`confirm-done-${action.type}`}>
             <CheckCircle2 size={12} /> Done
+          </span>
+        ) : action._done === "declined" ? (
+          <span className="text-xs text-[#5C6B6B] inline-flex items-center gap-1" data-testid={`confirm-declined-${action.type}`}>
+            Declined
           </span>
         ) : (
           <>
@@ -372,7 +380,7 @@ function ConfirmCard({ action, onAccept, busy }) {
               {busy ? "…" : "Confirm"}
             </button>
             <button
-              onClick={() => { action._done = "declined"; }}
+              onClick={() => onDecline(action)}
               disabled={busy}
               className="btn-outline text-xs"
               data-testid={`confirm-decline-${action.type}`}

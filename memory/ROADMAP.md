@@ -6,14 +6,10 @@ Prioritized list of remaining work. Updated May 25, 2026.
 
 ## P1 — Next up
 
-### Phase 6B.6 — Contextual "More Info" / FAQ Modals
-- Site-wide reusable info-modal component triggered next to complex labels
-  (pricing, partner types, sponsorship tiers, governance, indemnification).
-- Admin-editable FAQ entries indexed by slug.
-
 ### Documentation tasks (post-dev)
 - User will provide a list of documentation tasks AFTER all dev work is
-  complete. Placeholder — confirm scope with user when triggered.
+  complete. Test Plan PDF already shipped May 25, 2026
+  (`/app/backend/static/exports/birthright-test-plan.pdf`).
 
 ---
 
@@ -46,6 +42,8 @@ Prioritized list of remaining work. Updated May 25, 2026.
 ---
 
 ## DONE — recent
+- Phase 6B.6 (AI Concierge — agentic site-wide guide) — May 25, 2026
+- Multi-team Test Plan PDF (11 suites, AI-test-paths included) — May 25, 2026
 - Phase 6B.5 (Research moderation queue) — May 25, 2026
 - Mobile-menu EXPLORE/FOUNDATION reorganization — May 25, 2026
 - v1.11.0 Step 10 (Refund cascade + Agreement v2) — May 25, 2026

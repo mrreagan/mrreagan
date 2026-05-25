@@ -470,6 +470,24 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **AdminDashboard quick-actions** updated: Vendor catalog, Partner payouts, Foundation reports cards added.
 - **Bumped to `v1.10.0`.** Iter-12 backend **22/22 PASS**, iter-13 frontend retest **100% PASS** (`/app/test_reports/iteration_12.json` + `/app/test_reports/iteration_13.json`). Zero outstanding defects.
 
+## Phase 6B.6 — AI Concierge (Agentic Site-Wide Guide) (May 25, 2026)
+- **Decision pivot**: the originally-planned static FAQ modal feature was cancelled mid-build at user request and replaced with a full agentic AI Concierge powered by Claude Sonnet 4.5 (via Emergent LLM Key).
+- **Backend** `routers/assistant.py` (~530 lines):
+  - `POST /api/assistant/chat` — accepts `{session_id, message, page_context}`, streams a Claude reply, parses `<<ACTION>>{...json}<<END>>` blocks the LLM emits, returns clean reply text + structured `proposed_actions[]`. Persists conversation in `db.assistant_messages`.
+  - `POST /api/assistant/execute` — runs an approved action. Backend tier-`auto` actions (search_workshops, search_products, search_partners, search_research, lookup_my_subscriptions, lookup_my_registrations) execute server-side; tier-`auto` frontend-execute actions (navigate, scroll_to, prefill_form, open_modal, add_to_cart, register_for_workshop) return a directive the frontend runs; tier-`confirm` write actions (send_dm, file_dispute, submit_research_draft, submit_partner_application, cancel_my_subscription, sign_agreement, bookmark) run only after the user clicks the yellow Confirm card.
+  - Forbidden tier (checkout_payment, change_user_role, delete_account) → 403 at execute time regardless of LLM intent.
+  - `GET /api/assistant/meta` exposes the action registry to the frontend.
+  - `GET /api/assistant/sessions/{id}` + `GET /api/assistant/my-sessions` for history.
+  - Every action execution audit-logged in `db.assistant_audit` + `db.audit_log`.
+- **System prompt** embeds the full site map, the current user's role/sign-in state, the current page path, and the structured action protocol. Replays prior user turns into `LlmChat` for multi-turn memory.
+- **Frontend** `components/AssistantWidget.jsx`:
+  - Floating "Ask Birthright" pill bottom-right of every page (positioned `bottom-20 right-5` to clear the Emergent badge). Also opens on `/` keyboard press (anywhere except inside an input/textarea). Esc closes.
+  - Slide-in panel with chat history, action confirm cards, decline-state UI, system success/error messages.
+  - Auto-runs tier=`auto` actions immediately, renders yellow confirm card for tier=`confirm` actions.
+  - Persists `session_id` and `open` state in localStorage.
+- **Test Plan PDF**: `/app/scripts/build_test_plan.py` generates `birthright-test-plan.pdf` (775 KB) into `/app/backend/static/exports/`. Eleven independent test suites (A Auth · B Storefront · C Workshops · D Comms · E Partners/Subs · F Vendor/Refs/Reports · G Research · H Admin · I Governance · J Mobile · K AI Concierge full agentic coverage) with assignment sheet, env URLs, Stripe test cards, full data-testid index, and manual + Assistant test paths for every flow.
+- **Test coverage**: backend `test_iter26_assistant.py` 9/9 PASS (2 of which make live Claude calls); frontend iter-26 100% PASS (navigate, search, refused-forbidden, multi-turn memory, confirm-card render+decline, error-stringification, session persistence, PDF download all verified).
+
 ## Phase 6B.5 — Research Submissions Queue + Admin Moderation (May 25, 2026)
 - **Moderation gate**: partners can save a research artifact as `draft` OR submit it for review, but the `published`/`archived` statuses are now reachable only via admin moderation. Existing partner PUT on a published artifact's content fields auto-requeues it to `pending_review`.
 - **New statuses** on `ResearchArtifactStatus`: `pending_review`, `changes_requested`, `rejected`. New stored fields: `moderation_note`, `moderated_by`, `moderated_at`, `submitted_at`.

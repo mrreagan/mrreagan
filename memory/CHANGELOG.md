@@ -8,6 +8,29 @@ because the git history was reinitialized on May 19, 2026.
 
 ---
 
+## Phase 6B.6 — May 25, 2026 · COMPLETE (AI Concierge — agentic site-wide guide)
+- **Pivoted away from static FAQ modals** at user request — replaced with a
+  full agentic AI guide.
+- **Backend**: `routers/assistant.py` wraps Claude Sonnet 4.5 via
+  `emergentintegrations.LlmChat` + Emergent LLM Key. Endpoints:
+  `/api/assistant/{meta,chat,execute,sessions/{id},my-sessions}`.
+- **Action registry** with 3 tiers: `auto` (frontend executes immediately —
+  navigate, scroll_to, prefill_form, search_*, lookup_*), `confirm` (yellow
+  confirmation card — add_to_cart, send_dm, file_dispute, submit_research_draft,
+  submit_partner_application, cancel_my_subscription, sign_agreement,
+  bookmark, register_for_workshop), `forbidden` (server refuses — final
+  payment, role changes, account deletion).
+- **Frontend**: `<AssistantWidget>` floating button bottom-right on every page,
+  also opens with `/` keyboard shortcut. Slide-in panel with conversation,
+  yellow confirm cards w/ accept+decline, audit-logged execution.
+- **Test coverage**: backend `test_iter26_assistant.py` 9/9 PASS (including
+  2 live Claude round-trips); frontend testing agent 100% PASS (iter 26)
+  across navigate / search / forbidden refusal / multi-turn memory paths.
+- **Test Plan PDF generated**: `/app/backend/static/exports/birthright-test-plan.pdf`
+  (775 KB) — 11 independent suites (A–K) with credentials, environment URLs,
+  data-testids, manual + AI Concierge test paths for every flow. Generated
+  via `python /app/scripts/build_test_plan.py`.
+
 ## Phase 6B.5 — May 25, 2026 · COMPLETE (Research Submissions Queue + Admin Moderation)
 - Backend (iter 25): **8/8 PASS** — `test_iter25_research_moderation.py` covers
   partner-status-clamp (published→pending), submit-for-review flow, admin
