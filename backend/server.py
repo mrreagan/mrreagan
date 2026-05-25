@@ -112,6 +112,7 @@ from routers.ai_wallet import (
 )
 from routers.research_ai import router as research_ai_router
 from routers.vendor_ai import router as vendor_ai_router
+from routers.connect import router as connect_router, ws_router as connect_ws_router
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -174,6 +175,8 @@ api_router.include_router(ai_wallet_my_router)
 api_router.include_router(ai_wallet_admin_router)
 api_router.include_router(research_ai_router)
 api_router.include_router(vendor_ai_router)
+api_router.include_router(connect_router)
+api_router.include_router(connect_ws_router)
 
 
 @api_router.post("/webhook/stripe")

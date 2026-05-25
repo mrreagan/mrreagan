@@ -75,6 +75,7 @@ import AdminResearch from "./pages/AdminResearch";
 import AiWallet from "./pages/AiWallet";
 import AdminAiUsage from "./pages/AdminAiUsage";
 import AiOverview from "./pages/AiOverview";
+import Connect from "./pages/Connect";
 
 function ProtectedRoute({ children, roles, allowOmbudsman }) {
   const { user, loading } = useAuth();
@@ -125,6 +126,15 @@ function AppRoutes() {
       <Route path="/research" element={<Research />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+
+      <Route
+        path="/connect"
+        element={
+          <ProtectedRoute>
+            <Connect />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/dashboard"

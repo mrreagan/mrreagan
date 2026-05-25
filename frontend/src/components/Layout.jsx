@@ -15,7 +15,7 @@ const NAV_EXPLORE = [
   { to: "/sponsorship", label: "Sponsor" },
   { to: "/governance",  label: "Lead" },
   { to: "/join-us",     label: "Join" },
-  { to: "/contact",     label: "Connect" },
+  { to: "/connect",     label: "Connect" },
 ];
 
 const NAV_FOUNDATION = [
@@ -270,11 +270,12 @@ const FOOTER_EXPLORE = [
   { to: "/sponsorship", label: "Sponsor" },
   { to: "/governance", label: "Lead" },
   { to: "/join-us", label: "Join" },
-  { to: "/contact", label: "Connect" },
+  { to: "/connect", label: "Connect" },
 ];
 const FOOTER_FOUNDATION = [
   { to: "/about", label: "About" },
   { to: "/mission", label: "Mission" },
+  { to: "/contact", label: "Contact" },
 ];
 
 export function Footer() {
