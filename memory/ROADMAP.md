@@ -6,24 +6,10 @@ Prioritized list of remaining work. Updated May 25, 2026.
 
 ## P1 — Next up
 
-### Phase 6B.5 — Research Submissions Queue
-- Partner research submission flow with admin moderation queue.
-- Surface approved submissions on `/research`.
-
 ### Phase 6B.6 — Contextual "More Info" / FAQ Modals
 - Site-wide reusable info-modal component triggered next to complex labels
   (pricing, partner types, sponsorship tiers, governance, indemnification).
 - Admin-editable FAQ entries indexed by slug.
-
-### Landing-page / Mobile-menu nav reorganization
-- Reorganize the mobile drawer (and consider tightening the desktop header)
-  into TWO grouped sections, matching the existing footer grouping per user
-  reference screenshot (May 25, 2026):
-  - **EXPLORE**: Workshops · Shop · Facilitators · Partners · Sponsorship
-  - **FOUNDATION**: About · Mission · Education · Governance · Join Us · Contact
-- Render `EXPLORE` and `FOUNDATION` as gold uppercase section labels (matching
-  footer style) inside the mobile drawer.
-- File: `/app/frontend/src/components/Layout.jsx` → `MobileMenu`.
 
 ### Documentation tasks (post-dev)
 - User will provide a list of documentation tasks AFTER all dev work is
@@ -60,6 +46,8 @@ Prioritized list of remaining work. Updated May 25, 2026.
 ---
 
 ## DONE — recent
+- Phase 6B.5 (Research moderation queue) — May 25, 2026
+- Mobile-menu EXPLORE/FOUNDATION reorganization — May 25, 2026
 - v1.11.0 Step 10 (Refund cascade + Agreement v2) — May 25, 2026
 - Phase 6C.1/6C.2/6C.3 (DMs, Ombudsman, Disputes) — May 25, 2026
 - v1.11.0 Step 9 (Subscription UI parity) — May 25, 2026

@@ -470,6 +470,16 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **AdminDashboard quick-actions** updated: Vendor catalog, Partner payouts, Foundation reports cards added.
 - **Bumped to `v1.10.0`.** Iter-12 backend **22/22 PASS**, iter-13 frontend retest **100% PASS** (`/app/test_reports/iteration_12.json` + `/app/test_reports/iteration_13.json`). Zero outstanding defects.
 
+## Phase 6B.5 — Research Submissions Queue + Admin Moderation (May 25, 2026)
+- **Moderation gate**: partners can save a research artifact as `draft` OR submit it for review, but the `published`/`archived` statuses are now reachable only via admin moderation. Existing partner PUT on a published artifact's content fields auto-requeues it to `pending_review`.
+- **New statuses** on `ResearchArtifactStatus`: `pending_review`, `changes_requested`, `rejected`. New stored fields: `moderation_note`, `moderated_by`, `moderated_at`, `submitted_at`.
+- **Endpoints** (admin-only): `POST /api/admin/research/{id}/approve`, `.../request-changes` (note required), `.../reject` (note required). Partner: `POST /api/me/research/{id}/submit-for-review`.
+- **Frontend**: new `/admin/research` queue with 5 status tabs (Pending review, Changes requested, Rejected, Published, Drafts), action buttons per row, moderation modal w/ note textarea; PartnerResearch page updated to (a) restrict the form's status dropdown to "Save as draft" / "Submit for review", (b) display the admin's `moderation_note` block when status is `changes_requested` or `rejected`, (c) expose a "Submit for review" button on rows that can be re-submitted. Admin Dashboard gains a "Research moderation" QuickActionCard.
+- **Test coverage**: backend `test_iter25_research_moderation.py` 8/8 PASS; frontend iter-25 36/36 UI assertions PASS.
+
+## Mobile Menu — EXPLORE / FOUNDATION Tab Reorganization (May 25, 2026)
+- Mobile drawer (xl-and-below) now renders TWO grouped sections matching the existing footer grouping per the user-supplied screenshot. Gold-uppercase section labels. `Layout.jsx` exports `NAV_EXPLORE` and `NAV_FOUNDATION` and the desktop horizontal nav still consumes the flattened list. Section testids: `mobile-section-explore`, `mobile-section-foundation`. Individual link testids: `mobile-nav-{slug}` (unchanged).
+
 ## v1.11.0 Step 10 — Refund/Clawback Cascade + Agreement v2 (May 25, 2026)
 - **Refund cascade engine** (`utils/refund_cascade.py`): given a `payment_transactions.id`, refunds the Stripe charge AND undoes all side-effects of the original payment (registrations, subscriptions, featured slots, promotions). Reverses derived partner credits in `user_credit_ledger`; already-paid credits are queued in `paid_credit_clawbacks` (status `pending_recovery`) for admin to resolve as recovered/written-off.
 - **Endpoints**: `POST /api/admin/refunds` (admin-only, requires `{txn_id, reason, skip_stripe?}`), `GET /api/admin/refunds`, `GET /api/admin/clawbacks`, `POST /api/admin/clawbacks/{id}/resolve` (`{status: recovered|written_off, note}`). All actions audit-logged.

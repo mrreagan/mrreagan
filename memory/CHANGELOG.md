@@ -8,6 +8,31 @@ because the git history was reinitialized on May 19, 2026.
 
 ---
 
+## Phase 6B.5 — May 25, 2026 · COMPLETE (Research Submissions Queue + Admin Moderation)
+- Backend (iter 25): **8/8 PASS** — `test_iter25_research_moderation.py` covers
+  partner-status-clamp (published→pending), submit-for-review flow, admin
+  approve / request-changes / reject (with required-note validation),
+  edit-on-published auto-requeue, non-admin 403, and only-pending guard.
+- Three new admin endpoints under `/api/admin/research/{id}`:
+  `POST /approve`, `POST /request-changes`, `POST /reject` (latter two require a
+  note). New partner endpoint `POST /me/research/{id}/submit-for-review`.
+- New statuses on `ResearchArtifactStatus`: `pending_review`,
+  `changes_requested`, `rejected` (in addition to existing draft/published/
+  archived). New stored fields: `moderation_note`, `moderated_by`,
+  `moderated_at`, `submitted_at`.
+- Frontend (iter 25): **36/36 UI assertions PASS** — new `AdminResearch.jsx`
+  with 5 status tabs + moderation modal + counts; `PartnerResearch.jsx` form
+  restricted to "Save as draft" / "Submit for review" + visible mod-note +
+  Submit-for-review button on draft/changes_requested/rejected rows;
+  Admin Dashboard gains "Research moderation" QuickActionCard.
+
+## Mobile Menu Reorganization — May 25, 2026 · COMPLETE
+- Mobile drawer (xl-and-below) now mirrors the footer grouping per the
+  user-provided screenshot: gold uppercase EXPLORE and FOUNDATION section
+  labels. EXPLORE = Workshops/Shop/Facilitators/Partners/Sponsorship.
+  FOUNDATION = About/Mission/Education/Governance/Research/Join Us/Contact.
+- Desktop horizontal nav unchanged (flat order: EXPLORE list → FOUNDATION list).
+
 ## v1.11.0 Step 10 — May 25, 2026 · COMPLETE (Refund/Clawback Cascade + Agreement v2)
 - Backend (iter 23): 57/57 PASS — Stripe refund cascades, credit reversal,
   paid-credit clawback queue, agreement-gate middleware for partner-sensitive
