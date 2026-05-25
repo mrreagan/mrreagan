@@ -205,6 +205,33 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend** — `/dashboard/reports` (MyReports, engagement + spending + optional partner earnings), `/admin/reports` (Foundation reports), `/admin/payouts` (per-partner liability + earned/paid tabs + inline mark-paid form). `PartnerEarningsCard` shows pending/lifetime/paid + referral link + Copy + recent attributions — rendered only for community partner profiles.
 - **Bumped to `v1.9.0`.** Iter-11 testing: backend **25/25 PASS**, frontend **100%** (`/app/test_reports/iteration_11.json`). Zero defects.
 
+## Iteration 15 — Phase 6B.4.5b + 6B.4.5c "Join Us" + Sample Partner Profiles (May 24, 2026)
+- **Goal**: Sales-tool readiness for upcoming founding-partner outreach. Two related additions, one UI pass.
+- **Scope PDF**: `/app/backend/static/exports/birthright-join-us-scope-v1.pdf` (approved by user before build).
+- **3 open foundation roles** (all equity-in-mission, no compensation amounts shown) seeded idempotently at startup, linked to existing governing_members via `seeded_member_id`:
+  - `board-chair-cofounder` → Dr. Aurelia Mendez
+  - `research-advisor` → Dr. Hannah Lin
+  - `director-community-stewardship` → Reverend Tomas Ifeanyi
+  (James Reagan / Executive Director left without SAMPLE ribbon — not on the recruit-now list.)
+- **8 sample partner profiles** (2 per partner type, `is_sample: true`, `user_id: null`) hidden from default `/partners` listing and surfaced only via `/partners?samples=1`:
+  - Facilitators: sample-maya-chen (founding), sample-aaron-kalu
+  - Vendors: sample-quiet-hours-studio (founding), sample-hearth-practice
+  - Community: sample-pat-lindholm (founding), sample-liz-okonkwo
+  - Research: sample-imani-okafor (founding), sample-daniel-brookes
+- **Backend**: new `routers/foundation_roles.py` with 4 sub-routers (public list/detail, public application submission, admin CRUD, admin applications queue). `runtime_seed.py` extended with `ensure_foundation_roles_seeded` + `ensure_sample_partners_seeded`. `routers/partners.py` `list_public_partners` updated to support `samples=0|1` query param (default excludes samples).
+- **New models**: `FoundationRoleCreate`, `FoundationRoleUpdate`, `FoundationRole`, `FoundationRoleApplicationSubmit`, `FoundationRoleApplicationDecision`.
+- **New API endpoints**:
+  - Public: `GET /api/foundation-roles[?open_only=true]`, `GET /api/foundation-roles/{slug}`
+  - Public (no auth): `POST /api/foundation-role-applications`
+  - Admin: `GET/POST /api/admin/foundation-roles`, `PUT/DELETE /api/admin/foundation-roles/{slug}`, `GET /api/admin/foundation-role-applications`, `POST /api/admin/foundation-role-applications/{app_id}/decision?status=…`
+- **Partner directory update**: `GET /api/partners` defaults to non-samples; `GET /api/partners?samples=1` returns ONLY the 8 sample profiles.
+- **Frontend pages**: `/join-us` (lists roles), `/join-us/:slug` (detail + apply form with thank-you screen), `/admin/foundation-roles` (CRUD), `/admin/foundation-applications` (6-status triage queue with applicant detail modal). Layout nav + footer updated with "Join Us" link.
+- **Governance page**: shows open-seats banner when ≥1 role is open; cards belonging to the 3 currently-recruited seats get a gold SAMPLE ribbon, opacity-reduced photo, italic "We're looking for someone like this:" framing on the bio, and an "Apply for this role →" CTA targeting `/join-us/{slug}`.
+- **Partners directory**: gold "View sample profiles" pill + URL-state `?samples=1` toggle; sample mode shows gold SAMPLE ribbons on every card and a banner explaining what samples are. Sample partner detail pages (`/partners/sample-*`) render a sample banner with "Apply to become a partner" CTA.
+- **Best-effort confirmation email** on application submit (uses existing dry-run mailer; never blocks the response).
+- **Test coverage** — `/app/backend/tests/test_iter15_foundation_roles.py` 21/21 PASS; full frontend flow verified (list, detail, application submission, governance ribbons + open-seats banner, partners samples toggle, sample detail banner, admin roles CRUD UI, admin apps queue with submitted test app visible).
+- **Iter-15 report**: `/app/test_reports/iteration_15.json` — backend 100% (21/21), frontend 100%, zero defects.
+
 ## Iteration 12+13 — Phase 6B.4 Vendor Autonomous Catalog (May 2026)
 - **Design decisions** (per user): vendors set prices freely; auto-publish; admin can flag/unpublish anytime; print-on-demand assumption (no inventory tracking); products clearly identify their vendor on the storefront. Cross-vendor sort/filter for the public store was DEFERRED to advanced search backlog.
 - **Models extended** (`models.py`) — `ProductCreate` gained `is_vendor_product`, `vendor_partner_id`, `vendor_user_id`, `vendor_name`, `vendor_slug`, `moderation_status` (active|flagged|unpublished), `moderation_note`. New `VendorProductCreate`/`VendorProductUpdate`/`VendorModerationAction` request models.
