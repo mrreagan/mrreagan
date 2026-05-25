@@ -605,7 +605,7 @@ class FoundingPartnerCapUpdate(BaseModel):
 # ============ RESEARCH ARTIFACTS (Phase v1.11.0 step 6) ============
 
 ResearchArtifactTier = Literal["brief", "paper"]
-ResearchArtifactStatus = Literal["draft", "published", "archived"]
+ResearchArtifactStatus = Literal["draft", "pending_review", "changes_requested", "rejected", "published", "archived"]
 
 
 class ResearchArtifactCreate(BaseModel):
@@ -636,6 +636,11 @@ class ResearchArtifactUpdate(BaseModel):
     estimated_read_minutes: Optional[int] = Field(default=None, ge=1, le=600)
     tier: Optional[ResearchArtifactTier] = None
     status: Optional[ResearchArtifactStatus] = None
+
+
+class ResearchModerationDecision(BaseModel):
+    """Admin decision body for approve / request-changes / reject."""
+    note: Optional[str] = Field(default=None, max_length=2000)
 
 
 class ResearchPromoteCheckout(BaseModel):

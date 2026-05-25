@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../lib/api";
 import { Link } from "react-router-dom";
-import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale, Briefcase, BarChart3, Wallet, Store, UserPlus, ExternalLink, Sparkles, Shield, RotateCcw } from "lucide-react";
+import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale, Briefcase, BarChart3, Wallet, Store, UserPlus, ExternalLink, Sparkles, Shield, RotateCcw, Microscope } from "lucide-react";
 import { toast } from "sonner";
 
 // ---------- Stat card ----------
@@ -66,6 +66,7 @@ function OverviewTab() {
       <QuickActionCard to="/admin/subscriptions" icon={Wallet} title="Subscriptions" description="Active, cancelled, revoke + refund" />
       <QuickActionCard to="/admin/ombudsman" icon={Shield} title="Ombudsman queue" description="Disputes + flagged DM threads" />
       <QuickActionCard to="/admin/refunds" icon={RotateCcw} title="Refunds & Clawbacks" description="Fire refund cascades, resolve clawbacks" />
+      <QuickActionCard to="/admin/research" icon={Microscope} title="Research moderation" description="Approve, request changes, reject submissions" />
       <QuickActionCard to="/admin/partner-sales-reports" icon={ExternalLink} title="Off-site sales reports" description="Reconcile partner-reported revenue" />
       <QuickActionCard to="/admin/featured" icon={Sparkles} title="Featured & Founding" description="Grant/revoke featured slots, founding-partner cap" />
       <QuickActionCard to="/admin/reports" icon={BarChart3} title="Foundation reports" description="Engagement, revenue, payouts" />

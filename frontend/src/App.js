@@ -70,6 +70,7 @@ import DisputeDetail from "./pages/DisputeDetail";
 import OmbudsmanQueue from "./pages/OmbudsmanQueue";
 import AdminRefunds from "./pages/AdminRefunds";
 import AgreementPage from "./pages/AgreementPage";
+import AdminResearch from "./pages/AdminResearch";
 
 function ProtectedRoute({ children, roles, allowOmbudsman }) {
   const { user, loading } = useAuth();
@@ -381,6 +382,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminRefunds />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/research"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminResearch />
           </ProtectedRoute>
         }
       />

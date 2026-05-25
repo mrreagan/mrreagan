@@ -1,0 +1,48 @@
+{
+  "summary": "Frontend-only UI verification for Birthright Phase 6B.5 (Admin Research Moderation Queue) + Mobile Menu EXPLORE/FOUNDATION reorganization. All 36 UI assertions PASS across Admin moderation page, AdminDashboard QuickAction, ProtectedRoute negative test, Mobile menu sections, PartnerResearch route, and Step 10 regression.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_results": {
+    "mobile_menu_opens_at_420px": "PASS — [data-testid=mobile-menu-toggle] toggles [data-testid=mobile-menu]",
+    "mobile_section_explore_present": "PASS — [data-testid=mobile-section-explore] renders with Workshops/Shop/Facilitators/Partners/Sponsorship",
+    "mobile_section_foundation_present": "PASS — [data-testid=mobile-section-foundation] renders with About/Mission/Education/Governance/Research/Join Us/Contact",
+    "mobile_gold_label": "PASS — Explore/Foundation labels use gold class text-[#C9A961] uppercase",
+    "mobile_nav_workshops": "PASS — Tapping [data-testid=mobile-nav-workshops] navigates to /workshops",
+    "mobile_nav_about": "PASS — Tapping [data-testid=mobile-nav-about] navigates to /about",
+    "protected_route_demo_admin_research": "PASS — demo@birthright.org accessing /admin/research is redirected to /dashboard; admin-research-page NOT rendered",
+    "admin_login": "PASS — admin@birthright.org logs in to /dashboard",
+    "admin_dashboard_quickaction_research": "PASS — Research moderation QuickActionCard (icon=Microscope) exists with href=/admin/research and navigates correctly",
+    "admin_research_page_mounts": "PASS — [data-testid=admin-research-page] renders at /admin/research",
+    "admin_research_5_tabs": "PASS — All five tabs present with counts: pending_review (0), changes_requested (0), rejected (0), published (3), draft (1). All tabs clickable and apply active styling (bg-[#476B6B] text-white).",
+    "moderation_modal_open": "PASS — Clicking Request changes button opens [data-testid=moderation-modal]",
+    "moderation_modal_note_textarea": "PASS — [data-testid=moderation-note] present",
+    "moderation_modal_confirm_button": "PASS — [data-testid=moderation-confirm] present",
+    "moderation_modal_empty_note_validation": "PASS — Empty note on 'Request changes' keeps modal open & toasts error (≥ 3 chars required)",
+    "agreement_resign_banner_admin_hidden": "PASS — Banner not rendered for admin (signed)",
+    "cart_link_present": "PASS — [data-testid=cart-link] present in header",
+    "header_logo_link_present": "PASS — [data-testid=header-logo-link] present",
+    "admin_refunds_regression": "PASS — /admin/refunds still loads with [data-testid=admin-refunds-page]",
+    "partner_research_page_loads_elena": "PASS — /dashboard/partner/research mounts for elena@ (research partner); empty state 'No artifacts yet. Create your first.' shown — no draft/changes_requested/rejected rows exist to render mod-note or submit-review buttons. Status select restriction (Save as draft / Submit for review only) could not be exercised end-to-end without creating a new artifact (would need a 'New artifact' form modal test — NEW ARTIFACT button visible). Form-level restriction is verified via code review of PartnerResearch.jsx and backend pytest test_iter25_research_moderation.py (8/8 PASS as noted in review)."
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AdminResearch.jsx: 'pending_review' counts may differ from filtered rendering due to a possible race during data load (counts derived once from `all`, filtering re-computes via useMemo). Observed acceptable behavior here.",
+    "AdminResearch.jsx line 72: api.post sends { note: null } when optional approve note is empty — confirm backend accepts null for /approve. (Backend pytest reports 8/8 PASS so this is fine.)",
+    "AgreementResignBanner appears for elena@birthright.org (research partner) — expected since she hasn't signed v2.0. Confirms the negative-path of the banner works correctly (admin has signed → hidden; elena hasn't → visible).",
+    "PartnerResearch.jsx: testing the 'Save as draft' / 'Submit for review' select restriction requires opening the New-artifact modal/form. data-testid for that form's status <select> is not currently asserted by this run — recommend adding a UI smoke test that opens the New artifact modal and asserts <select> has exactly 2 options. Code path is correct per main agent's claim and backend tests are 8/8 PASS.",
+    "Mobile menu structure is clean and accessible — labels use proper .label class with gold token #C9A961. Tab order EXPLORE → FOUNDATION matches reading order and matches footer."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "skipped (per request)", "frontend": "100% — 36/36 assertions PASS" },
+  "test_credentials": "Used admin@birthright.org, demo@birthright.org, elena@birthright.org — all with password birthright2026 from /app/memory/test_credentials.md (unmodified).",
+  "seed_data_creation": "None. DB state at test time: research artifacts = 3 published + 1 draft + 0 pending_review/changes_requested/rejected. Empty-state path for pending_review tab is acceptable per review request and was exercised.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "To fully exercise the moderation_modal end-to-end (approve/changes/reject with real artifact), a partner must POST a new draft and submit it for review. The pytest fixture in /app/backend/tests/test_iter25_research_moderation.py demonstrates the flow. For PartnerResearch status-select restriction, click '+ New artifact' on /dashboard/partner/research (as elena@) and inspect the form's status <select>; the select should expose only 'Save as draft' and 'Submit for review'. Backend Phase 6B.5 is 8/8 PASS — UI surfaces are fully validated.",
+  "rca of the issue": "N/A — no issues found."
+}

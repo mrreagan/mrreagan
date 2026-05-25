@@ -18,6 +18,15 @@ const EMPTY = {
   status: "draft",
 };
 
+const STATUS_PILL = {
+  draft:             "bg-[#E5E1D8] text-[#5C6B6B]",
+  pending_review:    "bg-[#FFF8E1] text-[#8B7128]",
+  changes_requested: "bg-[#FDECE3] text-[#9E5C3C]",
+  rejected:          "bg-[#F8DCDC] text-[#7E2C2C]",
+  published:         "bg-[#2E5C46] text-white",
+  archived:          "bg-[#E5E1D8] text-[#5C6B6B]",
+};
+
 export default function PartnerResearch() {
   const [artifacts, setArtifacts] = useState([]);
   const [pricing, setPricing] = useState(null);
@@ -141,8 +150,8 @@ export default function PartnerResearch() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <TierIcon size={14} strokeWidth={1.5} className="text-[#476B6B]" />
                   <h3 className="font-serif text-lg">{a.title}</h3>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium ${a.status === "published" ? "bg-[#2E5C46] text-white" : a.status === "draft" ? "bg-[#E5E1D8] text-[#5C6B6B]" : "bg-[#9E3C3C] text-white"}`}>
-                    {a.status}
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium ${STATUS_PILL[a.status] || STATUS_PILL.draft}`}>
+                    {a.status.replace("_", " ")}
                   </span>
                   {promoted && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-[#C9A961] text-[#1A2424]">
@@ -152,12 +161,35 @@ export default function PartnerResearch() {
                 </div>
                 <p className="text-xs text-[#5C6B6B] mt-1">{a.tier} · {a.authors} · {a.publication_date}</p>
                 <p className="text-sm text-[#1A2424] mt-2 line-clamp-2">{a.abstract}</p>
+                {a.moderation_note && (a.status === "changes_requested" || a.status === "rejected") && (
+                  <div className="mt-2 p-2 rounded bg-[#FFF8E1] border border-[#C9A961]/40" data-testid={`mod-note-${a.id}`}>
+                    <p className="text-[10px] uppercase tracking-wider text-[#8B7128] font-medium">Admin note</p>
+                    <p className="text-xs text-[#1A2424] mt-1">{a.moderation_note}</p>
+                  </div>
+                )}
                 {promoted && <p className="text-xs text-[#476B6B] mt-1">Promoted until {new Date(a.promoted_until).toLocaleDateString()}</p>}
               </div>
               <div className="flex flex-col gap-2 items-end shrink-0">
                 <button onClick={() => startEdit(a)} className="btn-outline text-xs inline-flex items-center gap-1" data-testid={`edit-${a.id}`}>
                   <Pencil size={11} /> Edit
                 </button>
+                {(a.status === "draft" || a.status === "changes_requested" || a.status === "rejected") && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await api.post(`/me/research/${a.id}/submit-for-review`);
+                        toast.success("Submitted for review");
+                        load();
+                      } catch (e) {
+                        toast.error(e.response?.data?.detail || "Submit failed");
+                      }
+                    }}
+                    className="btn-primary text-xs inline-flex items-center gap-1"
+                    data-testid={`submit-review-${a.id}`}
+                  >
+                    Submit for review
+                  </button>
+                )}
                 {a.status === "published" && (
                   <button onClick={() => promote(a)} disabled={promoting === a.id} className="btn-primary text-xs inline-flex items-center gap-1" data-testid={`promote-${a.id}`}>
                     <Sparkles size={11} /> {promoted ? "Extend" : `Promote $${pricing?.tiers?.[a.tier] || ""}`}
@@ -208,11 +240,11 @@ export default function PartnerResearch() {
                 )}
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-[#5C6B6B] mb-1">Status</label>
-                  <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="input-field w-full text-sm" data-testid="form-status">
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="archived">Archived</option>
+                  <select value={form.status === "draft" || form.status === "pending_review" ? form.status : "draft"} onChange={(e) => setForm({ ...form, status: e.target.value })} className="input-field w-full text-sm" data-testid="form-status">
+                    <option value="draft">Save as draft</option>
+                    <option value="pending_review">Submit for review</option>
                   </select>
+                  <p className="text-[10px] text-[#5C6B6B] mt-1">Admin will review &amp; publish — you can't self-publish.</p>
                 </div>
               </div>
               <div className="flex gap-2 pt-2">

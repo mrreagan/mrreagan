@@ -6,19 +6,28 @@ import { useCart } from "../contexts/CartContext";
 import { ShoppingBag, Menu, X, User, LogOut, ChevronDown } from "lucide-react";
 import AgreementResignBanner from "./AgreementResignBanner";
 
-const NAV = [
-  { to: "/workshops", label: "Workshops" },
-  { to: "/shop", label: "Shop" },
-  { to: "/about", label: "About" },
-  { to: "/mission", label: "Mission" },
-  { to: "/education", label: "Education" },
-  { to: "/governance", label: "Governance" },
-  { to: "/partners", label: "Partners" },
-  { to: "/research", label: "Research" },
-  { to: "/join-us", label: "Join Us" },
-  { to: "/sponsorship", label: "Sponsor" },
-  { to: "/contact", label: "Contact" },
+const NAV_EXPLORE = [
+  { to: "/workshops",   label: "Workshops" },
+  { to: "/shop",        label: "Shop" },
+  { to: "/facilitators",label: "Facilitators" },
+  { to: "/partners",    label: "Partners" },
+  { to: "/sponsorship", label: "Sponsorship" },
 ];
+
+const NAV_FOUNDATION = [
+  { to: "/about",      label: "About" },
+  { to: "/mission",    label: "Mission" },
+  { to: "/education",  label: "Education" },
+  { to: "/governance", label: "Governance" },
+  { to: "/research",   label: "Research" },
+  { to: "/join-us",    label: "Join Us" },
+  { to: "/contact",    label: "Contact" },
+];
+
+// Flattened list still used by the desktop top bar so the existing
+// horizontal nav layout doesn't shift mid-session. Order matches the
+// EXPLORE→FOUNDATION reading order.
+const NAV = [...NAV_EXPLORE, ...NAV_FOUNDATION];
 
 // ---------- Cart icon button ----------
 function CartButton({ count }) {
@@ -146,23 +155,33 @@ function AuthButtons() {
 }
 
 // ---------- Mobile menu drawer ----------
+function MobileMenuSection({ heading, items, onClose, testidPrefix }) {
+  return (
+    <div className="pt-2 first:pt-0" data-testid={`mobile-section-${testidPrefix}`}>
+      <p className="label mt-3 mb-1 text-[#C9A961]">{heading}</p>
+      {items.map((n) => (
+        <Link
+          key={n.to}
+          to={n.to}
+          onClick={onClose}
+          className="block py-2.5 text-base text-[#1A2424]"
+          data-testid={`mobile-nav-${n.to.slice(1)}`}
+        >
+          {n.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function MobileMenu({ user, onClose }) {
   return (
     <div className="xl:hidden border-t border-[#E5E1D8] bg-white" data-testid="mobile-menu">
-      <div className="container-page py-3 flex flex-col">
-        {NAV.map((n) => (
-          <Link
-            key={n.to}
-            to={n.to}
-            onClick={onClose}
-            className="py-3 text-sm font-medium border-b border-[#E5E1D8] last:border-0"
-            data-testid={`mobile-nav-${n.to.slice(1)}`}
-          >
-            {n.label}
-          </Link>
-        ))}
+      <div className="container-page py-4 flex flex-col">
+        <MobileMenuSection heading="Explore"    items={NAV_EXPLORE}    onClose={onClose} testidPrefix="explore" />
+        <MobileMenuSection heading="Foundation" items={NAV_FOUNDATION} onClose={onClose} testidPrefix="foundation" />
         {!user && (
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2 pt-5 mt-2 border-t border-[#E5E1D8]">
             <Link to="/login" onClick={onClose} className="btn-outline flex-1 justify-center">
               Sign in
             </Link>

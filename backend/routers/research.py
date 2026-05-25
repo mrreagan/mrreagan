@@ -24,6 +24,7 @@ from auth_utils import get_current_user, require_roles
 from models import (
     ResearchArtifactCreate,
     ResearchArtifactUpdate,
+    ResearchModerationDecision,
     ResearchPromoteCheckout,
     gen_id,
     now_iso,
@@ -207,13 +208,25 @@ async def my_artifacts(user: dict = Depends(get_current_user)):
 async def create_artifact(data: ResearchArtifactCreate, user: dict = Depends(get_current_user)):
     from database import db
     profile = await _require_research_profile(db, user)
+    payload = data.model_dump()
+    # Moderation gate (Phase 6B.5): partners can save as "draft" OR submit for review,
+    # but they can NEVER publish or archive directly. Admin must approve.
+    requested = payload.get("status", "draft")
+    if requested in ("published", "archived"):
+        payload["status"] = "pending_review"
+    elif requested not in ("draft", "pending_review"):
+        payload["status"] = "draft"
     doc = {
         "id": gen_id(),
         "partner_id": profile["id"],
         "partner_slug": profile["slug"],
         "partner_display_name": profile["display_name"],
         "user_id": user["id"],
-        **data.model_dump(),
+        **payload,
+        "moderation_note": None,
+        "moderated_by": None,
+        "moderated_at": None,
+        "submitted_at": now_iso() if payload["status"] == "pending_review" else None,
         "promoted_until": None,
         "view_count": 0,
         "created_at": now_iso(),
@@ -223,7 +236,7 @@ async def create_artifact(data: ResearchArtifactCreate, user: dict = Depends(get
     await log_action(
         db, user, "research_artifact.create",
         target_type="research_artifact", target_id=doc["id"],
-        metadata={"tier": doc["tier"]},
+        metadata={"tier": doc["tier"], "status": doc["status"]},
     )
     doc.pop("_id", None)
     return doc
@@ -245,10 +258,51 @@ async def update_artifact(
         raise HTTPException(status_code=400, detail="Nothing to update")
     # Only admin can change tier — silently drop tier from partner-side updates
     updates.pop("tier", None)
+    # Moderation gate (Phase 6B.5): partners cannot self-publish.
+    content_keys = {"title", "abstract", "authors", "publication_date", "full_text_url",
+                    "doi", "cover_image_url", "categories", "tags", "estimated_read_minutes"}
+    touched_content = any(k in updates for k in content_keys)
+    requested_status = updates.get("status")
+    if requested_status in ("published", "archived"):
+        updates["status"] = "pending_review"
+    elif requested_status and requested_status not in ("draft", "pending_review"):
+        updates.pop("status", None)
+    # If artifact is currently in a moderated state and content changed, re-queue it.
+    if touched_content and artifact.get("status") in ("published", "changes_requested", "rejected"):
+        updates["status"] = "pending_review"
+    if updates.get("status") == "pending_review":
+        updates["submitted_at"] = now_iso()
+        updates["moderation_note"] = None
     updates["updated_at"] = now_iso()
     await db.research_artifacts.update_one({"id": artifact_id}, {"$set": updates})
     out = await db.research_artifacts.find_one({"id": artifact_id}, {"_id": 0})
     return out
+
+
+@my_router.post("/{artifact_id}/submit-for-review")
+async def submit_for_review(artifact_id: str, user: dict = Depends(get_current_user)):
+    """Partner-side action: move a draft/changes_requested/rejected artifact into the queue."""
+    from database import db
+    profile = await _require_research_profile(db, user)
+    artifact = await db.research_artifacts.find_one({"id": artifact_id, "partner_id": profile["id"]})
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    if artifact.get("status") not in ("draft", "changes_requested", "rejected"):
+        raise HTTPException(status_code=400, detail=f"Cannot submit from status '{artifact.get('status')}'")
+    await db.research_artifacts.update_one(
+        {"id": artifact_id},
+        {"$set": {
+            "status": "pending_review",
+            "submitted_at": now_iso(),
+            "moderation_note": None,
+            "updated_at": now_iso(),
+        }},
+    )
+    await log_action(
+        db, user, "research_artifact.submit_for_review",
+        target_type="research_artifact", target_id=artifact_id,
+    )
+    return await db.research_artifacts.find_one({"id": artifact_id}, {"_id": 0})
 
 
 @my_router.delete("/{artifact_id}")
@@ -422,3 +476,67 @@ async def admin_revoke_promotion(
         target_type="research_artifact", target_id=artifact_id,
     )
     return await db.research_artifacts.find_one({"id": artifact_id}, {"_id": 0})
+
+
+
+# ============ ADMIN MODERATION (Phase 6B.5) ============
+
+async def _moderate(db, artifact_id: str, new_status: str, note: Optional[str], user: dict) -> dict:
+    a = await db.research_artifacts.find_one({"id": artifact_id})
+    if not a:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    if a.get("status") != "pending_review":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only artifacts in pending_review can be moderated (current: {a.get('status')})",
+        )
+    updates = {
+        "status": new_status,
+        "moderation_note": (note or "").strip() or None,
+        "moderated_by": user["id"],
+        "moderated_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    if new_status == "published" and not a.get("publication_date"):
+        updates["publication_date"] = now_iso()[:10]
+    await db.research_artifacts.update_one({"id": artifact_id}, {"$set": updates})
+    await log_action(
+        db, user, f"research_artifact.moderate.{new_status}",
+        target_type="research_artifact", target_id=artifact_id,
+        metadata={"note": updates["moderation_note"]},
+    )
+    return await db.research_artifacts.find_one({"id": artifact_id}, {"_id": 0})
+
+
+@admin_router.post("/{artifact_id}/approve")
+async def admin_approve(
+    artifact_id: str,
+    body: ResearchModerationDecision,
+    user: dict = Depends(require_roles("admin")),
+):
+    from database import db
+    return await _moderate(db, artifact_id, "published", body.note, user)
+
+
+@admin_router.post("/{artifact_id}/request-changes")
+async def admin_request_changes(
+    artifact_id: str,
+    body: ResearchModerationDecision,
+    user: dict = Depends(require_roles("admin")),
+):
+    from database import db
+    if not body.note or not body.note.strip():
+        raise HTTPException(status_code=400, detail="A note explaining the requested changes is required")
+    return await _moderate(db, artifact_id, "changes_requested", body.note, user)
+
+
+@admin_router.post("/{artifact_id}/reject")
+async def admin_reject(
+    artifact_id: str,
+    body: ResearchModerationDecision,
+    user: dict = Depends(require_roles("admin")),
+):
+    from database import db
+    if not body.note or not body.note.strip():
+        raise HTTPException(status_code=400, detail="A rejection reason is required")
+    return await _moderate(db, artifact_id, "rejected", body.note, user)
