@@ -208,9 +208,9 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 ## Backlog — prioritized
 
 ### v1.11.0 wrap-up (sequencing locked)
-1. **`v1.11.0-step8`** — Disbursement orchestration (CSV export of pending payouts gated to W9+method on file, partner notification on mark-paid, "next disbursement date" setting)
-2. **`v1.11.0-step8.5`** — **Universal Share & Save System** *(NEW, inserted May 25, 2026 per founder request)*. Sharing infrastructure across all public surfaces, with privacy gating. Inserted here to (a) close the founding-partner referral flywheel now that payouts infra is live, and (b) avoid retrofitting share icons into Phase 6C messaging and Phase 6B.5 research moderation later. Icons: Share2, Bookmark, Copy, QrCode, Mail, CalendarPlus, Quote (Cite), Download. New backend endpoints: `POST /api/shares/log`, `GET/POST/DELETE /api/me/bookmarks`, `GET /api/research/{id}/cite?format=...`, `GET /api/workshops/{id}/ics`. Privacy gating per surface — workshop materials, financial ledger, W9, payout methods, admin dashboards have NO share affordances. Personal impact statements default private with opt-in share toggle.
-3. **`v1.11.0-step9`** — Subscription UI parity (revoke, prorate, mid-flight plan change)
+1. ~~**`v1.11.0-step8`** — Disbursement orchestration~~ ✅ **SHIPPED in Iter 19**
+2. ~~**`v1.11.0-step8.5`** — **Universal Share & Save System**~~ ✅ **SHIPPED in Iter 19**
+3. **`v1.11.0-step9`** — Subscription UI parity (revoke, prorate, mid-flight plan change) — **NEXT**
 4. **`v1.11.0-step10`** — Refund/clawback cascade + Partnership Agreement v2 with re-sign requirement
 
 ### After v1.11.0
@@ -223,6 +223,43 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 11. **Tech hardening** — rate limits, Redis pub/sub for WS scaling, admin self-demotion guard, Stripe webhook signature verification audit, sponsorship tier upgrade flow, Twilio SMS check-in reminders, multi-language (en/es)
 
 ## Iteration 18 — v1.11.0 Step 6 + Step 7: Paid Research Promotion + Payouts Scaffolding (May 25, 2026)
+- **Goal**: Research artifacts with tiered paid promotion + first piece of payouts infrastructure (ledger + W9 + payout method).
+- **User decisions**: `/research` = general listing + Promoted top section; tiered pricing $49 brief / $149 paper / 30 days; `/partners` minimal polish (Featured strip); payouts scaffolding = ledger + W9 + Stripe Connect or encrypted ACH.
+- **Backend**: research public/partner/admin endpoints; payouts partner/admin endpoints; `_PAID_HANDLERS["research_promotion"]` extends `promoted_until` on payment; new collections `research_artifacts`, `research_promotion_purchases`, `partner_w9_forms`, `partner_payout_methods`; Fernet-encrypted ACH `account_number` via `PAYOUT_ENCRYPTION_KEY`; 2 sample artifacts seeded.
+- **Frontend**: `/research` page with promoted top + listing/search; `/dashboard/partner/research` CRUD + promote checkout; `/dashboard/partner/payouts` 3 tabs (Ledger / W9 / Method); `/partners` Featured strip at top; nav tightened to `xl:flex` + `gap-0.5` to fit 11 items.
+- **Test coverage**: `/app/test_reports/iteration_18.json` — backend 32/32 PASS, frontend 100%. Pre-existing iter17 header overlap fixed.
+- **Documentation**: `birthright-v1.11-step6-7-scope-v1.pdf` (171 KB) + refreshed `birthright-versions.pdf` (266 KB).
+
+## Iteration 19 — v1.11.0 Step 8 + Step 8.5: Disbursement Orchestration + Universal Share & Save System (May 25, 2026)
+- **Goal**: Close the loop on partner financial operations (admin can run real disbursements with a CSV export gated to W9+method on file) AND launch the universal share/save flywheel that ties social sharing to community-partner referral attribution.
+- **Step 8 — Disbursement Orchestration**:
+  - Foundation-wide schedule stored in `foundation_settings.disbursement_settings` (next_disbursement_date, cadence, notes). Admin endpoints: `GET/PUT /api/admin/payouts/disbursement-settings`.
+  - `GET /api/admin/payouts/ready-to-pay[?format=json|csv]` — partitions earned credits into `ready` (W9 + payout method on file) vs `blocked` with reason. CSV streams only the ready set.
+  - `POST /api/admin/payouts/credits/{id}/mark-paid` now fires `disbursement_notification` email to the partner (best-effort, dry-run queues to `db.outbound_emails`).
+  - Partner-side `/api/me/payouts` now returns `next_disbursement_date`, `cadence`, `ready_for_payout`, `w9_on_file`, `method_on_file`. `GET /api/me/payouts/next-disbursement` exposes just the schedule.
+  - `AdminPayouts.jsx` extended with disbursement-settings card + ready-to-pay tables + CSV export button.
+  - `PartnerPayouts.jsx` Ledger tab shows next-disbursement callout + ready/blocked chip.
+- **Step 8.5 — Universal Share & Save System**:
+  - New router `routers/shares.py`:
+    - `POST /api/shares/log` — anon-friendly. When `via` matches an active community-partner referral_code, sets `birthright_ref` cookie for downstream checkout attribution.
+    - `GET /api/me/share-token` — community partner → referral_code (pays_out:true); else user_id (pays_out:false).
+    - `GET/POST/DELETE /api/me/bookmarks` — polymorphic on subject_type (workshop, product, research, partner, facilitator, foundation_role, proposal, impact_statement). Idempotent create per (user, subject_type, subject_id).
+  - `GET /api/research/{id}/cite?format=apa7|bibtex` — best-effort citation builder for the freeform `authors` field.
+  - `GET /api/workshops/{id}/ics` — public .ics download (already had calendar_qr utility).
+  - New email template `disbursement_notification`.
+  - New frontend component `components/ShareButton.jsx` — drop-in menu with Copy/Native share/Email/SMS/QR/Bookmark/Calendar/Cite icons, context-narrowed by `surface` prop. Uses `qrcode.react` for client-side QR.
+  - `lib/shareUtils.js` — token resolution (cached in sessionStorage), URL building, log + inbound `?via=` capture.
+  - `pages/Bookmarks.jsx` at `/dashboard/bookmarks` — type-filtered list with Open/Remove actions.
+  - Share buttons placed on: workshop detail, product detail (non-material only), /research artifact cards, partner profile pages (non-sample only), join-us role detail.
+  - Inbound capture in `App.js` — `captureInboundVia()` on mount strips `?via=` from URL and logs the landing event (sets cookie if applicable).
+- **Privacy matrix respected**: no share affordances on workshop materials, ledger rows, W9 form, payout methods, admin dashboards, sample partner profiles.
+- **Models**: `BookmarkCreate`, `ShareLogCreate`, `DisbursementSettings`, plus `BookmarkableType`/`ShareSurface`/`ShareChannel` Literals.
+- **Bumped to `v1.11.0`** (FastAPI `app.version` + `/api/` root).
+- **Test coverage** — `/app/backend/tests/test_iter19_disbursement_shares.py` 23/23 PASS. Frontend smoke verified all share surfaces + bookmarks page + admin disbursement UI + partner ledger callout. Inbound `?via=` capture verified (cookie set, URL stripped). Pre-existing iter17/18 suites 51 passed.
+- **Iter-19 report**: `/app/test_reports/iteration_19.json` — zero critical/minor backend issues, zero integration issues, no action items, retest_needed: false.
+- **Documentation refreshed**:
+  - `birthright-versions.pdf` (282 KB) — version index now includes iter 19 / step 8+8.5
+  - `_index.md` updated
 - **Goal**: Research artifacts with tiered paid promotion + first piece of payouts infrastructure (ledger + W9 + payout method)
 - **User decisions**:
   - `/research` = general listing + Promoted top section (both)
