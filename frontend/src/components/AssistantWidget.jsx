@@ -255,6 +255,12 @@ export default function AssistantWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Auto-close on route change so the panel never traps the user after navigation
+  useEffect(() => {
+    if (open) setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   if (!open) {
     return (
       <button
@@ -271,9 +277,22 @@ export default function AssistantWidget() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] print:hidden" data-testid="assistant-panel">
-      <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
-      <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[420px] bg-[#FAF8F5] shadow-2xl flex flex-col">
+    <>
+      {/* Desktop-only backdrop. On mobile we skip the backdrop entirely so the
+          user can keep tapping the site nav (above the panel) at any time. */}
+      <div
+        className="hidden sm:block fixed inset-0 bg-black/30 z-[55] print:hidden"
+        onClick={() => setOpen(false)}
+        data-testid="assistant-backdrop"
+      />
+      {/* Panel.
+          Mobile: bottom-sheet that starts BELOW the site header (top-[72px]),
+                  leaving the sticky nav fully visible and tappable.
+          Desktop: full-height side drawer on the right (420px wide). */}
+      <div
+        className="fixed inset-x-0 top-[72px] bottom-0 sm:left-auto sm:right-0 sm:top-0 sm:w-[420px] bg-[#FAF8F5] shadow-2xl flex flex-col z-[60] print:hidden"
+        data-testid="assistant-panel"
+      >
         <header className="flex items-center justify-between px-5 py-4 border-b border-[#E5E1D8] bg-white">
           <div className="flex items-center gap-2">
             <Sparkles size={16} strokeWidth={1.5} className="text-[#C9A961]" />
@@ -364,7 +383,7 @@ export default function AssistantWidget() {
           </p>
         </form>
       </div>
-    </div>
+    </>
   );
 }
 
