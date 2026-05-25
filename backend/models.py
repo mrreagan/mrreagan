@@ -600,6 +600,84 @@ class FoundingPartnerCapUpdate(BaseModel):
     cap: int = Field(ge=1, le=10000)
 
 
+# ============ RESEARCH ARTIFACTS (Phase v1.11.0 step 6) ============
+
+ResearchArtifactTier = Literal["brief", "paper"]
+ResearchArtifactStatus = Literal["draft", "published", "archived"]
+
+
+class ResearchArtifactCreate(BaseModel):
+    title: str = Field(min_length=3, max_length=300)
+    abstract: str = Field(min_length=10, max_length=4000)
+    authors: str = Field(min_length=2, max_length=500)
+    publication_date: str  # ISO date
+    full_text_url: str = Field(min_length=4, max_length=600)
+    doi: Optional[str] = Field(default=None, max_length=200)
+    cover_image_url: Optional[str] = Field(default=None, max_length=600)
+    categories: list[str] = Field(default_factory=list, max_length=8)
+    tags: list[str] = Field(default_factory=list, max_length=12)
+    estimated_read_minutes: Optional[int] = Field(default=None, ge=1, le=600)
+    tier: ResearchArtifactTier = "brief"
+    status: ResearchArtifactStatus = "draft"
+
+
+class ResearchArtifactUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=3, max_length=300)
+    abstract: Optional[str] = Field(default=None, min_length=10, max_length=4000)
+    authors: Optional[str] = Field(default=None, min_length=2, max_length=500)
+    publication_date: Optional[str] = None
+    full_text_url: Optional[str] = Field(default=None, min_length=4, max_length=600)
+    doi: Optional[str] = Field(default=None, max_length=200)
+    cover_image_url: Optional[str] = Field(default=None, max_length=600)
+    categories: Optional[list[str]] = Field(default=None, max_length=8)
+    tags: Optional[list[str]] = Field(default=None, max_length=12)
+    estimated_read_minutes: Optional[int] = Field(default=None, ge=1, le=600)
+    tier: Optional[ResearchArtifactTier] = None
+    status: Optional[ResearchArtifactStatus] = None
+
+
+class ResearchPromoteCheckout(BaseModel):
+    artifact_id: str
+    origin_url: str
+
+
+# ============ PAYOUTS / W9 / METHOD (Phase v1.11.0 step 7) ============
+
+W9Classification = Literal[
+    "individual", "sole_proprietor", "c_corporation", "s_corporation",
+    "partnership", "trust_estate", "llc",
+]
+TinType = Literal["SSN", "EIN"]
+PayoutMethodType = Literal["stripe_connect", "manual_ach"]
+
+
+class W9Form(BaseModel):
+    full_name: str = Field(min_length=2, max_length=200)
+    business_name: Optional[str] = Field(default=None, max_length=200)
+    classification: W9Classification
+    exempt_payee_code: Optional[str] = Field(default=None, max_length=10)
+    address_line1: str = Field(min_length=3, max_length=200)
+    address_line2: Optional[str] = Field(default=None, max_length=200)
+    city: str = Field(min_length=2, max_length=100)
+    state: str = Field(min_length=2, max_length=50)
+    zip_code: str = Field(min_length=4, max_length=20)
+    country: str = Field(default="US", max_length=2)
+    tin: str = Field(min_length=9, max_length=11)  # SSN: 9 digits + 2 dashes
+    tin_type: TinType
+    signature_name: str = Field(min_length=2, max_length=200)
+
+
+class PayoutMethodSet(BaseModel):
+    method_type: PayoutMethodType
+    # Stripe Connect
+    stripe_account_id: Optional[str] = Field(default=None, max_length=200)
+    # Manual ACH — sensitive, encrypted at rest
+    bank_name: Optional[str] = Field(default=None, max_length=200)
+    account_holder_name: Optional[str] = Field(default=None, max_length=200)
+    routing_number: Optional[str] = Field(default=None, min_length=9, max_length=9)
+    account_number: Optional[str] = Field(default=None, min_length=4, max_length=20)
+
+
 class FoundingPartnerToggle(BaseModel):
     expires_at: str  # ISO datetime — 5 years from grant by default
 

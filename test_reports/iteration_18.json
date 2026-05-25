@@ -1,0 +1,45 @@
+{
+  "summary": "v1.11.0 Step 6 (Research artifacts + paid promotion) + Step 7 (Payouts/W9/Method). 32/32 backend tests PASS (100%). Frontend smoke verified: /research lists both seeded artifacts with tier badges/read-time/DOI/tags/Read-full-text links; search filters re-fetch correctly; /partners shows Featured strip wired in; /dashboard/partner/research renders for research partners with tier pricing copy + New artifact CTA; /dashboard/partner/payouts shows 3 tabs (Ledger/W9 form/Payout method) with totals + empty-state; nav 'Research' link sits between Featured and Join Us.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Layout.jsx header logo",
+        "issue": "In the rendered header, the 'birthright' wordmark visually overlaps the first nav item ('Workshops'). The two pieces of text are painted on top of each other. Visible in every screenshot. Likely a flex/grid alignment or negative-margin regression in the header brand block. Pre-existing across iter17 screenshots too, but worth re-flagging.",
+        "selector": "header nav, .header-logo + nav",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter18_research_payouts.py",
+    "/app/test_reports/pytest/iter18_results.xml"
+  ],
+  "action_items": [
+    "Fix Layout/header brand-vs-nav overlap (cosmetic but visible in every page screenshot)."
+  ],
+  "critical_code_review_comments": [
+    "routers/research.py list_artifacts performs three sorts in a row (lines 99-103). The first two sorts are dead code — only the final promoted+others composition is used. Cleanup recommended for readability but functionally correct.",
+    "routers/research.py admin_set_tier uses Query(regex=...). On Pydantic v2 / FastAPI 0.110+ this should be `pattern=` instead of `regex=` — current code still works (regex is aliased) but emits a deprecation warning.",
+    "routers/payouts.py admin_get_w9 audit-logs view but returns full TIN unredacted; correctly gated to admin role. Consider also returning a `tin_last4` even on the admin response so frontend can avoid re-rendering the full SSN unless explicitly requested.",
+    "routers/payouts.py _fernet() raises HTTPException(500) when key missing — good; but the key is loaded on every encrypt/decrypt call. Minor: cache the Fernet instance at module load.",
+    "models.PayoutMethodSet validates routing_number length=9 but does not validate it's digits-only; account_number min=4 max=20 also accepts non-numeric. Acceptable for scaffolding but should add `pattern=r'^\\d+$'` before production.",
+    "routers/research.py promote_checkout writes payment_transactions row with status='open' and payment_status='initiated' — consistent with iter17 featured pattern. Good.",
+    "research.py _require_research_profile returns 400 for is_sample profiles — verified at API level. UI does not appear to handle this 400 explicitly for the create flow; an alert/toast would be a polish item."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter18_research_payouts.py"
+  ],
+  "success_rate": {"backend": "100% (32/32)", "frontend": "100% (research listing + search + partner research + partner payouts + nav + partners featured strip all verified)"},
+  "test_credentials": "admin@birthright.org / birthright2026; elena@birthright.org / birthright2026 (research partner); demo@birthright.org / birthright2026; marcus@birthright.org / birthright2026 (used for W9/method tests)",
+  "seed_data_creation": "Tests created TEST_ artifact via elena (deleted in same test). W9 + payout method records persisted on marcus@birthright.org for admin-view test — these are test data and harmless to leave.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 32 backend tests in /app/backend/tests/test_iter18_research_payouts.py pass. Webhook fulfillment of research_promotion is exercised indirectly via admin grant (same update path); for direct webhook test, manual insertion of a payment_transactions doc with type='research_promotion', payment_status='paid', plus calling routers.research.activate_research_promotion(db, txn) would be needed — currently not exercised from HTTP layer. Elena's research partner profile is NOT marked is_sample (verified by successful POST /me/research). Marcus has a W9 + Stripe Connect method + manual_ach method left behind from the run — cleanup not required but be aware. Frontend: header brand overlaps the first nav item ('Workshops') visually in every page; ticket open. PartnerResearch page renders, but the empty-state copy was shown because the test cleanup deletes the created artifact before screenshot — confirmed via API that flow works.",
+  "rca_of_the_issue": "Not applicable — no functional bugs found in this iter."
+}

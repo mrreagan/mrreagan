@@ -443,3 +443,83 @@ async def ensure_sample_partners_seeded(db) -> int:
         logger.info(f"sample partners seed: inserted {inserted} sample profiles")
     return inserted
 
+
+# ---- Sample Research Artifacts (v1.11.0 step 6) ----
+
+SAMPLE_RESEARCH_ARTIFACTS = [
+    {
+        "slug": "sample-attachment-adoptive-families-2024",
+        "partner_slug": "sample-imani-okafor",
+        "title": "Attachment Patterns in Adoptive Families: A Five-Year Longitudinal Study",
+        "abstract": "We followed 312 adoptive families across the first five years post-placement. Children placed before age 18 months showed attachment-pattern outcomes statistically indistinguishable from biological-family controls by year 4 when caregivers received structured relational education in the first 90 days. Findings suggest that early relational intervention — not biological connection — is the dominant predictor of secure attachment in adoptive contexts.",
+        "authors": "Imani Okafor, PhD; Sarah Mendez, MA; Daniel Thompson, MSW",
+        "publication_date": "2024-11-15",
+        "full_text_url": "https://example.com/research/attachment-adoptive-families",
+        "doi": "10.1234/birthright.2024.imani.001",
+        "cover_image_url": "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=900",
+        "categories": ["attachment", "adoption", "longitudinal"],
+        "tags": ["peer-reviewed", "longitudinal", "adoptive-families", "secure-attachment"],
+        "estimated_read_minutes": 32,
+        "tier": "paper",
+    },
+    {
+        "slug": "sample-co-regulation-brief-2025",
+        "partner_slug": "sample-daniel-brookes",
+        "title": "Co-Regulation Practices for Adult Children of Relational Trauma: A Practitioner Brief",
+        "abstract": "Drawing on 14 years of clinical practice with adults processing childhood relational trauma, this brief offers four evidence-anchored co-regulation practices clinicians can introduce in the first three sessions. Each practice maps to a specific dysregulation pattern (hypervigilance, dissociation, somatic shutdown, anxious activation) and includes patient-friendly framings.",
+        "authors": "Daniel Brookes, LMFT",
+        "publication_date": "2025-02-20",
+        "full_text_url": "https://example.com/research/co-regulation-brief",
+        "doi": None,
+        "cover_image_url": "https://images.unsplash.com/photo-1518578953934-78c01892a213?w=900",
+        "categories": ["clinical-practice", "co-regulation", "trauma"],
+        "tags": ["practitioner-brief", "co-regulation", "adult-survivors", "session-tools"],
+        "estimated_read_minutes": 12,
+        "tier": "brief",
+    },
+]
+
+
+async def ensure_sample_research_artifacts(db) -> int:
+    """Seed two illustrative research artifacts linked to the sample research partners.
+    These give the /research page something to show during outreach demos."""
+    inserted = 0
+    for spec in SAMPLE_RESEARCH_ARTIFACTS:
+        existing = await db.research_artifacts.find_one({"id": spec["slug"]})
+        if existing:
+            continue
+        partner = await db.partner_profiles.find_one({"slug": spec["partner_slug"]}, {"_id": 0})
+        if not partner:
+            continue
+        now = now_iso()
+        doc = {
+            "id": spec["slug"],
+            "partner_id": partner["id"],
+            "partner_slug": partner["slug"],
+            "partner_display_name": partner["display_name"],
+            "user_id": None,
+            "title": spec["title"],
+            "abstract": spec["abstract"],
+            "authors": spec["authors"],
+            "publication_date": spec["publication_date"],
+            "full_text_url": spec["full_text_url"],
+            "doi": spec["doi"],
+            "cover_image_url": spec["cover_image_url"],
+            "categories": spec["categories"],
+            "tags": spec["tags"],
+            "estimated_read_minutes": spec["estimated_read_minutes"],
+            "tier": spec["tier"],
+            "status": "published",
+            "promoted_until": None,
+            "view_count": 0,
+            "is_sample": True,
+            "created_at": now,
+            "updated_at": now,
+        }
+        await db.research_artifacts.insert_one(doc)
+        inserted += 1
+    if inserted:
+        logger.info(f"sample research artifacts seed: inserted {inserted} artifacts")
+    return inserted
+
+

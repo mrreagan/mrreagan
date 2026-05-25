@@ -14,6 +14,7 @@ const NAV = [
   { to: "/governance", label: "Governance" },
   { to: "/partners", label: "Partners" },
   { to: "/featured", label: "Featured" },
+  { to: "/research", label: "Research" },
   { to: "/join-us", label: "Join Us" },
   { to: "/sponsorship", label: "Sponsor" },
   { to: "/contact", label: "Contact" },

@@ -463,6 +463,14 @@ async def _activate_featured_from_txn(db, txn: dict) -> None:
 _PAID_HANDLERS["featured_slot"] = _activate_featured_from_txn
 
 
+async def _activate_research_promotion(db, txn: dict) -> None:
+    from routers.research import activate_research_promotion
+    await activate_research_promotion(db, txn)
+
+
+_PAID_HANDLERS["research_promotion"] = _activate_research_promotion
+
+
 async def _process_paid_transaction(txn: dict):
     """Handle side-effects of a successful payment by dispatching to the correct handler."""
     from database import db

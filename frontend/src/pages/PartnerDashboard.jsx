@@ -103,6 +103,32 @@ export default function PartnerDashboard() {
               <span className="text-xs text-[#476B6B]">Open →</span>
             </Link>
           )}
+          {profiles.some((p) => p.status === "active" && p.partner_type === "research" && !p.is_sample) && (
+            <Link
+              to="/dashboard/partner/research"
+              className="card p-5 mt-4 flex items-center justify-between hover:border-[#476B6B] transition"
+              data-testid="research-link"
+            >
+              <div>
+                <p className="font-serif text-lg">📄 Research artifacts</p>
+                <p className="text-xs text-[#5C6B6B] mt-1">Publish briefs and papers. Promote any artifact to the top of /research for 30 days ($49–$149).</p>
+              </div>
+              <span className="text-xs text-[#476B6B]">Open →</span>
+            </Link>
+          )}
+          {profiles.some((p) => p.status === "active" && !p.is_sample) && (
+            <Link
+              to="/dashboard/partner/payouts"
+              className="card p-5 mt-4 flex items-center justify-between hover:border-[#476B6B] transition"
+              data-testid="payouts-link"
+            >
+              <div>
+                <p className="font-serif text-lg">💼 Payouts</p>
+                <p className="text-xs text-[#5C6B6B] mt-1">Earnings ledger, W9 form, and payout method (Stripe Connect or ACH).</p>
+              </div>
+              <span className="text-xs text-[#476B6B]">Open →</span>
+            </Link>
+          )}
         </section>
       )}
 
