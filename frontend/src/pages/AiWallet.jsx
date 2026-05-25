@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Sparkles, Wallet, Plus, RefreshCw } from "lucide-react";
+import { Sparkles, Wallet, Plus, RefreshCw, AlertTriangle, LogIn } from "lucide-react";
 import api from "../lib/api";
 
 const STORE_KEY_AUTO = "ai_wallet_auto_recharge_v1";
 
 export default function AiWallet() {
   const [data, setData] = useState(null);
+  const [loadError, setLoadError] = useState(null); // { kind: "unavailable" | "auth" | "generic", message: string }
   const [busy, setBusy] = useState(false);
   const [pack, setPack] = useState(25);
   const [auto, setAuto] = useState({ enabled: false, threshold_usd: 5, amount_usd: 25 });
 
   const load = async () => {
+    setLoadError(null);
     try {
       const r = await api.get("/ai-wallet/me");
       setData(r.data);
@@ -22,7 +24,26 @@ export default function AiWallet() {
         amount_usd: w.auto_recharge_amount_usd || 25,
       });
     } catch (e) {
-      toast.error("Could not load AI wallet");
+      const status = e?.response?.status;
+      if (status === 404) {
+        setLoadError({
+          kind: "unavailable",
+          message:
+            "AI Wallet isn’t available on this environment yet. If you’re viewing production, the latest backend may not be deployed — please redeploy or contact an admin.",
+        });
+      } else if (status === 401 || status === 403) {
+        setLoadError({
+          kind: "auth",
+          message: "Your session has expired. Please sign in again to view your AI Wallet.",
+        });
+      } else {
+        setLoadError({
+          kind: "generic",
+          message:
+            e?.response?.data?.detail ||
+            "We couldn’t load your AI Wallet right now. Please try again in a moment.",
+        });
+      }
     }
   };
   useEffect(() => { load(); }, []);
@@ -58,6 +79,47 @@ export default function AiWallet() {
       setBusy(false);
     }
   };
+
+  if (loadError) {
+    const Icon = loadError.kind === "auth" ? LogIn : AlertTriangle;
+    const isAuth = loadError.kind === "auth";
+    return (
+      <div className="container-page py-12" data-testid="ai-wallet-error">
+        <span className="label">Dashboard · AI Wallet</span>
+        <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
+          <Wallet size={26} strokeWidth={1.2} /> AI Wallet
+        </h1>
+        <div className="divider-flame" />
+        <div className="card p-6 max-w-2xl" data-testid={`ai-wallet-error-${loadError.kind}`}>
+          <div className="flex items-start gap-3">
+            <Icon size={20} strokeWidth={1.4} className="text-[#9E3C3C] mt-0.5" />
+            <div>
+              <p className="font-serif text-lg">
+                {loadError.kind === "unavailable" && "AI Wallet not yet available"}
+                {loadError.kind === "auth" && "Session expired"}
+                {loadError.kind === "generic" && "Something went wrong"}
+              </p>
+              <p className="text-sm text-[#5C6B6B] mt-1">{loadError.message}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {isAuth ? (
+                  <a href="/login" className="btn-primary text-xs" data-testid="ai-wallet-signin-btn">
+                    Sign in again
+                  </a>
+                ) : (
+                  <button onClick={load} className="btn-primary text-xs" data-testid="ai-wallet-retry-btn">
+                    Try again
+                  </button>
+                )}
+                <a href="/ai" className="btn-outline text-xs" data-testid="ai-wallet-learn-btn">
+                  Learn about AI tools
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!data) return <p className="container-page py-12 text-sm text-[#5C6B6B]">Loading wallet…</p>;
   const w = data.wallet;

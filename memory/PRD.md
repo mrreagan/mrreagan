@@ -533,5 +533,12 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **P2**: Inbound email parsing (e.g., reply-to-create-support-request); admin email-resend button on log rows; bulk product CSV import
 - **P2**: Multi-language (en/es); Native mobile app; Advanced analytics dashboard; Refund / cancellation flow
 
+## v1.11.x — AI Wallet Error Polish (May 2026)
+- **AiWallet.jsx** now distinguishes `404` (backend missing — typical of a lagging production deploy), `401/403` (session expired), and generic load failures. Each renders a dedicated error card with a contextual action: Retry, "Sign in again" (links to `/login`), or a link to `/ai` to learn about AI tools.
+- Removes the generic "Could not load AI wallet" toast that previously hid the underlying cause from end users.
+- Verified happy-path render in preview (admin@birthright.org logged in, balance $50.00 displays correctly).
+- **User action required**: To resolve the production wallet error on `birthright.live`, click "Save to GitHub" and redeploy so the AI Wallet routers ship to prod.
+
+
 ## Test credentials
 See `/app/memory/test_credentials.md`
