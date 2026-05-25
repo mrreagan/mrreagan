@@ -207,6 +207,11 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 
 ## Backlog — prioritized
 
+### Phase 6C (multi-iteration roadmap)
+1. ~~**6C.1** — User↔Partner + Partner↔Partner DMs (opt-in 1b, ombudsman metadata-only 2c)~~ ✅ **SHIPPED in Iter 21**
+2. **6C.2** — Ombudsman queue at `/admin/ombudsman` (dedicated UI for flagged threads, ombudsman role tagging on users)
+3. **6C.3** — Disputes workflow (file → under_review → resolved/dismissed, tied to a transaction so Step 10 clawback can hook in)
+
 ### v1.11.0 wrap-up (sequencing locked)
 1. ~~**`v1.11.0-step8`** — Disbursement orchestration~~ ✅ **SHIPPED in Iter 19**
 2. ~~**`v1.11.0-step8.5`** — **Universal Share & Save System**~~ ✅ **SHIPPED in Iter 19 + completed in Iter 20**
@@ -229,6 +234,43 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend**: `/research` page with promoted top + listing/search; `/dashboard/partner/research` CRUD + promote checkout; `/dashboard/partner/payouts` 3 tabs (Ledger / W9 / Method); `/partners` Featured strip at top; nav tightened to `xl:flex` + `gap-0.5` to fit 11 items.
 - **Test coverage**: `/app/test_reports/iteration_18.json` — backend 32/32 PASS, frontend 100%. Pre-existing iter17 header overlap fixed.
 - **Documentation**: `birthright-v1.11-step6-7-scope-v1.pdf` (171 KB) + refreshed `birthright-versions.pdf` (266 KB).
+
+## Iteration 21 — Phase 6C.1 Direct Messaging (May 25, 2026)
+- **Goal**: User↔Partner and Partner↔Partner direct messages with privacy patterns set up for ombudsman + disputes work in later iterations.
+- **User decisions locked**: 1b opt-in (per-type defaults), 2c ombudsman metadata-only by default, 3b disputes tied to transactions (deferred to 6C.2/6C.3), 4b ship DMs first.
+- **Threading model**:
+  - New collections `dm_threads` (participants[2], status: pending/active/blocked/archived, last_message_*, unread_<user_id>, ombudsman_flagged, ombudsman_flags[]) and `dm_messages` (thread_id, sender, content, read_by[]).
+  - Eligibility: at least one participant must hold an active partner_profile.
+  - Sorted canonical participant order ensures (a,b) and (b,a) return the same thread (idempotent open).
+- **Opt-in flow**:
+  - `PartnerProfile.accepts_new_dms` field (added to PartnerProfileUpdate model).
+  - Backfill in `runtime_seed.backfill_partner_economy_fields`: facilitator+community → True, research+vendor → False (existing rows updated idempotently).
+  - First message to a recipient with `accepts_new_dms=False` creates a `pending` thread. Recipient must Accept, Block, or reply (which auto-flips to active) before sender can post further messages.
+- **Ombudsman privacy (2c)**:
+  - Any participant can flag a thread; flag entry stored in `ombudsman_flags[]` with reason + actor + timestamp.
+  - `GET /api/admin/dm/threads` always returns metadata. `last_message_preview` is masked as `[hidden — not flagged]` for non-flagged threads.
+  - `GET /api/admin/dm/threads/{id}` returns `messages=null + bodies_locked=true` until flagged. When flagged, full message list returned. Admin views are audit-logged (`dm.admin_view`).
+- **WebSocket**: `/api/ws/dm/{thread_id}` reuses `Connection` from `utils/ws_manager` via a new `dm_registry` singleton (so workshop chat rooms and DM rooms don't collide). Chat sends still go through REST POST for consistent ACL + accepts-gate enforcement; the REST handler broadcasts to the same WS room.
+- **REST surface**:
+  - `POST /api/dm/threads` — open/fetch (idempotent)
+  - `GET /api/dm/threads` — inbox
+  - `GET /api/dm/threads/{id}` — thread + messages
+  - `POST /api/dm/threads/{id}/messages` — send
+  - `POST /api/dm/threads/{id}/{accept|block|archive|flag|read}` — actions
+  - `GET/PUT /api/me/dm/preferences` — toggle accepts_new_dms across all my active partner profiles
+  - `GET /api/admin/dm/threads[?flagged_only=true]` — admin metadata-only inbox
+  - `GET /api/admin/dm/threads/{id}` — bodies only when flagged
+- **Frontend**:
+  - `/dashboard/messages` Messages inbox (avatar, partner_type label, status badges, unread badges, last_message_preview).
+  - `/dashboard/messages/{thread_id}` MessageThread with realtime WS, bubble-style message list, composer (Enter/Shift+Enter), Accept/Block/Archive/Flag actions, and pending-state banners.
+  - `MessageButton` component placed on partner profile pages, facilitator profiles, governance board cards (with user_id), partner directory cards. Hidden when viewing your own profile.
+  - **ShareButton 'To a partner' channel** — clicking opens a popover listing active+pending partner-typed threads; selecting one POSTs the share URL into that thread.
+  - PartnerDashboard gets a `DmPreferencesCard` with single-button toggle ("Pause new DMs" ↔ "Accept new DMs").
+  - Layout user menu adds **Messages** + **My Bookmarks** links.
+- **Models**: `DmThreadCreate`, `DmMessageCreate`, `DmThreadFlag`, `DmAcceptsToggle`, `DmThreadStatus` Literal.
+- **Test coverage** — `/app/backend/tests/test_iter21_dm.py` 23/23 PASS. All REST + WS endpoints verified. Per-type defaults verified. Pending → Accept transitions verified. Admin metadata-only + bodies-on-flag verified. No regressions in iter 17-20 suites.
+- **Iter-21 report**: `/app/test_reports/iteration_21.json` — zero issues, no retest needed, no action items.
+- **Documentation**: `birthright-versions.pdf` refreshed (361 KB), `_index.md` updated.
 
 ## Iteration 20 — v1.11.0 Step 9 + Universal Share Placement Audit (May 25, 2026)
 - **Goal**: Two combined deliverables. (A) Close out the universal Share/Print/Download coverage user demanded — every public-facing surface (cards + details) gets a ShareButton, plus universal Print and Download QR PNG channels. (B) v1.11.0 Step 9 — Subscription UI parity: partner cancel/change + admin revoke/refund.
