@@ -86,16 +86,18 @@ SHIPPED = [
      "Outbound-click attribution + Off-site sales reconciliation. GET /api/out/{slug} redirect endpoint with UTM capture, IP/UA logging, host-locked dest param, fallback to /partners on 404. Outbound links surfaced on vendor + community partner cards/profile pages only. Partner self-report flow at /dashboard/partner/sales-reports with monthly defaults + HMAC webhook (per-partner secret, SHA-256 signed payload, rotate-anytime). Admin reconciliation at /admin/partner-sales-reports with approve/dispute/revise actions and optional override_gross/override_pct. Credits land in partner_off_site_credits with pct sourced from rev_share_overrides.off_site_pct → active subscription → global default. Backend 25/25 PASS, frontend 100%."),
     ("v1.11.0-step4+5", "May 25, 2026", "Iter 17",
      "Featured-Partner Showcase + Founding-Partner gating. Self-serve featured slots at $99/30 days via Stripe (random shuffle on /featured, gold ribbon across directory, editable content while window active). Admin grant/revoke + comped slots. Founding-Partner program: opt-in checkbox on /partners/apply with public 'X/cap' counter and progress bar; auto-grant on application approval if cap has room (5-year locked rate); admin cap controls + grant/revoke endpoints. Founding badges visible across directory + profile pages (including samples). Backend 20/20 PASS, frontend 100% after Founding badge + nested-anchor fixes."),
+    ("v1.11.0-step6+7", "May 25, 2026", "Iter 18",
+     "Paid Research Promotion + Payouts scaffolding. New /research public page with Promoted top section + general listing; partner-side CRUD at /dashboard/partner/research with tiered Stripe checkout ($49 brief / $149 peer-reviewed paper / 30 days). Stripe webhook fulfillment for `research_promotion` type; activate_research_promotion extends promoted_until on paid. Admin tier-override + free promotion grant/revoke. /partners directory got a Featured strip at top (auto-hidden in samples mode). Payouts UI: /dashboard/partner/payouts with 3 tabs (Ledger from referrals + off-site credits, W9 form persisted + signed, Payout method capture — Stripe Connect account OR encrypted ACH using Fernet PAYOUT_ENCRYPTION_KEY). Admin endpoints: list credits, mark-paid (one-way), view W9 (audit-logged). 2 sample research artifacts seeded. Header nav tightened to fit 11 items with no overlap on 1280px+, mobile menu activates below xl breakpoint. Backend 32/32 PASS, frontend 100%."),
 ]
 
 # Reverse so newest appears first
 SHIPPED_ROWS = list(reversed(SHIPPED))
 
 IN_PROGRESS = [
-    ("v1.11.0-step6", "Paid research promotion",
-     "Research-only featured surface on /research with a separate sponsorship cost — surfaces papers, briefs, and research-partner content above the main directory feed."),
-    ("v1.11.0-step7", "/partners 5-tab rebuild + payouts UI",
-     "Combine the current /partners directory, /featured, /join-us, and admin-only triage into a unified navigation pattern. Begins the payouts/W9 infrastructure work."),
+    ("v1.11.0-step8", "Disbursement orchestration",
+     "Wire admin 'mark-paid' to a partner-facing notification, build a CSV export of pending payouts (W9 + method on file), add a 'next disbursement date' settings row in foundation_settings. Stripe Connect transfer call is still optional — manual bank rails remain primary."),
+    ("v1.11.0-step9", "Subscription UI parity",
+     "Revoke, prorate, mid-flight plan change. Currently subscriptions are one-time-payment-as-recurring with manual renewal; bring the UI in line with what partners expect on a real subscription product."),
 ]
 
 BACKLOG = [
@@ -157,10 +159,11 @@ body = f"""
 {in_progress_block()}
 
 <div class="callout">
-Current sequence: <code>v1.11.0-step4+5</code> shipped together on May 25, 2026 (Iter 17). Next up:
-<code>v1.11.0-step6</code> (paid research promotion) and <code>v1.11.0-step7</code> (/partners
-unified rebuild + payouts UI scaffolding). Phase 6B.5 (Research submissions queue) remains
-paused until v1.11.0 is fully shipped — scope PDF already exists at
+Current sequence: <code>v1.11.0-step6+7</code> shipped together on May 25, 2026 (Iter 18). Next up:
+<code>v1.11.0-step8</code> (disbursement orchestration + CSV export) and <code>v1.11.0-step9</code>
+(subscription UI parity). After that: <code>v1.11.0-step10</code> (refund/clawback cascade +
+partnership agreement v2 with re-sign). Phase 6B.5 (Research submissions queue) remains paused
+until v1.11.0 is fully shipped — scope PDF already exists at
 <code>birthright-phase-6b5-research-scope-v1.pdf</code>.
 </div>
 

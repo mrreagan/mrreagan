@@ -205,6 +205,37 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend** — `/dashboard/reports` (MyReports, engagement + spending + optional partner earnings), `/admin/reports` (Foundation reports), `/admin/payouts` (per-partner liability + earned/paid tabs + inline mark-paid form). `PartnerEarningsCard` shows pending/lifetime/paid + referral link + Copy + recent attributions — rendered only for community partner profiles.
 - **Bumped to `v1.9.0`.** Iter-11 testing: backend **25/25 PASS**, frontend **100%** (`/app/test_reports/iteration_11.json`). Zero defects.
 
+## Iteration 18 — v1.11.0 Step 6 + Step 7: Paid Research Promotion + Payouts Scaffolding (May 25, 2026)
+- **Goal**: Research artifacts with tiered paid promotion + first piece of payouts infrastructure (ledger + W9 + payout method)
+- **User decisions**:
+  - `/research` = general listing + Promoted top section (both)
+  - Artifact metadata = full set (title/authors/abstract/date/url/DOI/cover + categories[] + tags[] + read time)
+  - Pricing = tiered: **$49 brief / $149 peer-reviewed paper / 30 days** (admin can override tier per-artifact)
+  - `/partners` = minimal polish — Featured strip at top, no tab restructure
+  - Payouts scaffolding = full: ledger + W9 + payout method (Stripe Connect OR encrypted ACH)
+- **New backend endpoints**:
+  - Research public: `GET /api/research[?q=&category=]`, `GET /api/research/promoted`, `GET /api/research/{id}`, `GET /api/research/pricing`
+  - Research partner (auth): `GET/POST /api/me/research`, `PUT/DELETE /api/me/research/{id}`, `POST /api/me/research/{id}/promote/checkout`
+  - Research admin: `GET /api/admin/research`, `PUT /api/admin/research/{id}/tier`, `POST /api/admin/research/{id}/promote/grant`, `POST /api/admin/research/{id}/promote/revoke`
+  - Payouts partner (auth): `GET /api/me/payouts`, `GET/PUT /api/me/payouts/w9`, `GET/PUT /api/me/payouts/method`
+  - Payouts admin: `GET /api/admin/payouts/credits`, `POST /api/admin/payouts/credits/{id}/mark-paid?source=...`, `GET /api/admin/payouts/w9/{user_id}` (audit-logged)
+- **Stripe fulfillment**: `_PAID_HANDLERS["research_promotion"] = activate_research_promotion` — extends or sets `promoted_until = now + 30 days`, writes `research_promotion_purchases` audit row
+- **New collections**: `research_artifacts`, `research_promotion_purchases`, `partner_w9_forms`, `partner_payout_methods`. New env var: `PAYOUT_ENCRYPTION_KEY` (Fernet)
+- **Encryption**: ACH account_number is Fernet-encrypted at rest with a per-deployment key. Only last4 visible on GET. TIN is plain-text in DB but masked on partner-side GET; admin view audit-logged
+- **Sample data**: 2 published research artifacts seeded (1 brief by Daniel Brookes, 1 paper by Imani Okafor with DOI) so `/research` has demo content from day one
+- **Frontend new pages**:
+  - `/research` — promoted top section + general listing with search, tier icons, read-time, tags, DOI, "Read full text" external link
+  - `/dashboard/partner/research` — CRUD modal for artifacts, status pills, "Promote $X" button (tier-priced), tier-select on new (drop on edit)
+  - `/dashboard/partner/payouts` — 3 tabs (Ledger / W9 form / Payout method)
+- **Frontend updates**:
+  - `/partners` directory got a Featured strip at top (auto-hidden in samples mode), "See all featured" link
+  - PartnerDashboard now shows 3 new tiles (Featured slot, Research artifacts, Payouts) gated to relevant partner_type/profile state
+  - Nav: "Research" link added between Featured and Join Us; nav layout tightened to `xl:flex` (was `lg:flex`) and `gap-0.5` (was `gap-1`) so the now-11-item nav fits 1280px+ without overlap
+- **Test coverage** — `/app/test_reports/iteration_18.json`. Backend 32/32 PASS, frontend 100%. One pre-existing cosmetic flag from iter 17 (header logo/nav overlap) fixed alongside this iteration
+- **Documentation refreshed**:
+  - `birthright-v1.11-step6-7-scope-v1.pdf` (171 KB) — iter 18 scope doc (new)
+  - `birthright-versions.pdf` (266 KB) — version index now includes iter 18
+
 ## Iteration 17 — v1.11.0 Step 4 + Step 5: Featured Showcase + Founding Partner Gating (May 25, 2026)
 - **Goal**: Self-serve featured slots (revenue + visibility) and a public Founding-Partner program with a visible cap.
 - **User decisions**:

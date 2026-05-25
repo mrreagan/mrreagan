@@ -45,13 +45,13 @@ function CartButton({ count }) {
 // ---------- Desktop nav links ----------
 function DesktopNav() {
   return (
-    <nav className="hidden lg:flex items-center gap-1" data-testid="header-nav">
+    <nav className="hidden xl:flex items-center gap-0.5" data-testid="header-nav">
       {NAV.map((n) => (
         <NavLink
           key={n.to}
           to={n.to}
           className={({ isActive }) =>
-            `px-3 py-2 text-sm font-medium transition-colors hover:text-[#476B6B] ${
+            `px-2 py-2 text-[13px] font-medium transition-colors hover:text-[#476B6B] ${
               isActive ? "text-[#476B6B]" : "text-[#1A2424]"
             }`
           }
@@ -134,7 +134,7 @@ function AuthButtons() {
 // ---------- Mobile menu drawer ----------
 function MobileMenu({ user, onClose }) {
   return (
-    <div className="lg:hidden border-t border-[#E5E1D8] bg-white" data-testid="mobile-menu">
+    <div className="xl:hidden border-t border-[#E5E1D8] bg-white" data-testid="mobile-menu">
       <div className="container-page py-3 flex flex-col">
         {NAV.map((n) => (
           <Link
@@ -184,7 +184,7 @@ export function Header() {
           <CartButton count={count} />
           {user ? <UserMenu user={user} onLogout={handleLogout} /> : <AuthButtons />}
           <button
-            className="lg:hidden p-2"
+            className="xl:hidden p-2"
             onClick={() => setMobileOpen(!mobileOpen)}
             data-testid="mobile-menu-toggle"
             aria-label="Menu"
