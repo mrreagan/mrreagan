@@ -36,16 +36,15 @@ export default function AiWallet() {
             "AI Wallet isn’t available on this environment yet. If you’re viewing production, the latest backend may not be deployed — please redeploy or contact an admin.",
         });
       } else if (status === 401 || status === 403) {
-        // Re-verify with AuthContext before declaring a session-expired loop.
-        // If AuthContext STILL thinks the user is signed in, this is NOT a
-        // session issue — it's a backend/policy issue we shouldn't pretend
-        // to fix by bouncing them through /login.
-        await refreshUser();
-        // If the auth context still has a user after refresh, treat as backend error.
+        // IMPORTANT: do NOT call refreshUser() here. If the wallet endpoint
+        // returns 401 while the rest of the app is signed in (cookie scoping
+        // bug on prod, etc.), calling refreshUser would set user=null and
+        // bounce us to /login — exactly the loop the user reported. Instead,
+        // surface a clear error and let the user decide.
         setLoadError({
           kind: "auth_unclear",
           message:
-            "We couldn’t load your AI Wallet. If you’re signed in everywhere else, this is a temporary glitch — try again. If it persists, sign out and sign back in.",
+            "We couldn’t load your AI Wallet. The rest of the site says you’re signed in, but this endpoint disagrees — that’s usually a production cookie/CORS issue, not your account. Try again, or sign out and sign back in if it persists.",
         });
       } else {
         setLoadError({
@@ -58,12 +57,18 @@ export default function AiWallet() {
     }
   };
   useEffect(() => {
-    // Wait for AuthContext to resolve before hitting the wallet endpoint —
-    // this prevents an early 401 race during page load.
+    // Wait for AuthContext to resolve before doing anything.
     if (authLoading) return;
     if (!user) {
-      // Genuinely not signed in. Send them to login with a return path.
-      navigate("/login?next=/dashboard/ai-wallet", { replace: true });
+      // Only here when AuthContext explicitly resolved with no user.
+      // Render an inline "please sign in" state instead of doing a hard
+      // navigate — a hard redirect from inside a useEffect causes a
+      // loop on production if the cookie is being lost between pages.
+      setLoadError({
+        kind: "signed_out",
+        message:
+          "You need to be signed in to view your AI Wallet. If you’re seeing this even though you just signed in, your browser may be blocking the session cookie on this domain.",
+      });
       return;
     }
     load();
@@ -123,13 +128,20 @@ export default function AiWallet() {
               <p className="font-serif text-lg">
                 {loadError.kind === "unavailable" && "AI Wallet not yet available"}
                 {loadError.kind === "auth_unclear" && "Couldn’t load AI Wallet"}
+                {loadError.kind === "signed_out" && "Please sign in"}
                 {loadError.kind === "generic" && "Something went wrong"}
               </p>
               <p className="text-sm text-[#5C6B6B] mt-1">{loadError.message}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={load} className="btn-primary text-xs" data-testid="ai-wallet-retry-btn">
-                  Try again
-                </button>
+                {loadError.kind === "signed_out" ? (
+                  <a href="/login?next=/dashboard/ai-wallet" className="btn-primary text-xs inline-flex items-center gap-1" data-testid="ai-wallet-signin-link">
+                    <LogIn size={11} strokeWidth={1.6} /> Sign in
+                  </a>
+                ) : (
+                  <button onClick={load} className="btn-primary text-xs" data-testid="ai-wallet-retry-btn">
+                    Try again
+                  </button>
+                )}
                 {isAuthUnclear && (
                   <button onClick={handleHardSignOut} className="btn-outline text-xs inline-flex items-center gap-1" data-testid="ai-wallet-resignin-btn">
                     <LogIn size={11} strokeWidth={1.6} /> Sign out & sign back in
