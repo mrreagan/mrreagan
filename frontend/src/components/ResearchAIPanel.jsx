@@ -72,7 +72,7 @@ export default function ResearchAIPanel({ open, onClose, onPickResult }) {
           </div>
           <p className="text-xs text-[#FAF8F5]/60 mt-1">
             A peer collaborator for synthesis, landscape mapping, methodological critique, and drafting.
-            Billed at 1× passthrough from your AI Wallet.
+            Billed at 1.5× — the +50% supports the foundation. Thank you.
           </p>
         </header>
 

@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from auth_utils import hash_password
 from models import gen_id, now_iso
-from utils.mailer import send_email
+from utils.mailer import send_email, is_real_send_enabled
 from utils.email_templates import password_reset as pw_reset_template
 
 logger = logging.getLogger("birthright.password_reset")
@@ -50,6 +50,16 @@ async def request_password_reset(data: ForgotPasswordRequest):
             to=user["email"], subject=subject, html=html, text=text,
             template_name="password_reset", metadata={"user_id": user["id"]},
         )
+        # In dry-run mode, expose the reset URL in the response so site
+        # admins can self-serve a reset without waiting on Resend DNS
+        # verification. Real-send mode never leaks the URL.
+        if not is_real_send_enabled():
+            return {
+                "success": True,
+                "message": "Email is in dry-run mode — use the reset_url below to reset directly.",
+                "dry_run": True,
+                "reset_url": reset_url,
+            }
     # Don't reveal existence
     return {"success": True, "message": "If that email is registered, a reset link is on its way."}
 

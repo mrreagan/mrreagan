@@ -188,9 +188,28 @@ export default function AiWallet() {
         </div>
       </div>
 
+      {/* Foundation pricing disclosure — shown immediately under the hero */}
+      {data.pricing && (
+        <div className="rounded-2xl border-2 border-[#C9A961] bg-[#FFF8E1] p-5 mb-6" data-testid="ai-wallet-pricing-disclosure">
+          <p className="text-[10px] uppercase tracking-wider text-[#8B7128] font-semibold">
+            Pricing — {data.pricing.multiplier.toFixed(2)}× passthrough
+          </p>
+          <p className="font-serif text-xl mt-1 leading-snug">
+            Thank you for supporting Birthright Foundation.
+          </p>
+          <p className="text-sm text-[#5C6B6B] mt-2 leading-relaxed">
+            {data.pricing.disclosure}
+          </p>
+        </div>
+      )}
+
       <div className="card p-5 mb-6" data-testid="topup-card">
         <h2 className="font-serif text-xl inline-flex items-center gap-2"><Plus size={16} strokeWidth={1.5} /> Top up</h2>
-        <p className="text-sm text-[#5C6B6B] mt-1">Billed at 1× passthrough — you pay only what the underlying AI calls cost.</p>
+        <p className="text-sm text-[#5C6B6B] mt-1">
+          Top up is billed at face value — every dollar here funds your AI usage at
+          {" "}<strong>{data.pricing?.multiplier.toFixed(2) || "1.50"}×</strong> the provider cost
+          {" "}(the extra <strong>{data.pricing?.foundation_markup_pct || 50}%</strong> supports the foundation).
+        </p>
         <div className="flex flex-wrap gap-2 mt-4">
           {packs.map((p) => (
             <button

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
-import api from "../lib/api";
+import api, { setStoredToken } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -7,23 +7,28 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Verify session via httpOnly cookie on mount
+  // Verify session via httpOnly cookie OR Bearer token on mount
   useEffect(() => {
     api
       .get("/auth/me")
       .then((res) => setUser(res.data))
-      .catch(() => setUser(null))
+      .catch(() => {
+        setUser(null);
+        setStoredToken(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
+    if (data.token) setStoredToken(data.token);
     setUser(data.user);
     return data.user;
   }, []);
 
   const register = useCallback(async (payload) => {
     const { data } = await api.post("/auth/register", payload);
+    if (data.token) setStoredToken(data.token);
     setUser(data.user);
     return data.user;
   }, []);
@@ -35,6 +40,7 @@ export function AuthProvider({ children }) {
       // Server-side logout is best-effort; we still clear local user state below
       console.warn("Logout request failed (clearing local session anyway):", error?.message || error);
     }
+    setStoredToken(null);
     setUser(null);
   }, []);
 
@@ -44,6 +50,7 @@ export function AuthProvider({ children }) {
       setUser(data);
     } catch {
       setUser(null);
+      setStoredToken(null);
     }
   }, []);
 

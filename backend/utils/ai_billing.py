@@ -2,11 +2,14 @@
 
 Single source of truth for:
   - Per-model price table (Claude Sonnet 4.5, Nano Banana, etc.)
-  - Cost computation for a single LLM/image call
+  - Cost computation for a single LLM/image call (with foundation markup)
   - Partner AI wallet balance read + atomic debit
   - Usage event recording (db.ai_usage_events, idempotent via event id)
 
-Default billing: 1× passthrough (no markup). Override with AI_PRICE_MULTIPLIER
+Default billing: 1.5× passthrough — partners pay the underlying provider cost
+plus a 50% markup that directly supports Birthright Foundation. We disclose
+this multiplier at every surface where the user sees price (top-up UI,
+usage tables, AI panels, error messages). Override with AI_PRICE_MULTIPLIER
 env var if foundation policy changes.
 """
 from __future__ import annotations
@@ -41,7 +44,14 @@ PRICE_TABLE: dict[str, dict] = {
     "gpt-image-1":     {"per_image": 0.07},
 }
 
-PRICE_MULTIPLIER = float(os.environ.get("AI_PRICE_MULTIPLIER", "1.0"))
+# 1.5× passthrough: provider cost + 50% to the Foundation.
+PRICE_MULTIPLIER = float(os.environ.get("AI_PRICE_MULTIPLIER", "1.5"))
+FOUNDATION_MARKUP_PCT = round((PRICE_MULTIPLIER - 1.0) * 100, 1)  # e.g. 50.0
+PRICING_DISCLOSURE = (
+    f"AI calls are billed at {PRICE_MULTIPLIER:.2f}× the underlying provider cost — "
+    f"the extra {FOUNDATION_MARKUP_PCT:.0f}% directly supports Birthright Foundation. "
+    f"Thank you for making this work possible."
+)
 LOW_BALANCE_WARN_USD = float(os.environ.get("AI_LOW_BALANCE_WARN", "1.00"))
 TOPUP_PACKS_USD = [10, 25, 50, 100]
 

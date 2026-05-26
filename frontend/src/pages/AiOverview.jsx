@@ -45,8 +45,8 @@ export default function AiOverview() {
       <div className="grid md:grid-cols-3 gap-5">
         <Pillar
           icon={Wallet}
-          title="1× passthrough"
-          body="You pay exactly what the underlying AI call cost us. We don't add a markup. Top up your AI Wallet in $10/$25/$50/$100 packs via Stripe."
+          title="1.5× — supports the foundation"
+          body="You pay the underlying AI provider cost plus a 50% markup that funds Birthright Foundation. Disclosed at every payment point. Top up your AI Wallet in $10/$25/$50/$100 packs via Stripe."
         />
         <Pillar
           icon={ShieldCheck}

@@ -10,6 +10,9 @@ from pydantic import BaseModel, Field
 from auth_utils import get_current_user, require_roles
 from models import gen_id, now_iso
 from utils.ai_billing import (
+    FOUNDATION_MARKUP_PCT,
+    PRICE_MULTIPLIER,
+    PRICING_DISCLOSURE,
     TOPUP_PACKS_USD,
     credit_wallet,
     get_wallet,
@@ -37,6 +40,11 @@ async def my_wallet(user: dict = Depends(get_current_user)):
         "topup_packs_usd": TOPUP_PACKS_USD,
         "recent_usage": recent_events,
         "recent_entries": recent_entries,
+        "pricing": {
+            "multiplier": PRICE_MULTIPLIER,
+            "foundation_markup_pct": FOUNDATION_MARKUP_PCT,
+            "disclosure": PRICING_DISCLOSURE,
+        },
     }
 
 
