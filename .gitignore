@@ -83,9 +83,7 @@ android-sdk/
 credentials.json
 *.key
 .credentials
-.env
-.env.*
-*.env
+# .env files intentionally tracked — Emergent deploy auto-updates these with prod values
 frontend/node_modules/.cache/default-development/41.pack
 frontend/node_modules/.cache/default-development/6.pack
 frontend/node_modules/.cache/default-development/7.pack
