@@ -55,19 +55,34 @@ export async function getViaToken({ user } = {}) {
   return getAnonSessionId();
 }
 
-/** Build a full share URL with `?via=` appended (preserves existing query params). */
+/** Build a full share URL with `?via=` appended.
+ *
+ * Routes through /api/link-preview so that bot User-Agents (Facebook, Twitter,
+ * iMessage, Slack, WhatsApp, LinkedIn, Discord, etc.) receive Open Graph
+ * meta tags for the specific resource being shared (image, title, description).
+ * Humans are 302-redirected to the canonical SPA URL with the via token intact.
+ *
+ * Anchor fragments (e.g. /shop#founder-collection) ride along as a query
+ * string `hash` token because servers don't see #fragments — the rendered
+ * OG stub then includes them in the final redirect URL.
+ */
 export function buildShareUrl(path, via) {
   if (typeof window === "undefined") return path;
   const origin = window.location.origin;
-  const cleanPath = path.startsWith("http") ? path : `${origin}${path.startsWith("/") ? path : `/${path}`}`;
-  try {
-    const u = new URL(cleanPath);
-    if (via) u.searchParams.set("via", via);
-    return u.toString();
-  } catch {
-    const sep = cleanPath.includes("?") ? "&" : "?";
-    return via ? `${cleanPath}${sep}via=${encodeURIComponent(via)}` : cleanPath;
+  // Normalise to a path string (strip origin if a full URL was passed)
+  let pathOnly = path;
+  if (path.startsWith("http")) {
+    try {
+      const parsed = new URL(path);
+      pathOnly = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch { /* leave as-is */ }
   }
+  if (!pathOnly.startsWith("/")) pathOnly = `/${pathOnly}`;
+
+  const previewUrl = new URL(`${origin}/api/link-preview`);
+  previewUrl.searchParams.set("path", pathOnly);
+  if (via) previewUrl.searchParams.set("via", via);
+  return previewUrl.toString();
 }
 
 /** Log a share event. Fire-and-forget; never throws. */

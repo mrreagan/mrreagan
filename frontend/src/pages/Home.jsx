@@ -273,13 +273,13 @@ function FounderCollectionTeaser({ items }) {
           <div className="lg:col-span-5">
             <Link
               to={`/shop/${featured.id}`}
-              className="block rounded-2xl overflow-hidden bg-[#FAF8F5] shadow-2xl"
+              className="block rounded-2xl overflow-hidden bg-[#F4F1EA] shadow-2xl"
               data-testid="home-founder-image-link"
             >
               <img
                 src={featured.image_url}
                 alt={featured.name}
-                className="w-full aspect-[4/3] object-cover hover:scale-[1.02] transition-transform duration-500"
+                className="w-full aspect-[4/3] object-contain hover:scale-[1.02] transition-transform duration-500"
               />
             </Link>
           </div>

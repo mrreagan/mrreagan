@@ -25,8 +25,8 @@ export default function ProductDetail() {
         <ArrowLeft size={14} strokeWidth={1.5} /> Back to shop
       </Link>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        <div className="card overflow-hidden aspect-square">
-          <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+        <div className="card overflow-hidden aspect-square bg-[#F4F1EA] flex items-center justify-center">
+          <img src={p.image_url} alt={p.name} className="w-full h-full object-contain p-3" />
         </div>
         <div>
           {p.type === "workshop_material" && (

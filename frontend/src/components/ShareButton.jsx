@@ -117,10 +117,14 @@ export default function ShareButton({
     return () => { cancelled = true; };
   }, [open, bookmarkable, surface, surfaceId]);
 
-  // Outside click closer
+  // Outside click closer (desktop only — mobile uses the backdrop button)
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
+      // The mobile menu lives outside rootRef (fixed-positioned), so on
+      // mobile we rely on the explicit backdrop tap. On desktop the menu
+      // is inside rootRef and this handler closes it on outside click.
+      if (window.matchMedia("(max-width: 639px)").matches) return;
       if (rootRef.current && !rootRef.current.contains(e.target)) {
         setOpen(false); setShowQr(false); setCiteFormat(null);
       }
@@ -311,11 +315,25 @@ export default function ShareButton({
       </button>
 
       {open && (
-        <div
-          className={`absolute z-30 mt-2 w-72 rounded-md border border-[#E5E1D8] bg-white shadow-lg p-3 ${align === "left" ? "left-0" : "right-0"}`}
-          role="menu"
-          data-testid={`share-menu-${surface}`}
-        >
+        <>
+          {/* Mobile backdrop — closes on outside tap and keeps the menu from
+              falling off-screen. The menu itself becomes a centered modal on
+              small screens via the wrapper class below. */}
+          <div
+            className="fixed inset-0 bg-black/40 sm:hidden z-40"
+            onClick={() => setOpen(false)}
+            data-testid={`share-backdrop-${surface}`}
+          />
+          <div
+            className={`
+              z-50 rounded-2xl border border-[#E5E1D8] bg-white shadow-xl p-3
+              fixed inset-x-4 bottom-4 max-h-[80vh] overflow-y-auto
+              sm:absolute sm:inset-auto sm:bottom-auto sm:mt-2 sm:w-72 sm:max-h-none sm:overflow-visible
+              ${align === "left" ? "sm:left-0" : "sm:right-0"}
+            `}
+            role="menu"
+            data-testid={`share-menu-${surface}`}
+          >
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">Share {label}</p>
             <button onClick={() => setOpen(false)} className="text-[#5C6B6B] hover:text-[#1A2424]" aria-label="Close">
@@ -409,7 +427,8 @@ export default function ShareButton({
               {shareUrl}
             </div>
           )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
