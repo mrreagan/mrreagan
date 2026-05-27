@@ -142,12 +142,14 @@ async def ensure_founder_collection_seeded(db) -> int:
     slug = "founder-collection-hat-pair"
     existing = await db.products.find_one({"slug": slug})
     if existing:
-        # Self-heal collection tag + max_per_order on already-seeded rows.
+        # Self-heal collection tag + max_per_order + homepage feature on already-seeded rows.
         update = {}
         if existing.get("collection") != "founder_collection":
             update["collection"] = "founder_collection"
         if existing.get("max_per_order") != 1:
             update["max_per_order"] = 1
+        if not existing.get("is_homepage_feature"):
+            update["is_homepage_feature"] = True
         if update:
             await db.products.update_one({"id": existing["id"]}, {"$set": update})
             logger.info(f"founder collection: self-healed fields on existing product ({list(update)})")
@@ -173,6 +175,7 @@ async def ensure_founder_collection_seeded(db) -> int:
         "category": "apparel",
         "collection": "founder_collection",
         "max_per_order": 1,
+        "is_homepage_feature": True,
         "moderation_status": "active",
         "created_at": now_iso(),
     }

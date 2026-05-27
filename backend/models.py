@@ -153,6 +153,10 @@ class ProductCreate(BaseModel):
     # Max units of this SKU a single customer can put in their cart, or None
     # for unlimited. Used by the Founder Collection hat pair (one per buyer).
     max_per_order: Optional[int] = None
+    # When True, this product becomes the featured item in the homepage
+    # Founder Collection teaser. Only one product should be flagged at a time;
+    # if multiple are flagged, the most-recently-created wins.
+    is_homepage_feature: bool = False
 
 
 class Product(ProductCreate):
@@ -169,6 +173,7 @@ class ProductUpdate(BaseModel):
     category: Optional[str] = None
     collection: Optional[str] = None
     max_per_order: Optional[int] = None
+    is_homepage_feature: Optional[bool] = None
 
 
 # ============ VENDOR CATALOG (Phase 6B.4) ============

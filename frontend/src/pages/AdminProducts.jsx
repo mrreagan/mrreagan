@@ -13,6 +13,9 @@ const EMPTY = {
   image_url: "",
   inventory: 50,
   category: "general",
+  collection: "",
+  max_per_order: "",
+  is_homepage_feature: false,
 };
 
 const CATEGORY_OPTIONS = [
@@ -79,6 +82,9 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         ...(initial || {}),
         price: initial?.price ?? "",
         workshop_id: initial?.workshop_id ?? "",
+        collection: initial?.collection ?? "",
+        max_per_order: initial?.max_per_order ?? "",
+        is_homepage_feature: !!initial?.is_homepage_feature,
       });
       setRegenPrompt(initial?.description || "");
     }
@@ -125,6 +131,11 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
       image_url: form.image_url.trim(),
       inventory: parseInt(form.inventory, 10) || 0,
       category: form.category || "general",
+      collection: form.collection?.trim() || null,
+      max_per_order: form.max_per_order === "" || form.max_per_order == null
+        ? null
+        : Math.max(1, parseInt(form.max_per_order, 10) || 1),
+      is_homepage_feature: !!form.is_homepage_feature,
     };
     setSaving(true);
     try {
@@ -137,6 +148,9 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
           image_url: payload.image_url,
           inventory: payload.inventory,
           category: payload.category,
+          collection: payload.collection,
+          max_per_order: payload.max_per_order,
+          is_homepage_feature: payload.is_homepage_feature,
         };
         await api.put(`/products/${initial.id}`, updateBody);
         toast.success("Product updated");
@@ -265,6 +279,51 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
               </p>
             )}
           </label>
+        )}
+
+        {form.type === "merch" && (
+          <div className="rounded-lg border border-[#E5E1D8] p-4 bg-[#FAF8F5]">
+            <p className="label !mt-0 mb-3 text-[#C9A961]">Curated collection & merchandising</p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">
+                Collection slug
+                <input
+                  className="input-field mt-1"
+                  value={form.collection || ""}
+                  onChange={(e) => update("collection", e.target.value)}
+                  placeholder="e.g. founder_collection"
+                  data-testid="admin-product-form-collection"
+                />
+              </label>
+              <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">
+                Max per order
+                <input
+                  type="number" min="1"
+                  className="input-field mt-1"
+                  value={form.max_per_order ?? ""}
+                  onChange={(e) => update("max_per_order", e.target.value)}
+                  placeholder="empty = unlimited"
+                  data-testid="admin-product-form-max-per-order"
+                />
+              </label>
+            </div>
+            <label className="flex items-start gap-2 text-sm mt-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!form.is_homepage_feature}
+                onChange={(e) => update("is_homepage_feature", e.target.checked)}
+                className="mt-1"
+                data-testid="admin-product-form-homepage-feature"
+              />
+              <span>
+                <span className="font-medium">Feature on the homepage Founder Collection teaser</span>
+                <span className="block text-[11px] text-[#5C6B6B] mt-0.5 normal-case tracking-normal">
+                  Only one product should be flagged at a time. If multiple are flagged, the most-recently-created wins.
+                  This product still appears in its full collection rail regardless of this flag.
+                </span>
+              </span>
+            </label>
+          </div>
         )}
 
         <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">

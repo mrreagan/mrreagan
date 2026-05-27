@@ -231,7 +231,9 @@ function NewsletterCta() {
 // ---------- Founder Collection teaser ----------
 function FounderCollectionTeaser({ items }) {
   if (!items || items.length === 0) return null;
-  const featured = items[0];
+  // Prefer the explicitly-flagged homepage feature. Fall back to first item
+  // (sorted server-side by created_at) so the teaser always renders.
+  const featured = items.find((p) => p.is_homepage_feature) || items[0];
   return (
     <section
       className="border-y border-[#1F3A3A] bg-[#0F2424] text-[#FAF8F5]"
