@@ -134,6 +134,53 @@ async def repair_known_broken_images(db) -> int:
     return repaired
 
 
+async def ensure_founder_collection_seeded(db) -> int:
+    """Idempotently seed the Founder Collection — currently a single product:
+    a Red + Navy hat pair sold together for $42. Identified by slug
+    `founder-collection-hat-pair`. Safe to run on every boot.
+    """
+    slug = "founder-collection-hat-pair"
+    existing = await db.products.find_one({"slug": slug})
+    if existing:
+        # Self-heal collection tag + max_per_order on already-seeded rows.
+        update = {}
+        if existing.get("collection") != "founder_collection":
+            update["collection"] = "founder_collection"
+        if existing.get("max_per_order") != 1:
+            update["max_per_order"] = 1
+        if update:
+            await db.products.update_one({"id": existing["id"]}, {"$set": update})
+            logger.info(f"founder collection: self-healed fields on existing product ({list(update)})")
+        return 0
+
+    description = (
+        "These designs translate the emotional core of our work into a visual brand. "
+        "The Red Hat logo features a \"vulnerable speech\" icon (a heart within a chat bubble) to "
+        "represent the reach for connection. The Navy Hat logo depicts a \"softened shield\" to "
+        "represent moving past defensiveness into care. Sold as a pair — one Red, one Navy — "
+        "for you and your person."
+    )
+    doc = {
+        "id": gen_id(),
+        "slug": slug,
+        "name": "Founder Collection — Hat Pair (Red + Navy)",
+        "description": description,
+        "price": 42.0,
+        "type": "merch",
+        "workshop_id": None,
+        "image_url": "/api/static/products/founder-collection-hats.jpeg",
+        "inventory": 50,
+        "category": "apparel",
+        "collection": "founder_collection",
+        "max_per_order": 1,
+        "moderation_status": "active",
+        "created_at": now_iso(),
+    }
+    await db.products.insert_one(doc)
+    logger.info("founder collection: inserted hat pair product")
+    return 1
+
+
 # ============ v1.11.0 PARTNER ECONOMY BACKFILL ============
 
 PARTNER_ECONOMY_DEFAULTS = {

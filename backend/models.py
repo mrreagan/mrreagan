@@ -147,6 +147,12 @@ class ProductCreate(BaseModel):
     vendor_slug: Optional[str] = None
     moderation_status: Literal["active", "flagged", "unpublished"] = "active"
     moderation_note: Optional[str] = None
+    # Curated collections (e.g., "founder_collection"). Free-form slug so the
+    # foundation can add new collections without a code release.
+    collection: Optional[str] = None
+    # Max units of this SKU a single customer can put in their cart, or None
+    # for unlimited. Used by the Founder Collection hat pair (one per buyer).
+    max_per_order: Optional[int] = None
 
 
 class Product(ProductCreate):
@@ -161,6 +167,8 @@ class ProductUpdate(BaseModel):
     image_url: Optional[str] = None
     inventory: Optional[int] = None
     category: Optional[str] = None
+    collection: Optional[str] = None
+    max_per_order: Optional[int] = None
 
 
 # ============ VENDOR CATALOG (Phase 6B.4) ============

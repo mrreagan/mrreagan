@@ -5,7 +5,7 @@ const STORAGE_KEY = "br_cart";
 
 // Cart contents are non-sensitive (no PII, no auth tokens) — just product references and quantities.
 // We sanitize on read to reject any unexpected fields that could leak via XSS.
-const ALLOWED_FIELDS = ["product_id", "name", "price", "image_url", "quantity"];
+const ALLOWED_FIELDS = ["product_id", "name", "price", "image_url", "quantity", "max_per_order"];
 
 const sanitizeItem = (raw) => {
   if (!raw || typeof raw !== "object") return null;
@@ -18,6 +18,7 @@ const sanitizeItem = (raw) => {
   item.price = Number(item.price) || 0;
   item.quantity = Math.max(1, parseInt(item.quantity, 10) || 1);
   item.image_url = typeof item.image_url === "string" ? item.image_url : "";
+  item.max_per_order = Number.isFinite(item.max_per_order) ? item.max_per_order : null;
   return item;
 };
 
@@ -40,11 +41,20 @@ export function CartProvider({ children }) {
   }, [items]);
 
   const addItem = useCallback((product, quantity = 1) => {
+    let toastReason = null;
     setItems((prev) => {
       const existing = prev.find((p) => p.product_id === product.id);
+      const cap = Number.isFinite(product.max_per_order) ? product.max_per_order : null;
+      const currentQty = existing ? existing.quantity : 0;
+      let newQty = currentQty + quantity;
+      if (cap && newQty > cap) {
+        newQty = cap;
+        toastReason = `Limited to ${cap} per order — already in cart.`;
+        if (currentQty >= cap) return prev; // nothing to change
+      }
       if (existing) {
         return prev.map((p) =>
-          p.product_id === product.id ? { ...p, quantity: p.quantity + quantity } : p
+          p.product_id === product.id ? { ...p, quantity: newQty } : p
         );
       }
       return [
@@ -54,17 +64,27 @@ export function CartProvider({ children }) {
           name: product.name,
           price: product.price,
           image_url: product.image_url,
-          quantity,
+          quantity: newQty,
+          max_per_order: cap,
         },
       ];
     });
+    if (toastReason) {
+      // toast lives in sonner; we lazy-require here to avoid a cyclic import.
+      // Best-effort — silently ignored if sonner isn't loaded.
+      import("sonner").then((m) => m.toast?.message(toastReason)).catch(() => {});
+    }
   }, []);
 
   const updateQty = useCallback((product_id, quantity) => {
     setItems((prev) =>
       quantity <= 0
         ? prev.filter((p) => p.product_id !== product_id)
-        : prev.map((p) => (p.product_id === product_id ? { ...p, quantity } : p))
+        : prev.map((p) => {
+            if (p.product_id !== product_id) return p;
+            const cap = Number.isFinite(p.max_per_order) ? p.max_per_order : null;
+            return { ...p, quantity: cap ? Math.min(quantity, cap) : quantity };
+          })
     );
   }, []);
 
