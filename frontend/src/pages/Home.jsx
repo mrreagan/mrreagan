@@ -42,7 +42,7 @@ function Hero() {
               Workshops, materials, and a quiet community for everyone learning to claim and recover the relationships they were always meant to have.
             </p>
             <div className="mt-9 flex flex-wrap gap-3" data-testid="hero-cta">
-              <Link to="/workshops" className="btn-primary" data-testid="hero-browse-workshops">
+              <Link to="/practice" className="btn-primary" data-testid="hero-browse-workshops">
                 Browse workshops <ArrowRight size={16} strokeWidth={1.5} />
               </Link>
               <Link to="/mission" className="btn-outline">
@@ -101,7 +101,7 @@ function MissionStrip() {
 function WorkshopFeatureCard({ workshop }) {
   return (
     <Link
-      to={`/workshops/${workshop.slug}`}
+      to={`/practice/${workshop.slug}`}
       className="card card-hover overflow-hidden block fade-up"
       data-testid={`featured-workshop-${workshop.slug}`}
     >
@@ -139,7 +139,7 @@ function FeaturedWorkshops({ workshops }) {
           <span className="label">Coming up</span>
           <h2 className="editorial-h2 mt-2">Workshops on the calendar</h2>
         </div>
-        <Link to="/workshops" className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-[#476B6B] hover:gap-2 transition-all" data-testid="home-view-all-workshops">
+        <Link to="/practice" className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-[#476B6B] hover:gap-2 transition-all" data-testid="home-view-all-workshops">
           View all <ArrowRight size={14} strokeWidth={1.5} />
         </Link>
       </div>
@@ -255,14 +255,14 @@ function FounderCollectionTeaser({ items }) {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
-                to="/shop#founder-collection"
+                to="/equip#founder-collection"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#C9A961] text-[#0F2424] font-semibold text-sm hover:bg-[#D4B677] transition"
                 data-testid="home-founder-shop-cta"
               >
                 <ShoppingBag size={14} strokeWidth={1.8} /> Shop the collection
               </Link>
               <Link
-                to={`/shop/${featured.id}`}
+                to={`/equip/${featured.id}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#FAF8F5]/30 text-[#FAF8F5] text-sm hover:border-[#C9A961] hover:text-[#C9A961] transition"
                 data-testid="home-founder-featured-cta"
               >
@@ -272,7 +272,7 @@ function FounderCollectionTeaser({ items }) {
           </div>
           <div className="lg:col-span-5">
             <Link
-              to={`/shop/${featured.id}`}
+              to={`/equip/${featured.id}`}
               className="block rounded-2xl overflow-hidden bg-[#F4F1EA] shadow-2xl"
               data-testid="home-founder-image-link"
             >

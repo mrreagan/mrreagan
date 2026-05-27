@@ -53,7 +53,7 @@ function WorkshopHeaderCard({ workshop, participants, qaCount, supportCount }) {
         </div>
       </div>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link to={`/workshops/${workshop.slug}`} className="btn-outline text-sm">
+        <Link to={`/practice/${workshop.slug}`} className="btn-outline text-sm">
           View public page
         </Link>
         <span className="px-4 py-2 rounded-full bg-[#FAF8F5] border border-[#E5E1D8] text-sm">

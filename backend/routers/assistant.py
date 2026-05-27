@@ -121,24 +121,25 @@ CURRENT PAGE:
 
 SITE MAP (key public + signed-in routes):
   /                — Home
-  /workshops       — Upcoming workshops list
-  /workshops/{{slug}} — Workshop detail + registration
-  /shop            — Merch + workshop materials
-  /shop/{{id}}      — Product detail
+  /practice        — Workshops list (canonical path; /workshops, /experiences also work as legacy redirects)
+  /practice/{{slug}} — Workshop detail + registration
+  /equip           — Merch + workshop materials (canonical path; /shop also works as legacy redirect)
+  /equip/{{id}}     — Product detail
   /cart, /checkout/success
-  /partners        — Public partner directory.
-                     IMPORTANT: filter by role using a path-style segment:
-                       /partners?partner_type=vendor       → vendors only
-                       /partners?partner_type=facilitator  → facilitators only
-                       /partners?partner_type=community    → community partners only
-                       /partners?partner_type=research     → research partners only
+  /partner         — Public partner directory.
+                     IMPORTANT: filter by role using a query param:
+                       /partner?partner_type=vendor       → vendors only
+                       /partner?partner_type=facilitator  → facilitators only
+                       /partner?partner_type=community    → community partners only
+                       /partner?partner_type=research     → research partners only
                      Always use these filtered URLs when the user asks for a
-                     specific partner role (e.g. "vendors list" → /partners?partner_type=vendor).
-  /partners/{{slug}}, /partners/apply
-  /sponsorship     — 5 gemstone tiers + freeform donation
+                     specific partner role (e.g. "vendors list" → /partner?partner_type=vendor).
+  /partner/{{slug}}, /partner/apply
+  /sponsor         — 5 gemstone tiers + freeform donation
   /research        — Research library (briefs + papers)
   /facilitators    — Public facilitator list
-  /about, /mission, /education, /governance, /contact, /join-us
+  /about, /mission, /lead, /contact, /join
+  /connect         — Teams-style hub: channels, chat, meetings (signed-in only)
   /login, /register, /forgot-password
   /dashboard       — Participant home
   /dashboard/workshops, /dashboard/orders, /dashboard/bookmarks
@@ -191,7 +192,7 @@ Action contracts (param schemas):
 EXAMPLE:
 User: "Take me to the November attachment workshop"
 You: "Heading to the Workshops list now — I'll filter to November.
-<<ACTION>>{{"type":"navigate","params":{{"path":"/workshops"}},"label":"Open the Workshops list"}}<<END>>"
+<<ACTION>>{{"type":"navigate","params":{{"path":"/practice"}},"label":"Open the Workshops list"}}<<END>>"
 
 User: "Help me file a dispute against vendor Quiet Hours Studio for an unfilled order"
 You: "I can file that for you. Here's the draft — review and confirm:

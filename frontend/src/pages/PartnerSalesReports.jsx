@@ -72,7 +72,7 @@ export default function PartnerSalesReports() {
           <p className="font-serif text-xl">Available to vendor and community partners.</p>
           <p className="text-sm text-[#5C6B6B] mt-3">
             This feature is for partners whose Birthright-attributed revenue happens off-platform (your Shopify store, podcast affiliate, etc.).
-            You don't have an active vendor or community partner profile yet — <a href="/partners/apply" className="underline text-[#476B6B]">apply here</a>.
+            You don't have an active vendor or community partner profile yet — <a href="/partner/apply" className="underline text-[#476B6B]">apply here</a>.
           </p>
         </div>
       </div>

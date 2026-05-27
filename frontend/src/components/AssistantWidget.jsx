@@ -145,7 +145,7 @@ export default function AssistantWidget() {
       }
       case "register_for_workshop": {
         const wid = directive.params?.workshop_id;
-        if (wid) { navigate(`/workshops/${wid}`); setOpen(false); toast.success(`Navigated to /workshops/${wid}`); return true; }
+        if (wid) { navigate(`/practice/${wid}`); setOpen(false); toast.success(`Navigated to /practice/${wid}`); return true; }
         return false;
       }
       default:

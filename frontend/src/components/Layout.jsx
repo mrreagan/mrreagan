@@ -8,14 +8,14 @@ import AgreementResignBanner from "./AgreementResignBanner";
 import AssistantWidget from "./AssistantWidget";
 
 const NAV_EXPLORE = [
-  { to: "/experiences", label: "Practice" },
-  { to: "/shop",        label: "Equip" },
-  { to: "/research",    label: "Research" },
-  { to: "/partners",    label: "Partner" },
-  { to: "/sponsorship", label: "Sponsor" },
-  { to: "/governance",  label: "Lead" },
-  { to: "/join-us",     label: "Join" },
-  { to: "/connect",     label: "Connect" },
+  { to: "/practice",  label: "Practice" },
+  { to: "/equip",     label: "Equip" },
+  { to: "/research",  label: "Research" },
+  { to: "/partner",   label: "Partner" },
+  { to: "/sponsor",   label: "Sponsor" },
+  { to: "/lead",      label: "Lead" },
+  { to: "/join",      label: "Join" },
+  { to: "/connect",   label: "Connect" },
 ];
 
 const NAV_FOUNDATION = [
@@ -263,13 +263,13 @@ function FooterColumn({ heading, links }) {
 }
 
 const FOOTER_EXPLORE = [
-  { to: "/experiences", label: "Practice" },
-  { to: "/shop", label: "Equip" },
+  { to: "/practice", label: "Practice" },
+  { to: "/equip", label: "Equip" },
   { to: "/research", label: "Research" },
-  { to: "/partners", label: "Partner" },
-  { to: "/sponsorship", label: "Sponsor" },
-  { to: "/governance", label: "Lead" },
-  { to: "/join-us", label: "Join" },
+  { to: "/partner", label: "Partner" },
+  { to: "/sponsor", label: "Sponsor" },
+  { to: "/lead", label: "Lead" },
+  { to: "/join", label: "Join" },
   { to: "/connect", label: "Connect" },
 ];
 const FOOTER_FOUNDATION = [

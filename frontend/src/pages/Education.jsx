@@ -40,7 +40,7 @@ export default function Education() {
             </div>
           ))}
           <div className="pt-4">
-            <Link to="/workshops" className="btn-primary" data-testid="education-cta">
+            <Link to="/practice" className="btn-primary" data-testid="education-cta">
               Browse upcoming workshops <ArrowRight size={16} strokeWidth={1.5} />
             </Link>
           </div>

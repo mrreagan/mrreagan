@@ -149,8 +149,14 @@ async def _resolve_meta(db, path: str) -> Tuple[str, str, Optional[str]]:
 
     head, tail = parts[0], parts[-1]
 
+    if head == "equip" and len(parts) >= 2:
+        hit = await _lookup_product(db, tail)
+        if hit: return hit
     if head == "shop" and len(parts) >= 2:
         hit = await _lookup_product(db, tail)
+        if hit: return hit
+    if head == "practice" and len(parts) >= 2:
+        hit = await _lookup_workshop(db, tail)
         if hit: return hit
     if head == "workshops" and len(parts) >= 2:
         hit = await _lookup_workshop(db, tail)
@@ -158,19 +164,28 @@ async def _resolve_meta(db, path: str) -> Tuple[str, str, Optional[str]]:
     if head == "research" and len(parts) >= 2:
         hit = await _lookup_research(db, tail)
         if hit: return hit
+    if head == "partner" and len(parts) >= 2:
+        hit = await _lookup_partner(db, tail)
+        if hit: return hit
     if head == "partners" and len(parts) >= 2:
         hit = await _lookup_partner(db, tail)
         if hit: return hit
 
     # Section-level fallbacks
     section_defaults = {
-        "shop": ("Shop — birthright", "Journals, mugs, totes, and quiet objects designed to keep the practice close.", DEFAULT_OG["image"]),
-        "workshops": ("Workshops — birthright", "Foundations, practice, and ongoing community. Find your next workshop.", DEFAULT_OG["image"]),
-        "experiences": ("Workshops — birthright", "Foundations, practice, and ongoing community. Find your next workshop.", DEFAULT_OG["image"]),
+        "practice": ("Practice — birthright", "Foundations, practice, and ongoing community. Find your next workshop.", DEFAULT_OG["image"]),
+        "equip": ("Equip — birthright", "Journals, mugs, totes, and quiet objects designed to keep the practice close.", DEFAULT_OG["image"]),
+        "shop": ("Equip — birthright", "Journals, mugs, totes, and quiet objects designed to keep the practice close.", DEFAULT_OG["image"]),
+        "workshops": ("Practice — birthright", "Foundations, practice, and ongoing community. Find your next workshop.", DEFAULT_OG["image"]),
+        "experiences": ("Practice — birthright", "Foundations, practice, and ongoing community. Find your next workshop.", DEFAULT_OG["image"]),
         "research": ("Research — birthright", "Peer-reviewed papers, practitioner briefs, and field reports.", DEFAULT_OG["image"]),
-        "partners": ("Partners — birthright", "Our community of facilitators, vendors, and researchers.", DEFAULT_OG["image"]),
+        "partner": ("Partner — birthright", "Our community of facilitators, vendors, and researchers.", DEFAULT_OG["image"]),
+        "partners": ("Partner — birthright", "Our community of facilitators, vendors, and researchers.", DEFAULT_OG["image"]),
+        "sponsor": ("Sponsor — birthright", "Help underwrite the work. Sponsor a workshop, a scholarship, or the foundation.", DEFAULT_OG["image"]),
         "sponsorship": ("Sponsor — birthright", "Help underwrite the work. Sponsor a workshop, a scholarship, or the foundation.", DEFAULT_OG["image"]),
-        "governance": ("Governance — birthright", "How the foundation is led, and how you can step in.", DEFAULT_OG["image"]),
+        "lead": ("Lead — birthright", "How the foundation is led, and how you can step in.", DEFAULT_OG["image"]),
+        "governance": ("Lead — birthright", "How the foundation is led, and how you can step in.", DEFAULT_OG["image"]),
+        "join": ("Join — birthright", "Open roles and ways to step into the foundation.", DEFAULT_OG["image"]),
         "join-us": ("Join — birthright", "Open roles and ways to step into the foundation.", DEFAULT_OG["image"]),
         "contact": ("Contact — birthright", "Send us a note. We read every message.", DEFAULT_OG["image"]),
         "connect": ("Connect — birthright", "Channels, conversations, and meetings for the Birthright community.", DEFAULT_OG["image"]),

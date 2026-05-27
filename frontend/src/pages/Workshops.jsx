@@ -90,7 +90,7 @@ export default function Workshops() {
 
 function WorkshopCard({ w }) {
   const navigate = useNavigate();
-  const go = () => navigate(`/workshops/${w.slug}`);
+  const go = () => navigate(`/practice/${w.slug}`);
   return (
     <div
       role="link"
@@ -121,7 +121,7 @@ function WorkshopCard({ w }) {
             <ShareButton
               surface="workshop"
               surfaceId={w.id}
-              path={`/workshops/${w.slug}`}
+              path={`/practice/${w.slug}`}
               title={w.title}
               emailSubject={`Workshop: ${w.title}`}
               size="sm"

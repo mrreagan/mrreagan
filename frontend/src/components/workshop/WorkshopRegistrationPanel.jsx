@@ -84,7 +84,7 @@ function PastWorkshopCta() {
     <>
       <span className="label">This workshop has ended</span>
       <p className="text-sm text-[#5C6B6B] mt-2">Read past participant impact below or browse upcoming.</p>
-      <Link to="/workshops" className="btn-primary w-full justify-center mt-5">
+      <Link to="/practice" className="btn-primary w-full justify-center mt-5">
         Browse upcoming
       </Link>
     </>

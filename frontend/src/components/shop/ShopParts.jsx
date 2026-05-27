@@ -38,12 +38,12 @@ export function ProductCard({ product }) {
 
   return (
     <div className="card card-hover overflow-hidden flex flex-col" data-testid={`product-card-${product.id}`}>
-      <Link to={`/shop/${product.id}`} className="block aspect-square bg-[#F4F1EA] overflow-hidden">
+      <Link to={`/equip/${product.id}`} className="block aspect-square bg-[#F4F1EA] overflow-hidden">
         <img src={product.image_url} alt={product.name} className="w-full h-full object-contain p-2" />
       </Link>
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-2">
-          <Link to={`/shop/${product.id}`} className="font-serif text-lg leading-tight hover:text-[#476B6B]">
+          <Link to={`/equip/${product.id}`} className="font-serif text-lg leading-tight hover:text-[#476B6B]">
             {product.name}
           </Link>
           {isMaterial && <Lock size={14} strokeWidth={1.5} className="text-[#C9A961] shrink-0 mt-1" />}
@@ -52,7 +52,7 @@ export function ProductCard({ product }) {
           <p className="text-[10px] uppercase tracking-wider text-[#C9A961] mt-1" data-testid={`product-vendor-badge-${product.id}`}>
             By{" "}
             {product.vendor_slug ? (
-              <Link to={`/partners/${product.vendor_slug}`} className="text-[#476B6B] hover:underline" onClick={(e) => e.stopPropagation()}>
+              <Link to={`/partner/${product.vendor_slug}`} className="text-[#476B6B] hover:underline" onClick={(e) => e.stopPropagation()}>
                 {product.vendor_name}
               </Link>
             ) : (
@@ -71,14 +71,14 @@ export function ProductCard({ product }) {
               <ShareButton
                 surface="product"
                 surfaceId={product.id}
-                path={`/shop/${product.id}`}
+                path={`/equip/${product.id}`}
                 title={product.name}
                 emailSubject={`From the Birthright shop: ${product.name}`}
                 size="sm"
               />
             )}
             {isMaterial ? (
-              <Link to={`/shop/${product.id}`} className="text-xs text-[#476B6B] font-medium hover:underline">
+              <Link to={`/equip/${product.id}`} className="text-xs text-[#476B6B] font-medium hover:underline">
                 Participants only
               </Link>
             ) : (

@@ -41,7 +41,7 @@ export default function Governance() {
                 The cards below marked <em>"Sample — role we're seeking to fill"</em> are currently open positions.
               </p>
             </div>
-            <Link to="/join-us" className="btn-primary inline-flex items-center gap-2" data-testid="banner-view-roles">
+            <Link to="/join" className="btn-primary inline-flex items-center gap-2" data-testid="banner-view-roles">
               View all open roles <ArrowRight size={14} strokeWidth={1.5} />
             </Link>
           </div>
@@ -80,7 +80,7 @@ export default function Governance() {
                       We're looking for someone like this: {m.bio}
                     </p>
                     <Link
-                      to={`/join-us/${role.slug}`}
+                      to={`/join/${role.slug}`}
                       className="inline-flex items-center gap-1 text-sm text-[#476B6B] hover:underline mt-4"
                       data-testid={`apply-for-${role.slug}`}
                     >
@@ -109,7 +109,7 @@ export default function Governance() {
       </div>
 
       <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="governance-callouts">
-        <Link to="/governance/proposals" className="card p-6 hover:border-[#476B6B] transition" data-testid="link-proposals">
+        <Link to="/lead/proposals" className="card p-6 hover:border-[#476B6B] transition" data-testid="link-proposals">
           <Vote size={20} strokeWidth={1.5} className="text-[#C9A961]" />
           <h3 className="font-serif text-xl mt-3">Proposals & voting</h3>
           <p className="text-sm text-[#5C6B6B] mt-1">Read every proposal in the open. Governance members vote. Anyone can debate.</p>

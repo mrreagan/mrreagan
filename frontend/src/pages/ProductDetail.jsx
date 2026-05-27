@@ -21,8 +21,8 @@ export default function ProductDetail() {
 
   return (
     <div className="container-page py-12" data-testid="product-detail-page">
-      <Link to="/shop" className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B] mb-6">
-        <ArrowLeft size={14} strokeWidth={1.5} /> Back to shop
+      <Link to="/equip" className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B] mb-6">
+        <ArrowLeft size={14} strokeWidth={1.5} /> Back to Equip
       </Link>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <div className="card overflow-hidden aspect-square bg-[#F4F1EA] flex items-center justify-center">
@@ -37,7 +37,7 @@ export default function ProductDetail() {
             <p className="text-xs uppercase tracking-wider text-[#C9A961] mt-2" data-testid="product-vendor-badge">
               By{" "}
               {p.vendor_slug ? (
-                <Link to={`/partners/${p.vendor_slug}`} className="text-[#476B6B] hover:underline">{p.vendor_name}</Link>
+                <Link to={`/partner/${p.vendor_slug}`} className="text-[#476B6B] hover:underline">{p.vendor_name}</Link>
               ) : (
                 <span className="text-[#476B6B]">{p.vendor_name}</span>
               )}
@@ -54,7 +54,7 @@ export default function ProductDetail() {
               <p className="text-sm text-[#1A2424] font-medium">This material is reserved.</p>
               <p className="text-xs text-[#5C6B6B] mt-2">{p.lock_reason}</p>
               {p.workshop_id && (
-                <Link to={`/workshops`} className="btn-outline mt-4 text-sm" data-testid="product-find-workshop">
+                <Link to={`/practice`} className="btn-outline mt-4 text-sm" data-testid="product-find-workshop">
                   Find workshops
                 </Link>
               )}
@@ -85,7 +85,7 @@ export default function ProductDetail() {
               <ShareButton
                 surface="product"
                 surfaceId={p.id}
-                path={`/shop/${p.id}`}
+                path={`/equip/${p.id}`}
                 title={p.name}
                 emailSubject={`From the Birthright shop: ${p.name}`}
                 showLabel

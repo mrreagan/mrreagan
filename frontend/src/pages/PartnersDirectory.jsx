@@ -76,7 +76,7 @@ export default function PartnersDirectory() {
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B] max-w-2xl">
         The people and organizations who carry Birthright's work into communities, classrooms, and clinics. Want to join us?{" "}
-        <Link to="/partners/apply" className="text-[#476B6B] underline" data-testid="apply-cta">Apply to partner</Link>.
+        <Link to="/partner/apply" className="text-[#476B6B] underline" data-testid="apply-cta">Apply to partner</Link>.
       </p>
 
       {samplesMode && (
@@ -148,7 +148,7 @@ export default function PartnersDirectory() {
         ) : partners.length === 0 ? (
           <div className="col-span-full card p-10 text-center">
             <p className="font-serif text-lg">No partners match this filter yet.</p>
-            <p className="text-xs text-[#5C6B6B] mt-2">Help us build the network — <Link to="/partners/apply" className="underline text-[#476B6B]">apply</Link>.</p>
+            <p className="text-xs text-[#5C6B6B] mt-2">Help us build the network — <Link to="/partner/apply" className="underline text-[#476B6B]">apply</Link>.</p>
           </div>
         ) : (
           partners.map((p) => <PartnerCard key={p.id} profile={p} sampleMode={samplesMode} />)
@@ -165,7 +165,7 @@ function PartnerCard({ profile, sampleMode }) {
   const isSample = profile.is_sample;
   const isFeatured = profile.featured_until && new Date(profile.featured_until) > new Date();
   const isFounding = profile.is_founding_partner;
-  const goToProfile = () => navigate(`/partners/${profile.slug}`);
+  const goToProfile = () => navigate(`/partner/${profile.slug}`);
   return (
     <div
       role="link"
@@ -234,7 +234,7 @@ function PartnerCard({ profile, sampleMode }) {
           <ShareButton
             surface="partner"
             surfaceId={profile.slug}
-            path={`/partners/${profile.slug}`}
+            path={`/partner/${profile.slug}`}
             title={profile.display_name}
             emailSubject={`Birthright partner: ${profile.display_name}`}
             size="sm"

@@ -114,7 +114,7 @@ export default function WorkshopHub() {
     return (
       <div className="container-page py-20 text-center">
         <p>You're not registered for this workshop.</p>
-        <Link to="/workshops" className="btn-primary mt-4 inline-flex">Browse workshops</Link>
+        <Link to="/practice" className="btn-primary mt-4 inline-flex">Browse workshops</Link>
       </div>
     );
   }

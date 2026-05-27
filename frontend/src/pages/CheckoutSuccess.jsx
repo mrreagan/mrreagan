@@ -42,7 +42,7 @@ function PaidState({ type }) {
             Return home
           </Link>
         )}
-        <Link to="/workshops" className="btn-outline">
+        <Link to="/practice" className="btn-outline">
           Explore more
         </Link>
       </div>

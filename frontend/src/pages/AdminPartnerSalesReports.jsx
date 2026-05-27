@@ -106,7 +106,7 @@ export default function AdminPartnerSalesReports() {
               <div>
                 <h2 className="font-serif text-2xl">{open.partner_slug}</h2>
                 <p className="text-xs text-[#5C6B6B] mt-1">
-                  {open.partner_type} · <a href={`/partners/${open.partner_slug}`} target="_blank" rel="noreferrer" className="text-[#476B6B] hover:underline inline-flex items-center gap-1">profile <ExternalLink size={10} /></a>
+                  {open.partner_type} · <a href={`/partner/${open.partner_slug}`} target="_blank" rel="noreferrer" className="text-[#476B6B] hover:underline inline-flex items-center gap-1">profile <ExternalLink size={10} /></a>
                 </p>
               </div>
               <button onClick={() => setOpen(null)}><X size={20} strokeWidth={1.5} /></button>

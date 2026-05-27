@@ -72,7 +72,7 @@ function EmptyWorkshops() {
   return (
     <div className="card p-10 text-center" data-testid="dashboard-no-workshops">
       <p className="text-[#5C6B6B]">You haven't registered for any workshops yet.</p>
-      <Link to="/workshops" className="btn-primary mt-5 inline-flex">
+      <Link to="/practice" className="btn-primary mt-5 inline-flex">
         Find a workshop
       </Link>
     </div>
@@ -111,7 +111,7 @@ function WorkshopsSection({ registrations, onCancelled }) {
     <section className="mt-10">
       <div className="flex items-center justify-between mb-5">
         <h2 className="font-serif text-2xl">My workshops</h2>
-        <Link to="/workshops" className="text-sm text-[#476B6B] hover:underline">
+        <Link to="/practice" className="text-sm text-[#476B6B] hover:underline">
           Browse more
         </Link>
       </div>
@@ -163,7 +163,7 @@ function OrdersSection({ orders }) {
       {orders.length === 0 ? (
         <div className="card p-8 text-center" data-testid="dashboard-no-orders">
           <p className="text-sm text-[#5C6B6B]">No orders yet.</p>
-          <Link to="/shop" className="btn-outline mt-4 inline-flex">
+          <Link to="/equip" className="btn-outline mt-4 inline-flex">
             Visit the shop
           </Link>
         </div>
@@ -237,7 +237,7 @@ export default function Dashboard() {
           </div>
           <div className="flex gap-2">
             <Link to="/dashboard/partner" className="btn-outline" data-testid="partner-workspace-link">Open workspace</Link>
-            <Link to="/partners/apply" className="btn-primary" data-testid="apply-partner-link">Apply</Link>
+            <Link to="/partner/apply" className="btn-primary" data-testid="apply-partner-link">Apply</Link>
           </div>
         </div>
       </section>

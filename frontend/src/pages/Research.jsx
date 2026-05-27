@@ -149,7 +149,7 @@ function ArtifactCard({ artifact, highlight }) {
       <h3 className="font-serif text-xl mt-2" data-testid={`research-title-${artifact.id}`}>{artifact.title}</h3>
       <p className="text-xs text-[#5C6B6B] mt-1">
         {artifact.authors} ·{" "}
-        <Link to={`/partners/${artifact.partner_slug}`} className="hover:underline text-[#476B6B]">{artifact.partner_display_name}</Link>
+        <Link to={`/partner/${artifact.partner_slug}`} className="hover:underline text-[#476B6B]">{artifact.partner_display_name}</Link>
         {" · "}{new Date(artifact.publication_date).toLocaleDateString()}
       </p>
       <p className="text-sm text-[#1A2424] mt-3 leading-relaxed line-clamp-4">{artifact.abstract}</p>

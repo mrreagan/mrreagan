@@ -259,7 +259,7 @@ export default function Experiences() {
 function TierWorkshopRow({ w }) {
   return (
     <Link
-      to={`/workshops/${w.slug}`}
+      to={`/practice/${w.slug}`}
       className="group flex items-start gap-3 rounded-lg border border-[#E5E1D8] p-3 hover:border-[#476B6B] transition"
       data-testid={`tier-workshop-${w.slug}`}
     >
@@ -279,7 +279,7 @@ function TierWorkshopRow({ w }) {
 
 function WorkshopCard({ w }) {
   const navigate = useNavigate();
-  const go = () => navigate(`/workshops/${w.slug}`);
+  const go = () => navigate(`/practice/${w.slug}`);
   return (
     <div
       role="link"
@@ -310,7 +310,7 @@ function WorkshopCard({ w }) {
             <ShareButton
               surface="workshop"
               surfaceId={w.id}
-              path={`/workshops/${w.slug}`}
+              path={`/practice/${w.slug}`}
               title={w.title}
               emailSubject={`Workshop: ${w.title}`}
               size="sm"

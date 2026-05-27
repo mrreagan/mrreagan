@@ -27,7 +27,7 @@ export default function AiOverview() {
           title="AI Research Collaborator"
           eyebrow="For research partners"
           body="A peer-level scholarly collaborator: synthesize literature, map a topic's landscape, generate tractable research questions, critique your draft's methodology, plus drafting helpers (summarize notes, suggest tags, polish). Anchored to attachment, family systems, and adjacent literatures — never fabricates citations."
-          to="/partners/apply?partner_type=research"
+          to="/partner/apply?partner_type=research"
           ctaLabel="Apply as research partner"
         />
         <ToolCard
@@ -35,7 +35,7 @@ export default function AiOverview() {
           title="Vendor Product AI"
           eyebrow="For vendor partners"
           body="Write product descriptions in our brand voice, suggest a price tier from the catalog, draft marketing blurbs, and generate product images with Nano Banana — all directly inside your product editor."
-          to="/partners/apply?partner_type=vendor"
+          to="/partner/apply?partner_type=vendor"
           ctaLabel="Apply as vendor partner"
         />
       </div>
@@ -92,7 +92,7 @@ export default function AiOverview() {
         </p>
         <div className="flex flex-wrap gap-3 mt-4">
           <Link to="/login" className="btn-primary text-sm" data-testid="ai-overview-signin">Sign in</Link>
-          <Link to="/partners/apply" className="btn-outline text-sm" data-testid="ai-overview-apply">Apply as a partner</Link>
+          <Link to="/partner/apply" className="btn-outline text-sm" data-testid="ai-overview-apply">Apply as a partner</Link>
         </div>
       </div>
     </div>

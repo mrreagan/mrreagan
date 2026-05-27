@@ -9,7 +9,7 @@ function EmptyCart() {
   return (
     <div className="card p-12 text-center mt-8" data-testid="cart-empty">
       <p className="text-[#5C6B6B]">Your cart is empty.</p>
-      <Link to="/shop" className="btn-primary mt-6 inline-flex">
+      <Link to="/equip" className="btn-primary mt-6 inline-flex">
         Visit the shop
       </Link>
     </div>
@@ -85,7 +85,7 @@ export default function Cart() {
 
   return (
     <div className="container-page py-16" data-testid="cart-page">
-      <Link to="/shop" className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B] mb-6">
+      <Link to="/equip" className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B] mb-6">
         <ArrowLeft size={14} strokeWidth={1.5} /> Continue shopping
       </Link>
       <h1 className="editorial-h1">Your cart</h1>

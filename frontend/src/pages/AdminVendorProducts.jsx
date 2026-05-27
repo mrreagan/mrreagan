@@ -137,7 +137,7 @@ export default function AdminVendorProducts() {
                   </td>
                   <td className="p-3 text-xs">
                     {p.vendor_slug ? (
-                      <Link to={`/partners/${p.vendor_slug}`} className="text-[#476B6B] hover:underline" data-testid={`admin-vendor-link-${p.id}`}>
+                      <Link to={`/partner/${p.vendor_slug}`} className="text-[#476B6B] hover:underline" data-testid={`admin-vendor-link-${p.id}`}>
                         {p.vendor_name || "(unnamed)"}
                       </Link>
                     ) : (
@@ -155,7 +155,7 @@ export default function AdminVendorProducts() {
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-2 justify-end flex-wrap">
-                      <Link to={`/shop/${p.id}`} className="p-2 rounded-full hover:bg-[#FAF8F5] text-[#476B6B]" title="View product" data-testid={`admin-vendor-view-${p.id}`}>
+                      <Link to={`/equip/${p.id}`} className="p-2 rounded-full hover:bg-[#FAF8F5] text-[#476B6B]" title="View product" data-testid={`admin-vendor-view-${p.id}`}>
                         <Eye size={14} strokeWidth={1.5} />
                       </Link>
                       {p.moderation_status === "active" && (

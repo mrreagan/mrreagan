@@ -57,7 +57,7 @@ function FounderCard({ product }) {
       className="rounded-2xl bg-[#FAF8F5] text-[#1A2424] overflow-hidden flex flex-col shadow-lg"
       data-testid={`founder-collection-card-${product.id}`}
     >
-      <Link to={`/shop/${product.id}`} className="block aspect-[4/3] bg-[#F4F1EA] overflow-hidden">
+      <Link to={`/equip/${product.id}`} className="block aspect-[4/3] bg-[#F4F1EA] overflow-hidden">
         <img
           src={product.image_url}
           alt={product.name}
@@ -65,7 +65,7 @@ function FounderCard({ product }) {
         />
       </Link>
       <div className="p-5 flex-1 flex flex-col">
-        <Link to={`/shop/${product.id}`} className="font-serif text-xl leading-tight hover:text-[#476B6B]">
+        <Link to={`/equip/${product.id}`} className="font-serif text-xl leading-tight hover:text-[#476B6B]">
           {product.name}
         </Link>
         <p className="text-xs text-[#5C6B6B] mt-2 line-clamp-3 flex-1">{product.description}</p>

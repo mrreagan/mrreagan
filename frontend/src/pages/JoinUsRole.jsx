@@ -25,7 +25,7 @@ export default function JoinUsRole() {
   useEffect(() => {
     api.get(`/foundation-roles/${slug}`)
       .then((r) => setRole(r.data))
-      .catch(() => navigate("/join-us"))
+      .catch(() => navigate("/join"))
       .finally(() => setLoading(false));
   }, [slug, navigate]);
 
@@ -72,7 +72,7 @@ export default function JoinUsRole() {
             the governing board will be in touch within two weeks. A confirmation email is on its
             way to <strong>{form.email}</strong>.
           </p>
-          <Link to="/join-us" className="btn-outline inline-flex items-center gap-2 mt-6" data-testid="back-to-roles">
+          <Link to="/join" className="btn-outline inline-flex items-center gap-2 mt-6" data-testid="back-to-roles">
             <ArrowLeft size={14} strokeWidth={1.5} /> Back to open roles
           </Link>
         </div>
@@ -82,7 +82,7 @@ export default function JoinUsRole() {
 
   return (
     <div className="container-page py-12" data-testid="join-us-role-page">
-      <Link to="/join-us" className="inline-flex items-center gap-1 text-sm text-[#476B6B] hover:underline" data-testid="back-link">
+      <Link to="/join" className="inline-flex items-center gap-1 text-sm text-[#476B6B] hover:underline" data-testid="back-link">
         <ArrowLeft size={14} strokeWidth={1.5} /> All open roles
       </Link>
 

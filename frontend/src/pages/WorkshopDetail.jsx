@@ -50,7 +50,7 @@ export default function WorkshopDetail() {
             <ShareButton
               surface="workshop"
               surfaceId={workshop.id}
-              path={`/workshops/${workshop.slug}`}
+              path={`/practice/${workshop.slug}`}
               title={workshop.title}
               emailSubject={`Workshop: ${workshop.title}`}
               showLabel

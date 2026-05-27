@@ -102,7 +102,7 @@ function RoleCard({ role }) {
               size="sm"
             />
             <Link
-              to={`/join-us/${role.slug}`}
+              to={`/join/${role.slug}`}
               className="btn-primary inline-flex items-center gap-2 text-sm"
               data-testid={`apply-${role.slug}`}
             >

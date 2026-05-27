@@ -236,7 +236,7 @@ export default function VendorProducts() {
           <ShoppingBag size={28} strokeWidth={1.25} className="mx-auto text-[#C9A961]" />
           <p className="font-serif text-xl mt-3">No active vendor profile yet</p>
           <p className="text-sm text-[#5C6B6B] mt-2">Apply to become a vendor partner. Once approved you'll be able to publish products here.</p>
-          <Link to="/partners/apply" className="btn-primary mt-6 inline-block">Apply now</Link>
+          <Link to="/partner/apply" className="btn-primary mt-6 inline-block">Apply now</Link>
         </div>
       ) : (
         <>
@@ -315,7 +315,7 @@ export default function VendorProducts() {
                       <td className="p-3"><StatusBadge status={p.moderation_status} /></td>
                       <td className="p-3">
                         <div className="flex items-center gap-2 justify-end">
-                          <Link to={`/shop/${p.id}`} className="p-2 rounded-full hover:bg-[#FAF8F5] text-[#476B6B]" title="View public page" data-testid={`vendor-product-view-${p.id}`}>
+                          <Link to={`/equip/${p.id}`} className="p-2 rounded-full hover:bg-[#FAF8F5] text-[#476B6B]" title="View public page" data-testid={`vendor-product-view-${p.id}`}>
                             <Eye size={14} strokeWidth={1.5} />
                           </Link>
                           <button onClick={() => openEdit(p)} className="p-2 rounded-full hover:bg-[#FAF8F5] text-[#476B6B]" title="Edit" data-testid={`vendor-product-edit-${p.id}`}>

@@ -80,7 +80,7 @@ export default function PartnerSubscribe() {
           <AlertCircle size={16} strokeWidth={1.5} className="text-[#C9A961] mt-0.5 shrink-0" />
           <div>
             <p className="font-medium text-sm">You need an approved {TYPE_LABEL[partnerType]} partner profile before you can subscribe.</p>
-            <Link to="/partners/apply" className="text-sm text-[#476B6B] underline mt-1 inline-block">Apply now</Link>
+            <Link to="/partner/apply" className="text-sm text-[#476B6B] underline mt-1 inline-block">Apply now</Link>
           </div>
         </div>
       )}
@@ -211,7 +211,7 @@ export function SubscriptionStatusCard({ profile, subscription, onChanged }) {
       <div className="card p-4 bg-[#FAF8F5] border-[#C9A961]/40" data-testid={`sub-status-${profile.partner_type}-inactive`}>
         <p className="label inline-flex items-center gap-1"><Clock size={11} strokeWidth={1.5} /> No active subscription</p>
         <p className="text-sm mt-1">Your {profile.partner_type} profile is approved but unlicensed. Subscribe to activate revenue share and partner perks.</p>
-        <Link to={`/partners/subscribe?type=${profile.partner_type}`} className="btn-primary inline-block mt-3 text-xs">View plans</Link>
+        <Link to={`/partner/subscribe?type=${profile.partner_type}`} className="btn-primary inline-block mt-3 text-xs">View plans</Link>
       </div>
     );
   }
@@ -233,7 +233,7 @@ export function SubscriptionStatusCard({ profile, subscription, onChanged }) {
       <p className="text-xs text-[#5C6B6B]">Expires {expires.toLocaleDateString()}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {expiringSoon && (
-          <Link to={`/partners/subscribe?type=${profile.partner_type}`} className="btn-outline text-xs" data-testid={`renew-${profile.partner_type}`}>
+          <Link to={`/partner/subscribe?type=${profile.partner_type}`} className="btn-outline text-xs" data-testid={`renew-${profile.partner_type}`}>
             Renew
           </Link>
         )}

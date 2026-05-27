@@ -60,7 +60,7 @@ export default function FacilitatorProfile() {
               <span className="label">Workshops</span>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {f.workshops.map((w) => (
-                  <Link key={w.id} to={`/workshops/${w.slug}`} className="card card-hover p-5">
+                  <Link key={w.id} to={`/practice/${w.slug}`} className="card card-hover p-5">
                     <div className="text-xs text-[#5C6B6B] inline-flex items-center gap-1"><Calendar size={11} strokeWidth={1.5} />{formatDate(w.start_date)}</div>
                     <p className="font-serif text-lg mt-1">{w.title}</p>
                   </Link>

@@ -36,7 +36,7 @@ export default function About() {
               <p className="text-sm text-white/80 mt-2">
                 Sponsor a participant who couldn't otherwise attend, or join our community of regular givers.
               </p>
-              <Link to="/sponsorship" className="inline-flex items-center gap-1 text-sm font-medium text-[#C9A961] mt-4 hover:gap-2 transition-all" data-testid="about-sponsor-link">
+              <Link to="/sponsor" className="inline-flex items-center gap-1 text-sm font-medium text-[#C9A961] mt-4 hover:gap-2 transition-all" data-testid="about-sponsor-link">
                 Become a sponsor <ArrowRight size={14} strokeWidth={1.5} />
               </Link>
             </div>

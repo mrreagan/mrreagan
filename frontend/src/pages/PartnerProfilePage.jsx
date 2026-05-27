@@ -29,7 +29,7 @@ export default function PartnerProfilePage() {
     return (
       <div className="container-page py-16 text-center" data-testid="partner-not-found">
         <p className="font-serif text-2xl">Partner not found.</p>
-        <Link to="/partners" className="btn-outline mt-6 inline-block">Back to directory</Link>
+        <Link to="/partner" className="btn-outline mt-6 inline-block">Back to directory</Link>
       </div>
     );
   }
@@ -37,7 +37,7 @@ export default function PartnerProfilePage() {
 
   return (
     <div className="container-page py-12 max-w-3xl" data-testid="partner-profile-page">
-      <Link to="/partners" className="inline-flex items-center gap-1 text-xs text-[#476B6B] hover:underline">
+      <Link to="/partner" className="inline-flex items-center gap-1 text-xs text-[#476B6B] hover:underline">
         <ArrowLeft size={12} strokeWidth={1.5} /> Back to directory
       </Link>
       {profile.is_sample && (
@@ -47,7 +47,7 @@ export default function PartnerProfilePage() {
           </p>
           <p className="text-sm text-[#1A2424] mt-1">
             This is an illustrative persona showing what a great Birthright partner profile looks like. Not a real, active partner.{" "}
-            <Link to="/partners/apply" className="underline text-[#476B6B]">Apply to become a partner</Link>.
+            <Link to="/partner/apply" className="underline text-[#476B6B]">Apply to become a partner</Link>.
           </p>
         </div>
       )}
@@ -88,7 +88,7 @@ export default function PartnerProfilePage() {
             <ShareButton
               surface="partner"
               surfaceId={profile.slug}
-              path={`/partners/${profile.slug}`}
+              path={`/partner/${profile.slug}`}
               title={profile.display_name}
               emailSubject={`Birthright partner: ${profile.display_name}`}
               size="sm"

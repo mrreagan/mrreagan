@@ -58,7 +58,7 @@ export default function PartnerDashboard() {
         <div className="card p-10 text-center" data-testid="empty-state">
           <p className="font-serif text-xl">You haven't applied yet.</p>
           <p className="text-sm text-[#5C6B6B] mt-2">Become a Birthright partner — facilitator, community ally, researcher, or vendor.</p>
-          <Link to="/partners/apply" className="btn-primary mt-6 inline-block">Apply now</Link>
+          <Link to="/partner/apply" className="btn-primary mt-6 inline-block">Apply now</Link>
         </div>
       )}
 
@@ -136,7 +136,7 @@ export default function PartnerDashboard() {
       <section className="mt-10" data-testid="my-applications-section">
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-xl">Your applications</h2>
-          <Link to="/partners/apply" className="btn-outline text-xs" data-testid="apply-another-btn">Apply for another type</Link>
+          <Link to="/partner/apply" className="btn-outline text-xs" data-testid="apply-another-btn">Apply for another type</Link>
         </div>
         {apps.length === 0 ? (
           <p className="text-sm text-[#5C6B6B] mt-3">No applications yet.</p>
@@ -223,7 +223,7 @@ function ProfileCard({ profile, onChange }) {
               <Pencil size={11} strokeWidth={1.5} /> Edit
             </button>
             {profile.status === "active" && (
-              <Link to={`/partners/${profile.slug}`} className="btn-outline text-xs">View public page</Link>
+              <Link to={`/partner/${profile.slug}`} className="btn-outline text-xs">View public page</Link>
             )}
             {profile.partner_type === "vendor" && profile.status === "active" && (
               <Link to="/dashboard/vendor/products" className="btn-primary text-xs" data-testid={`manage-vendor-products-${profile.id}`}>

@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Toaster } from "sonner";
 
 import "@/App.css";
@@ -91,6 +91,24 @@ function ProtectedRoute({ children, roles, allowOmbudsman }) {
 const FACILITATOR_ROLES = ["facilitator", "admin"];
 const ADMIN_ROLES = ["admin"];
 
+// Slug-preserving redirects from old canonical paths to new canonical paths.
+// react-router's <Navigate> doesn't templatize :params, so we read the param
+// via useParams and build the destination URL ourselves. The 'replace' prop
+// keeps the old URL out of browser history.
+const SlugRedirect = ({ to }) => {
+  const params = useParams();
+  const dest = Object.keys(params).reduce(
+    (acc, key) => acc.replace(`:${key}`, params[key]),
+    to
+  );
+  return <Navigate to={dest} replace />;
+};
+
+const WorkshopRedirect  = () => <SlugRedirect to="/practice/:slug" />;
+const ShopRedirect      = () => <SlugRedirect to="/equip/:id" />;
+const PartnerRedirect   = () => <SlugRedirect to="/partner/:slug" />;
+const JoinUsRedirect    = () => <SlugRedirect to="/join/:slug" />;
+
 function AppRoutes() {
   return (
     <Routes>
@@ -98,31 +116,60 @@ function AppRoutes() {
       <Route path="/about" element={<About />} />
       <Route path="/ai" element={<AiOverview />} />
       <Route path="/mission" element={<Mission />} />
-      <Route path="/governance" element={<Governance />} />
-      <Route path="/education" element={<Navigate to="/experiences" replace />} />
+
+      {/* Lead — canonical path is /lead. /governance preserved as redirect. */}
+      <Route path="/lead" element={<Governance />} />
+      <Route path="/lead/proposals" element={<GovernanceProposals />} />
+      <Route path="/governance" element={<Navigate to="/lead" replace />} />
+      <Route path="/governance/proposals" element={<Navigate to="/lead/proposals" replace />} />
+
       <Route path="/contact" element={<Contact />} />
-      <Route path="/experiences" element={<Experiences />} />
-      <Route path="/workshops" element={<Navigate to="/experiences" replace />} />
-      <Route path="/workshops/:slug" element={<WorkshopDetail />} />
-      <Route path="/shop" element={<Shop />} />
-      <Route path="/shop/:id" element={<ProductDetail />} />
+
+      {/* Practice — canonical path is /practice. /experiences and /workshops preserved as redirects. */}
+      <Route path="/practice" element={<Experiences />} />
+      <Route path="/practice/:slug" element={<WorkshopDetail />} />
+      <Route path="/experiences" element={<Navigate to="/practice" replace />} />
+      <Route path="/education" element={<Navigate to="/practice" replace />} />
+      <Route path="/workshops" element={<Navigate to="/practice" replace />} />
+      <Route path="/workshops/:slug" element={<WorkshopRedirect />} />
+
+      {/* Equip — canonical path is /equip. /shop preserved as redirect. */}
+      <Route path="/equip" element={<Shop />} />
+      <Route path="/equip/:id" element={<ProductDetail />} />
+      <Route path="/shop" element={<Navigate to="/equip" replace />} />
+      <Route path="/shop/:id" element={<ShopRedirect />} />
+
       <Route path="/cart" element={<Cart />} />
       <Route path="/checkout/success" element={<CheckoutSuccess />} />
-      <Route path="/sponsorship" element={<Sponsorship />} />
+
+      {/* Sponsor — canonical /sponsor. /sponsorship preserved as redirect. */}
+      <Route path="/sponsor" element={<Sponsorship />} />
+      <Route path="/sponsorship" element={<Navigate to="/sponsor" replace />} />
+
       <Route path="/facilitators" element={<Facilitators />} />
       <Route path="/facilitators/:slug" element={<FacilitatorProfile />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reviews" element={<ReviewsBrowser />} />
-      <Route path="/governance/proposals" element={<GovernanceProposals />} />
       <Route path="/legal/indemnification" element={<IndemnificationPage />} />
-      <Route path="/partners" element={<PartnersDirectory />} />
-      <Route path="/partners/apply" element={<PartnerApply />} />
-      <Route path="/partners/subscribe" element={<PartnerSubscribe />} />
-      <Route path="/partners/:slug" element={<PartnerProfilePage />} />
-      <Route path="/join-us" element={<JoinUs />} />
-      <Route path="/join-us/:slug" element={<JoinUsRole />} />
-      <Route path="/featured" element={<Navigate to="/partners" replace />} />
+
+      {/* Partner — canonical /partner. /partners preserved as redirect. */}
+      <Route path="/partner" element={<PartnersDirectory />} />
+      <Route path="/partner/apply" element={<PartnerApply />} />
+      <Route path="/partner/subscribe" element={<PartnerSubscribe />} />
+      <Route path="/partner/:slug" element={<PartnerProfilePage />} />
+      <Route path="/partners" element={<Navigate to="/partner" replace />} />
+      <Route path="/partners/apply" element={<Navigate to="/partner/apply" replace />} />
+      <Route path="/partners/subscribe" element={<Navigate to="/partner/subscribe" replace />} />
+      <Route path="/partners/:slug" element={<PartnerRedirect />} />
+
+      {/* Join — canonical /join. /join-us preserved as redirect. */}
+      <Route path="/join" element={<JoinUs />} />
+      <Route path="/join/:slug" element={<JoinUsRole />} />
+      <Route path="/join-us" element={<Navigate to="/join" replace />} />
+      <Route path="/join-us/:slug" element={<JoinUsRedirect />} />
+
+      <Route path="/featured" element={<Navigate to="/partner" replace />} />
       <Route path="/research" element={<Research />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
