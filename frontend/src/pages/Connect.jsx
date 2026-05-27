@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Hash, Lock, Users, Send, Calendar, Plus, ChevronLeft, ExternalLink, Circle,
@@ -17,19 +17,68 @@ function wsUrlFor(channelId) {
 }
 
 // ---------------------------------------------------------------------------
+// Public preview — shown to logged-out visitors so /connect isn't a dead-end.
+// ---------------------------------------------------------------------------
+function ConnectPublicPreview() {
+  return (
+    <div className="container-page py-12" data-testid="connect-public-preview">
+      <span className="label">Connect</span>
+      <h1 className="editorial-h1 mt-2">Channels, conversations, meetings.</h1>
+      <div className="divider-flame" />
+      <p className="text-base text-[#5C6B6B] max-w-2xl">
+        A Teams-style space for the Birthright community. Sign in to enter the channels, chat
+        with members, and schedule meetings together.
+      </p>
+
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[
+          { n: "01", h: "Pick a channel", b: "#announcements for foundation-wide news. #general for open conversation. Private channels are role-gated to facilitators, partners, or alumni." },
+          { n: "02", h: "Chat in real time", b: "Messages persist and appear instantly. Presence shows who's online. Reactions, @-mentions and threads are coming soon." },
+          { n: "03", h: "Schedule meetings", b: "Each channel has a Meetings tab. Anyone can download the .ics invite and add it to Apple/Google/Outlook calendars." },
+        ].map((s) => (
+          <div key={s.n} className="card p-5">
+            <span className="label">{s.n}</span>
+            <p className="font-serif text-lg mt-1">{s.h}</p>
+            <p className="text-xs text-[#5C6B6B] mt-2 leading-relaxed">{s.b}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-10 rounded-2xl border-2 border-[#476B6B] bg-[#F4F1EA] p-6 max-w-2xl" data-testid="connect-public-cta">
+        <p className="font-serif text-xl">Ready to join the conversation?</p>
+        <p className="text-sm text-[#5C6B6B] mt-2 leading-relaxed">
+          Connect is available to anyone with a Birthright account — free to create.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            to="/login?next=/connect"
+            className="btn-primary text-xs inline-flex items-center gap-1"
+            data-testid="connect-public-signin"
+          >
+            Sign in →
+          </Link>
+          <Link
+            to="/register?next=/connect"
+            className="btn-outline text-xs"
+            data-testid="connect-public-register"
+          >
+            Create a free account
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Top-level page
 // ---------------------------------------------------------------------------
 export default function Connect() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const [channels, setChannels] = useState([]);
   const [active, setActive] = useState(null); // channel id
   const [loadingChannels, setLoadingChannels] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  useEffect(() => {
-    if (!loading && !user) navigate("/login", { replace: true });
-  }, [user, loading, navigate]);
 
   const refreshChannels = useCallback(async () => {
     try {
@@ -45,9 +94,13 @@ export default function Connect() {
 
   useEffect(() => { if (user) refreshChannels(); }, [user, refreshChannels]);
 
-  if (loading || !user) {
+  if (loading) {
     return <p className="container-page py-20 text-sm text-[#5C6B6B]">Loading…</p>;
   }
+
+  // Public preview for logged-out visitors — explains Connect and invites
+  // them to sign in rather than slamming them into a /login redirect.
+  if (!user) return <ConnectPublicPreview />;
 
   const activeChannel = channels.find((c) => c.id === active);
 

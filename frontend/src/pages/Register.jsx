@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { BrandLogo } from "../components/BrandLogo";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", password: "" });
   const [loading, setLoading] = useState(false);
 
@@ -16,7 +17,8 @@ export default function Register() {
     try {
       await register(form);
       toast.success("Welcome to birthright");
-      navigate("/dashboard");
+      const next = new URLSearchParams(location.search).get("next");
+      navigate(next || "/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.detail || "Registration failed");
     } finally {

@@ -174,14 +174,7 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route
-        path="/connect"
-        element={
-          <ProtectedRoute>
-            <Connect />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/connect" element={<Connect />} />
 
       <Route
         path="/dashboard"
