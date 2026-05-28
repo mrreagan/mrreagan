@@ -76,6 +76,7 @@ import AiWallet from "./pages/AiWallet";
 import AdminAiUsage from "./pages/AdminAiUsage";
 import AiOverview from "./pages/AiOverview";
 import Connect from "./pages/Connect";
+import ScrollToTop from "./components/ScrollToTop";
 
 function ProtectedRoute({ children, roles, allowOmbudsman }) {
   const { user, loading } = useAuth();
@@ -111,8 +112,10 @@ const JoinUsRedirect    = () => <SlugRedirect to="/join/:slug" />;
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
       <Route path="/ai" element={<AiOverview />} />
       <Route path="/mission" element={<Mission />} />
@@ -475,7 +478,8 @@ function AppRoutes() {
       />
 
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }
 
