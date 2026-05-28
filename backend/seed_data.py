@@ -80,7 +80,7 @@ def _build_foundation_content() -> dict:
 def _build_governing_members() -> list[dict]:
     return [
         {"id": gen_id(), "name": "Dr. Aurelia Mendez", "title": "Board Chair & Co-Founder", "bio": "Aurelia spent two decades in family medicine before turning her attention full-time to relational education. She holds a doctorate in clinical psychology.", "image_url": "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=600", "order": 1},
-        {"id": gen_id(), "name": "James Reagan", "title": "Executive Director", "bio": "James leads the foundation's operations and partnerships. A long-time advocate of attachment-informed community work.", "image_url": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600", "order": 2},
+        {"id": gen_id(), "name": "James Reagan", "title": "Executive Director", "bio": "James leads the foundation's operations and partnerships. A long-time advocate of attachment-informed community work.", "image_url": "/api/static/people/james-reagan.jpg", "order": 2},
         {"id": gen_id(), "name": "Reverend Tomas Ifeanyi", "title": "Director of Community Stewardship", "bio": "Tomas oversees facilitator training and ensures the work stays grounded in the lived experience of the people we serve.", "image_url": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600", "order": 3},
         {"id": gen_id(), "name": "Dr. Hannah Lin", "title": "Research Advisor", "bio": "Hannah translates emerging attachment research into curriculum and program evaluation methodology.", "image_url": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=600", "order": 4},
     ]

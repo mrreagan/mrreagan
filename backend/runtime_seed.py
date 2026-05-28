@@ -134,6 +134,24 @@ async def repair_known_broken_images(db) -> int:
     return repaired
 
 
+
+async def ensure_governing_member_images(db) -> int:
+    """Idempotently self-heal portraits for specific governing members so the
+    canonical image lives in our own static assets, not on third-party CDNs
+    that can rot. Currently fixes: James Reagan."""
+    fixes = {
+        "James Reagan": "/api/static/people/james-reagan.jpg",
+    }
+    count = 0
+    for name, target in fixes.items():
+        existing = await db.governing_members.find_one({"name": name}, {"_id": 0, "id": 1, "image_url": 1})
+        if existing and existing.get("image_url") != target:
+            await db.governing_members.update_one({"id": existing["id"]}, {"$set": {"image_url": target}})
+            logger.info(f"governing member portrait: updated '{name}' -> {target}")
+            count += 1
+    return count
+
+
 async def ensure_founder_collection_seeded(db) -> int:
     """Idempotently seed the Founder Collection — currently a single product:
     a Red + Navy hat pair sold together for $42. Identified by slug
