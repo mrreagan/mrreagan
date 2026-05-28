@@ -25,31 +25,29 @@ export default function About() {
           <p className="text-lg text-[#1A2424] leading-relaxed">
             {content?.about_text || "Loading..."}
           </p>
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-6 items-stretch">
-            <div className="flex flex-col gap-6">
-              <div className="card p-7">
-                <span className="label">Vision</span>
-                <p className="font-serif text-xl mt-3 leading-snug">{content?.vision}</p>
-              </div>
-              <div className="card p-7 bg-[#F4F1EA]" data-testid="legacy-tile">
-                <span className="label text-[#C9A961]">Legacy</span>
-                <blockquote className="mt-3">
-                  <p className="font-serif text-lg text-[#1A2424] leading-relaxed">
-                    &ldquo;Until now this has been a process supervised by professionals trained in EFT.
-                    But it is so valuable and so needed that I have simplified the process so that you,
-                    {" "}<em>dear reader</em>, can easily use it to change and grow your relationship.&rdquo;
-                  </p>
-                  <footer className="text-xs text-[#5C6B6B] mt-2">— Sue Johnson, 2008</footer>
-                </blockquote>
-                <blockquote className="mt-4 pt-4 border-t border-[#E5E1D8]">
-                  <p className="font-serif text-lg text-[#1A2424] leading-relaxed">
-                    &ldquo;Indeed.&rdquo;
-                  </p>
-                  <footer className="text-xs text-[#5C6B6B] mt-2">— James Reagan, 2026</footer>
-                </blockquote>
-              </div>
+          <div className="mt-12 flex flex-col gap-6">
+            <div className="card p-7">
+              <span className="label">Vision</span>
+              <p className="font-serif text-xl mt-3 leading-snug">{content?.vision}</p>
             </div>
-            <div className="card p-7 bg-[#476B6B] border-[#476B6B] text-white">
+            <div className="card p-7 bg-[#F4F1EA]" data-testid="legacy-tile">
+              <span className="label text-[#C9A961]">Legacy</span>
+              <blockquote className="mt-3">
+                <p className="font-serif text-lg text-[#1A2424] leading-relaxed">
+                  &ldquo;Until now this has been a process supervised by professionals trained in EFT.
+                  But it is so valuable and so needed that I have simplified the process so that you,
+                  {" "}<em>dear reader</em>, can easily use it to change and grow your relationship.&rdquo;
+                </p>
+                <footer className="text-xs text-[#5C6B6B] mt-2">— Sue Johnson, 2008</footer>
+              </blockquote>
+              <blockquote className="mt-4 pt-4 border-t border-[#E5E1D8]">
+                <p className="font-serif text-lg text-[#1A2424] leading-relaxed">
+                  &ldquo;Indeed.&rdquo;
+                </p>
+                <footer className="text-xs text-[#5C6B6B] mt-2">— James Reagan, 2026</footer>
+              </blockquote>
+            </div>
+            <div className="card p-7 !bg-[#476B6B] !border-[#476B6B] text-white">
               <Heart size={24} strokeWidth={1.5} className="text-[#C9A961]" />
               <p className="font-serif text-2xl mt-3 leading-snug" style={{ color: "white" }}>Support our work</p>
               <p className="text-sm text-white/80 mt-2">
