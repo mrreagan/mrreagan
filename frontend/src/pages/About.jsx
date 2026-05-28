@@ -42,6 +42,24 @@ export default function About() {
             </div>
           </div>
 
+          <div className="mt-6 card p-8 bg-[#F4F1EA]" data-testid="legacy-tile">
+            <span className="label text-[#C9A961]">Legacy</span>
+            <blockquote className="mt-4">
+              <p className="font-serif text-xl text-[#1A2424] leading-relaxed">
+                &ldquo;Until now this has been a process supervised by professionals trained in EFT.
+                But it is so valuable and so needed that I have simplified the process so that you,
+                {" "}<em>dear reader</em>, can easily use it to change and grow your relationship.&rdquo;
+              </p>
+              <footer className="text-sm text-[#5C6B6B] mt-3">— Sue Johnson, 2008</footer>
+            </blockquote>
+            <blockquote className="mt-5 pt-5 border-t border-[#E5E1D8]">
+              <p className="font-serif text-xl text-[#1A2424] leading-relaxed">
+                &ldquo;Indeed.&rdquo;
+              </p>
+              <footer className="text-sm text-[#5C6B6B] mt-3">— James Reagan, 2026</footer>
+            </blockquote>
+          </div>
+
           <div className="mt-14">
             <span className="label">Our values</span>
             <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
