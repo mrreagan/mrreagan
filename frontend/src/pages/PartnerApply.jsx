@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";import { toast } from "sonn
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import { Users, Briefcase, Microscope, Store, AlertCircle } from "lucide-react";
+import StudioVendorNudge from "../components/StudioVendorNudge";
 
 const TYPE_OPTIONS = [
   { value: "facilitator", label: "Facilitator", icon: Users, blurb: "Lead Birthright workshops or present your own attachment-science material." },
@@ -97,6 +98,8 @@ export default function PartnerApply() {
       <p className="text-sm text-[#5C6B6B]">
         Welcome, {user.first_name}. Tell us how you'd like to work alongside Birthright.
       </p>
+
+      <StudioVendorNudge className="mt-6" />
 
       {myApps.length > 0 && (
         <div className="card p-4 mt-6" data-testid="my-applications-summary">

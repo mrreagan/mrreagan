@@ -114,6 +114,7 @@ from routers.research_ai import router as research_ai_router
 from routers.vendor_ai import router as vendor_ai_router
 from routers.connect import router as connect_router, ws_router as connect_ws_router
 from routers.link_preview import router as link_preview_router
+from routers.studio import router as studio_router
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -179,6 +180,7 @@ api_router.include_router(vendor_ai_router)
 api_router.include_router(connect_router)
 api_router.include_router(connect_ws_router)
 api_router.include_router(link_preview_router)
+api_router.include_router(studio_router)
 
 
 @api_router.post("/webhook/stripe")

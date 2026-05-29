@@ -4,6 +4,7 @@ import api from "../lib/api";
 import { Users, Briefcase, Microscope, Store, Search, Sparkles } from "lucide-react";
 import ShareButton from "../components/ShareButton";
 import MessageButton from "../components/MessageButton";
+import StudioVendorNudge from "../components/StudioVendorNudge";
 
 const TYPE_CONFIG = {
   facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users, color: "#476B6B", description: "Practitioners trained to lead Birthright workshops." },
@@ -154,6 +155,8 @@ export default function PartnersDirectory() {
           partners.map((p) => <PartnerCard key={p.id} profile={p} sampleMode={samplesMode} />)
         )}
       </div>
+
+      <StudioVendorNudge variant="footer" className="mt-16 -mx-4 sm:mx-0 sm:rounded-3xl" />
     </div>
   );
 }

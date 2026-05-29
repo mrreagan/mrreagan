@@ -3,6 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
+import StudioVendorNudge from "../components/StudioVendorNudge";
 import { CheckCircle2, Clock, AlertCircle, TrendingUp } from "lucide-react";
 
 const TYPE_LABEL = {
@@ -59,6 +60,8 @@ export default function PartnerSubscribe() {
       <p className="text-sm text-[#5C6B6B] max-w-2xl">
         Subscription = license. The duration you choose is your license window — and shorter terms carry a higher revenue share for your work. Renew before expiry to stay licensed.
       </p>
+
+      <StudioVendorNudge className="mt-6 max-w-2xl" />
 
       <div className="flex flex-wrap gap-2 mt-6" data-testid="subscribe-type-tabs">
         {Object.keys(TYPE_LABEL).map((t) => (

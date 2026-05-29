@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Trash2, Lock, ShoppingBag, Search } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Lock, ShoppingBag, Search, Sparkles } from "lucide-react";
 
 const EMPTY = {
   name: "",
@@ -458,13 +458,22 @@ export default function AdminProducts() {
             {products.length} item{products.length === 1 ? "" : "s"} in the storefront.
           </p>
         </div>
-        <button
-          onClick={openNew}
-          className="btn-primary"
-          data-testid="admin-product-new-button"
-        >
-          <Plus size={16} strokeWidth={1.5} /> New product
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/admin/studio"
+            className="btn-outline inline-flex items-center gap-2"
+            data-testid="admin-product-studio-link"
+          >
+            <Sparkles size={14} strokeWidth={1.5} /> AI Studio
+          </Link>
+          <button
+            onClick={openNew}
+            className="btn-primary"
+            data-testid="admin-product-new-button"
+          >
+            <Plus size={16} strokeWidth={1.5} /> New product
+          </button>
+        </div>
       </div>
 
       <div className="mt-8 flex flex-wrap items-center gap-3" data-testid="admin-products-toolbar">

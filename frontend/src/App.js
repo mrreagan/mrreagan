@@ -34,6 +34,7 @@ import FacilitatorProfile from "./pages/FacilitatorProfile";
 import FacilitatorDashboard from "./pages/FacilitatorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminProducts from "./pages/AdminProducts";
+import AdminStudio from "./pages/AdminStudio";
 import AdminWorkshops from "./pages/AdminWorkshops";
 import PhotoModeration from "./pages/PhotoModeration";
 import ReviewsBrowser from "./pages/ReviewsBrowser";
@@ -240,6 +241,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminProducts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/studio"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminStudio />
           </ProtectedRoute>
         }
       />
