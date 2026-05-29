@@ -205,6 +205,24 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Frontend** — `/dashboard/reports` (MyReports, engagement + spending + optional partner earnings), `/admin/reports` (Foundation reports), `/admin/payouts` (per-partner liability + earned/paid tabs + inline mark-paid form). `PartnerEarningsCard` shows pending/lifetime/paid + referral link + Copy + recent attributions — rendered only for community partner profiles.
 - **Bumped to `v1.9.0`.** Iter-11 testing: backend **25/25 PASS**, frontend **100%** (`/app/test_reports/iteration_11.json`). Zero defects.
 
+## Iteration 23 — AI Studio Phase 1 + Phase 2 (Printful POD) (May 29, 2026)
+- **Goal**: Close the "Dream-Demo-Create" product pipeline. Phase 1 = Admin AI Studio (Claude copy + Nano Banana images with pre-prompt cost estimator). Phase 2 = one-click "Make fulfillable on Printful" to push drafts to a real POD store.
+- **Studio (Phase 1, verified working in iter23)**:
+  - `POST /api/studio/estimate` — pre-prompt $ cost using the 1.5× foundation passthrough; never touches LLMs (pure math).
+  - `POST /api/studio/generate` — uses `LlmChat.send_message_multimodal_response` (`gemini-3.1-flash-image-preview`) for images and Claude Sonnet 4.5 for per-audience copy variants. Saves PNGs to `/app/backend/static/products/`. Verified live: $0.0785 spend produced a 746 KB on-brand cap mockup + Claude copy "The Steady Cap" — wallet correctly debited.
+  - `GET /api/studio/drafts`, `POST /api/studio/drafts/{id}/publish` (requires non-zero price), `DELETE /api/studio/drafts/{id}` (best-effort image cleanup).
+- **Printful (Phase 2)**:
+  - `utils/printful_client.py` — minimal httpx wrapper. v1 `/products/{id}` for cost discovery, v1 `/store/products` to create Sync Products with single variant + file. Embroidered products (cap) handled with `file.type=embroidery_front` + variant.options `embroidery_type=flat` + `thread_colors=[#hex]`. Non-embroidered (tee/hoodie/mug) just need the file URL.
+  - `routers/printful.py`:
+    - `GET /api/printful/categories` (admin) — exposes the pre-mapped categories.
+    - `POST /api/printful/make-fulfillable` (admin) — atomic flow: variant lookup → base cost fetch → 2× rounded-to-$.95 retail price → `create_sync_product` → persist `printful_sync_product_id` + `fulfillable_via=printful` + auto-set `price` on the draft.
+    - `DELETE /api/printful/sync-products/{product_id}` (admin) — deletes the sync product on Printful and unlinks our doc.
+  - **Category map (MVP)**: `cap`=Yupoong 6606 Black ($13.29), `tee`=Bella+Canvas 3001 Black/M ($11.69), `hoodie`=Gildan 18500 Black/M ($22.19), `mug`=White Glossy 11oz ($5.95). Other 6 categories show a graceful "not yet supported" message.
+  - **Frontend** (`pages/AdminStudio.jsx`): every draft card now has a "Make fulfillable on Printful" button (or "✓ Fulfillable on Printful" badge + unlink when already linked). Auto-fills the price field after linking.
+  - **Env**: new `PRINTFUL_API_TOKEN` (store-scoped private token) + `PRINTFUL_PUBLIC_IMAGE_BASE` (so preview env can use its own URL when sharing images with Printful).
+- **Test coverage** — `/app/backend/tests/test_iter28_printful.py` 4/4 PASS (categories endpoint, admin-only gate, make-fulfillable → duplicate-rejection → detach round-trip, unsupported-category rejection). Live curl verified the full happy path with the seeded admin's `$54.99` AI wallet.
+- **Note on first-time integration**: Printful's error message for the cap was misleading — the `thread_colors` option lives on the variant, not the file, despite the error suggesting otherwise. Resolved by experimenting against `/store/products` directly.
+
 ## Backlog — prioritized
 
 ### Phase 6C (multi-iteration roadmap)

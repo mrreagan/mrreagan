@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Sparkles, Coins, FlaskConical, Heart, ShoppingBag, Trash2, ArrowRight, AlertTriangle } from "lucide-react";
+import { Sparkles, Coins, FlaskConical, Heart, ShoppingBag, Trash2, ArrowRight, AlertTriangle, Package } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -343,6 +343,10 @@ function DraftCard({ draft, onChange }) {
   const [price, setPrice] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [discarding, setDiscarding] = useState(false);
+  const [fulfilling, setFulfilling] = useState(false);
+
+  const printfulSupported = ["cap", "tee", "hoodie", "mug"].includes(draft.category);
+  const onPrintful = !!draft.printful_sync_product_id;
 
   const setProductPrice = async (newPrice) => {
     try {
@@ -382,6 +386,38 @@ function DraftCard({ draft, onChange }) {
       toast.error("Discard failed");
     } finally {
       setDiscarding(false);
+    }
+  };
+
+  const makeFulfillable = async () => {
+    if (!window.confirm(`Push this ${draft.category} to Printful as a Sync Product? Retail price will be set automatically (2× base cost, rounded to $.95).`)) return;
+    setFulfilling(true);
+    try {
+      const r = await api.post("/printful/make-fulfillable", {
+        product_id: draft.id,
+        markup_multiplier: 2.0,
+      });
+      toast.success(`Fulfillable on Printful · base $${r.data.base_cost_usd?.toFixed(2)} → retail $${r.data.retail_price_usd?.toFixed(2)}`);
+      setPrice(r.data.retail_price_usd);
+      onChange?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Printful linking failed");
+    } finally {
+      setFulfilling(false);
+    }
+  };
+
+  const detachFromPrintful = async () => {
+    if (!window.confirm("Unlink this draft from Printful? The sync product there will be deleted.")) return;
+    setFulfilling(true);
+    try {
+      await api.delete(`/printful/sync-products/${draft.id}`);
+      toast.success("Unlinked from Printful");
+      onChange?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Unlink failed");
+    } finally {
+      setFulfilling(false);
     }
   };
 
@@ -428,6 +464,33 @@ function DraftCard({ draft, onChange }) {
           <button onClick={discard} disabled={discarding} className="btn-outline !text-[#9E3C3C] !border-[#9E3C3C] text-xs px-2 py-1.5" aria-label="Discard" data-testid={`draft-discard-${draft.id}`}>
             <Trash2 size={12} strokeWidth={1.5} />
           </button>
+        </div>
+
+        {/* Printful fulfillable block */}
+        <div className="mt-2 pt-2 border-t border-dashed border-[#E5E1D8]" data-testid={`draft-printful-block-${draft.id}`}>
+          {onPrintful ? (
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="inline-flex items-center gap-1.5 text-[#01784E]" data-testid={`draft-printful-linked-${draft.id}`}>
+                <Package size={12} strokeWidth={1.8} /> Fulfillable on Printful
+              </span>
+              <button onClick={detachFromPrintful} disabled={fulfilling} className="text-[10px] uppercase tracking-wider text-[#9E3C3C] hover:underline" data-testid={`draft-printful-detach-${draft.id}`}>
+                {fulfilling ? "…" : "unlink"}
+              </button>
+            </div>
+          ) : printfulSupported ? (
+            <button onClick={makeFulfillable} disabled={fulfilling} className="w-full inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] border border-[#476B6B] rounded-md py-1.5 transition" data-testid={`draft-printful-link-${draft.id}`}>
+              <Package size={12} strokeWidth={1.8} /> {fulfilling ? "Linking to Printful…" : "Make fulfillable on Printful"}
+            </button>
+          ) : (
+            <p className="text-[10px] text-[#5C6B6B] italic">
+              Printful POD not yet supported for category "{draft.category}".
+            </p>
+          )}
+          {draft.printful_label && (
+            <p className="text-[10px] text-[#5C6B6B] mt-1 leading-snug">
+              {draft.printful_label} · base ${draft.printful_base_cost_usd?.toFixed(2)}
+            </p>
+          )}
         </div>
       </div>
     </div>
