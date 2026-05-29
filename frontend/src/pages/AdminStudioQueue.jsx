@@ -143,7 +143,7 @@ function ModerationCard({ draft, onChange }) {
               {draft.external_url} ↗
             </a>
             <p className="text-[10px] text-[#5C6B6B] mt-1">
-              Approve to list as a referral. Customers buy on the vendor's site; vendor self-reports sales for revenue share.
+              Approve to list as a referral. Customers buy on the vendor's own site; vendor self-reports those sales and pays Birthright a referral commission on the traffic we send.
             </p>
           </div>
         )}

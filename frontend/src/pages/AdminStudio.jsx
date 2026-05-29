@@ -303,7 +303,7 @@ export default function AdminStudio() {
               When vendor mode opens, you'll get the same Studio for your own products.
             </p>
             <p className="text-xs text-[#FAF8F5]/70 mt-2 leading-relaxed">
-              Dream concepts, see live dollar costs before generating, list on Birthright with our reach — or refer customers to your own store and earn referral credit.
+              Dream concepts, see live dollar costs before generating, list on Birthright with our reach — or refer customers to your own store and send a referral commission back to the foundation.
             </p>
           </div>
         </aside>

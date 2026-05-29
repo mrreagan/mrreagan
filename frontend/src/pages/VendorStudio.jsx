@@ -228,7 +228,7 @@ export default function VendorStudio() {
                   data-testid="vendor-studio-fulfill-birthright"
                 >
                   <span className="font-serif text-base">Birthright store</span>
-                  <p className="text-xs text-[#5C6B6B] mt-1">We handle checkout. Revenue share per your subscription tier.</p>
+                  <p className="text-xs text-[#5C6B6B] mt-1">We handle checkout. You earn your revenue share per your subscription tier — Birthright keeps the rest.</p>
                 </button>
                 <button
                   type="button"
@@ -237,7 +237,7 @@ export default function VendorStudio() {
                   data-testid="vendor-studio-fulfill-external"
                 >
                   <span className="font-serif text-base">My external site</span>
-                  <p className="text-xs text-[#5C6B6B] mt-1">We list it here as a referral. Customers buy on your site. You self-report sales.</p>
+                  <p className="text-xs text-[#5C6B6B] mt-1">We send customers your way. You keep the full retail and send a small referral commission back to Birthright.</p>
                 </button>
               </div>
               {isOffSite && (
@@ -255,9 +255,9 @@ export default function VendorStudio() {
                   </label>
                   <p className="text-[11px] text-[#5C6B6B] mt-2 leading-relaxed">
                     We'll stamp <code className="text-[#476B6B]">?via=birthright_{user?.id?.slice(0, 6) || "you"}</code> on
-                    the destination so you can identify Birthright traffic. Report
-                    confirmed sales in <Link to="/dashboard/partner/sales-reports" className="underline">Sales reports</Link> to
-                    earn your revenue share.
+                    the destination so you can identify Birthright-sourced traffic. Report those
+                    confirmed sales in <Link to="/dashboard/partner/sales-reports" className="underline">Sales reports</Link> —
+                    Birthright will invoice the agreed referral commission on the traffic we sent you.
                   </p>
                 </div>
               )}
@@ -311,7 +311,8 @@ export default function VendorStudio() {
               <li>· Admin reviews your draft within 1–2 days.</li>
               <li>· They may request changes (a note will appear here).</li>
               <li>· On approval, admin sets the retail price and publishes.</li>
-              <li>· You earn your subscription's revenue share on every sale.</li>
+              <li>· <strong>Birthright store</strong>: you earn revenue share per your tier on every sale.</li>
+              <li>· <strong>External site</strong>: you keep the retail; Birthright invoices a referral commission on the traffic we sent.</li>
             </ul>
           </div>
         </aside>
