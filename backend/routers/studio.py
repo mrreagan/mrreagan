@@ -162,6 +162,9 @@ class EstimateResponse(BaseModel):
 
 class GenerateRequest(EstimateRequest):
     """Same fields — Studio sends estimate first, then confirms with this."""
+    # Phase 4 — Off-site referral mode (vendor-only).
+    is_off_site: bool = False
+    external_url: Optional[str] = Field(default=None, max_length=500)
 
 
 # ============ Endpoints ============
@@ -203,6 +206,12 @@ async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_
     only at the database level — each call genuinely spends AI dollars."""
     from database import db
     actor_role, vendor_profile = await _studio_access(db, user)
+    # ---- 0) Validate off-site fields BEFORE spending any AI dollars ----
+    if req.is_off_site:
+        if actor_role != "vendor":
+            raise HTTPException(400, "Off-site mode is only available to vendor partners.")
+        if not req.external_url or not req.external_url.strip().lower().startswith(("http://", "https://")):
+            raise HTTPException(400, "Off-site products require a valid external_url (http(s)://...)")
     estimate = await estimate_cost(req, user)
     await require_balance(db, user, min_usd=estimate.estimated_cost_usd, feature="AI Studio")
 
@@ -339,6 +348,13 @@ async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_
         draft["vendor_partner_id"] = vendor_profile["id"]
         draft["vendor_name"] = (vendor_profile.get("meta") or {}).get("business_name") or vendor_profile.get("display_name")
         draft["vendor_slug"] = vendor_profile.get("slug")
+    # Phase 4 — off-site mode (vendor only).
+    # Phase 4 — off-site mode (already validated at request start).
+    if req.is_off_site:
+        draft["is_off_site"] = True
+        draft["external_url"] = req.external_url.strip()
+        # Keep type=merch so the public Shop's default filter still surfaces them.
+        # Cart logic below detects is_off_site to skip Stripe and link out instead.
     await db.products.insert_one(dict(draft))
     draft.pop("_id", None)
     logger.info(

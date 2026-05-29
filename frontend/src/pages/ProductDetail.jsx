@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { useCart } from "../contexts/CartContext";
 import { toast } from "sonner";
-import { ShoppingBag, Lock, ArrowLeft } from "lucide-react";
+import { ShoppingBag, Lock, ArrowLeft, ExternalLink } from "lucide-react";
 import ReviewSection, { AggregateRatingBadge } from "../components/ReviewSection";
 import ShareButton from "../components/ShareButton";
 
@@ -59,6 +59,27 @@ export default function ProductDetail() {
                 </Link>
               )}
             </div>
+          ) : p.is_off_site && p.vendor_slug ? (
+            <div className="mt-8" data-testid="product-off-site-block">
+              <div className="card p-5 bg-[#F4F1EA] border-2 border-[#476B6B]">
+                <p className="label !mt-0 !text-[#476B6B] inline-flex items-center gap-1">
+                  <ExternalLink size={11} strokeWidth={1.8} /> Sold on the vendor's own site
+                </p>
+                <p className="text-sm text-[#5C6B6B] mt-2 leading-relaxed">
+                  {p.vendor_name ? `${p.vendor_name} handles the order on their own store. ` : ""}
+                  Clicking through stamps your visit so they know Birthright sent you.
+                </p>
+                <a
+                  href={`${process.env.REACT_APP_BACKEND_URL}/api/out/${p.vendor_slug}?product_id=${p.id}`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="btn-primary text-sm mt-4 inline-flex items-center gap-2"
+                  data-testid="product-buy-external"
+                >
+                  <ExternalLink size={14} strokeWidth={1.5} /> Buy on {p.vendor_name || "vendor site"} →
+                </a>
+              </div>
+            </div>
           ) : (
             <div className="mt-8 flex items-center gap-4">
               <div className="flex items-center border border-[#E5E1D8] rounded-full overflow-hidden">
@@ -79,7 +100,9 @@ export default function ProductDetail() {
             </div>
           )}
 
-          <p className="text-xs text-[#5C6B6B] mt-6">{p.inventory} in stock</p>
+          {!p.is_off_site && (
+            <p className="text-xs text-[#5C6B6B] mt-6">{p.inventory} in stock</p>
+          )}
           {p.type !== "workshop_material" && (
             <div className="mt-4">
               <ShareButton

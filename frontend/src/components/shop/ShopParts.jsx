@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ShoppingBag, Lock } from "lucide-react";
+import { ShoppingBag, Lock, ExternalLink } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { toast } from "sonner";
 import { AggregateRatingBadge } from "../ReviewSection";
@@ -35,6 +35,10 @@ export function ProductCard({ product }) {
   const { addItem } = useCart();
   const isMaterial = product.type === "workshop_material";
   const isVendor = product.is_vendor_product;
+  const isOffSite = product.is_off_site && product.vendor_slug;
+  const outboundUrl = isOffSite
+    ? `${process.env.REACT_APP_BACKEND_URL}/api/out/${product.vendor_slug}?product_id=${product.id}`
+    : null;
 
   return (
     <div className="card card-hover overflow-hidden flex flex-col" data-testid={`product-card-${product.id}`}>
@@ -47,6 +51,7 @@ export function ProductCard({ product }) {
             {product.name}
           </Link>
           {isMaterial && <Lock size={14} strokeWidth={1.5} className="text-[#C9A961] shrink-0 mt-1" />}
+          {isOffSite && <ExternalLink size={14} strokeWidth={1.5} className="text-[#476B6B] shrink-0 mt-1" />}
         </div>
         {isVendor && product.vendor_name && (
           <p className="text-[10px] uppercase tracking-wider text-[#C9A961] mt-1" data-testid={`product-vendor-badge-${product.id}`}>
@@ -81,6 +86,17 @@ export function ProductCard({ product }) {
               <Link to={`/equip/${product.id}`} className="text-xs text-[#476B6B] font-medium hover:underline">
                 Participants only
               </Link>
+            ) : isOffSite ? (
+              <a
+                href={outboundUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-xs flex items-center gap-1.5 bg-[#476B6B] text-white px-3 py-1.5 rounded-full hover:bg-[#3A5858] transition"
+                data-testid={`product-buy-external-${product.id}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink size={12} strokeWidth={1.5} /> Buy on {product.vendor_name?.split(" ")[0] || "vendor"}
+              </a>
             ) : (
               <button
                 onClick={() => {

@@ -147,6 +147,11 @@ async def _validate_cart_and_total(db, items, user) -> tuple[float, list]:
         p = await db.products.find_one({"id": item.product_id})
         if not p:
             raise HTTPException(status_code=400, detail=f"Product not found: {item.product_id}")
+        if p.get("is_off_site"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"'{p.get('name')}' is sold on the vendor's own site and can't be checked out through Birthright.",
+            )
         await _enforce_material_gating(db, p, user)
         qty = max(1, int(item.quantity))
         total += float(p["price"]) * qty

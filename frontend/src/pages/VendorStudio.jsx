@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Sparkles, Coins, FlaskConical, Heart, ShoppingBag, Trash2, AlertTriangle, Clock, CheckCircle2, XCircle, MessageSquare } from "lucide-react";
+import { Sparkles, Coins, FlaskConical, Heart, ShoppingBag, Trash2, AlertTriangle, Clock, CheckCircle2, XCircle, MessageSquare, ExternalLink } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -37,6 +37,8 @@ export default function VendorStudio() {
   const [category, setCategory] = useState("cap");
   const [audiences, setAudiences] = useState(["general_equip"]);
   const [imageCount, setImageCount] = useState(2);
+  const [isOffSite, setIsOffSite] = useState(false);
+  const [externalUrl, setExternalUrl] = useState("");
   const [estimate, setEstimate] = useState(null);
   const [estimating, setEstimating] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -72,6 +74,7 @@ export default function VendorStudio() {
   };
 
   const canEstimate = brief.trim().length >= 10 && audiences.length > 0;
+  const offSiteUrlValid = !isOffSite || /^https?:\/\/.+/i.test(externalUrl.trim());
 
   const toggleAudience = (v) => {
     setAudiences((a) => (a.includes(v) ? (a.length > 1 ? a.filter((x) => x !== v) : a) : [...a, v]));
@@ -95,12 +98,22 @@ export default function VendorStudio() {
   const runGenerate = async () => {
     if (!estimate) { toast.message("Get a cost estimate first"); return; }
     if (estimate.insufficient_funds) { toast.error("Top up your AI Wallet first"); return; }
+    if (isOffSite && !offSiteUrlValid) { toast.error("Enter a valid http(s) URL for your external site"); return; }
     setGenerating(true);
     try {
-      await api.post("/studio/generate", { brief: brief.trim(), category, audiences, image_count: imageCount });
+      const payload = {
+        brief: brief.trim(),
+        category,
+        audiences,
+        image_count: imageCount,
+        is_off_site: isOffSite,
+        external_url: isOffSite ? externalUrl.trim() : null,
+      };
+      await api.post("/studio/generate", payload);
       toast.success("Submitted for admin review");
       setEstimate(null);
       setBrief("");
+      setExternalUrl("");
       refreshDrafts();
       setTimeout(() => {
         document.getElementById("vendor-studio-drafts")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -203,6 +216,52 @@ export default function VendorStudio() {
                 ))}
               </div>
             </div>
+
+            {/* Phase 4 — Off-site referral mode */}
+            <div className="mt-5 pt-4 border-t border-[#E5E1D8]" data-testid="vendor-studio-fulfillment">
+              <p className="text-xs uppercase tracking-wider text-[#5C6B6B] mb-2">Where will customers buy this?</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setIsOffSite(false); setEstimate(null); }}
+                  className={`text-left rounded-lg border p-3 transition ${!isOffSite ? "border-[#476B6B] bg-[#F4F1EA]" : "border-[#E5E1D8] bg-white hover:border-[#5C6B6B]"}`}
+                  data-testid="vendor-studio-fulfill-birthright"
+                >
+                  <span className="font-serif text-base">Birthright store</span>
+                  <p className="text-xs text-[#5C6B6B] mt-1">We handle checkout. Revenue share per your subscription tier.</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsOffSite(true); setEstimate(null); }}
+                  className={`text-left rounded-lg border p-3 transition ${isOffSite ? "border-[#476B6B] bg-[#F4F1EA]" : "border-[#E5E1D8] bg-white hover:border-[#5C6B6B]"}`}
+                  data-testid="vendor-studio-fulfill-external"
+                >
+                  <span className="font-serif text-base">My external site</span>
+                  <p className="text-xs text-[#5C6B6B] mt-1">We list it here as a referral. Customers buy on your site. You self-report sales.</p>
+                </button>
+              </div>
+              {isOffSite && (
+                <div className="mt-3" data-testid="vendor-studio-external-url-block">
+                  <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">
+                    Product URL on your site
+                    <input
+                      type="url"
+                      value={externalUrl}
+                      onChange={(e) => { setExternalUrl(e.target.value); setEstimate(null); }}
+                      placeholder="https://yourshop.com/products/your-thing"
+                      className="input-field mt-2 text-sm"
+                      data-testid="vendor-studio-external-url"
+                    />
+                  </label>
+                  <p className="text-[11px] text-[#5C6B6B] mt-2 leading-relaxed">
+                    We'll stamp <code className="text-[#476B6B]">?via=birthright_{user?.id?.slice(0, 6) || "you"}</code> on
+                    the destination so you can identify Birthright traffic. Report
+                    confirmed sales in <Link to="/dashboard/partner/sales-reports" className="underline">Sales reports</Link> to
+                    earn your revenue share.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2 items-center">
@@ -300,7 +359,14 @@ function VendorDraftCard({ draft, onChange }) {
       </div>
       <div className="p-4 flex flex-col gap-2 flex-1">
         <div className="flex items-center justify-between">
-          <span className="label !mt-0 !text-[#C9A961]">{draft.category}</span>
+          <span className="label !mt-0 !text-[#C9A961]">
+            {draft.category}
+            {draft.is_off_site && (
+              <span className="ml-2 inline-flex items-center gap-1 text-[#476B6B]" data-testid={`vendor-draft-off-site-${draft.id}`}>
+                <ExternalLink size={9} strokeWidth={1.8} /> off-site
+              </span>
+            )}
+          </span>
           <span className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider border px-2 py-0.5 rounded-full ${meta.color}`} data-testid={`vendor-draft-status-${draft.id}`}>
             <Icon size={10} strokeWidth={1.8} /> {meta.label}
           </span>

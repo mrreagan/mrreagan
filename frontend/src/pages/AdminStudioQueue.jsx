@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Clock, CheckCircle2, XCircle, MessageSquare, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, MessageSquare, ShieldCheck, ArrowLeft, ExternalLink } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -133,6 +133,19 @@ function ModerationCard({ draft, onChange }) {
             <summary className="text-[10px] uppercase tracking-wider text-[#476B6B] cursor-pointer">Vendor's original brief</summary>
             <p className="text-xs text-[#5C6B6B] mt-1 italic leading-relaxed">"{draft.studio_brief}"</p>
           </details>
+        )}
+        {draft.is_off_site && draft.external_url && (
+          <div className="rounded border border-[#476B6B] bg-[#F4F1EA] p-2 mt-1" data-testid={`mod-off-site-block-${draft.id}`}>
+            <p className="text-[10px] uppercase tracking-wider text-[#476B6B] inline-flex items-center gap-1">
+              <ExternalLink size={10} strokeWidth={1.8} /> Off-site product (referral mode)
+            </p>
+            <a href={draft.external_url} target="_blank" rel="noreferrer noopener" className="text-xs text-[#0F2424] hover:underline break-all mt-1 inline-block">
+              {draft.external_url} ↗
+            </a>
+            <p className="text-[10px] text-[#5C6B6B] mt-1">
+              Approve to list as a referral. Customers buy on the vendor's site; vendor self-reports sales for revenue share.
+            </p>
+          </div>
         )}
         {draft.moderation_note && isTerminal && (
           <p className="text-[11px] text-[#5C6B6B] italic mt-1">Admin note: {draft.moderation_note}</p>

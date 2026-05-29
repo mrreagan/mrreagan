@@ -249,6 +249,27 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
   - Facilitator (`elena@`, no vendor profile) → 403 on both estimate and moderation queue.
 - **Tests** — `/app/backend/tests/test_iter29_studio_phase3.py` **8/8 PASS**. Covers access gating, queue scoping, full pending→changes→approve flow, validation (min-length note → 422, terminal-state guards → 400), discard ownership rules.
 
+## Iteration 25 — AI Studio Phase 4 (Off-site referral mode) (May 29, 2026)
+- **Goal**: Vendors can dream a product through the Studio AND list it as a referral to their own external store rather than fulfilling through Birthright. Click-throughs are attributed via `?via=birthright_<vendor_slug>`, sales credit flows through the existing iter-16 partner-sales-reports pipeline.
+- **Backend**:
+  - `routers/studio.py::GenerateRequest` gained `is_off_site: bool` + `external_url: Optional[str]`. Validation happens BEFORE any LLM spend: must be vendor + must be valid `http(s)://` URL.
+  - Approved off-site products stay `type=merch` so the public Shop's default filter surfaces them, but carry `is_off_site=true` + `external_url` so the frontend renders an external CTA.
+  - `routers/outbound.py::outbound_click` gained `product_id` query param. When present, looks up the product (must be `is_off_site=true`, `moderation_status=active`, owned by this partner), redirects to its `external_url`. Always stamps `?via=birthright_<slug>` on the destination. Logs `product_id` into `outbound_clicks`. Falls back to the partner's general `external_site_url` (or `/partners/{slug}`) when the product can't be matched — no leak from a wrong-product invocation.
+  - `routers/checkout.py::_validate_cart_and_total` now refuses any cart item whose product is `is_off_site=true` — defense in depth so a stale frontend can't bypass the redirect.
+- **Frontend**:
+  - **VendorStudio composer** gets a "Where will customers buy this?" toggle: **Birthright store** (default, Stripe checkout, rev share via subscription) ↔ **My external site** (URL input + explainer about the `?via=` stamp + link to Sales reports for credit). Validation runs locally before submit.
+  - **VendorStudio drafts list** shows an "off-site" badge next to category when applicable.
+  - **AdminStudioQueue card** shows a teal "Off-site product (referral mode)" block with the clickable external URL so the moderator can verify before approving.
+  - **Public Shop** `ProductCard` + `ProductDetail` render an external-link icon and a **"Buy on <vendor>"** button instead of "Add to cart" when `is_off_site && vendor_slug`. The button hits `/api/out/<vendor_slug>?product_id=<pid>` in a new tab so the click is logged + stamped before reaching the vendor's site.
+- **End-to-end verified live (curl)**:
+  - Vendor `demo@birthright.org` generated "Flame Meditation Stool" with `is_off_site=true` and external URL `https://democrafts.example.com/products/oak-stool` → draft saved as `pending_review`, `is_off_site=true`, `type=merch`.
+  - Admin approved at $75.00 → product flipped `active`, visible on `/equip`.
+  - `GET /api/out/sam-rivera-vendor?product_id=<pid>` → 302 to `https://democrafts.example.com/products/oak-stool?via=birthright_sam-rivera-vendor`.
+  - Click logged in `outbound_clicks` with `product_id` set.
+  - Checkout attempt → 400 `'Flame Meditation Stool' is sold on the vendor's own site and can't be checked out through Birthright.`
+- **Tests** — `/app/backend/tests/test_iter30_studio_phase4.py` **7/7 PASS**. Plus regression: iter28+iter29+iter30 = **19/19 PASS** together.
+- **UI screenshot**: `/equip` storefront now shows the off-site product side-by-side with a Birthright-store product. External-link icon next to title, "🔗 Buy on Demo" CTA, regular price display.
+
 ## Backlog — prioritized
 
 

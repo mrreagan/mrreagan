@@ -49,15 +49,27 @@ def _safe_dest(profile: dict, dest: Optional[str]) -> str:
     return fallback
 
 
+def _append_via(url: str, via_slug: str) -> str:
+    """Stamp `?via=birthright_<slug>` on the URL so the partner can attribute
+    inbound traffic and self-report sales via the partner-sales-reports flow."""
+    if not url:
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}via=birthright_{via_slug}"
+
+
 @router.get("/{slug}")
 async def outbound_click(
     slug: str,
     request: Request,
     dest: Optional[str] = Query(default=None, description="Optional sub-path on the partner's site"),
+    product_id: Optional[str] = Query(default=None, description="If set, redirect to that product's external_url"),
     user: Optional[dict] = Depends(get_current_user_optional),
 ):
-    """Public endpoint. Logs the click then 302s to the partner's external site.
-    Falls back to `/partners/{slug}` (or `/partners` if missing) when no external URL is set."""
+    """Public endpoint. Logs the click then 302s to the partner's external site
+    (or to an off-site product's external_url). Always stamps `?via=birthright_<slug>`
+    on the destination so partners can attribute inbound traffic.
+    Falls back to `/partners/{slug}` when no external URL is set."""
     from database import db
     profile = await db.partner_profiles.find_one(
         {"slug": slug, "status": "active", "public": True}, {"_id": 0}
@@ -65,9 +77,25 @@ async def outbound_click(
     if not profile:
         return RedirectResponse(url="/partners", status_code=302)
 
-    target = _safe_dest(profile, dest)
+    # Phase 4 — product-scoped outbound link.
+    target: str = ""
+    via_product_id: Optional[str] = None
+    if product_id:
+        prod = await db.products.find_one({
+            "id": product_id,
+            "is_off_site": True,
+            "moderation_status": "active",
+            "vendor_partner_id": profile["id"],
+        }, {"_id": 0, "external_url": 1, "id": 1})
+        if prod and prod.get("external_url"):
+            target = prod["external_url"]
+            via_product_id = prod["id"]
+    if not target:
+        target = _safe_dest(profile, dest)
     if not target:
         return RedirectResponse(url=f"/partners/{slug}", status_code=302)
+
+    target = _append_via(target, slug)
 
     qp = dict(request.query_params)
     utm = {k: qp[k] for k in _UTM_KEYS if k in qp}
@@ -80,6 +108,7 @@ async def outbound_click(
         "user_id": user["id"] if user else None,
         "session_id": request.cookies.get("session_id"),
         "dest_url": target,
+        "product_id": via_product_id,
         "referrer": request.headers.get("referer"),
         "utm_params": utm,
         "user_agent": (request.headers.get("user-agent") or "")[:500],
