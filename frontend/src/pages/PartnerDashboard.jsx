@@ -226,9 +226,14 @@ function ProfileCard({ profile, onChange }) {
               <Link to={`/partner/${profile.slug}`} className="btn-outline text-xs">View public page</Link>
             )}
             {profile.partner_type === "vendor" && profile.status === "active" && (
-              <Link to="/dashboard/vendor/products" className="btn-primary text-xs" data-testid={`manage-vendor-products-${profile.id}`}>
-                Manage products
-              </Link>
+              <>
+                <Link to="/dashboard/vendor/products" className="btn-primary text-xs" data-testid={`manage-vendor-products-${profile.id}`}>
+                  Manage products
+                </Link>
+                <Link to="/dashboard/vendor/studio" className="btn-outline text-xs" data-testid={`vendor-studio-link-${profile.id}`}>
+                  AI Studio
+                </Link>
+              </>
             )}
           </div>
         </>

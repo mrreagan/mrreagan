@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../lib/api";
 import { Link } from "react-router-dom";
-import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale, Briefcase, BarChart3, Wallet, Store, UserPlus, ExternalLink, Sparkles, Shield, RotateCcw, Microscope, Bot } from "lucide-react";
+import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale, Briefcase, BarChart3, Wallet, Store, UserPlus, ExternalLink, Sparkles, Shield, RotateCcw, Microscope, Bot, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 
 // ---------- Stat card ----------
@@ -62,6 +62,7 @@ function OverviewTab() {
       <QuickActionCard to="/admin/foundation-roles" icon={UserPlus} title="Foundation roles" description="Open board seats & job descriptions" />
       <QuickActionCard to="/admin/foundation-applications" icon={UserPlus} title="Role applications" description="Triage applicants for open board seats" />
       <QuickActionCard to="/admin/vendor-products" icon={Store} title="Vendor catalog" description="Moderate vendor-submitted products" />
+      <QuickActionCard to="/admin/studio/queue" icon={FlaskConical} title="Studio queue" description="Approve vendor AI Studio submissions" />
       <QuickActionCard to="/admin/payouts" icon={Wallet} title="Partner payouts" description="Referral ledger & disbursements" />
       <QuickActionCard to="/admin/subscriptions" icon={Wallet} title="Subscriptions" description="Active, cancelled, revoke + refund" />
       <QuickActionCard to="/admin/ombudsman" icon={Shield} title="Ombudsman queue" description="Disputes + flagged DM threads" />

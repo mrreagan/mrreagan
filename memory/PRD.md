@@ -223,7 +223,35 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Test coverage** — `/app/backend/tests/test_iter28_printful.py` 4/4 PASS (categories endpoint, admin-only gate, make-fulfillable → duplicate-rejection → detach round-trip, unsupported-category rejection). Live curl verified the full happy path with the seeded admin's `$54.99` AI wallet.
 - **Note on first-time integration**: Printful's error message for the cap was misleading — the `thread_colors` option lives on the variant, not the file, despite the error suggesting otherwise. Resolved by experimenting against `/store/products` directly.
 
+## Iteration 24 — AI Studio Phase 3 (Vendor self-service + Admin moderation queue) (May 29, 2026)
+- **Goal**: Open the AI Studio to approved vendor partners with admin moderation between draft → public store.
+- **Access gating** (`routers/studio.py::_studio_access`):
+  - Admin role → bypasses moderation, drafts go straight to `moderation_status="unpublished"` and admin publishes manually.
+  - Active `partner_profile(type=vendor, status=active)` → drafts go to `moderation_status="pending_review"` and require admin approval before being public.
+  - Any other role → 403 with explicit message.
+- **Draft tagging**: Vendor-generated drafts carry `is_vendor_product=true`, `vendor_user_id`, `vendor_partner_id`, `vendor_name` (snapshot of `meta.business_name` or `display_name`), and `vendor_slug` so storefront cards show "By <vendor>" and link back to the partner profile.
+- **New endpoints**:
+  - `GET /api/studio/my-drafts` (vendor or admin) — caller's own drafts with status.
+  - `GET /api/admin/studio/queue?status=pending_review|changes_requested|active|rejected` — moderation queue.
+  - `POST /api/admin/studio/queue/{id}/approve` `{price, admin_note?}` — sets price + publishes, status → `active`.
+  - `POST /api/admin/studio/queue/{id}/request-changes` `{admin_note (min 3 chars)}` — bounces back to vendor with note.
+  - `POST /api/admin/studio/queue/{id}/reject` `{admin_note}` — terminal rejection.
+- **State machine**: `pending_review` ↔ `changes_requested` → `active` (terminal). `pending_review|changes_requested` → `rejected` (terminal). Re-approve/re-reject of terminal status returns 400.
+- **Discard rules**: Admin can discard any draft. Vendor can discard own non-active drafts.
+- **Frontend**:
+  - `/dashboard/vendor/studio` (`VendorStudio.jsx`) — pre-checks `partners/my-profiles` for an active vendor profile and shows a graceful "Apply as a vendor →" empty state otherwise. Composer mirrors AdminStudio's, but the confirm card says "Generate & submit for review" and drafts list shows status pills (Pending / Changes requested / Rejected / Approved & live) plus the admin note when present.
+  - `/admin/studio/queue` (`AdminStudioQueue.jsx`) — 4-tab queue (Pending review / Changes requested / Approved / Rejected). Each card has inline Approve+Price form, Request-changes with note (min 3 chars), and Reject with note. Shows "By <vendor>" attribution and the vendor's original brief in an expandable disclosure.
+  - Nav: PartnerDashboard vendor profile now has an "AI Studio" outlet button. AdminDashboard gains a "Studio queue" QuickActionCard.
+- **Verified live (curl + UI screenshot)**:
+  - Vendor (`demo@birthright.org`, vendor profile active) generated `Flame Tote` for $0.0785 → draft saved as `pending_review` with full vendor metadata.
+  - Admin requested changes → status flipped, note saved.
+  - Admin approved at $24.95 → product flipped to `active`, `studio_draft=false`, published_at set, visible in `/api/products`.
+  - Facilitator (`elena@`, no vendor profile) → 403 on both estimate and moderation queue.
+- **Tests** — `/app/backend/tests/test_iter29_studio_phase3.py` **8/8 PASS**. Covers access gating, queue scoping, full pending→changes→approve flow, validation (min-length note → 422, terminal-state guards → 400), discard ownership rules.
+
 ## Backlog — prioritized
+
+
 
 ### Phase 6C (multi-iteration roadmap)
 1. ~~**6C.1** — User↔Partner + Partner↔Partner DMs~~ ✅ **SHIPPED in Iter 21**

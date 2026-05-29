@@ -74,6 +74,25 @@ def _admin_only(user: dict) -> None:
         raise HTTPException(403, "AI Studio is admin-only in Phase 1.")
 
 
+async def _vendor_profile(db, user: dict) -> Optional[dict]:
+    """Return an active vendor partner profile for this user, if any."""
+    return await db.partner_profiles.find_one(
+        {"user_id": user["id"], "partner_type": "vendor", "status": "active"},
+        {"_id": 0},
+    )
+
+
+async def _studio_access(db, user: dict) -> tuple[str, Optional[dict]]:
+    """Gate AI Studio access. Returns ('admin', None) or ('vendor', profile).
+    Raises 403 if neither."""
+    if user.get("role") == "admin":
+        return "admin", None
+    vp = await _vendor_profile(db, user)
+    if vp:
+        return "vendor", vp
+    raise HTTPException(403, "AI Studio requires admin role or an active vendor partner profile.")
+
+
 def _slugify(s: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
     return s[:60] or "studio-draft"
@@ -149,9 +168,9 @@ class GenerateRequest(EstimateRequest):
 @router.post("/estimate", response_model=EstimateResponse)
 async def estimate_cost(req: EstimateRequest, user: dict = Depends(get_current_user)):
     """Pre-prompt cost estimate. NEVER touches LLMs. Pure math."""
-    _admin_only(user)
-    req.validate_category()
     from database import db
+    await _studio_access(db, user)
+    req.validate_category()
     n_audiences = len(req.audiences)
     text_cost = compute_cost(
         TEXT_MODEL,
@@ -182,8 +201,8 @@ async def estimate_cost(req: EstimateRequest, user: dict = Depends(get_current_u
 async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_user)):
     """Run the full generation pipeline and save a draft product. Idempotent
     only at the database level — each call genuinely spends AI dollars."""
-    _admin_only(user)
     from database import db
+    actor_role, vendor_profile = await _studio_access(db, user)
     estimate = await estimate_cost(req, user)
     await require_balance(db, user, min_usd=estimate.estimated_cost_usd, feature="AI Studio")
 
@@ -280,12 +299,21 @@ async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_
     while await db.products.find_one({"slug": slug}):
         n += 1
         slug = f"{slug_base}-{n}"
+    is_vendor = actor_role == "vendor"
+    # Vendors → drafts go to admin moderation queue.
+    # Admins → drafts stay unpublished until they manually publish.
+    moderation_status = "pending_review" if is_vendor else "unpublished"
+    moderation_note = (
+        "Vendor AI Studio submission — awaiting admin moderation."
+        if is_vendor
+        else "AI Studio draft — review and publish when ready."
+    )
     draft = {
         "id": gen_id(),
         "slug": slug,
         "name": primary["name"],
         "description": primary["description"],
-        "price": 0.0,            # admin sets price on review
+        "price": 0.0,            # admin/vendor sets price on review
         "type": "merch",
         "workshop_id": None,
         "image_url": image_urls[0] if image_urls else "",
@@ -300,24 +328,45 @@ async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_
         "studio_brief": req.brief,
         "studio_audiences": req.audiences,
         "studio_copy_variants": copy_variants,
-        "moderation_status": "unpublished",
-        "moderation_note": "AI Studio draft — review and publish when ready.",
+        "moderation_status": moderation_status,
+        "moderation_note": moderation_note,
         "created_at": now_iso(),
         "created_by": user["id"],
     }
+    if is_vendor and vendor_profile:
+        draft["is_vendor_product"] = True
+        draft["vendor_user_id"] = user["id"]
+        draft["vendor_partner_id"] = vendor_profile["id"]
+        draft["vendor_name"] = (vendor_profile.get("meta") or {}).get("business_name") or vendor_profile.get("display_name")
+        draft["vendor_slug"] = vendor_profile.get("slug")
     await db.products.insert_one(dict(draft))
     draft.pop("_id", None)
-    logger.info("studio: admin %s created draft product %s (slug=%s)", user.get("email"), draft["id"], slug)
+    logger.info(
+        "studio: %s %s created draft product %s (slug=%s, status=%s)",
+        actor_role, user.get("email"), draft["id"], slug, moderation_status,
+    )
     return draft
 
 
 @router.get("/drafts")
 async def list_drafts(user: dict = Depends(get_current_user)):
-    """List AI-Studio draft products awaiting admin review/publish."""
+    """List AI-Studio admin drafts awaiting publish (admin's own unpublished drafts)."""
     _admin_only(user)
     from database import db
     rows = await db.products.find(
         {"studio_draft": True, "moderation_status": "unpublished"},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(200)
+    return rows
+
+
+@router.get("/my-drafts")
+async def list_my_drafts(user: dict = Depends(get_current_user)):
+    """Vendor self-service: list my own AI Studio submissions with status."""
+    from database import db
+    await _studio_access(db, user)
+    rows = await db.products.find(
+        {"studio_draft": True, "created_by": user["id"]},
         {"_id": 0},
     ).sort("created_at", -1).to_list(200)
     return rows
@@ -349,14 +398,20 @@ async def publish_draft(product_id: str, user: dict = Depends(get_current_user))
 
 @router.delete("/drafts/{product_id}")
 async def discard_draft(product_id: str, user: dict = Depends(get_current_user)):
-    """Discard a draft (and delete its generated images from disk best-effort)."""
-    _admin_only(user)
+    """Discard a draft (and delete its generated images from disk best-effort).
+    Admin can discard any. Vendor can discard only their own non-approved drafts."""
     from database import db
-    doc = await db.products.find_one({"id": product_id}, {"_id": 0, "image_gallery": 1, "studio_draft": 1})
+    doc = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Draft not found")
     if not doc.get("studio_draft"):
         raise HTTPException(400, "Only AI Studio drafts can be discarded via this endpoint")
+    is_admin = user.get("role") == "admin"
+    is_owner = doc.get("created_by") == user["id"]
+    if not (is_admin or is_owner):
+        raise HTTPException(403, "You can only discard your own drafts")
+    if not is_admin and doc.get("moderation_status") == "active":
+        raise HTTPException(400, "Cannot discard a published product")
     for url in doc.get("image_gallery", []):
         # /api/static/products/foo.png  →  /app/backend/static/products/foo.png
         fname = url.rsplit("/", 1)[-1]
@@ -365,4 +420,113 @@ async def discard_draft(product_id: str, user: dict = Depends(get_current_user))
         except Exception:
             pass
     await db.products.delete_one({"id": product_id})
+    return {"ok": True}
+
+
+# ============ Admin moderation queue (vendor submissions) ============
+admin_router = APIRouter(prefix="/admin/studio", tags=["studio-admin"])
+
+
+@admin_router.get("/queue")
+async def admin_queue(
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """List vendor AI Studio submissions for moderation.
+
+    Filter by status: pending_review (default), changes_requested, rejected, active.
+    """
+    _admin_only(user)
+    from database import db
+    q: dict = {"studio_draft": True, "is_vendor_product": True}
+    target = status or "pending_review"
+    if target == "active":
+        q = {"is_vendor_product": True, "studio_draft": False, "moderation_status": "active"}
+    else:
+        q["moderation_status"] = target
+    rows = await db.products.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return rows
+
+
+class AdminApproveRequest(BaseModel):
+    price: float = Field(gt=0, description="Retail price set at approval time")
+    admin_note: Optional[str] = Field(default=None, max_length=500)
+
+
+@admin_router.post("/queue/{product_id}/approve")
+async def admin_approve(product_id: str, data: AdminApproveRequest, user: dict = Depends(get_current_user)):
+    """Approve a vendor draft, set retail price, publish."""
+    _admin_only(user)
+    from database import db
+    doc = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Draft not found")
+    if not doc.get("is_vendor_product") or not doc.get("studio_draft"):
+        raise HTTPException(400, "Not a vendor AI Studio draft")
+    if doc.get("moderation_status") not in ("pending_review", "changes_requested"):
+        raise HTTPException(400, f"Cannot approve from status '{doc.get('moderation_status')}'")
+    await db.products.update_one(
+        {"id": product_id},
+        {"$set": {
+            "studio_draft": False,
+            "moderation_status": "active",
+            "moderation_note": data.admin_note,
+            "price": float(data.price),
+            "published_at": now_iso(),
+            "moderated_by": user["id"],
+            "moderated_at": now_iso(),
+        }},
+    )
+    return {"ok": True}
+
+
+class AdminFeedbackRequest(BaseModel):
+    admin_note: str = Field(min_length=3, max_length=500)
+
+
+@admin_router.post("/queue/{product_id}/request-changes")
+async def admin_request_changes(product_id: str, data: AdminFeedbackRequest, user: dict = Depends(get_current_user)):
+    """Send the draft back to the vendor with a note explaining what to change."""
+    _admin_only(user)
+    from database import db
+    doc = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Draft not found")
+    if not doc.get("is_vendor_product") or not doc.get("studio_draft"):
+        raise HTTPException(400, "Not a vendor AI Studio draft")
+    if doc.get("moderation_status") not in ("pending_review", "changes_requested"):
+        raise HTTPException(400, f"Cannot request changes from status '{doc.get('moderation_status')}'")
+    await db.products.update_one(
+        {"id": product_id},
+        {"$set": {
+            "moderation_status": "changes_requested",
+            "moderation_note": data.admin_note,
+            "moderated_by": user["id"],
+            "moderated_at": now_iso(),
+        }},
+    )
+    return {"ok": True}
+
+
+@admin_router.post("/queue/{product_id}/reject")
+async def admin_reject(product_id: str, data: AdminFeedbackRequest, user: dict = Depends(get_current_user)):
+    """Reject the vendor draft. Sets terminal status — vendor must start over."""
+    _admin_only(user)
+    from database import db
+    doc = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Draft not found")
+    if not doc.get("is_vendor_product") or not doc.get("studio_draft"):
+        raise HTTPException(400, "Not a vendor AI Studio draft")
+    if doc.get("moderation_status") == "active":
+        raise HTTPException(400, "Cannot reject an already-approved product")
+    await db.products.update_one(
+        {"id": product_id},
+        {"$set": {
+            "moderation_status": "rejected",
+            "moderation_note": data.admin_note,
+            "moderated_by": user["id"],
+            "moderated_at": now_iso(),
+        }},
+    )
     return {"ok": True}
