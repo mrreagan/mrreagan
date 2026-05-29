@@ -344,9 +344,12 @@ function DraftCard({ draft, onChange }) {
   const [publishing, setPublishing] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [fulfilling, setFulfilling] = useState(false);
+  const [showLulu, setShowLulu] = useState(false);
 
   const printfulSupported = ["cap", "tee", "hoodie", "mug"].includes(draft.category);
+  const luluSupported = ["journal", "notebook"].includes(draft.category);
   const onPrintful = !!draft.printful_sync_product_id;
+  const onLulu = draft.fulfillable_via === "lulu";
 
   const setProductPrice = async (newPrice) => {
     try {
@@ -421,6 +424,20 @@ function DraftCard({ draft, onChange }) {
     }
   };
 
+  const detachFromLulu = async () => {
+    if (!window.confirm("Unlink this journal from Lulu?")) return;
+    setFulfilling(true);
+    try {
+      await api.delete(`/lulu/fulfillment/${draft.id}`);
+      toast.success("Unlinked from Lulu");
+      onChange?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Unlink failed");
+    } finally {
+      setFulfilling(false);
+    }
+  };
+
   return (
     <div className="card overflow-hidden flex flex-col" data-testid={`draft-card-${draft.id}`}>
       <div className="aspect-square bg-[#F4F1EA] flex items-center justify-center overflow-hidden">
@@ -466,8 +483,8 @@ function DraftCard({ draft, onChange }) {
           </button>
         </div>
 
-        {/* Printful fulfillable block */}
-        <div className="mt-2 pt-2 border-t border-dashed border-[#E5E1D8]" data-testid={`draft-printful-block-${draft.id}`}>
+        {/* Fulfillment block (Printful for apparel, Lulu for paper goods) */}
+        <div className="mt-2 pt-2 border-t border-dashed border-[#E5E1D8]" data-testid={`draft-fulfillment-block-${draft.id}`}>
           {onPrintful ? (
             <div className="flex items-center justify-between gap-2 text-xs">
               <span className="inline-flex items-center gap-1.5 text-[#01784E]" data-testid={`draft-printful-linked-${draft.id}`}>
@@ -477,18 +494,34 @@ function DraftCard({ draft, onChange }) {
                 {fulfilling ? "…" : "unlink"}
               </button>
             </div>
+          ) : onLulu ? (
+            <div className="flex items-center justify-between gap-2 text-xs" data-testid={`draft-lulu-linked-${draft.id}`}>
+              <span className="inline-flex items-center gap-1.5 text-[#01784E]">
+                <Package size={12} strokeWidth={1.8} /> Fulfillable on Lulu ({draft.lulu_env})
+              </span>
+              <button onClick={detachFromLulu} disabled={fulfilling} className="text-[10px] uppercase tracking-wider text-[#9E3C3C] hover:underline" data-testid={`draft-lulu-detach-${draft.id}`}>
+                {fulfilling ? "…" : "unlink"}
+              </button>
+            </div>
           ) : printfulSupported ? (
             <button onClick={makeFulfillable} disabled={fulfilling} className="w-full inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] border border-[#476B6B] rounded-md py-1.5 transition" data-testid={`draft-printful-link-${draft.id}`}>
               <Package size={12} strokeWidth={1.8} /> {fulfilling ? "Linking to Printful…" : "Make fulfillable on Printful"}
             </button>
+          ) : luluSupported ? (
+            <LuluFulfillmentForm draft={draft} show={showLulu} setShow={setShowLulu} onLinked={onChange} />
           ) : (
             <p className="text-[10px] text-[#5C6B6B] italic">
-              Printful POD not yet supported for category "{draft.category}".
+              POD not yet supported for category "{draft.category}".
             </p>
           )}
-          {draft.printful_label && (
+          {draft.printful_label && onPrintful && (
             <p className="text-[10px] text-[#5C6B6B] mt-1 leading-snug">
               {draft.printful_label} · base ${draft.printful_base_cost_usd?.toFixed(2)}
+            </p>
+          )}
+          {onLulu && (
+            <p className="text-[10px] text-[#5C6B6B] mt-1 leading-snug">
+              Lulu · {draft.lulu_page_count} pages · base ${draft.lulu_base_cost_usd?.toFixed(2)}
             </p>
           )}
         </div>
@@ -498,3 +531,127 @@ function DraftCard({ draft, onChange }) {
 }
 
 const PRICE_MULTIPLIER_HINT = "1.50";
+
+function LuluFulfillmentForm({ draft, show, setShow, onLinked }) {
+  const [presets, setPresets] = useState([]);
+  const [presetKey, setPresetKey] = useState("");
+  const [podId, setPodId] = useState("");
+  const [pageCount, setPageCount] = useState(144);
+  const [interiorUrl, setInteriorUrl] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (show && presets.length === 0) {
+      api.get("/lulu/presets").then((r) => {
+        const filtered = r.data.filter((p) => p.applies_to.includes(draft.category));
+        setPresets(filtered);
+        if (filtered.length && !presetKey) {
+          setPresetKey(filtered[0].key);
+          setPodId(filtered[0].pod_package_id);
+          setPageCount(filtered[0].default_page_count);
+        }
+      }).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show]);
+
+  const choosePreset = (k) => {
+    const p = presets.find((x) => x.key === k);
+    if (!p) return;
+    setPresetKey(k);
+    setPodId(p.pod_package_id);
+    setPageCount(p.default_page_count);
+    setPreview(null);
+  };
+
+  const runPreview = async () => {
+    if (!podId || !pageCount) return;
+    setBusy(true);
+    setPreview(null);
+    try {
+      const r = await api.post("/lulu/cost-preview", { pod_package_id: podId, page_count: parseInt(pageCount, 10), quantity: 1 });
+      setPreview(r.data);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Cost preview failed");
+    } finally { setBusy(false); }
+  };
+
+  const link = async () => {
+    if (!podId || !interiorUrl || !coverUrl) {
+      toast.error("Provide a pod_package_id, interior PDF URL, and cover PDF URL");
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await api.post("/lulu/make-fulfillable", {
+        product_id: draft.id,
+        pod_package_id: podId,
+        page_count: parseInt(pageCount, 10),
+        interior_pdf_url: interiorUrl.trim(),
+        cover_pdf_url: coverUrl.trim(),
+      });
+      toast.success(`Linked to Lulu · base $${r.data.base_cost_usd.toFixed(2)} → retail $${r.data.retail_price_usd.toFixed(2)}`);
+      onLinked?.();
+      setShow(false);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Lulu linking failed");
+    } finally { setBusy(false); }
+  };
+
+  if (!show) {
+    return (
+      <button onClick={() => setShow(true)} className="w-full inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] border border-[#476B6B] rounded-md py-1.5 transition" data-testid={`draft-lulu-link-${draft.id}`}>
+        <Package size={12} strokeWidth={1.8} /> Make fulfillable on Lulu
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2 text-xs" data-testid={`draft-lulu-form-${draft.id}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-[#476B6B]">Lulu config</span>
+        <button onClick={() => setShow(false)} className="text-[10px] text-[#5C6B6B] hover:underline">cancel</button>
+      </div>
+      <label className="block">
+        Preset
+        <select value={presetKey} onChange={(e) => choosePreset(e.target.value)} className="input-field !py-1 !px-2 text-xs w-full mt-1" data-testid={`lulu-preset-${draft.id}`}>
+          {presets.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+        </select>
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label>
+          pod_package_id
+          <input value={podId} onChange={(e) => { setPodId(e.target.value); setPreview(null); }} className="input-field !py-1 !px-2 text-xs w-full mt-1 font-mono" data-testid={`lulu-pod-${draft.id}`} />
+        </label>
+        <label>
+          page_count
+          <input type="number" min="4" max="800" value={pageCount} onChange={(e) => { setPageCount(parseInt(e.target.value, 10) || 0); setPreview(null); }} className="input-field !py-1 !px-2 text-xs w-full mt-1" data-testid={`lulu-pages-${draft.id}`} />
+        </label>
+      </div>
+      <label className="block">
+        interior PDF URL
+        <input type="url" value={interiorUrl} onChange={(e) => setInteriorUrl(e.target.value)} placeholder="https://.../interior.pdf" className="input-field !py-1 !px-2 text-xs w-full mt-1 font-mono" data-testid={`lulu-interior-${draft.id}`} />
+      </label>
+      <label className="block">
+        cover PDF URL
+        <input type="url" value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://.../cover.pdf" className="input-field !py-1 !px-2 text-xs w-full mt-1 font-mono" data-testid={`lulu-cover-${draft.id}`} />
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={runPreview} disabled={busy || !podId} className="btn-outline text-xs inline-flex items-center gap-1" data-testid={`lulu-preview-${draft.id}`}>
+          <Coins size={11} strokeWidth={1.8} /> {busy ? "…" : "Preview cost"}
+        </button>
+        <button onClick={link} disabled={busy || !podId || !interiorUrl || !coverUrl} className="btn-primary text-xs" data-testid={`lulu-link-confirm-${draft.id}`}>
+          {busy ? "Linking…" : "Make fulfillable"}
+        </button>
+      </div>
+      {preview && (
+        <div className="rounded border border-[#E5E1D8] bg-[#FAF8F5] p-2 text-[11px] leading-relaxed" data-testid={`lulu-preview-result-${draft.id}`}>
+          <p>print ${preview.line_cost_usd} · ship ${preview.shipping_cost_usd} · fulfillment ${preview.fulfillment_cost_usd} · tax ${preview.tax_usd}</p>
+          <p className="mt-1">base <strong>${preview.base_cost_excl_tax_usd}</strong> → suggested retail <strong>${preview.suggested_retail_usd}</strong></p>
+        </div>
+      )}
+    </div>
+  );
+}

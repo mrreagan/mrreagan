@@ -270,6 +270,31 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Tests** — `/app/backend/tests/test_iter30_studio_phase4.py` **7/7 PASS**. Plus regression: iter28+iter29+iter30 = **19/19 PASS** together.
 - **UI screenshot**: `/equip` storefront now shows the off-site product side-by-side with a Birthright-store product. External-link icon next to title, "🔗 Buy on Demo" CTA, regular price display.
 
+## Iteration 26 — AI Studio Phase 5a (Lulu Direct Print API plumbing) (May 29, 2026)
+- **Goal**: Make journals/notebooks fulfillable through Lulu (print-on-demand for paper goods). Mirrors Phase 2 Printful pattern but Lulu's API is **stateless** — no sync products, every print job re-sends the spec + PDF URLs. So "Make fulfillable" here is a pure-internal config write, not a remote object creation.
+- **Backend**:
+  - `utils/lulu_client.py` — OAuth2 client-credentials token manager (cached per env with 30s safety margin, OIDC realm `glasstree`), `calculate_cost()`, `create_print_job()`, `get_print_job()`, `summarise_cost()`, `suggest_retail_price()`. Picks sandbox vs production from `LULU_ENV` (defaults to sandbox).
+  - `routers/lulu.py`:
+    - `GET /api/lulu/env` (admin) — environment + base URL for debug.
+    - `GET /api/lulu/presets` (admin) — curated `pod_package_id` set: journal 5.5×8.5 paperback B&W, workbook 8.5×11 paperback B&W, gift journal 5.5×8.5 hardcover.
+    - `POST /api/lulu/cost-preview` (admin) — live cost call. Returns line+shipping+fulfillment+tax breakdown plus 2× rounded-to-$.95 retail suggestion.
+    - `POST /api/lulu/make-fulfillable` (admin) — validates pod_package_id with a live cost call → writes `lulu_pod_package_id`, `lulu_page_count`, `lulu_interior_pdf_url`, `lulu_cover_pdf_url`, `lulu_base_cost_usd`, `lulu_env`, `fulfillable_via=lulu`, `price` on the product doc. Guards against double-link with Printful.
+    - `DELETE /api/lulu/fulfillment/{product_id}` (admin) — unlink (Lulu has nothing remote to delete).
+    - `POST /api/lulu/test-print-job` (admin) — submit a real sandbox print job using the product's stored config + a supplied shipping address. Returns the Lulu print_job_id for status tracking.
+- **Frontend**:
+  - `AdminStudio.jsx` DraftCard's fulfillment block is now provider-aware: cap/tee/hoodie/mug → "Make fulfillable on Printful" (Phase 2 path); journal/notebook → expandable **`LuluFulfillmentForm`** (Phase 5 path).
+  - `LuluFulfillmentForm` (new inline component): preset picker auto-populates pod_package_id + page_count, admin pastes interior+cover PDF URLs, "Preview cost" hits Lulu's live calculator (shows print/ship/fulfillment/tax breakdown + suggested retail), "Make fulfillable" commits.
+  - Linked state shows "✓ Fulfillable on Lulu (sandbox)" with the page count + base cost + UNLINK button. Visually consistent with the Printful linked state.
+- **Env**: `LULU_ENV=sandbox` + 4 new credentials (`LULU_SANDBOX_CLIENT_ID/SECRET`, `LULU_PRODUCTION_CLIENT_ID/SECRET`). Both sandbox and production confirmed authenticating against `https://api.{sandbox.,}lulu.com/auth/realms/glasstree/protocol/openid-connect/token` with 1-hour bearer tokens.
+- **Live-verified flow**:
+  - Studio generated `The Founding Journal` (cream linen journal, AI-designed cover).
+  - `/api/lulu/cost-preview` for 144-page B&W journal → print $5.59 · ship $5.69 · fulfillment $0.75 · tax $0.86 · base $12.03 · suggested retail $24.95.
+  - `make-fulfillable` with Lulu sample interior+cover Dropbox PDFs → 200 OK, product price auto-set to $24.95, fulfillment fields persisted.
+  - Duplicate `make-fulfillable` → 400 "already fulfillable".
+  - `detach` → 200 OK, fields cleared.
+- **Tests** — `tests/test_iter31_lulu_phase5.py` **7/7 PASS**. Regression with iter28+iter29+iter30+iter31 = **26/26 PASS** together.
+- **Scope note**: Phase 5a only. Today admins **paste PDF URLs manually** (interior + cover). Phase 5b will add AI-generated journal PDFs (lined-paper interior + AI cover) so this becomes one-click like Printful. The plumbing today is also reusable for that.
+
 ## Backlog — prioritized
 
 

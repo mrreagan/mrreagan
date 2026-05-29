@@ -116,6 +116,7 @@ from routers.connect import router as connect_router, ws_router as connect_ws_ro
 from routers.link_preview import router as link_preview_router
 from routers.studio import router as studio_router, admin_router as studio_admin_router
 from routers.printful import router as printful_router
+from routers.lulu import router as lulu_router
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -184,6 +185,7 @@ api_router.include_router(link_preview_router)
 api_router.include_router(studio_router)
 api_router.include_router(studio_admin_router)
 api_router.include_router(printful_router)
+api_router.include_router(lulu_router)
 
 
 @api_router.post("/webhook/stripe")
