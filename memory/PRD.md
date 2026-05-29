@@ -295,6 +295,24 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Tests** — `tests/test_iter31_lulu_phase5.py` **7/7 PASS**. Regression with iter28+iter29+iter30+iter31 = **26/26 PASS** together.
 - **Scope note**: Phase 5a only. Today admins **paste PDF URLs manually** (interior + cover). Phase 5b will add AI-generated journal PDFs (lined-paper interior + AI cover) so this becomes one-click like Printful. The plumbing today is also reusable for that.
 
+## Iteration 27 — AI Studio Phase 5b (Auto-generated journal PDFs) (May 29, 2026)
+- **Goal**: Close the "dream → fulfillable" loop for paper goods. Studio generates a cover image → backend auto-builds a Lulu-compliant interior PDF (lined pages) + cover PDF (with the AI image wrapped on the front panel) → admin clicks "Make fulfillable" with zero manual PDF prep.
+- **New module**: `utils/journal_pdf.py` — reportlab-based PDF generator.
+  - **Interior**: lined journal page in 5.5×8.5 trim + 0.125" bleed, 22 rules per page in a soft cream rule color, gold page numbers, embedded Bitstream Vera fonts (shipped with reportlab), page count rounded up to multiple of 4 for perfect-binding signatures.
+  - **Cover**: full wrap (back + spine + front) sized to land in the middle of Lulu's accepted tolerance window. Spine formula: `pages × 0.002252" + 0.06" binding allowance`. Front panel hosts the AI image (PIL-converted to sRGB JPEG, bled past the spine seam by 0.125" to avoid white gaps). Back panel: "A journal for the work of becoming." tagline + Birthright mark within safety margin. Spine: vertical title in embedded bold serif.
+  - All fonts embedded as TTFs (Lulu rejects non-embedded base-14 PDF fonts).
+- **New endpoint**: `POST /api/lulu/auto-generate-pdfs` (admin) — body `{product_id, page_count}`. Reads the product's `image_url`, resolves it to `/app/backend/static/<rel>`, generates `interior-<id>.pdf` + `cover-<id>.pdf` under `static/pdfs/`, returns public URLs (via `PRINTFUL_PUBLIC_IMAGE_BASE` env fallback to `PUBLIC_APP_URL`).
+- **Static mount**: `/api/static/*` already covers `static/pdfs/*` — they're served as `application/pdf` automatically.
+- **Frontend**: `LuluFulfillmentForm` now leads with a gold **"Auto-generate interior + cover PDFs"** button. One click → URLs auto-fill into the interior/cover fields → admin clicks "Make fulfillable" → done.
+- **Live verified against Lulu sandbox**:
+  - First sandbox print-job submission (pre-fix) rejected: cover 11.569" wide, just outside Lulu's 11.572-11.697" tolerance window. Added a `SPINE_BINDING_ALLOWANCE = 0.06"` constant — cover now lands at 11.634" (centered in window).
+  - Second submission rejected: "fonts not embedded" — base-14 Helvetica wasn't counted. Switched to registered TTF (Bitstream Vera, bundled with reportlab).
+  - Third submission (job 301835) submitted with `CREATED → validating` state; no rejection within 10+ minutes (prior rejections came in 5 seconds), strong signal the PDFs pass structural validation.
+- **Tests** — `tests/test_iter32_lulu_phase5b.py` **7/7 PASS**. Includes a static assertion that the spine formula keeps the cover in Lulu's tolerance window, plus unit tests for the PDF generators and integration tests for the chained auto-generate → make-fulfillable flow.
+- **Combined regression**: iter28 + iter29 + iter30 + iter31 + iter32 = **33/33 PASS**.
+- **Env**: re-added `PRINTFUL_PUBLIC_IMAGE_BASE` (preview URL) to backend/.env so Lulu's validator can reach our PDFs from the public internet. On production this is unset and falls back to `PUBLIC_APP_URL=https://birthright.live`. (Naming is a bit muddy — it's shared between Printful image hosting and Lulu PDF hosting — leaving as is.)
+- **Dependency**: `reportlab==4.5.1` added to requirements.txt. Pillow was already present.
+
 ## Backlog — prioritized
 
 

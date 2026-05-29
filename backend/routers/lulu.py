@@ -282,6 +282,87 @@ class TestPrintJobRequest(BaseModel):
     contact_email: str = Field(min_length=4)
 
 
+class AutoGeneratePdfsRequest(BaseModel):
+    product_id: str = Field(min_length=1)
+    page_count: int = Field(default=144, ge=4, le=800)
+
+
+class AutoGeneratePdfsResponse(BaseModel):
+    ok: bool
+    interior_pdf_url: str
+    cover_pdf_url: str
+    page_count: int
+
+
+@router.post("/auto-generate-pdfs", response_model=AutoGeneratePdfsResponse)
+async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(get_current_user)):
+    """Phase 5b — auto-generate a Lulu-compliant interior + cover PDF for a
+    journal/notebook draft using its AI-generated cover image.
+
+    Closes the loop from "dream → fulfillable" with zero manual PDF prep:
+      1) Locate the product's AI cover image on disk.
+      2) Run reportlab to write static/pdfs/interior-<id>.pdf + cover-<id>.pdf.
+      3) Return public URLs the admin can paste into make-fulfillable.
+    """
+    _admin_only(user)
+    from pathlib import Path as _Path  # noqa: PLC0415
+    from database import db  # noqa: PLC0415
+    from utils import journal_pdf  # noqa: PLC0415
+
+    product = await db.products.find_one({"id": req.product_id}, {"_id": 0})
+    if not product:
+        raise HTTPException(404, "Product not found")
+    if (product.get("category") or "").lower() not in LULU_CATEGORIES:
+        raise HTTPException(400, "Auto-PDF only supports journal/notebook for now.")
+
+    image_url = product.get("image_url") or ""
+    if not image_url.startswith("/api/static/"):
+        raise HTTPException(400, "Product image must be a Studio-generated static asset.")
+    # /api/static/products/foo.png → /app/backend/static/products/foo.png
+    rel = image_url[len("/api/static/"):]
+    backend_static = _Path(__file__).resolve().parents[1] / "static"
+    image_path = backend_static / rel
+    if not image_path.exists():
+        raise HTTPException(404, f"Cover image not found on disk: {rel}")
+
+    pdfs_dir = backend_static / "pdfs"
+    try:
+        interior_path, cover_path = journal_pdf.generate_pair(
+            cover_image_path=image_path,
+            output_dir=pdfs_dir,
+            product_id=product["id"],
+            page_count=req.page_count,
+            title=product.get("name", "Birthright Journal"),
+        )
+    except Exception as ex:
+        logger.exception("Auto-PDF generation failed for product %s", product["id"])
+        raise HTTPException(500, f"PDF generation failed: {ex}") from ex
+
+    base = (os.environ.get("PRINTFUL_PUBLIC_IMAGE_BASE") or os.environ.get("PUBLIC_APP_URL") or "").rstrip("/")
+    if not base:
+        raise HTTPException(500, "PUBLIC_APP_URL not configured — cannot share PDFs with Lulu")
+
+    interior_url = f"{base}/api/static/pdfs/{interior_path.name}"
+    cover_url = f"{base}/api/static/pdfs/{cover_path.name}"
+
+    await log_action(
+        db, user, "lulu.auto_generate_pdfs",
+        target_type="product", target_id=product["id"],
+        metadata={
+            "interior_pdf_url": interior_url,
+            "cover_pdf_url": cover_url,
+            "page_count": req.page_count,
+        },
+    )
+
+    return AutoGeneratePdfsResponse(
+        ok=True,
+        interior_pdf_url=interior_url,
+        cover_pdf_url=cover_url,
+        page_count=req.page_count,
+    )
+
+
 @router.post("/test-print-job")
 async def submit_test_print_job(req: TestPrintJobRequest, user: dict = Depends(get_current_user)):
     """Submit a real (sandbox) print job using this product's stored Lulu config."""

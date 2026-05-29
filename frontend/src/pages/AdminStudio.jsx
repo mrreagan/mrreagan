@@ -541,6 +541,7 @@ function LuluFulfillmentForm({ draft, show, setShow, onLinked }) {
   const [coverUrl, setCoverUrl] = useState("");
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [autoGenerating, setAutoGenerating] = useState(false);
 
   useEffect(() => {
     if (show && presets.length === 0) {
@@ -556,6 +557,19 @@ function LuluFulfillmentForm({ draft, show, setShow, onLinked }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show]);
+
+  const autoGenerate = async () => {
+    setAutoGenerating(true);
+    try {
+      const r = await api.post("/lulu/auto-generate-pdfs", { product_id: draft.id, page_count: parseInt(pageCount, 10) });
+      setInteriorUrl(r.data.interior_pdf_url);
+      setCoverUrl(r.data.cover_pdf_url);
+      toast.success("PDFs generated — review URLs, then make fulfillable");
+      setPreview(null);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Auto-PDF failed");
+    } finally { setAutoGenerating(false); }
+  };
 
   const choosePreset = (k) => {
     const p = presets.find((x) => x.key === k);
@@ -614,6 +628,9 @@ function LuluFulfillmentForm({ draft, show, setShow, onLinked }) {
         <span className="text-[10px] uppercase tracking-wider text-[#476B6B]">Lulu config</span>
         <button onClick={() => setShow(false)} className="text-[10px] text-[#5C6B6B] hover:underline">cancel</button>
       </div>
+      <button onClick={autoGenerate} disabled={autoGenerating} className="w-full inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider text-white bg-[#C9A961] hover:bg-[#B89A5A] rounded-md py-2 transition disabled:opacity-50" data-testid={`lulu-auto-pdfs-${draft.id}`}>
+        <Sparkles size={12} strokeWidth={1.8} /> {autoGenerating ? "Generating PDFs…" : "Auto-generate interior + cover PDFs"}
+      </button>
       <label className="block">
         Preset
         <select value={presetKey} onChange={(e) => choosePreset(e.target.value)} className="input-field !py-1 !px-2 text-xs w-full mt-1" data-testid={`lulu-preset-${draft.id}`}>
