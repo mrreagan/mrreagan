@@ -64,6 +64,7 @@ function OverviewTab() {
       <QuickActionCard to="/admin/vendor-products" icon={Store} title="Vendor catalog" description="Moderate vendor-submitted products" />
       <QuickActionCard to="/admin/studio/queue" icon={FlaskConical} title="Studio queue" description="Approve vendor AI Studio submissions" />
       <QuickActionCard to="/admin/lulu-ops" icon={Server} title="Lulu cutover" description="Validate POD presets · manage webhooks" />
+      <QuickActionCard to="/admin/email-ops" icon={Mail} title="Email cutover" description="Resend status · flip dry-run → live" />
       <QuickActionCard to="/admin/payouts" icon={Wallet} title="Partner payouts" description="Referral ledger & disbursements" />
       <QuickActionCard to="/admin/subscriptions" icon={Wallet} title="Subscriptions" description="Active, cancelled, revoke + refund" />
       <QuickActionCard to="/admin/ombudsman" icon={Shield} title="Ombudsman queue" description="Disputes + flagged DM threads" />

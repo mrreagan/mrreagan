@@ -1,7 +1,9 @@
 """Foundation content, governing members, contact, newsletter, sponsors, dashboard."""
 import logging
 import os
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from models import (
     GoverningMemberCreate,
     FoundationContent,
@@ -320,6 +322,97 @@ async def email_log(user: dict = Depends(require_roles("admin")), limit: int = 1
     return {
         "items": combined[:limit],
         "real_send_enabled": is_real_send_enabled(),
+    }
+
+
+@router.get("/admin/email-status")
+async def email_status(user: dict = Depends(require_roles("admin"))):
+    """Cutover diagnostic — reveals what's blocking the live-mode flip without
+    leaking the actual key (`RESEND_API_KEY` is reported only by presence)."""
+    import os as _os
+    from database import db
+    key = _os.environ.get("RESEND_API_KEY", "")
+    sender = _os.environ.get("SENDER_EMAIL", "")
+    reply = _os.environ.get("REPLY_TO_EMAIL", "")
+    dry_run_raw = _os.environ.get("EMAIL_DRY_RUN", "true")
+    dry_run = dry_run_raw.lower() == "true"
+    sent_count = await db.email_log.count_documents({})
+    queued_count = await db.outbound_emails.count_documents({})
+    failed_count = await db.email_log.count_documents({"status": "failed"})
+    return {
+        "dry_run": dry_run,
+        "real_send_enabled": is_real_send_enabled(),
+        "resend_key_configured": bool(key) and key.startswith("re_"),
+        "resend_key_prefix": (key[:6] + "…") if key else "",
+        "sender_email": sender,
+        "reply_to_email": reply or sender,
+        "sender_domain": sender.split("@", 1)[1] if "@" in sender else "",
+        "queued_dry_run_count": queued_count,
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+        "checklist": _email_cutover_checklist(key, sender, dry_run_raw),
+    }
+
+
+def _email_cutover_checklist(key: str, sender: str, dry_run_raw: str) -> list[dict]:
+    """Return a list of `{step, ok, hint}` rows the admin UI renders verbatim."""
+    return [
+        {
+            "step": "RESEND_API_KEY configured",
+            "ok": bool(key) and key.startswith("re_"),
+            "hint": "Set RESEND_API_KEY=re_xxx in backend/.env (from your Resend dashboard).",
+        },
+        {
+            "step": "SENDER_EMAIL configured",
+            "ok": "@" in sender,
+            "hint": "Set SENDER_EMAIL to a Resend-verified sender (e.g. hello@birthright.live).",
+        },
+        {
+            "step": "Sender domain DNS verified on Resend",
+            "ok": False if not sender else None,  # unverifiable from here
+            "hint": "Confirm SPF/DKIM/DMARC records for the sender domain on your DNS provider — Resend dashboard will turn the domain green.",
+        },
+        {
+            "step": "EMAIL_DRY_RUN=false in backend/.env",
+            "ok": dry_run_raw.lower() == "false",
+            "hint": "Flip to false then run `sudo supervisorctl restart backend`.",
+        },
+    ]
+
+
+class EmailTestRequest(BaseModel):
+    to: str
+    subject: Optional[str] = "Birthright email cutover test"
+
+
+@router.post("/admin/email-test")
+async def email_test(req: EmailTestRequest, user: dict = Depends(require_roles("admin"))):
+    """Send (or dry-run-queue) a self-test email. Use after flipping EMAIL_DRY_RUN
+    to confirm the live Resend path works."""
+    from utils.mailer import send_email
+    target = req.to.strip()
+    if not target or "@" not in target:
+        raise HTTPException(400, "Provide a valid recipient email")
+    subject = (req.subject or "Birthright email cutover test").strip()[:120]
+    html = (
+        "<div style=\"font-family:Georgia,serif;color:#1A2424;max-width:560px\">"
+        "<h2 style=\"font-weight:400\">Email cutover test</h2>"
+        f"<p>Hi! This is a live test from <strong>{user.get('email')}</strong> via the Birthright "
+        "admin console. If you're reading this, real sends are working.</p>"
+        f"<p style=\"color:#5C6B6B;font-size:13px;margin-top:24px\">Sent at {now_iso()}.</p>"
+        "</div>"
+    )
+    text = f"Email cutover test from {user.get('email')} at {now_iso()}."
+    email_id = await send_email(
+        to=target, subject=subject, html=html, text=text,
+        template_name="email_cutover_test",
+        metadata={"sent_by": user["id"], "sent_by_email": user.get("email")},
+    )
+    return {
+        "ok": email_id is not None,
+        "email_id": email_id,
+        "real_send_enabled": is_real_send_enabled(),
+        "to": target,
     }
 
 

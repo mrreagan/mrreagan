@@ -470,6 +470,38 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
   - 5 page-count tests (snap to bucket; parse Claude reply; garbage fallback; uses stored suggestion; explicit override wins).
 - **Combined regression**: iter28..36 = **78/78 PASS** across all Phase 6 POD work.
 
+## Iteration 32 — Research moderation regression + Email cutover console (May 30, 2026)
+- **Goal**: Wrap two P2 backlog items: confirm Phase 6B.5 (Research moderation queue) is fully wired and add a parallel "Email cutover console" so admins can safely flip `EMAIL_DRY_RUN=false` once Resend DNS is verified.
+
+### A) Phase 6B.5 Research moderation queue — already-shipped regression
+- Existing implementation (verified end-to-end with new tests):
+  - **Backend** (`routers/research.py`): `_moderate(db, artifact_id, new_status, note, user)`, `POST /admin/research/{id}/approve|request-changes|reject`, `POST /me/research/{id}/submit-for-review`. Partner edits that touch content keys auto-re-queue the artifact to `pending_review`. Approval back-fills `publication_date` if missing.
+  - **Frontend** (`pages/AdminResearch.jsx`): tabbed queue (pending_review / changes_requested / rejected / published / drafts) with per-row Approve/Request-changes/Reject modal and note input. Partner-side (`pages/PartnerResearch.jsx`) shows status pill + admin note + re-submit button.
+- New tests in `tests/test_iter37_research_email.py`:
+  - Full lifecycle (draft → submit → request changes → re-submit → approve, with `moderation_note` clearing on re-submit and `publication_date` set on approval).
+  - Admin-only enforcement on `/admin/research` + `.../approve`.
+  - Reject endpoint refuses empty note (400), accepts with note (200).
+
+### B) Email cutover console (`/admin/email-ops` page, admin-only)
+- **Backend** (`routers/foundation.py`):
+  - `GET /api/admin/email-status` (admin) returns `{dry_run, real_send_enabled, resend_key_configured, resend_key_prefix, sender_email, reply_to_email, sender_domain, queued_dry_run_count, sent_count, failed_count, checklist[]}`. The checklist is a list of `{step, ok, hint}` rows the UI renders verbatim. Full Resend API key is NEVER returned — only a 6-char prefix.
+  - `POST /api/admin/email-test` (admin) sends a self-test through the same `send_email` path used by every other transactional template. In dry-run it queues to `db.outbound_emails`; in live mode it goes through Resend.
+- **Frontend** (`pages/AdminEmailOps.jsx`, new):
+  - Mode banner (gold "DRY-RUN" warning vs green "LIVE" seal).
+  - Readiness checklist with per-row OK/FAIL/PENDING badges and hints.
+  - Sender/Reply-to/Sent total/Dry-run queued stats.
+  - Test-send form with the admin's own email pre-filled; toast distinguishes live vs dry-run.
+  - "Most recent emails" pulls from `/admin/email-log` (sent + queued, last 15).
+  - Cutover checklist at the bottom (set key → verify DNS → flip env → restart → test).
+  - Linked from `AdminDashboard.jsx` ("Email cutover" quick-action tile next to Lulu cutover).
+- **Tests** (in `test_iter37_research_email.py`):
+  - `/admin/email-status` admin-only + shape check (8 required keys + checklist with `step`/`hint`).
+  - Key-leak guard: `resend_key_prefix` ≤ 8 chars.
+  - `/admin/email-test` in dry-run actually creates an `outbound_emails` row with `template=email_cutover_test`.
+  - Recipient validation (empty + malformed → 400).
+  - Non-admin → 403.
+- **Combined regression**: iter28..37 = **86/86 PASS**.
+
 ## Backlog — prioritized
 
 

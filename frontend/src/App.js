@@ -37,6 +37,7 @@ import AdminProducts from "./pages/AdminProducts";
 import AdminStudio from "./pages/AdminStudio";
 import AdminStudioQueue from "./pages/AdminStudioQueue";
 import AdminLuluOps from "./pages/AdminLuluOps";
+import AdminEmailOps from "./pages/AdminEmailOps";
 import VendorStudio from "./pages/VendorStudio";
 import AdminWorkshops from "./pages/AdminWorkshops";
 import PhotoModeration from "./pages/PhotoModeration";
@@ -268,6 +269,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminLuluOps />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/email-ops"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminEmailOps />
           </ProtectedRoute>
         }
       />
