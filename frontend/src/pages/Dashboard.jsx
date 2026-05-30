@@ -181,6 +181,23 @@ function OrdersSection({ orders }) {
                 <p className="font-serif text-xl">${o.total?.toFixed(2)}</p>
               </div>
               <div className="mt-3 text-xs text-[#5C6B6B]">{o.items.map((i) => i.name).join(" · ")}</div>
+              {Array.isArray(o.fulfillments) && o.fulfillments.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-dashed border-[#E5E1D8] space-y-1" data-testid={`order-fulfillments-${o.id}`}>
+                  {o.fulfillments.map((f, idx) => {
+                    const item = o.items[idx];
+                    const isPod = !!f.provider;
+                    const isIssue = f.status === "failed_to_dispatch";
+                    return (
+                      <p key={idx} className={`text-[11px] ${isIssue ? "text-[#9E3C3C]" : "text-[#5C6B6B]"}`}>
+                        <span className="font-medium text-[#0F2424]">{item?.name || f.product_id?.slice(0, 8)}</span>
+                        {" · "}
+                        {f.customer_status || f.status}
+                        {isPod && f.provider && ` · via ${f.provider}`}
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))}
         </div>

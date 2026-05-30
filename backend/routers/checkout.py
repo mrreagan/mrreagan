@@ -139,10 +139,12 @@ async def checkout_workshop(
     return {"url": session.url, "session_id": session.session_id}
 
 
-async def _validate_cart_and_total(db, items, user) -> tuple[float, list]:
-    """Validate items, enforce gating, compute total server-side."""
+async def _validate_cart_and_total(db, items, user) -> tuple[float, list, bool]:
+    """Validate items, enforce gating, compute total server-side.
+    Returns (total, line_items, needs_shipping)."""
     total = 0.0
     line_items = []
+    needs_shipping = False
     for item in items:
         p = await db.products.find_one({"id": item.product_id})
         if not p:
@@ -152,11 +154,13 @@ async def _validate_cart_and_total(db, items, user) -> tuple[float, list]:
                 status_code=400,
                 detail=f"'{p.get('name')}' is sold on the vendor's own site and can't be checked out through Birthright.",
             )
+        if p.get("fulfillable_via") in ("printful", "lulu"):
+            needs_shipping = True
         await _enforce_material_gating(db, p, user)
         qty = max(1, int(item.quantity))
         total += float(p["price"]) * qty
         line_items.append({"product_id": p["id"], "name": p["name"], "price": p["price"], "quantity": qty})
-    return round(total, 2), line_items
+    return round(total, 2), line_items, needs_shipping
 
 
 async def _enforce_material_gating(db, product: dict, user: Optional[dict]) -> None:
@@ -182,7 +186,19 @@ async def checkout_products(
     from database import db
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
-    total, line_items = await _validate_cart_and_total(db, data.items, user)
+    total, line_items, needs_shipping = await _validate_cart_and_total(db, data.items, user)
+    if needs_shipping:
+        addr = data.shipping_address or {}
+        required = ("name", "address1", "city", "state_code", "postcode")
+        missing = [k for k in required if not (addr.get(k) or "").strip()]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Shipping address is required (this order contains printed items). "
+                    f"Missing: {', '.join(missing)}"
+                ),
+            )
     user_id = user["id"] if user else None
     success_url = f"{data.origin_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}&type=order"
     cancel_url = f"{data.origin_url}/shop"
@@ -373,12 +389,19 @@ async def _create_registration_from_txn(db, txn: dict) -> None:
 
 async def _create_order_from_txn(db, txn: dict) -> None:
     items = txn.get("items", [])
+    # Pre-resolve customer email for both receipts and POD fulfillment.
+    contact_email: Optional[str] = None
+    if txn.get("user_id"):
+        u = await db.users.find_one({"id": txn["user_id"]}, {"_id": 0, "email": 1})
+        if u:
+            contact_email = u.get("email")
     order = {
         "id": gen_id(),
         "user_id": txn.get("user_id"),
         "items": items,
         "total": txn["amount"],
         "shipping_address": txn.get("shipping_address"),
+        "contact_email": contact_email,
         "payment_session_id": txn["session_id"],
         "status": "paid",
         "created_at": now_iso(),
@@ -387,6 +410,26 @@ async def _create_order_from_txn(db, txn: dict) -> None:
     for item in items:
         await db.products.update_one(
             {"id": item["product_id"]}, {"$inc": {"inventory": -item["quantity"]}}
+        )
+
+    # Phase 6 — Dispatch POD-fulfilled items to their providers.
+    try:
+        from utils.order_dispatch import dispatch_order
+        fulfillments = await dispatch_order(db, order)
+        await db.orders.update_one(
+            {"id": order["id"]},
+            {"$set": {"fulfillments": fulfillments, "fulfillment_at": now_iso()}},
+        )
+        logger.info(
+            "order %s: dispatched %s line item(s) (%s POD)",
+            order["id"], len(fulfillments),
+            sum(1 for f in fulfillments if f.get("provider")),
+        )
+    except Exception as e:
+        logger.exception("order dispatch failed: %s", e)
+        await db.orders.update_one(
+            {"id": order["id"]},
+            {"$set": {"fulfillments": [], "dispatch_error": str(e)[:300]}},
         )
     # Referral attribution
     try:

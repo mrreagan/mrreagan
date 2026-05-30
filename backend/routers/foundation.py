@@ -247,8 +247,12 @@ async def my_dashboard(user: dict = Depends(get_current_user)):
     for r in regs:
         w = await db.workshops.find_one({"id": r["workshop_id"]}, {"_id": 0})
         r["workshop"] = w
-    # orders
+    # orders — enrich fulfillments with customer-friendly status labels
+    from utils.order_dispatch import customer_friendly_status
     orders = await db.orders.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for o in orders:
+        for f in (o.get("fulfillments") or []):
+            f["customer_status"] = customer_friendly_status(f.get("status"))
     # impact statements
     impacts = await db.impact_statements.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return {

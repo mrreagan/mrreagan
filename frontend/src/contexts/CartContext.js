@@ -5,7 +5,7 @@ const STORAGE_KEY = "br_cart";
 
 // Cart contents are non-sensitive (no PII, no auth tokens) — just product references and quantities.
 // We sanitize on read to reject any unexpected fields that could leak via XSS.
-const ALLOWED_FIELDS = ["product_id", "name", "price", "image_url", "quantity", "max_per_order"];
+const ALLOWED_FIELDS = ["product_id", "name", "price", "image_url", "quantity", "max_per_order", "fulfillable_via"];
 
 const sanitizeItem = (raw) => {
   if (!raw || typeof raw !== "object") return null;
@@ -19,6 +19,7 @@ const sanitizeItem = (raw) => {
   item.quantity = Math.max(1, parseInt(item.quantity, 10) || 1);
   item.image_url = typeof item.image_url === "string" ? item.image_url : "";
   item.max_per_order = Number.isFinite(item.max_per_order) ? item.max_per_order : null;
+  item.fulfillable_via = typeof item.fulfillable_via === "string" ? item.fulfillable_via : null;
   return item;
 };
 
@@ -66,6 +67,7 @@ export function CartProvider({ children }) {
           image_url: product.image_url,
           quantity: newQty,
           max_per_order: cap,
+          fulfillable_via: product.fulfillable_via || null,
         },
       ];
     });

@@ -125,6 +125,33 @@ async def delete_sync_product(sync_product_id: int) -> None:
     await _request("DELETE", f"/store/products/{sync_product_id}")
 
 
+# ============ Order dispatch (Phase 6) ============
+
+async def create_order(
+    *,
+    external_id: str,
+    recipient: Dict[str, Any],
+    items: List[Dict[str, Any]],
+    confirm: bool = False,
+) -> Dict[str, Any]:
+    """Submit a real order to Printful for fulfillment.
+
+    items: list of {sync_variant_id, quantity} dicts (sync_variant_id is what
+    we stored on the product as printful_sync_variant_id).
+    confirm=False keeps the order in DRAFT — we don't auto-charge a Printful
+    account from a hosted preview / sandbox-style flow. Production should
+    flip to confirm=True once the foundation has a funded Printful wallet.
+    """
+    payload: Dict[str, Any] = {
+        "external_id": str(external_id)[:60],
+        "recipient": recipient,
+        "items": items,
+    }
+    if confirm:
+        payload["confirm"] = True
+    return await _request("POST", "/orders", json=payload)
+
+
 # ============ Pricing helper ============
 
 def suggest_retail_price(base_cost_usd: float, multiplier: float = 2.0) -> float:
