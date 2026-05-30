@@ -387,6 +387,49 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
   - `auto-generate-pdfs` honors override AND falls back to stored style when not overridden.
 - **Combined regression**: iter28..33 = **44/44 PASS** across Phases 2 + 3 + 4 + 5a + 5b + 5c.
 
+## Iteration 29 — Order Routing: Stripe → Printful / Lulu auto-dispatch (May 30, 2026)
+- **Goal**: Close the loop from POD product → customer purchase → automated fulfillment. When Stripe marks an order paid, dispatch the right line items to Printful or Lulu based on each product's `fulfillable_via` flag.
+- **Backend** (`utils/order_dispatch.py` — new file):
+  - `dispatch_order(db, order)` iterates `order.items`, looks up each product, routes Printful items → `printful_client.create_order` and Lulu items → `lulu_client.create_print_job`. Non-POD items get a `fulfilled_by_birthright` status with no provider call.
+  - Address adapters `_address_to_printful` and `_address_to_lulu` normalize our shipping shape to each provider's schema.
+  - Failures are recorded as `failed_to_dispatch` with the error message — Stripe charges are **never** refunded because POD providers are briefly down (admin retries manually).
+  - `customer_friendly_status(raw)` maps both Printful (lowercase) and Lulu (ALLCAPS) status strings into a single user-friendly label set.
+- **Cart guard** (`routers/checkout.py`): the `/checkout/products` endpoint now detects POD items in the cart and returns **400** with a clear "Shipping address is required" message if `shipping_address` is missing the required fields. Address is persisted on the `payment_transactions` doc and copied to the resulting `orders` doc on payment success.
+- **Webhook hook** (`_create_order_from_txn`): after order insert, immediately calls `dispatch_order` and writes `fulfillments[]` + `fulfillment_at` onto the order. Wrapped in try/except so dispatch failures don't break receipts.
+- **Frontend** (`pages/Cart.jsx`):
+  - When any cart item has `fulfillable_via` in `{printful, lulu}`, a new `<ShippingForm>` block appears above the summary.
+  - Form has Full name / Street / Apt / City / State / Postal / Country / Phone — all `data-testid`-tagged.
+  - Checkout button stays disabled with "Complete shipping address to continue" until name + address1 + city + state + postcode are all filled.
+  - Items themselves get a "Printed on demand · book/journal" or "apparel & merch" pill so the customer understands why shipping is required.
+- **Dashboard** (`/api/dashboard/me` + `pages/Dashboard.jsx`): order rows now show per-item fulfillment lines with the customer-friendly status string and the provider name (e.g., "The Founding Journal · Preparing for printing · via lulu").
+- **Tests** — `tests/test_iter34_order_routing.py` **10/10 PASS**:
+  - Address adapter shape tests for both providers.
+  - `customer_friendly_status` mapping (Printful + Lulu + Birthright + unknown fallback).
+  - `dispatch_order` skips non-POD items, fails-soft on missing shipping address, routes to Printful, routes to Lulu, records provider errors.
+  - HTTP integration: cart with POD item but no shipping → 400; same cart with shipping → 200 + Stripe URL.
+
+## Iteration 30 — Lulu Webhook Handler: status + tracking capture (May 30, 2026)
+- **Goal**: Once Lulu transitions a print job (CREATED → IN_PRODUCTION → SHIPPED) we want the customer to see live status + tracking on their Dashboard without admin intervention.
+- **Backend** (`utils/lulu_client.py`):
+  - `create_webhook(url, topics)` / `list_webhooks()` / `delete_webhook(id)` / `send_webhook_test(id)` wrappers around Lulu's `/webhooks/` resource.
+  - Topic supported: `PRINT_JOB_STATUS_CHANGED` (Lulu's docs say the webhook payload IS the full print-job resource).
+- **Webhook applier** (`utils/order_dispatch.py::apply_lulu_webhook`):
+  - Takes the raw payload, pulls `id` + `status.name` + `line_item_statuses[].messages.{tracking_id, tracking_urls, carrier_name}`.
+  - Finds the order whose `fulfillments[].provider_order_id` matches the Lulu print-job id; updates that fulfillment's `status`, `customer_status`, and `tracking` in place. Handles multi-shipment orders via `tracking.extra_shipments[]`.
+  - Persists every event in a new `lulu_webhook_events` collection for audit.
+- **Routes** (`routers/lulu.py`):
+  - `POST /api/lulu/webhook/{token}` — public receiver. Token is `LULU_WEBHOOK_TOKEN` in `.env` (auto-generated 32-byte url-safe secret). Constant-time compare via `hmac.compare_digest`. Bad token → 401. Bad JSON → 400. Acknowledges even if no order matches (so Lulu doesn't retry forever) but logs loudly.
+  - `POST /api/lulu/webhooks` (admin) — subscribes our public URL with Lulu using `PUBLIC_APP_URL`.
+  - `GET /api/lulu/webhooks` (admin) — lists current subscriptions + our expected URL.
+  - `DELETE /api/lulu/webhooks/{id}` (admin) — removes a subscription.
+  - `POST /api/lulu/webhooks/{id}/test` (admin) — asks Lulu to fire a test payload at us.
+- **Frontend** (`pages/Dashboard.jsx`): when a fulfillment has `tracking.tracking_url`, render an underlined "Track <id>" link with the carrier name; falls back to plain "Tracking: <id>" if only an id is available. Tested via the e2e webhook → dashboard/me flow.
+- **Tests** — `tests/test_iter35_lulu_webhook.py` **10/10 PASS**:
+  - `_extract_lulu_tracking` — single shipment, missing fields, multiple shipments (extras list), empty payload.
+  - `apply_lulu_webhook` — updates the matching order's fulfillment + persists audit row; no-match returns `matched=False` without DB writes; missing id is handled.
+  - HTTP receiver — bad token → 401; non-JSON → 400; full e2e: POST IN_PRODUCTION, dashboard shows "Being printed"; POST SHIPPED with tracking, dashboard surfaces "Shipped" + tracking link.
+- **Combined regression**: iter28..35 = **64/64 PASS** across all Phase 6 POD work.
+
 ## Backlog — prioritized
 
 

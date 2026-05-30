@@ -206,3 +206,102 @@ def customer_friendly_status(raw: Optional[str]) -> str:
     if not raw:
         return "Preparing"
     return CUSTOMER_STATUS_MAP.get(str(raw), str(raw).replace("_", " ").title())
+
+
+# ============ Lulu webhook ingest ============
+def _extract_lulu_tracking(line_item_statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Collapse Lulu's per-line-item shipment messages into a single tracking dict.
+
+    Lulu emits one `line_item_statuses[]` per shipment. Once `SHIPPED`, each
+    carries a `messages` object with `tracking_id`, `tracking_urls`, and
+    `carrier_name`. Most Birthright orders are one book → one shipment, so we
+    pick the first shipment that has tracking. If there are multiple, we keep
+    them all in `extra_shipments` so the customer view can render them.
+    """
+    primary: Dict[str, Any] = {}
+    extras: List[Dict[str, Any]] = []
+    for li in (line_item_statuses or []):
+        msg = (li.get("messages") or {}) if isinstance(li.get("messages"), dict) else {}
+        tracking_id = msg.get("tracking_id")
+        tracking_urls = msg.get("tracking_urls") or []
+        carrier = msg.get("carrier_name")
+        if not tracking_id and not tracking_urls:
+            continue
+        rec = {
+            "tracking_id": tracking_id,
+            "tracking_url": tracking_urls[0] if tracking_urls else None,
+            "tracking_urls": list(tracking_urls),
+            "carrier_name": carrier,
+        }
+        if not primary:
+            primary = rec
+        else:
+            extras.append(rec)
+    if extras:
+        primary["extra_shipments"] = extras
+    return primary
+
+
+async def apply_lulu_webhook(db, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Process a Lulu PRINT_JOB_STATUS_CHANGED webhook.
+
+    The payload is the print-job resource itself (same shape as
+    GET /print-jobs/{id}/). We use `id` to find the matching fulfillment record
+    inside any order, update its status, and persist any tracking info.
+
+    Returns a small audit dict so the caller can log + the test can assert.
+    """
+    job_id = payload.get("id")
+    if job_id is None:
+        return {"matched": False, "reason": "missing print job id"}
+    job_id_str = str(job_id)
+    status_obj = payload.get("status")
+    status_name = (
+        status_obj.get("name") if isinstance(status_obj, dict) else str(status_obj or "")
+    ) or "CREATED"
+    tracking = _extract_lulu_tracking(payload.get("line_item_statuses") or [])
+
+    order = await db.orders.find_one(
+        {"fulfillments.provider_order_id": job_id_str, "fulfillments.provider": "lulu"},
+        {"_id": 0, "id": 1, "fulfillments": 1},
+    )
+    if not order:
+        return {"matched": False, "reason": "no order with this lulu print job id",
+                 "job_id": job_id_str}
+
+    fulfillments = list(order.get("fulfillments") or [])
+    updated_idx: Optional[int] = None
+    for idx, f in enumerate(fulfillments):
+        if f.get("provider") == "lulu" and str(f.get("provider_order_id") or "") == job_id_str:
+            f["status"] = status_name
+            f["customer_status"] = customer_friendly_status(status_name)
+            if tracking:
+                f["tracking"] = tracking
+            updated_idx = idx
+            break
+
+    await db.orders.update_one(
+        {"id": order["id"]},
+        {"$set": {"fulfillments": fulfillments, "fulfillment_updated_at": __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()}},
+    )
+
+    # Persist a raw event for audit/debug + at-most-once safety later.
+    try:
+        await db.lulu_webhook_events.insert_one({
+            "id": uuid.uuid4().hex,
+            "lulu_print_job_id": job_id_str,
+            "order_id": order["id"],
+            "status": status_name,
+            "tracking": tracking or None,
+            "received_at": __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),
+        })
+    except Exception as ex:  # never fail the webhook because of audit
+        logger.warning("failed to persist lulu webhook event: %s", ex)
+
+    return {
+        "matched": True,
+        "order_id": order["id"],
+        "fulfillment_index": updated_idx,
+        "status": status_name,
+        "tracking": tracking or None,
+    }

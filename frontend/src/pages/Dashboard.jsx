@@ -187,13 +187,30 @@ function OrdersSection({ orders }) {
                     const item = o.items[idx];
                     const isPod = !!f.provider;
                     const isIssue = f.status === "failed_to_dispatch";
+                    const trackingUrl = f.tracking?.tracking_url;
+                    const trackingId = f.tracking?.tracking_id;
+                    const carrier = f.tracking?.carrier_name;
                     return (
-                      <p key={idx} className={`text-[11px] ${isIssue ? "text-[#9E3C3C]" : "text-[#5C6B6B]"}`}>
-                        <span className="font-medium text-[#0F2424]">{item?.name || f.product_id?.slice(0, 8)}</span>
-                        {" · "}
-                        {f.customer_status || f.status}
-                        {isPod && f.provider && ` · via ${f.provider}`}
-                      </p>
+                      <div key={idx} className={`text-[11px] ${isIssue ? "text-[#9E3C3C]" : "text-[#5C6B6B]"}`} data-testid={`order-fulfillment-${o.id}-${idx}`}>
+                        <p>
+                          <span className="font-medium text-[#0F2424]">{item?.name || f.product_id?.slice(0, 8)}</span>
+                          {" · "}
+                          {f.customer_status || f.status}
+                          {isPod && f.provider && ` · via ${f.provider}`}
+                        </p>
+                        {(trackingUrl || trackingId) && (
+                          <p className="mt-0.5" data-testid={`order-tracking-${o.id}-${idx}`}>
+                            {carrier && <span className="text-[#476B6B]">{carrier} · </span>}
+                            {trackingUrl ? (
+                              <a href={trackingUrl} target="_blank" rel="noreferrer noopener" className="text-[#476B6B] underline hover:text-[#0F2424]">
+                                Track {trackingId || "shipment"}
+                              </a>
+                            ) : (
+                              <span>Tracking: {trackingId}</span>
+                            )}
+                          </p>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

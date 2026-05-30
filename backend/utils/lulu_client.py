@@ -185,6 +185,40 @@ async def get_print_job(print_job_id: int) -> Dict[str, Any]:
     return await _request("GET", f"/print-jobs/{int(print_job_id)}/")
 
 
+# ============ Webhook subscriptions (admin-side; lives on Lulu, not on us) ============
+WEBHOOK_TOPICS = ["PRINT_JOB_STATUS_CHANGED"]
+
+
+async def create_webhook(*, url: str, topics: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Subscribe to Lulu webhooks. Returns the created subscription resource."""
+    return await _request(
+        "POST", "/webhooks/",
+        json_body={"url": url, "topics": topics or WEBHOOK_TOPICS, "is_active": True},
+    )
+
+
+async def list_webhooks() -> List[Dict[str, Any]]:
+    """List current Lulu webhook subscriptions on this account."""
+    raw = await _request("GET", "/webhooks/")
+    # Lulu returns a paginated envelope: {"count": N, "results": [...]}.
+    # Newer endpoints return a bare list. Handle both.
+    if isinstance(raw, dict):
+        return list(raw.get("results") or [])
+    return list(raw or [])
+
+
+async def delete_webhook(webhook_id: str) -> None:
+    await _request("DELETE", f"/webhooks/{webhook_id}/")
+
+
+async def send_webhook_test(webhook_id: str, topic: str = "PRINT_JOB_STATUS_CHANGED") -> Dict[str, Any]:
+    """Lulu /webhooks/{id}/test/ — sends a dummy payload to our endpoint."""
+    return await _request(
+        "POST", f"/webhooks/{webhook_id}/test/",
+        json_body={"topic": topic},
+    )
+
+
 # ============ Pricing helpers ============
 def summarise_cost(raw: Dict[str, Any]) -> Dict[str, float]:
     """Pull the dollar fields we care about out of Lulu's cost-calc response."""

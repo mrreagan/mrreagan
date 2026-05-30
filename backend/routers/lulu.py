@@ -17,7 +17,7 @@ import logging
 import os
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from auth_utils import get_current_user
@@ -433,3 +433,125 @@ async def submit_test_print_job(req: TestPrintJobRequest, user: dict = Depends(g
         "status": result.get("status"),
         "env": os.environ.get("LULU_ENV") or "sandbox",
     }
+
+
+# ============ Webhook subscriptions (Lulu → Birthright) ============
+def _webhook_token() -> str:
+    tok = (os.environ.get("LULU_WEBHOOK_TOKEN") or "").strip()
+    if not tok:
+        raise HTTPException(500, "LULU_WEBHOOK_TOKEN is not configured on the server")
+    return tok
+
+
+def _public_webhook_url() -> str:
+    base = (os.environ.get("PUBLIC_APP_URL") or "").rstrip("/")
+    if not base:
+        raise HTTPException(500, "PUBLIC_APP_URL is not configured")
+    return f"{base}/api/lulu/webhook/{_webhook_token()}"
+
+
+class SubscribeWebhookResponse(BaseModel):
+    ok: bool
+    id: str
+    url: str
+    topics: list[str]
+    env: str
+
+
+@router.post("/webhooks", response_model=SubscribeWebhookResponse)
+async def subscribe_webhook(user: dict = Depends(get_current_user)):
+    """Register our webhook URL with Lulu so PRINT_JOB_STATUS_CHANGED events flow in."""
+    _admin_only(user)
+    url = _public_webhook_url()
+    try:
+        result = await lulu.create_webhook(url=url)
+    except lulu.LuluError as ex:
+        # Lulu returns 400 with a "non_field_errors" array when the URL is already
+        # subscribed. Surface a friendly hint.
+        raise HTTPException(502, f"Lulu rejected webhook subscription: {ex}") from ex
+    from database import db
+    await log_action(
+        db, user, "lulu.webhook_subscribe",
+        target_type="lulu_webhook", target_id=str(result.get("id") or ""),
+        metadata={"url": url, "env": os.environ.get("LULU_ENV") or "sandbox"},
+    )
+    return SubscribeWebhookResponse(
+        ok=True,
+        id=str(result.get("id") or ""),
+        url=str(result.get("url") or url),
+        topics=list(result.get("topics") or ["PRINT_JOB_STATUS_CHANGED"]),
+        env=(os.environ.get("LULU_ENV") or "sandbox"),
+    )
+
+
+@router.get("/webhooks")
+async def list_lulu_webhooks(user: dict = Depends(get_current_user)):
+    """List Lulu-side webhook subscriptions for this account."""
+    _admin_only(user)
+    try:
+        subs = await lulu.list_webhooks()
+    except lulu.LuluError as ex:
+        raise HTTPException(502, f"Lulu list webhooks failed: {ex}") from ex
+    return {
+        "expected_url": _public_webhook_url(),
+        "env": (os.environ.get("LULU_ENV") or "sandbox"),
+        "subscriptions": subs,
+    }
+
+
+@router.delete("/webhooks/{webhook_id}")
+async def delete_lulu_webhook(webhook_id: str, user: dict = Depends(get_current_user)):
+    _admin_only(user)
+    try:
+        await lulu.delete_webhook(webhook_id)
+    except lulu.LuluError as ex:
+        raise HTTPException(502, f"Lulu delete webhook failed: {ex}") from ex
+    from database import db
+    await log_action(
+        db, user, "lulu.webhook_delete",
+        target_type="lulu_webhook", target_id=webhook_id,
+    )
+    return {"ok": True}
+
+
+@router.post("/webhooks/{webhook_id}/test")
+async def test_lulu_webhook(webhook_id: str, user: dict = Depends(get_current_user)):
+    """Ask Lulu to fire a dummy PRINT_JOB_STATUS_CHANGED at our endpoint."""
+    _admin_only(user)
+    try:
+        return await lulu.send_webhook_test(webhook_id)
+    except lulu.LuluError as ex:
+        raise HTTPException(502, f"Lulu test webhook failed: {ex}") from ex
+
+
+# ---- Public receiver (Lulu → us) ----
+@router.post("/webhook/{token}")
+async def receive_lulu_webhook(token: str, request: Request):
+    """Public endpoint Lulu posts status updates to. Secured by a long shared
+    token in the URL path (configured via LULU_WEBHOOK_TOKEN).
+
+    Lulu's payload is the print-job resource itself; we route it through
+    order_dispatch.apply_lulu_webhook which finds the matching order +
+    persists tracking + status updates.
+    """
+    expected = _webhook_token()
+    # constant-time compare to keep timing-attacks off the table
+    import hmac  # noqa: PLC0415
+    if not hmac.compare_digest(token, expected):
+        raise HTTPException(401, "Invalid webhook token")
+    try:
+        payload = await request.json()
+    except Exception as ex:
+        raise HTTPException(400, f"Invalid JSON: {ex}") from ex
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Payload must be a JSON object")
+    from database import db
+    from utils.order_dispatch import apply_lulu_webhook  # noqa: PLC0415
+    result = await apply_lulu_webhook(db, payload)
+    if not result.get("matched"):
+        # Acknowledge with 200 so Lulu doesn't retry forever, but log loudly.
+        logger.warning(
+            "lulu webhook: no order matched (reason=%s job=%s)",
+            result.get("reason"), result.get("job_id"),
+        )
+    return {"received": True, **result}
