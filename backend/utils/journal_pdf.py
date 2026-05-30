@@ -51,6 +51,17 @@ def _ensure_fonts() -> None:
 FONT_BODY = "BirthrightSerif"
 FONT_BOLD = "BirthrightSerif-Bold"
 
+# ============ Interior style registry ============
+INTERIOR_STYLES = {
+    "lined": "Classic lined pages, ~22 ruled lines per page. Default for general journaling.",
+    "blank": "No rules at all. Best for morning pages, free writing, sketching.",
+    "dot_grid": "5mm dot grid. Best for bullet journaling, habit trackers, sketchnotes.",
+    "split_top_blank_bottom_lined": "Top half blank for a sketch or intention, bottom half lined for notes. Best for daily intentions, drawings + reflection.",
+    "dated_lined": "A small horizontal rule at the top for a date + lined body below. Best for diaries, dated journals.",
+    "habit_tracker": "31-day habit tracker grid on the left, with lined notes on the right. Best for habit trackers, gratitude logs.",
+}
+DEFAULT_INTERIOR_STYLE = "lined"
+
 # ============ Spec table ============
 # Per Lulu 5.5×8.5 paperback BW 60# uncoated:
 # - bleed: 0.125" all sides
@@ -81,16 +92,20 @@ def generate_interior_pdf(
     page_count: int = 144,
     title: Optional[str] = None,
     show_page_numbers: bool = True,
+    style: str = DEFAULT_INTERIOR_STYLE,
 ) -> Path:
-    """Generate a lined-page interior PDF.
+    """Generate an interior PDF in the requested style.
 
-    page_count must be a multiple of 2 (printable signatures). Lulu prefers
-    multiples of 4 for paperback perfect-bound — we coerce upward.
+    page_count must be a multiple of 4 for perfect-binding signatures.
+    We coerce upward.
     """
     if page_count < 4:
         raise ValueError("page_count must be ≥ 4")
     if page_count % 4 != 0:
         page_count = page_count + (4 - page_count % 4)
+    if style not in INTERIOR_STYLES:
+        logger.warning("unknown interior style '%s' — falling back to '%s'", style, DEFAULT_INTERIOR_STYLE)
+        style = DEFAULT_INTERIOR_STYLE
 
     _ensure_fonts()
     output_path = Path(output_path)
@@ -100,35 +115,155 @@ def generate_interior_pdf(
     c.setTitle(title or "Birthright Journal")
     c.setAuthor("Birthright Foundation")
 
+    drawer = _STYLE_DRAWERS.get(style, _draw_lined_page)
     for page_num in range(1, page_count + 1):
-        _draw_lined_page(c, page_num, show_page_numbers)
+        drawer(c, page_num, show_page_numbers)
         c.showPage()
 
     c.save()
-    logger.info("Generated interior PDF: %s (%s pages)", output_path, page_count)
+    logger.info("Generated interior PDF: %s (%s pages, style=%s)", output_path, page_count, style)
     return output_path
 
 
-def _draw_lined_page(c: canvas.Canvas, page_num: int, show_page_numbers: bool) -> None:
-    """Draw rules on a single page within the safety margin."""
+def _page_bounds(show_page_numbers: bool) -> tuple[float, float, float, float]:
+    """Return (left, right, top, bottom) of the printable area within safety."""
     left = BLEED + SAFETY
     right = PAGE_W - BLEED - SAFETY
     top = PAGE_H - BLEED - SAFETY
     bottom = BLEED + SAFETY + (0.4 * inch if show_page_numbers else 0)
+    return left, right, top, bottom
 
+
+def _draw_page_number(c: canvas.Canvas, page_num: int) -> None:
+    c.setFillColor(PAGE_NUMBER_COLOR)
+    c.setFont(FONT_BODY, 8)
+    c.drawCentredString(PAGE_W / 2, BLEED + SAFETY * 0.4, str(page_num))
+
+
+def _draw_lined_page(c: canvas.Canvas, page_num: int, show_page_numbers: bool) -> None:
+    left, right, top, bottom = _page_bounds(show_page_numbers)
     c.setStrokeColor(RULE_COLOR)
     c.setLineWidth(0.5)
-
     y = top
     while y >= bottom:
         c.line(left, y, right, y)
         y -= RULE_SPACING
-
     if show_page_numbers:
-        c.setFillColor(PAGE_NUMBER_COLOR)
-        c.setFont(FONT_BODY, 8)
-        # Page number bottom-center, within safety
-        c.drawCentredString(PAGE_W / 2, BLEED + SAFETY * 0.4, str(page_num))
+        _draw_page_number(c, page_num)
+
+
+def _draw_blank_page(c: canvas.Canvas, page_num: int, show_page_numbers: bool) -> None:
+    """Truly blank — only the page number (if enabled)."""
+    if show_page_numbers:
+        _draw_page_number(c, page_num)
+
+
+def _draw_dot_grid_page(c: canvas.Canvas, page_num: int, show_page_numbers: bool) -> None:
+    """5mm dot grid (≈0.197") across the safe area."""
+    left, right, top, bottom = _page_bounds(show_page_numbers)
+    spacing = 0.2 * inch  # ~5mm
+    dot_radius = 0.4  # in points
+    c.setFillColor(RULE_COLOR)
+    c.setStrokeColor(RULE_COLOR)
+    y = top
+    while y >= bottom:
+        x = left
+        while x <= right:
+            c.circle(x, y, dot_radius, stroke=0, fill=1)
+            x += spacing
+        y -= spacing
+    if show_page_numbers:
+        _draw_page_number(c, page_num)
+
+
+def _draw_split_page(c: canvas.Canvas, page_num: int, show_page_numbers: bool) -> None:
+    """Top half blank (for sketch/intention), bottom half lined."""
+    left, right, top, bottom = _page_bounds(show_page_numbers)
+    mid = bottom + (top - bottom) / 2
+    # A soft cream divider between the halves
+    c.setStrokeColor(HexColor("#D9D1BD"))
+    c.setLineWidth(0.7)
+    c.line(left, mid, right, mid)
+    # Lines in the bottom half
+    c.setStrokeColor(RULE_COLOR)
+    c.setLineWidth(0.5)
+    y = mid - RULE_SPACING * 0.6
+    while y >= bottom:
+        c.line(left, y, right, y)
+        y -= RULE_SPACING
+    if show_page_numbers:
+        _draw_page_number(c, page_num)
+
+
+def _draw_dated_lined_page(c: canvas.Canvas, page_num: int, show_page_numbers: bool) -> None:
+    """A date rule across the top, then lined body below."""
+    left, right, top, bottom = _page_bounds(show_page_numbers)
+    # Date area marker
+    c.setStrokeColor(HexColor("#C9A961"))
+    c.setLineWidth(0.6)
+    date_y = top - 0.15 * inch
+    c.line(left, date_y, left + 2.5 * inch, date_y)
+    c.setFillColor(PAGE_NUMBER_COLOR)
+    c.setFont(FONT_BODY, 7)
+    c.drawString(left, date_y - 0.12 * inch, "DATE")
+    # Lined body starting below the date band
+    c.setStrokeColor(RULE_COLOR)
+    c.setLineWidth(0.5)
+    y = date_y - 0.6 * inch
+    while y >= bottom:
+        c.line(left, y, right, y)
+        y -= RULE_SPACING
+    if show_page_numbers:
+        _draw_page_number(c, page_num)
+
+
+def _draw_habit_tracker_page(c: canvas.Canvas, page_num: int, show_page_numbers: bool) -> None:
+    """31-day habit checklist on the left third, lined notes on the right two-thirds."""
+    left, right, top, bottom = _page_bounds(show_page_numbers)
+    # Divider at ~38% of width
+    div_x = left + (right - left) * 0.38
+    c.setStrokeColor(HexColor("#D9D1BD"))
+    c.setLineWidth(0.7)
+    c.line(div_x, top, div_x, bottom)
+    # Header
+    c.setFillColor(HexColor("#0F2424"))
+    c.setFont(FONT_BOLD, 9)
+    c.drawString(left, top - 0.05 * inch, "HABIT")
+    c.drawString(div_x + 0.15 * inch, top - 0.05 * inch, "NOTES")
+    # 31-day checkbox column on the left
+    rows = 31
+    avail = top - bottom - 0.2 * inch
+    step = avail / rows
+    c.setStrokeColor(RULE_COLOR)
+    c.setLineWidth(0.5)
+    c.setFont(FONT_BODY, 7)
+    c.setFillColor(HexColor("#5C6B6B"))
+    y = top - 0.35 * inch
+    for d in range(1, rows + 1):
+        c.drawString(left, y - 0.05 * inch, f"{d:02d}")
+        # Small square checkbox
+        box_x = left + 0.3 * inch
+        c.rect(box_x, y - 0.08 * inch, 0.14 * inch, 0.14 * inch, stroke=1, fill=0)
+        y -= step
+    # Lined notes on the right
+    c.setStrokeColor(RULE_COLOR)
+    note_left = div_x + 0.15 * inch
+    y = top - 0.35 * inch
+    while y >= bottom:
+        c.line(note_left, y, right, y)
+        y -= RULE_SPACING
+    if show_page_numbers:
+        _draw_page_number(c, page_num)
+
+
+_STYLE_DRAWERS: dict = {
+    "lined": _draw_lined_page,
+    "blank": _draw_blank_page,
+    "dot_grid": _draw_dot_grid_page,
+    "split_top_blank_bottom_lined": _draw_split_page,
+    "dated_lined": _draw_dated_lined_page,
+    "habit_tracker": _draw_habit_tracker_page,
+}
 
 
 # ============ Cover ============
@@ -259,11 +394,12 @@ def generate_pair(
     product_id: str,
     page_count: int = 144,
     title: str = "Birthright Journal",
+    interior_style: str = DEFAULT_INTERIOR_STYLE,
 ) -> tuple[Path, Path]:
     """Convenience: generate both PDFs side-by-side for a product."""
     output_dir = Path(output_dir)
     interior_path = output_dir / f"interior-{product_id}.pdf"
     cover_path = output_dir / f"cover-{product_id}.pdf"
-    generate_interior_pdf(interior_path, page_count=page_count, title=title)
+    generate_interior_pdf(interior_path, page_count=page_count, title=title, style=interior_style)
     generate_cover_pdf(cover_path, cover_image_path, page_count=page_count, title=title)
     return interior_path, cover_path

@@ -135,6 +135,53 @@ def _claude_system_prompt(audience: str) -> str:
     )
 
 
+# Allowed interior styles (kept in sync with utils/journal_pdf.INTERIOR_STYLES).
+_INTERIOR_STYLE_HINTS = {
+    "lined": "general journaling, daily reflection, prose, notes",
+    "blank": "morning pages, free writing, sketching, no rules wanted",
+    "dot_grid": "bullet journaling, sketchnotes, habit grids, planners",
+    "split_top_blank_bottom_lined": "daily intentions, drawings + reflection, gratitude with sketch",
+    "dated_lined": "diaries, dated journals, anniversary keepsakes",
+    "habit_tracker": "habit trackers, gratitude logs, streak journals, 31-day challenges",
+}
+
+
+async def _infer_interior_style(brief: str, *, user_id: str) -> str:
+    """Ask Claude to pick the best interior page style for this journal brief.
+
+    Returns one of the keys in _INTERIOR_STYLE_HINTS. Falls back to 'lined'
+    if Claude returns something we don't recognize.
+    """
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    options = "\n".join(f"- {k}: {v}" for k, v in _INTERIOR_STYLE_HINTS.items())
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"studio-style-{user_id}-{uuid.uuid4().hex[:8]}",
+        system_message=(
+            "You decide the interior page layout for a journal product based on its brief. "
+            "Reply with ONLY the style key, no quotes, no explanation."
+        ),
+    ).with_model("anthropic", TEXT_MODEL)
+    msg = UserMessage(
+        text=(
+            f"Pick the best interior style for this journal:\n\n"
+            f"\"{brief}\"\n\n"
+            f"Options (key: when to use):\n{options}\n\n"
+            f"Reply with one key. If unsure, reply 'lined'."
+        )
+    )
+    response = await chat.send_message(msg)
+    raw = response if isinstance(response, str) else getattr(response, "content", "") or ""
+    candidate = raw.strip().strip("`'\"").splitlines()[0].strip().lower() if raw.strip() else "lined"
+    if candidate in _INTERIOR_STYLE_HINTS:
+        return candidate
+    # Try fuzzy match — pick the first allowed key that's a substring
+    for key in _INTERIOR_STYLE_HINTS:
+        if key in candidate:
+            return key
+    return "lined"
+
+
 # ============ Pydantic ============
 class EstimateRequest(BaseModel):
     brief: str = Field(min_length=10, max_length=1200)
@@ -298,6 +345,21 @@ async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_
         meta={"action": "generate_copy", "audiences": req.audiences},
     )
 
+    # ---- 2b) Interior style inference (journal/notebook only) ----
+    interior_style: Optional[str] = None
+    if req.category in ("journal", "notebook"):
+        try:
+            interior_style = await _infer_interior_style(req.brief, user_id=user["id"])
+            # Tiny but real spend — bill once as a classifier call (~200 in/40 out).
+            await record_usage(
+                db, user, feature="studio", model=TEXT_MODEL,
+                tokens_in=200, tokens_out=40,
+                meta={"action": "infer_interior_style", "style": interior_style},
+            )
+        except Exception:
+            logger.exception("interior style inference failed — defaulting to lined")
+            interior_style = "lined"
+
     # ---- 3) Save draft product ----
     primary_audience = req.audiences[0]
     primary = copy_variants[primary_audience]
@@ -337,6 +399,7 @@ async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_
         "studio_brief": req.brief,
         "studio_audiences": req.audiences,
         "studio_copy_variants": copy_variants,
+        "interior_style": interior_style,
         "moderation_status": moderation_status,
         "moderation_note": moderation_note,
         "created_at": now_iso(),

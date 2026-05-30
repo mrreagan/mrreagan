@@ -313,6 +313,30 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
 - **Env**: re-added `PRINTFUL_PUBLIC_IMAGE_BASE` (preview URL) to backend/.env so Lulu's validator can reach our PDFs from the public internet. On production this is unset and falls back to `PUBLIC_APP_URL=https://birthright.live`. (Naming is a bit muddy — it's shared between Printful image hosting and Lulu PDF hosting — leaving as is.)
 - **Dependency**: `reportlab==4.5.1` added to requirements.txt. Pillow was already present.
 
+## Iteration 28 — AI Studio Phase 5c (Prompt-specific interior templates) (May 29, 2026)
+- **Goal**: Turn the generic auto-PDF flow into 6 distinct journal types whose interior layout matches the brief — driven by a tiny Claude classifier, all on the same plumbing.
+- **6 interior styles registered** in `utils/journal_pdf.INTERIOR_STYLES`, each with its own page drawer:
+  - `lined` — classic 22-rule lined pages (default).
+  - `blank` — page numbers only; for morning pages, free writing, sketching.
+  - `dot_grid` — 5 mm dot grid; for bullet journaling, habit grids.
+  - `split_top_blank_bottom_lined` — top half blank, bottom half lined; for daily intentions + drawing.
+  - `dated_lined` — small "DATE" rule across the top + lined body; for diaries.
+  - `habit_tracker` — 31-day checkbox column on the left + lined notes on the right.
+- **Studio inference** (`routers/studio.py::_infer_interior_style`): for journal/notebook categories, after the copy variants are generated, runs ONE additional Claude call (~200 in / 40 out tokens, ~$0.0006) asking "given this brief, which of these 6 style keys fits best?" Returns the key, with fuzzy fallback to `lined` on parse failure. Stored on the product as `interior_style`. Verified live:
+  - "habit tracker for tiny consistent practices" → **`habit_tracker`** ✓
+  - "morning pages — stream-of-consciousness, no rules" → **`blank`** ✓
+- **Auto-PDF endpoint** (`POST /api/lulu/auto-generate-pdfs`) gained an `interior_style` body field. Priority: request override > stored inference > default `lined`. Invalid keys silently fall back to `lined` with a log warning. Returns the actual style used in the response so the UI knows what was picked. Also writes the chosen style back to the product doc so the moderation queue / vendor view sees it.
+- **New endpoint** `GET /api/lulu/interior-styles` (admin) → returns the registry for the dropdown.
+- **Frontend** (`AdminStudio.jsx::LuluFulfillmentForm`):
+  - New "Interior style" dropdown with an "AI-INFERRED" badge when the value came from Claude (clears the badge once the admin changes it).
+  - Auto-generate button sends the chosen style; toast shows the style used.
+- **Tests** — `tests/test_iter33_interior_templates.py` **11/11 PASS**:
+  - 6 parametrized tests, one per style, asserting each generator produces a valid PDF.
+  - Unknown-style → graceful fallback.
+  - Registry endpoint returns all 6 keys.
+  - `auto-generate-pdfs` honors override AND falls back to stored style when not overridden.
+- **Combined regression**: iter28..33 = **44/44 PASS** across Phases 2 + 3 + 4 + 5a + 5b + 5c.
+
 ## Backlog — prioritized
 
 

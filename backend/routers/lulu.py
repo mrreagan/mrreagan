@@ -127,6 +127,17 @@ async def list_presets(user: dict = Depends(get_current_user)):
     ]
 
 
+@router.get("/interior-styles")
+async def list_interior_styles(user: dict = Depends(get_current_user)):
+    """Return the available interior page styles (for admin override dropdown)."""
+    _admin_only(user)
+    from utils import journal_pdf  # noqa: PLC0415
+    return [
+        {"key": k, "description": v}
+        for k, v in journal_pdf.INTERIOR_STYLES.items()
+    ]
+
+
 @router.post("/cost-preview", response_model=CostPreviewResponse)
 async def cost_preview(req: CostPreviewRequest, user: dict = Depends(get_current_user)):
     """Hit Lulu's cost calculator. Returns a cost breakdown + a suggested retail price."""
@@ -285,6 +296,7 @@ class TestPrintJobRequest(BaseModel):
 class AutoGeneratePdfsRequest(BaseModel):
     product_id: str = Field(min_length=1)
     page_count: int = Field(default=144, ge=4, le=800)
+    interior_style: Optional[str] = Field(default=None, description="Override the inferred style; one of utils.journal_pdf.INTERIOR_STYLES.")
 
 
 class AutoGeneratePdfsResponse(BaseModel):
@@ -292,6 +304,7 @@ class AutoGeneratePdfsResponse(BaseModel):
     interior_pdf_url: str
     cover_pdf_url: str
     page_count: int
+    interior_style: str
 
 
 @router.post("/auto-generate-pdfs", response_model=AutoGeneratePdfsResponse)
@@ -326,6 +339,11 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
         raise HTTPException(404, f"Cover image not found on disk: {rel}")
 
     pdfs_dir = backend_static / "pdfs"
+    # Decide interior style: request override > stored inference > default
+    style = (req.interior_style or product.get("interior_style") or journal_pdf.DEFAULT_INTERIOR_STYLE).strip().lower()
+    if style not in journal_pdf.INTERIOR_STYLES:
+        logger.info("Unknown interior_style '%s' — falling back to default", style)
+        style = journal_pdf.DEFAULT_INTERIOR_STYLE
     try:
         interior_path, cover_path = journal_pdf.generate_pair(
             cover_image_path=image_path,
@@ -333,6 +351,7 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
             product_id=product["id"],
             page_count=req.page_count,
             title=product.get("name", "Birthright Journal"),
+            interior_style=style,
         )
     except Exception as ex:
         logger.exception("Auto-PDF generation failed for product %s", product["id"])
@@ -345,6 +364,9 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
     interior_url = f"{base}/api/static/pdfs/{interior_path.name}"
     cover_url = f"{base}/api/static/pdfs/{cover_path.name}"
 
+    # Persist the chosen style on the product for next time
+    await db.products.update_one({"id": product["id"]}, {"$set": {"interior_style": style}})
+
     await log_action(
         db, user, "lulu.auto_generate_pdfs",
         target_type="product", target_id=product["id"],
@@ -352,6 +374,7 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
             "interior_pdf_url": interior_url,
             "cover_pdf_url": cover_url,
             "page_count": req.page_count,
+            "interior_style": style,
         },
     )
 
@@ -360,6 +383,7 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
         interior_pdf_url=interior_url,
         cover_pdf_url=cover_url,
         page_count=req.page_count,
+        interior_style=style,
     )
 
 
