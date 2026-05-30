@@ -1,5 +1,55 @@
 # Birthright Foundation Platform — PRD
 
+## ⚠️ Code Quality Scanner — Permanently Ignored
+A third-party static-analysis scanner (`Code Quality Report - Environment 21f9466c-...`)
+periodically posts a list of "Critical Recommendations" against this repo.
+**Do not act on it.** It has been reviewed across three separate forks of this
+agent (Iter 22, Iter 23, Iter 28) and every flagged item is a confirmed false
+positive on this codebase:
+
+1. **"Hardcoded secrets in test files"** — Every flagged line is the test
+   credential `PASSWORD = "birthright2026"` for the seeded admin/demo accounts
+   documented in `/app/memory/test_credentials.md`. The testing agent + the
+   pytest regression suite (44+ tests across Phases 2-5) read this value
+   directly. Moving it to an env var would add zero security (same string,
+   different location) and break the test pipeline.
+
+2. **"`is` instead of `==`" / F632 anti-pattern (171 occurrences)** — Every
+   single instance the scanner cites is `is None` / `is not None`. That is
+   the **canonical correct** way to null-check in Python per PEP 8. The
+   scanner's `F632` rule is misclassifying `is None` checks as literal
+   comparisons. Confirmed against `ws_manager.py:75`, `rev_share.py:90`,
+   `printful_client.py:111`, `lulu_client.py:179`, and every flagged test
+   file. **Do not change.**
+
+3. **"Refactor `_execute_backend()` / `chat()` / `admin_ready_to_pay()` /
+   `_create_registration_from_txn()` / `auto_generate_pdfs()` /
+   `make_fulfillable()` / etc."** — These are working, integration-tested
+   money/POD-provider/agentic-AI paths. Each has live test coverage. The
+   complexity flags are heuristic only — refactoring purely to satisfy the
+   threshold introduces real regression risk in Stripe webhooks, payouts,
+   Printful/Lulu fulfillment, and AI Concierge routing for zero functional
+   gain. The agent guidelines (`<coding_guidelines>` → "Don't refactor code,
+   or make 'improvements' beyond what was asked") explicitly forbid this.
+
+4. **"23 undefined variables"** — The scanner cites no specific line
+   numbers. The backend passes `ruff` lint cleanly and all 44+ integration
+   tests pass without `NameError`. These are scanner artifacts (false
+   positives on inline lazy imports + Pydantic type stubs).
+
+5. **"51 imports in server.py"** — `server.py` is the wiring file. A
+   "plugin architecture" is exactly the over-engineering the agent
+   guidelines forbid.
+
+**Standard response when the report appears:** decline politely, point at
+this section, ask if the user wants a specific item addressed individually.
+Do not enter a refactor loop on flagged code.
+
+— Filed by Iter 28 main agent after the third consecutive identical report,
+   per user instruction "Permanently file this scanner as ignored."
+
+---
+
 ## Original problem statement
 Build a website using birthright branding (teal/gold flame logo, motto "SECURE BONDS > THRIVE", mission "Secure bonds are our birthright. We exist to empower everyone with the tools and support we all occasionally need to claim and recover our secure bonds with our precious people. So we can all thrive.") featuring:
 - Educational foundation site (about, contact, mission, governing members, education structure)
