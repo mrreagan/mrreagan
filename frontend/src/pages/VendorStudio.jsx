@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Sparkles, Coins, FlaskConical, Heart, ShoppingBag, Trash2, AlertTriangle, Clock, CheckCircle2, XCircle, MessageSquare, ExternalLink } from "lucide-react";
+import { Sparkles, Coins, FlaskConical, Heart, ShoppingBag, Trash2, AlertTriangle, Clock, CheckCircle2, XCircle, MessageSquare, ExternalLink, Package } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -338,6 +338,11 @@ function VendorDraftCard({ draft, onChange }) {
   const meta = STATUS_META[status] || STATUS_META.pending_review;
   const Icon = meta.icon;
   const canDiscard = status !== "active";
+  const canFulfill = ["pending_review", "changes_requested"].includes(status) && !draft.is_off_site;
+  const printfulSupported = ["cap", "tee", "hoodie", "mug"].includes(draft.category);
+  const luluSupported = ["journal", "notebook"].includes(draft.category);
+  const onPrintful = !!draft.printful_sync_product_id;
+  const onLulu = draft.fulfillable_via === "lulu";
 
   const discard = async () => {
     if (!window.confirm("Discard this draft? Images will be deleted.")) return;
@@ -383,12 +388,179 @@ function VendorDraftCard({ draft, onChange }) {
         {status === "active" && draft.price > 0 && (
           <p className="text-xs text-[#01784E] mt-1">Listed at ${draft.price.toFixed(2)}</p>
         )}
+
+        {/* Vendor self-service fulfillment */}
+        {canFulfill && (printfulSupported || luluSupported) && (
+          <div className="mt-3 pt-3 border-t border-dashed border-[#E5E1D8]" data-testid={`vendor-draft-fulfill-${draft.id}`}>
+            {onPrintful ? (
+              <p className="text-[11px] inline-flex items-center gap-1.5 text-[#01784E]" data-testid={`vendor-draft-printful-linked-${draft.id}`}>
+                <Package size={12} strokeWidth={1.8} /> Printful-ready · awaiting admin approval
+              </p>
+            ) : onLulu ? (
+              <p className="text-[11px] inline-flex items-center gap-1.5 text-[#01784E]" data-testid={`vendor-draft-lulu-linked-${draft.id}`}>
+                <Package size={12} strokeWidth={1.8} /> Lulu-ready ({draft.lulu_env}) · awaiting admin approval
+              </p>
+            ) : printfulSupported ? (
+              <VendorPrintfulButton draft={draft} onLinked={onChange} />
+            ) : luluSupported ? (
+              <VendorLuluForm draft={draft} onLinked={onChange} />
+            ) : null}
+            <p className="text-[10px] text-[#5C6B6B] mt-1.5 leading-snug italic">
+              Optional: set up fulfillment yourself. Admin still reviews + sets retail price before publish.
+            </p>
+          </div>
+        )}
+
         {canDiscard && (
           <button onClick={discard} disabled={discarding} className="btn-outline !text-[#9E3C3C] !border-[#9E3C3C] text-xs px-2 py-1.5 mt-2 self-start inline-flex items-center gap-1" data-testid={`vendor-draft-discard-${draft.id}`}>
             <Trash2 size={12} strokeWidth={1.5} /> {discarding ? "…" : "Discard"}
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function VendorPrintfulButton({ draft, onLinked }) {
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (!window.confirm(`Push this ${draft.category} to Printful? Admin will set the retail price on approval.`)) return;
+    setBusy(true);
+    try {
+      const r = await api.post("/printful/make-fulfillable", { product_id: draft.id });
+      toast.success(`Printful-ready · base $${r.data.base_cost_usd?.toFixed(2)}`);
+      onLinked?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Printful linking failed");
+    } finally { setBusy(false); }
+  };
+  return (
+    <button onClick={run} disabled={busy} className="w-full inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] border border-[#476B6B] rounded-md py-1.5 transition" data-testid={`vendor-printful-btn-${draft.id}`}>
+      <Package size={12} strokeWidth={1.8} /> {busy ? "Linking…" : "Make fulfillable on Printful"}
+    </button>
+  );
+}
+
+function VendorLuluForm({ draft, onLinked }) {
+  const [show, setShow] = useState(false);
+  const [presets, setPresets] = useState([]);
+  const [presetKey, setPresetKey] = useState("");
+  const [podId, setPodId] = useState("");
+  const [pageCount, setPageCount] = useState(draft.lulu_page_count_suggested || 144);
+  const [interiorUrl, setInteriorUrl] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
+  const [interiorStyle, setInteriorStyle] = useState(draft.interior_style || "lined");
+  const [styleAuto, setStyleAuto] = useState(!!draft.interior_style);
+  const [pagesAuto, setPagesAuto] = useState(!!draft.lulu_page_count_suggested);
+  const [busy, setBusy] = useState(false);
+  const [autoGenerating, setAutoGenerating] = useState(false);
+
+  useEffect(() => {
+    if (show && presets.length === 0) {
+      api.get("/lulu/presets").then((r) => {
+        const filtered = (r.data || []).filter((p) => p.applies_to?.includes(draft.category));
+        setPresets(filtered);
+        if (filtered.length && !presetKey) {
+          setPresetKey(filtered[0].key);
+          setPodId(filtered[0].pod_package_id);
+        }
+      }).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show]);
+
+  const choosePreset = (k) => {
+    const p = presets.find((x) => x.key === k);
+    if (!p) return;
+    setPresetKey(k);
+    setPodId(p.pod_package_id);
+  };
+
+  const autoGen = async () => {
+    setAutoGenerating(true);
+    try {
+      const r = await api.post("/lulu/auto-generate-pdfs", {
+        product_id: draft.id,
+        page_count: parseInt(pageCount, 10),
+        interior_style: interiorStyle,
+      });
+      setInteriorUrl(r.data.interior_pdf_url);
+      setCoverUrl(r.data.cover_pdf_url);
+      setInteriorStyle(r.data.interior_style);
+      setPageCount(r.data.page_count);
+      setStyleAuto(false);
+      setPagesAuto(false);
+      toast.success(`PDFs generated · ${r.data.page_count} pp · style "${r.data.interior_style}"`);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Auto-PDF failed");
+    } finally { setAutoGenerating(false); }
+  };
+
+  const link = async () => {
+    if (!podId || !interiorUrl || !coverUrl) {
+      toast.error("Generate PDFs and pick a preset first");
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await api.post("/lulu/make-fulfillable", {
+        product_id: draft.id,
+        pod_package_id: podId,
+        page_count: parseInt(pageCount, 10),
+        interior_pdf_url: interiorUrl.trim(),
+        cover_pdf_url: coverUrl.trim(),
+      });
+      toast.success(`Lulu-ready · base $${r.data.base_cost_usd?.toFixed(2)}`);
+      onLinked?.();
+      setShow(false);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Lulu linking failed");
+    } finally { setBusy(false); }
+  };
+
+  if (!show) {
+    return (
+      <button onClick={() => setShow(true)} className="w-full inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] border border-[#476B6B] rounded-md py-1.5 transition" data-testid={`vendor-lulu-open-${draft.id}`}>
+        <Package size={12} strokeWidth={1.8} /> Make fulfillable on Lulu
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2 text-xs" data-testid={`vendor-lulu-form-${draft.id}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-[#476B6B]">Lulu config</span>
+        <button onClick={() => setShow(false)} className="text-[10px] text-[#5C6B6B] hover:underline">cancel</button>
+      </div>
+      <button onClick={autoGen} disabled={autoGenerating} className="w-full inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider text-white bg-[#C9A961] hover:bg-[#B89A5A] rounded-md py-2 transition disabled:opacity-50" data-testid={`vendor-lulu-auto-${draft.id}`}>
+        <Sparkles size={12} strokeWidth={1.8} /> {autoGenerating ? "Generating…" : "Auto-generate PDFs"}
+      </button>
+      <label className="block">
+        Preset
+        <select value={presetKey} onChange={(e) => choosePreset(e.target.value)} className="input-field !py-1 !px-2 text-xs w-full mt-1" data-testid={`vendor-lulu-preset-${draft.id}`}>
+          {presets.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+        </select>
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label>
+          Pages{pagesAuto && <span className="ml-1 text-[9px] text-[#C9A961] uppercase" data-testid={`vendor-lulu-pages-ai-${draft.id}`}>· ai-suggested</span>}
+          <input type="number" min="4" max="800" value={pageCount}
+            onChange={(e) => { setPageCount(parseInt(e.target.value, 10) || 0); setPagesAuto(false); }}
+            className="input-field !py-1 !px-2 text-xs w-full mt-1" data-testid={`vendor-lulu-pages-${draft.id}`} />
+        </label>
+        <label>
+          Style{styleAuto && <span className="ml-1 text-[9px] text-[#C9A961] uppercase" data-testid={`vendor-lulu-style-ai-${draft.id}`}>· ai-inferred</span>}
+          <input value={interiorStyle} onChange={(e) => { setInteriorStyle(e.target.value); setStyleAuto(false); }} className="input-field !py-1 !px-2 text-xs w-full mt-1" data-testid={`vendor-lulu-style-${draft.id}`} />
+        </label>
+      </div>
+      {interiorUrl && coverUrl && (
+        <p className="text-[10px] text-[#01784E] leading-relaxed" data-testid={`vendor-lulu-pdfs-ready-${draft.id}`}>
+          ✓ PDFs generated. Click below to link.
+        </p>
+      )}
+      <button onClick={link} disabled={busy || !interiorUrl || !coverUrl} className="btn-primary text-xs w-full" data-testid={`vendor-lulu-link-${draft.id}`}>
+        {busy ? "Linking…" : "Make fulfillable"}
+      </button>
     </div>
   );
 }

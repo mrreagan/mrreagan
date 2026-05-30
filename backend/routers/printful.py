@@ -61,6 +61,21 @@ def _admin_only(user: dict) -> None:
         raise HTTPException(403, "Admin only")
 
 
+async def _can_fulfill(db, user: dict, product: dict) -> tuple[bool, str]:
+    """Vendor self-service POD permission gate (mirrors lulu._can_fulfill)."""
+    if user.get("role") == "admin":
+        return True, "admin"
+    if not product.get("is_vendor_product"):
+        return False, "non-vendor"
+    if product.get("vendor_user_id") != user["id"] and product.get("created_by") != user["id"]:
+        return False, "not-owner"
+    if not product.get("studio_draft"):
+        return False, "not-draft"
+    if product.get("moderation_status") not in ("pending_review", "changes_requested"):
+        return False, "not-mutable"
+    return True, "vendor"
+
+
 async def _abs_image_url(image_url: str) -> str:
     """Printful needs a publicly-fetchable URL. Convert relative /api/static/* to absolute."""
     if image_url.startswith(("http://", "https://")):
@@ -77,7 +92,7 @@ async def _abs_image_url(image_url: str) -> str:
 @router.get("/categories")
 async def list_supported_categories(user: dict = Depends(get_current_user)):
     """Return the categories we currently support pushing to Printful."""
-    _admin_only(user)
+    # Open to any authenticated user — vendors need this for their Studio.
     return [
         {"category": cat, "product_id": cfg["product_id"], "variant_id": cfg["variant_id"], "label": cfg["label"]}
         for cat, cfg in CATEGORY_MAP.items()
@@ -87,12 +102,14 @@ async def list_supported_categories(user: dict = Depends(get_current_user)):
 @router.post("/make-fulfillable", response_model=MakeFulfillableResponse)
 async def make_fulfillable(req: MakeFulfillableRequest, user: dict = Depends(get_current_user)):
     """Push an AI Studio draft product to Printful as a Sync Product."""
-    _admin_only(user)
     from database import db
 
     product = await db.products.find_one({"id": req.product_id}, {"_id": 0})
     if not product:
         raise HTTPException(404, "Product not found")
+    allowed, actor_role = await _can_fulfill(db, user, product)
+    if not allowed:
+        raise HTTPException(403, f"You can't make this product fulfillable ({actor_role})")
     if product.get("printful_sync_product_id"):
         raise HTTPException(400, "Product is already fulfillable on Printful")
 
@@ -165,7 +182,7 @@ async def make_fulfillable(req: MakeFulfillableRequest, user: dict = Depends(get
     )
 
     await log_action(
-        db, user, "printful.make_fulfillable",
+        db, user, f"printful.make_fulfillable.{actor_role}",
         target_type="product", target_id=product["id"],
         metadata={
             "sync_product_id": sync_product_id,
@@ -188,11 +205,13 @@ async def make_fulfillable(req: MakeFulfillableRequest, user: dict = Depends(get
 @router.delete("/sync-products/{product_id}")
 async def detach_from_printful(product_id: str, user: dict = Depends(get_current_user)):
     """Unlink a Birthright product from Printful (and delete the sync product on their side)."""
-    _admin_only(user)
     from database import db
     product = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not product:
         raise HTTPException(404, "Product not found")
+    allowed, actor_role = await _can_fulfill(db, user, product)
+    if not allowed:
+        raise HTTPException(403, f"You can't unlink this product ({actor_role})")
     sync_id = product.get("printful_sync_product_id")
     if not sync_id:
         raise HTTPException(400, "Product is not linked to Printful")
@@ -213,7 +232,7 @@ async def detach_from_printful(product_id: str, user: dict = Depends(get_current
         }},
     )
     await log_action(
-        db, user, "printful.detach",
+        db, user, f"printful.detach.{actor_role}",
         target_type="product", target_id=product_id,
         metadata={"sync_product_id": sync_id},
     )

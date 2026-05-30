@@ -182,6 +182,50 @@ async def _infer_interior_style(brief: str, *, user_id: str) -> str:
     return "lined"
 
 
+# Lulu prints signatures of 8 pages → page count must be a multiple of 2 at
+# minimum; using 16-page increments keeps spine cost predictable.
+ALLOWED_PAGE_COUNTS = (64, 80, 96, 112, 128, 144, 160, 176, 192, 216)
+
+
+async def _infer_page_count(brief: str, *, user_id: str) -> int:
+    """Ask Claude how many pages this journal should have. Snap to nearest
+    allowed value. Falls back to 144 on any parse error.
+    """
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"studio-pages-{user_id}-{uuid.uuid4().hex[:8]}",
+        system_message=(
+            "You decide a sensible page count for a journal product based on its brief. "
+            "Reply with ONLY a single integer between 64 and 216. No explanation, no units."
+        ),
+    ).with_model("anthropic", TEXT_MODEL)
+    options = ", ".join(str(p) for p in ALLOWED_PAGE_COUNTS)
+    msg = UserMessage(
+        text=(
+            f"Brief: \"{brief}\"\n\n"
+            f"How many pages should this journal have? Pick from these options: {options}. "
+            f"A short-format gratitude/habit log → 64-96. A 90-day workbook → 112-144. "
+            f"A year-long companion → 160-216. Reply with ONLY the integer."
+        )
+    )
+    try:
+        response = await chat.send_message(msg)
+    except Exception:
+        return 144
+    raw = response if isinstance(response, str) else getattr(response, "content", "") or ""
+    digits = re.findall(r"\d+", raw)
+    if not digits:
+        return 144
+    try:
+        n = int(digits[0])
+    except ValueError:
+        return 144
+    n = max(64, min(216, n))
+    # Snap to nearest allowed value
+    return min(ALLOWED_PAGE_COUNTS, key=lambda p: abs(p - n))
+
+
 # ============ Pydantic ============
 class EstimateRequest(BaseModel):
     brief: str = Field(min_length=10, max_length=1200)
@@ -345,8 +389,9 @@ async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_
         meta={"action": "generate_copy", "audiences": req.audiences},
     )
 
-    # ---- 2b) Interior style inference (journal/notebook only) ----
+    # ---- 2b) Interior style + page count inference (journal/notebook only) ----
     interior_style: Optional[str] = None
+    suggested_page_count: Optional[int] = None
     if req.category in ("journal", "notebook"):
         try:
             interior_style = await _infer_interior_style(req.brief, user_id=user["id"])
@@ -359,6 +404,16 @@ async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_
         except Exception:
             logger.exception("interior style inference failed — defaulting to lined")
             interior_style = "lined"
+        try:
+            suggested_page_count = await _infer_page_count(req.brief, user_id=user["id"])
+            await record_usage(
+                db, user, feature="studio", model=TEXT_MODEL,
+                tokens_in=180, tokens_out=20,
+                meta={"action": "infer_page_count", "page_count": suggested_page_count},
+            )
+        except Exception:
+            logger.exception("page count inference failed — defaulting to 144")
+            suggested_page_count = 144
 
     # ---- 3) Save draft product ----
     primary_audience = req.audiences[0]
@@ -400,6 +455,7 @@ async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_
         "studio_audiences": req.audiences,
         "studio_copy_variants": copy_variants,
         "interior_style": interior_style,
+        "lulu_page_count_suggested": suggested_page_count,
         "moderation_status": moderation_status,
         "moderation_note": moderation_note,
         "created_at": now_iso(),

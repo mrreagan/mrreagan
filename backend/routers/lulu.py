@@ -100,6 +100,28 @@ def _admin_only(user: dict) -> None:
         raise HTTPException(403, "Admin only")
 
 
+async def _can_fulfill(db, user: dict, product: dict) -> tuple[bool, str]:
+    """Vendor self-service POD permission gate.
+
+    Allow if:
+      - user is admin, OR
+      - user is the original vendor creator AND the draft is still pending_review
+        / changes_requested (not yet active and not rejected).
+    Returns (allowed, actor_role).
+    """
+    if user.get("role") == "admin":
+        return True, "admin"
+    if not product.get("is_vendor_product"):
+        return False, "non-vendor"
+    if product.get("vendor_user_id") != user["id"] and product.get("created_by") != user["id"]:
+        return False, "not-owner"
+    if not product.get("studio_draft"):
+        return False, "not-draft"
+    if product.get("moderation_status") not in ("pending_review", "changes_requested"):
+        return False, "not-mutable"
+    return True, "vendor"
+
+
 def _validate_url(u: str) -> str:
     s = u.strip()
     if not s.lower().startswith(("http://", "https://")):
@@ -120,17 +142,61 @@ async def lulu_env(user: dict = Depends(get_current_user)):
 @router.get("/presets")
 async def list_presets(user: dict = Depends(get_current_user)):
     """Return the curated pod_package_id presets we currently support."""
-    _admin_only(user)
+    # Open to any authenticated user — vendors need this for their Studio.
     return [
         {"key": k, **v}
         for k, v in POD_PRESETS.items()
     ]
 
 
+class PresetValidationRow(BaseModel):
+    key: str
+    pod_package_id: str
+    label: str
+    page_count: int
+    ok: bool
+    base_cost_usd: Optional[float] = None
+    suggested_retail_usd: Optional[float] = None
+    error: Optional[str] = None
+
+
+@router.post("/validate-presets")
+async def validate_presets(user: dict = Depends(get_current_user)):
+    """Run a fresh cost-calc against every preset in the current LULU_ENV.
+
+    Used before flipping LULU_ENV=production — confirms each `pod_package_id`
+    actually resolves on the live Lulu account before customers see any books.
+    """
+    _admin_only(user)
+    env = os.environ.get("LULU_ENV") or "sandbox"
+    rows: list[PresetValidationRow] = []
+    for key, cfg in POD_PRESETS.items():
+        page_count = int(cfg["default_page_count"])
+        try:
+            raw = await lulu.calculate_cost(
+                pod_package_id=cfg["pod_package_id"],
+                page_count=page_count,
+                quantity=1,
+            )
+            summary = lulu.summarise_cost(raw)
+            rows.append(PresetValidationRow(
+                key=key, pod_package_id=cfg["pod_package_id"], label=cfg["label"],
+                page_count=page_count, ok=True,
+                base_cost_usd=summary["base_cost_excl_tax_usd"],
+                suggested_retail_usd=lulu.suggest_retail_price(summary["base_cost_excl_tax_usd"]),
+            ))
+        except lulu.LuluError as ex:
+            rows.append(PresetValidationRow(
+                key=key, pod_package_id=cfg["pod_package_id"], label=cfg["label"],
+                page_count=page_count, ok=False, error=str(ex)[:300],
+            ))
+    return {"env": env, "results": [r.model_dump() for r in rows]}
+
+
 @router.get("/interior-styles")
 async def list_interior_styles(user: dict = Depends(get_current_user)):
     """Return the available interior page styles (for admin override dropdown)."""
-    _admin_only(user)
+    # Open to any authenticated user — vendors need this for their Studio.
     from utils import journal_pdf  # noqa: PLC0415
     return [
         {"key": k, "description": v}
@@ -141,7 +207,7 @@ async def list_interior_styles(user: dict = Depends(get_current_user)):
 @router.post("/cost-preview", response_model=CostPreviewResponse)
 async def cost_preview(req: CostPreviewRequest, user: dict = Depends(get_current_user)):
     """Hit Lulu's cost calculator. Returns a cost breakdown + a suggested retail price."""
-    _admin_only(user)
+    # Open to any authenticated user — vendors need to preview cost on their drafts.
     try:
         raw = await lulu.calculate_cost(
             pod_package_id=req.pod_package_id,
@@ -167,17 +233,20 @@ async def make_fulfillable(req: MakeFulfillableRequest, user: dict = Depends(get
     """Persist Lulu fulfillment config on the product.
 
     Steps:
-      1) Look up the product, ensure it's a paper-goods category we support on Lulu.
+      1) Look up the product, ensure caller can fulfill it (admin OR draft owner),
+         and that it's a paper-goods category we support on Lulu.
       2) Call Lulu's cost calculator to confirm config is valid + capture base cost.
       3) Compute retail price (override or 2× rounded to $.95).
       4) Write printful-style fulfillment fields on the product doc.
     """
-    _admin_only(user)
     from database import db
 
     product = await db.products.find_one({"id": req.product_id}, {"_id": 0})
     if not product:
         raise HTTPException(404, "Product not found")
+    allowed, actor_role = await _can_fulfill(db, user, product)
+    if not allowed:
+        raise HTTPException(403, f"You can't make this product fulfillable ({actor_role})")
     if product.get("lulu_pod_package_id"):
         raise HTTPException(400, "Product is already fulfillable on Lulu")
     if product.get("fulfillable_via") == "printful":
@@ -231,7 +300,7 @@ async def make_fulfillable(req: MakeFulfillableRequest, user: dict = Depends(get
     )
 
     await log_action(
-        db, user, "lulu.make_fulfillable",
+        db, user, f"lulu.make_fulfillable.{actor_role}",
         target_type="product", target_id=product["id"],
         metadata={
             "pod_package_id": req.pod_package_id,
@@ -253,11 +322,13 @@ async def make_fulfillable(req: MakeFulfillableRequest, user: dict = Depends(get
 @router.delete("/fulfillment/{product_id}")
 async def detach_from_lulu(product_id: str, user: dict = Depends(get_current_user)):
     """Unlink a product from Lulu. (Lulu has no sync product to delete.)"""
-    _admin_only(user)
     from database import db
     product = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not product:
         raise HTTPException(404, "Product not found")
+    allowed, actor_role = await _can_fulfill(db, user, product)
+    if not allowed:
+        raise HTTPException(403, f"You can't unlink this product ({actor_role})")
     if product.get("fulfillable_via") != "lulu":
         raise HTTPException(400, "Product is not linked to Lulu")
     await db.products.update_one(
@@ -274,7 +345,7 @@ async def detach_from_lulu(product_id: str, user: dict = Depends(get_current_use
         }},
     )
     await log_action(
-        db, user, "lulu.detach",
+        db, user, f"lulu.detach.{actor_role}",
         target_type="product", target_id=product_id,
         metadata={"pod_package_id": product.get("lulu_pod_package_id")},
     )
@@ -295,7 +366,7 @@ class TestPrintJobRequest(BaseModel):
 
 class AutoGeneratePdfsRequest(BaseModel):
     product_id: str = Field(min_length=1)
-    page_count: int = Field(default=144, ge=4, le=800)
+    page_count: Optional[int] = Field(default=None, ge=4, le=800, description="Override; if omitted, uses the AI-suggested page count stored on the product (or 144).")
     interior_style: Optional[str] = Field(default=None, description="Override the inferred style; one of utils.journal_pdf.INTERIOR_STYLES.")
 
 
@@ -317,7 +388,6 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
       2) Run reportlab to write static/pdfs/interior-<id>.pdf + cover-<id>.pdf.
       3) Return public URLs the admin can paste into make-fulfillable.
     """
-    _admin_only(user)
     from pathlib import Path as _Path  # noqa: PLC0415
     from database import db  # noqa: PLC0415
     from utils import journal_pdf  # noqa: PLC0415
@@ -325,6 +395,9 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
     product = await db.products.find_one({"id": req.product_id}, {"_id": 0})
     if not product:
         raise HTTPException(404, "Product not found")
+    allowed, actor_role = await _can_fulfill(db, user, product)
+    if not allowed:
+        raise HTTPException(403, f"You can't generate PDFs for this product ({actor_role})")
     if (product.get("category") or "").lower() not in LULU_CATEGORIES:
         raise HTTPException(400, "Auto-PDF only supports journal/notebook for now.")
 
@@ -339,6 +412,12 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
         raise HTTPException(404, f"Cover image not found on disk: {rel}")
 
     pdfs_dir = backend_static / "pdfs"
+    # Decide page count: request override > stored AI suggestion > default 144
+    page_count = int(
+        req.page_count
+        if req.page_count is not None
+        else (product.get("lulu_page_count_suggested") or 144)
+    )
     # Decide interior style: request override > stored inference > default
     style = (req.interior_style or product.get("interior_style") or journal_pdf.DEFAULT_INTERIOR_STYLE).strip().lower()
     if style not in journal_pdf.INTERIOR_STYLES:
@@ -349,7 +428,7 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
             cover_image_path=image_path,
             output_dir=pdfs_dir,
             product_id=product["id"],
-            page_count=req.page_count,
+            page_count=page_count,
             title=product.get("name", "Birthright Journal"),
             interior_style=style,
         )
@@ -364,16 +443,19 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
     interior_url = f"{base}/api/static/pdfs/{interior_path.name}"
     cover_url = f"{base}/api/static/pdfs/{cover_path.name}"
 
-    # Persist the chosen style on the product for next time
-    await db.products.update_one({"id": product["id"]}, {"$set": {"interior_style": style}})
+    # Persist the chosen style + page count on the product for next time
+    await db.products.update_one(
+        {"id": product["id"]},
+        {"$set": {"interior_style": style, "lulu_page_count_suggested": page_count}},
+    )
 
     await log_action(
-        db, user, "lulu.auto_generate_pdfs",
+        db, user, f"lulu.auto_generate_pdfs.{actor_role}",
         target_type="product", target_id=product["id"],
         metadata={
             "interior_pdf_url": interior_url,
             "cover_pdf_url": cover_url,
-            "page_count": req.page_count,
+            "page_count": page_count,
             "interior_style": style,
         },
     )
@@ -382,7 +464,7 @@ async def auto_generate_pdfs(req: AutoGeneratePdfsRequest, user: dict = Depends(
         ok=True,
         interior_pdf_url=interior_url,
         cover_pdf_url=cover_url,
-        page_count=req.page_count,
+        page_count=page_count,
         interior_style=style,
     )
 

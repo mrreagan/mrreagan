@@ -536,7 +536,8 @@ function LuluFulfillmentForm({ draft, show, setShow, onLinked }) {
   const [presets, setPresets] = useState([]);
   const [presetKey, setPresetKey] = useState("");
   const [podId, setPodId] = useState("");
-  const [pageCount, setPageCount] = useState(144);
+  const [pageCount, setPageCount] = useState(draft.lulu_page_count_suggested || 144);
+  const [pagesAutoInferred, setPagesAutoInferred] = useState(!!draft.lulu_page_count_suggested);
   const [interiorUrl, setInteriorUrl] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [preview, setPreview] = useState(null);
@@ -554,7 +555,10 @@ function LuluFulfillmentForm({ draft, show, setShow, onLinked }) {
         if (filtered.length && !presetKey) {
           setPresetKey(filtered[0].key);
           setPodId(filtered[0].pod_package_id);
-          setPageCount(filtered[0].default_page_count);
+          // Use AI suggestion if present; otherwise fall back to preset default
+          if (!draft.lulu_page_count_suggested) {
+            setPageCount(filtered[0].default_page_count);
+          }
         }
       }).catch(() => {});
       api.get("/lulu/interior-styles").then((r) => setInteriorStyles(r.data)).catch(() => {});
@@ -573,8 +577,10 @@ function LuluFulfillmentForm({ draft, show, setShow, onLinked }) {
       setInteriorUrl(r.data.interior_pdf_url);
       setCoverUrl(r.data.cover_pdf_url);
       setInteriorStyle(r.data.interior_style);
+      setPageCount(r.data.page_count);
       setStyleAutoInferred(false); // user has now seen + confirmed the style
-      toast.success(`PDFs generated with style "${r.data.interior_style}"`);
+      setPagesAutoInferred(false);
+      toast.success(`PDFs generated · ${r.data.page_count} pp · style "${r.data.interior_style}"`);
       setPreview(null);
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Auto-PDF failed");
@@ -586,7 +592,10 @@ function LuluFulfillmentForm({ draft, show, setShow, onLinked }) {
     if (!p) return;
     setPresetKey(k);
     setPodId(p.pod_package_id);
-    setPageCount(p.default_page_count);
+    // Only change page count if it wasn't AI-inferred (user explicitly picked a preset)
+    if (!pagesAutoInferred) {
+      setPageCount(p.default_page_count);
+    }
     setPreview(null);
   };
 
@@ -660,8 +669,8 @@ function LuluFulfillmentForm({ draft, show, setShow, onLinked }) {
           <input value={podId} onChange={(e) => { setPodId(e.target.value); setPreview(null); }} className="input-field !py-1 !px-2 text-xs w-full mt-1 font-mono" data-testid={`lulu-pod-${draft.id}`} />
         </label>
         <label>
-          page_count
-          <input type="number" min="4" max="800" value={pageCount} onChange={(e) => { setPageCount(parseInt(e.target.value, 10) || 0); setPreview(null); }} className="input-field !py-1 !px-2 text-xs w-full mt-1" data-testid={`lulu-pages-${draft.id}`} />
+          page_count{pagesAutoInferred && <span className="ml-1 text-[9px] text-[#C9A961] uppercase" data-testid={`lulu-pages-ai-${draft.id}`}>· ai-suggested</span>}
+          <input type="number" min="4" max="800" value={pageCount} onChange={(e) => { setPageCount(parseInt(e.target.value, 10) || 0); setPagesAutoInferred(false); setPreview(null); }} className="input-field !py-1 !px-2 text-xs w-full mt-1" data-testid={`lulu-pages-${draft.id}`} />
         </label>
       </div>
       <label className="block">

@@ -430,6 +430,46 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
   - HTTP receiver — bad token → 401; non-JSON → 400; full e2e: POST IN_PRODUCTION, dashboard shows "Being printed"; POST SHIPPED with tracking, dashboard surfaces "Shipped" + tracking link.
 - **Combined regression**: iter28..35 = **64/64 PASS** across all Phase 6 POD work.
 
+## Iteration 31 — Lulu cutover console + Vendor self-service POD + Page-count inference (May 30, 2026)
+- **Goal**: Three P1/P2 follow-ups in one iteration — equip admins to safely flip `LULU_ENV=production`, let vendors run POD setup themselves, and let Claude pick the journal page count from the brief.
+
+### A) Lulu cutover console (`/admin/lulu-ops` page, admin-only)
+- **Backend** (`routers/lulu.py`):
+  - `POST /api/lulu/validate-presets` (admin) — loops through every `POD_PRESETS` entry and hits `/print-job-cost-calculations/` in the current `LULU_ENV`. Returns `{env, results: [{key, label, pod_package_id, page_count, ok, base_cost_usd, suggested_retail_usd, error}]}`. Used to confirm every preset resolves on the live account before flipping to production.
+- **Frontend** (`pages/AdminLuluOps.jsx`, new):
+  - Top banner shows current `LULU_ENV` (gold warning for sandbox, green seal for production).
+  - "Validate POD presets" card with one-click run + per-preset OK/FAIL rows showing live base cost + suggested retail.
+  - "Lulu → Birthright webhooks" panel: lists subscriptions, highlights "this app" row, Subscribe / Test / Delete buttons, expected URL surfaced for verification.
+  - Cutover checklist at the bottom (sandbox-validate → set env → restart → re-validate → subscribe → test → small live order).
+  - Linked from `AdminDashboard.jsx` ("Lulu cutover" quick-action card).
+- **Live verification**: All 3 sandbox presets validate (`base_cost` $12.03 / $12.45 / $20.72; suggested retails $24.95 / $24.95 / $41.95).
+
+### B) Vendor self-service POD
+- **Backend** — `routers/lulu.py` + `routers/printful.py`:
+  - New shared `_can_fulfill(db, user, product)` permission gate. Returns `(allowed, actor_role)` where actor_role ∈ `{admin, vendor, non-vendor, not-owner, not-draft, not-mutable}`. Vendors can act on their own drafts only while `studio_draft=True` and status ∈ `{pending_review, changes_requested}`.
+  - Replaced `_admin_only(user)` on `make-fulfillable`, `auto-generate-pdfs`, `detach`, and Printful equivalents with `_can_fulfill` checks. Audit log actions now suffixed with `.admin` or `.vendor` so disputes can show who linked.
+  - `lulu/presets`, `lulu/interior-styles`, `lulu/cost-preview`, `printful/categories` are now open to any authenticated user (vendors need them to drive their Studio UI).
+- **Frontend** — `pages/VendorStudio.jsx`:
+  - Each `VendorDraftCard` (in `pending_review` or `changes_requested` state) now embeds either a `VendorPrintfulButton` (apparel/mug) or `VendorLuluForm` (journal/notebook). Off-site drafts skip this entirely.
+  - On success, the card flips to "Printful-ready · awaiting admin approval" or "Lulu-ready (sandbox) · awaiting admin approval" so it's clear the admin still gates publish.
+  - All vendor fulfillment elements have `data-testid` attributes (`vendor-printful-btn-*`, `vendor-lulu-open-*`, `vendor-lulu-pages-*`, `vendor-lulu-link-*`).
+- **Admin moderation queue is unchanged** — vendors still cannot publish; admin approval still mandatory.
+
+### C) Page-count inference
+- **Backend** (`routers/studio.py`):
+  - New `_infer_page_count(brief, user_id)` Claude call (~180 in / 20 out tokens). Snaps response to nearest value in `ALLOWED_PAGE_COUNTS = (64, 80, 96, 112, 128, 144, 160, 176, 192, 216)`. Fallback `144` on parse failure.
+  - `generate_draft` for journal/notebook now runs both `_infer_interior_style` AND `_infer_page_count` after copy generation; persists `lulu_page_count_suggested` on the product.
+  - `lulu/auto-generate-pdfs` — `page_count` is now `Optional`. Priority: request override > `product.lulu_page_count_suggested` > 144. The resolved value is written back to the product so admins/vendors see the latest.
+- **Frontend** (`AdminStudio.jsx` and `VendorStudio.jsx` Lulu forms):
+  - Page count input defaults to the AI-suggested value and shows an "AI-SUGGESTED" gold pill (clears once user changes it).
+  - Auto-generate response now shows page count in the toast: "PDFs generated · 96 pp · style "habit_tracker"".
+
+- **Tests** — `tests/test_iter36_cutover_vendor_pagecount.py` **14/14 PASS**:
+  - 3 cutover console tests (presets open to vendors; anonymous blocked; validate-presets admin-only).
+  - 6 vendor-self-service tests (vendor auto-PDF on own draft; cannot act on another vendor's; cannot act on active; can lulu-link own; can printful-link own; cannot act on admin draft).
+  - 5 page-count tests (snap to bucket; parse Claude reply; garbage fallback; uses stored suggestion; explicit override wins).
+- **Combined regression**: iter28..36 = **78/78 PASS** across all Phase 6 POD work.
+
 ## Backlog — prioritized
 
 
