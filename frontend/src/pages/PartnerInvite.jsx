@@ -204,7 +204,6 @@ export default function PartnerInvite() {
             {tiers.map((t) => {
               const ribbon = t.ribbon || (inv.suggested_subscription_tier === t.key ? "Suggested" : null);
               const isSelected = tier === t.key;
-              const hasStructuredBreakdown = t.pod_vendor_pct != null;
               return (
                 <button
                   key={t.key}
@@ -224,39 +223,12 @@ export default function PartnerInvite() {
                   {t.monthly_equivalent && t.monthly_equivalent !== t.price_display && (
                     <div className="text-[10px] text-[#5C6B6B]">{t.monthly_equivalent}</div>
                   )}
-                  {hasStructuredBreakdown ? (
-                    <>
-                      <div className="mt-3 pt-3 border-t border-[#E5DDD0] space-y-2.5">
-                        <div>
-                          <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">On birthright.org</p>
-                          <p className="text-xs text-[#5C6B6B] leading-tight">we fulfill (Printful · Lulu)</p>
-                          <p className="text-xs text-[#1A2424] mt-0.5">
-                            You keep <strong>{t.pod_vendor_pct}%</strong> · <span className="text-[#5C6B6B]">Foundation {t.pod_foundation_pct}%</span>
-                          </p>
-                        </div>
-                        {t.offsite_referred_vendor_pct != null && (
-                          <div>
-                            <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">Off-site, we sent the visitor</p>
-                            <p className="text-xs text-[#5C6B6B] leading-tight">
-                              <code className="bg-[#F4F1EA] px-1 rounded text-[10px]">?via=birthright</code> referral
-                            </p>
-                            <p className="text-xs text-[#1A2424] mt-0.5">
-                              You keep <strong>{t.offsite_referred_vendor_pct}%</strong> · <span className="text-[#5C6B6B]">Foundation {t.offsite_referred_foundation_pct}%</span>
-                            </p>
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">Your direct customers</p>
-                          <p className="text-xs text-[#5C6B6B] leading-tight">no Birthright attribution</p>
-                          <p className="text-xs text-[#1A2424] mt-0.5">
-                            You keep <strong>{t.offsite_direct_vendor_pct != null ? t.offsite_direct_vendor_pct : t.offsite_vendor_pct}%</strong>
-                          </p>
-                        </div>
-                      </div>
-                      {t.summary && (
-                        <p className="text-[10px] text-[#5C6B6B] mt-2 leading-relaxed italic">{t.summary}</p>
-                      )}
-                    </>
+                  {t.summary ? (
+                    <div className="mt-3 pt-3 border-t border-[#E5DDD0]">
+                      <p className="text-[13px] text-[#1A2424] leading-relaxed font-serif italic">
+                        {t.summary}
+                      </p>
+                    </div>
                   ) : (
                     <>
                       {t.rev_share != null && (

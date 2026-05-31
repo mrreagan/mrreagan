@@ -73,9 +73,15 @@ PREVIEW_SPECS: dict[str, dict] = {
         "default_bio_hint": "Two or three sentences about your work and what brings you to facilitating.",
         "options": {
             "subscription_tiers": [
-                {"key": "monthly", "label": "Monthly · $99", "rev_share_birthright_ip": 70, "rev_share_other": 50},
-                {"key": "annual", "label": "Annual · $999", "rev_share_birthright_ip": 65, "rev_share_other": 45, "ribbon": "Most chosen"},
-                {"key": "two_year", "label": "2-year · $1,799", "rev_share_birthright_ip": 60, "rev_share_other": 40},
+                {"key": "monthly", "label": "Monthly", "price_display": "$99 / month",
+                 "monthly_equivalent": "$99 / mo",
+                 "summary": "Lowest commitment. Foundation takes 40% on workshops using Birthright IP and 50% on workshops using your own materials."},
+                {"key": "annual", "label": "Annual", "price_display": "$999 / year",
+                 "monthly_equivalent": "$83.25 / mo effective", "ribbon": "Most chosen",
+                 "summary": "Mid commitment. Foundation takes 35% on Birthright IP workshops and 45% on workshops using your own materials."},
+                {"key": "two_year", "label": "2-year", "price_display": "$1,799 / 24 months",
+                 "monthly_equivalent": "$74.96 / mo effective",
+                 "summary": "Longest commitment. Foundation takes 30% on Birthright IP workshops and 40% on workshops using your own materials."},
             ],
             "presents_birthright_ip_choice": "Choose at enrollment: do you present Birthright IP, your own materials, or both?",
             "media": [
@@ -98,7 +104,7 @@ PREVIEW_SPECS: dict[str, dict] = {
                 "Your teaching calendar and your pricing on your own materials.",
                 "The ability to pause your subscription or step back at any time.",
             ],
-            "foundation_share": "30% on Birthright IP workshops (per dual-tier rev share); 50% on workshops using your own materials at the monthly tier (rates improve with longer subscription).",
+            "foundation_share": "On Birthright IP workshops: 30%–40% to the foundation (less with longer subscriptions). On your own-material workshops: 40%–50%. Foundation share decreases with commitment.",
         },
     },
 
@@ -109,9 +115,15 @@ PREVIEW_SPECS: dict[str, dict] = {
         "default_bio_hint": "Where does your audience hang out? Newsletter? Podcast? Local circles?",
         "options": {
             "subscription_tiers": [
-                {"key": "monthly", "label": "Monthly · $29", "rev_share": 12},
-                {"key": "annual", "label": "Annual · $299", "rev_share": 10, "ribbon": "Most chosen"},
-                {"key": "two_year", "label": "2-year · $549", "rev_share": 8},
+                {"key": "monthly", "label": "Monthly", "price_display": "$29 / month",
+                 "monthly_equivalent": "$29 / mo",
+                 "summary": "Lowest commitment. You earn an 8% commission on every order attributed to your referral code."},
+                {"key": "annual", "label": "Annual", "price_display": "$299 / year",
+                 "monthly_equivalent": "$24.92 / mo effective", "ribbon": "Most chosen",
+                 "summary": "Mid commitment. You earn a 10% commission on every order attributed to your referral code."},
+                {"key": "two_year", "label": "2-year", "price_display": "$549 / 24 months",
+                 "monthly_equivalent": "$22.88 / mo effective",
+                 "summary": "Longest commitment. You earn a 12% commission on every order attributed to your referral code."},
             ],
             "media": [
                 "Per-user referral code + per-workshop affiliate links",
@@ -132,7 +144,7 @@ PREVIEW_SPECS: dict[str, dict] = {
                 "100% control of how you talk about Birthright (within the truth).",
                 "The option to leave at any time; earned but unpaid commissions still pay out.",
             ],
-            "foundation_share": "88% — 92% of the order goes to the foundation; you keep the commission tier (12% / 10% / 8% with longer subscriptions).",
+            "foundation_share": "You keep 8%-12% of each attributed order (commission grows with longer subscription). Foundation keeps the rest of the order revenue.",
         },
     },
 
@@ -143,9 +155,15 @@ PREVIEW_SPECS: dict[str, dict] = {
         "default_bio_hint": "Affiliation, area of research, recent publications.",
         "options": {
             "subscription_tiers": [
-                {"key": "monthly", "label": "Monthly · $49", "rev_share": 0, "blurb": "Optional — most research collaborators are grant-funded."},
-                {"key": "annual", "label": "Annual · $499", "rev_share": 0},
-                {"key": "two_year", "label": "2-year · $899", "rev_share": 0},
+                {"key": "monthly", "label": "Monthly", "price_display": "$49 / month",
+                 "monthly_equivalent": "$49 / mo",
+                 "summary": "Optional subscription supports operations. Research is grant-funded — foundation takes 0% of your published work."},
+                {"key": "annual", "label": "Annual", "price_display": "$499 / year",
+                 "monthly_equivalent": "$41.58 / mo effective", "ribbon": "Most chosen",
+                 "summary": "Optional subscription supports operations. Research is grant-funded — foundation takes 0% of your published work."},
+                {"key": "two_year", "label": "2-year", "price_display": "$899 / 24 months",
+                 "monthly_equivalent": "$37.46 / mo effective",
+                 "summary": "Optional subscription supports operations. Research is grant-funded — foundation takes 0% of your published work."},
             ],
             "media": [
                 "Artifact submissions (paper, dataset, study summary)",
@@ -295,6 +313,11 @@ PREVIEW_SPECS: dict[str, dict] = {
         "default_headline": "Community Steward",
         "default_bio_hint": "Your ties to the community you'd steward — neighborhood, group, organization.",
         "options": {
+            "subscription_tiers": [
+                {"key": "volunteer", "label": "Volunteer", "price_display": "Free",
+                 "monthly_equivalent": "No subscription",
+                 "summary": "Volunteer role. No subscription, no rev share. Foundation supports you with training, ombudsman backing, and a portable stewardship history."},
+            ],
             "media": [
                 "Stewardship dashboard for the assigned community",
                 "Post moderation queue (flag, hide, remove)",
