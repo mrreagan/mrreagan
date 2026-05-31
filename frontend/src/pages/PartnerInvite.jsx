@@ -196,9 +196,9 @@ export default function PartnerInvite() {
         <section className="mt-8 max-w-3xl" data-testid="tiers-section">
           <p className="label">Subscription tier</p>
           <p className="text-xs text-[#5C6B6B] mt-1 mb-3">
-            Pick your own — longer commitments give you a better split on Birthright-fulfilled orders.
-            <strong className="text-[#1A2424]"> Off-site referrals are always 100% yours</strong> — the foundation
-            is paid only by your subscription on those.
+            Pick your own — longer commitments shrink the foundation's cut across every channel.
+            <strong className="text-[#1A2424]"> Three scenarios per tier</strong>: orders we fulfill on birthright.org,
+            off-site orders where we sent you the buyer (referral), and your direct customers (always 100% yours).
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {tiers.map((t) => {
@@ -226,18 +226,30 @@ export default function PartnerInvite() {
                   )}
                   {hasStructuredBreakdown ? (
                     <>
-                      <div className="mt-3 pt-3 border-t border-[#E5DDD0] space-y-2">
+                      <div className="mt-3 pt-3 border-t border-[#E5DDD0] space-y-2.5">
                         <div>
                           <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">On birthright.org</p>
+                          <p className="text-xs text-[#5C6B6B] leading-tight">we fulfill (Printful · Lulu)</p>
                           <p className="text-xs text-[#1A2424] mt-0.5">
-                            You keep <strong>{t.pod_vendor_pct}%</strong><br />
-                            <span className="text-[#5C6B6B]">Foundation {t.pod_foundation_pct}%</span>
+                            You keep <strong>{t.pod_vendor_pct}%</strong> · <span className="text-[#5C6B6B]">Foundation {t.pod_foundation_pct}%</span>
                           </p>
                         </div>
+                        {t.offsite_referred_vendor_pct != null && (
+                          <div>
+                            <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">Off-site, we sent the visitor</p>
+                            <p className="text-xs text-[#5C6B6B] leading-tight">
+                              <code className="bg-[#F4F1EA] px-1 rounded text-[10px]">?via=birthright</code> referral
+                            </p>
+                            <p className="text-xs text-[#1A2424] mt-0.5">
+                              You keep <strong>{t.offsite_referred_vendor_pct}%</strong> · <span className="text-[#5C6B6B]">Foundation {t.offsite_referred_foundation_pct}%</span>
+                            </p>
+                          </div>
+                        )}
                         <div>
-                          <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">Off-site (your store)</p>
+                          <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">Your direct customers</p>
+                          <p className="text-xs text-[#5C6B6B] leading-tight">no Birthright attribution</p>
                           <p className="text-xs text-[#1A2424] mt-0.5">
-                            You keep <strong>{t.offsite_vendor_pct}%</strong>
+                            You keep <strong>{t.offsite_direct_vendor_pct != null ? t.offsite_direct_vendor_pct : t.offsite_vendor_pct}%</strong>
                           </p>
                         </div>
                       </div>
