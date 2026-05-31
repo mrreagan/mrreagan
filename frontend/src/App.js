@@ -45,6 +45,9 @@ import GalleryLanding from "./pages/GalleryLanding";
 import GalleryArtist from "./pages/GalleryArtist";
 import FeaturedInvite from "./pages/FeaturedInvite";
 import AdminGalleryProspects from "./pages/AdminGalleryProspects";
+import PartnerInvite from "./pages/PartnerInvite";
+import PartnerTypeTry from "./pages/PartnerTypeTry";
+import AdminPartnerProspects from "./pages/AdminPartnerProspects";
 import ArtistStudio from "./pages/ArtistStudio";
 import PartnerTypes from "./pages/PartnerTypes";
 import VendorStudio from "./pages/VendorStudio";
@@ -173,6 +176,8 @@ function AppRoutes() {
       {/* Partner — canonical /partner. /partners preserved as redirect. */}
       <Route path="/partner" element={<PartnersDirectory />} />
       <Route path="/partner/types" element={<PartnerTypes />} />
+      <Route path="/partner/types/:type/try" element={<PartnerTypeTry />} />
+      <Route path="/partner/invite/:token" element={<PartnerInvite />} />
       <Route path="/partner/apply" element={<PartnerApply />} />
       <Route path="/partner/subscribe" element={<PartnerSubscribe />} />
       <Route path="/partner/:slug" element={<PartnerProfilePage />} />
@@ -437,6 +442,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminGalleryProspects />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/partners/prospects"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminPartnerProspects />
           </ProtectedRoute>
         }
       />

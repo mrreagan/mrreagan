@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import api from "../lib/api";
 import {
   Users, Plus, Send, MessageSquare, Trash2, ExternalLink,
-  CheckCircle2, Phone, Mail, MapPin, Sparkles,
+  CheckCircle2, Phone, Mail, MapPin, Sparkles, Eye,
 } from "lucide-react";
 
 const STATUS_LABEL = {
@@ -241,8 +241,8 @@ function ProspectCard({ prospect, isOpen, onToggle, onChanged }) {
   };
 
   return (
-    <div className="card p-4" data-testid={`prospect-card-${prospect.id}`}>
-      <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={onToggle}>
+    <div className="card p-4" data-testid="prospect-card">
+      <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={onToggle} data-testid={`prospect-toggle-${prospect.id}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-3 flex-wrap">
             <p className="font-serif text-base text-[#1A2424] truncate">{prospect.display_name}</p>
@@ -310,7 +310,7 @@ function ProspectCard({ prospect, isOpen, onToggle, onChanged }) {
               className="input-field mt-2"
               data-testid={`interaction-notes-${prospect.id}`}
             />
-            <button onClick={addInteraction} disabled={submittingInt} className="btn-secondary mt-2 inline-flex items-center gap-2" data-testid={`interaction-submit-${prospect.id}`}>
+            <button onClick={addInteraction} disabled={submittingInt} className="btn-secondary mt-2 inline-flex items-center gap-2" data-testid={`log-interaction-btn-${prospect.id}`}>
               <MessageSquare size={14} /> Log interaction
             </button>
           </div>
@@ -318,7 +318,7 @@ function ProspectCard({ prospect, isOpen, onToggle, onChanged }) {
           {/* Promote */}
           {prospect.status !== "promoted_to_featured" && prospect.status !== "invited" && (
             !showPromote ? (
-              <button onClick={() => setShowPromote(true)} className="btn-primary inline-flex items-center gap-2" data-testid={`promote-btn-${prospect.id}`}>
+              <button onClick={() => setShowPromote(true)} className="btn-primary inline-flex items-center gap-2" data-testid={`promote-prospect-btn-${prospect.id}`}>
                 <Send size={14} /> Issue Foundation invitation
               </button>
             ) : (
@@ -336,8 +336,11 @@ function ProspectCard({ prospect, isOpen, onToggle, onChanged }) {
                 {prospect.active_invite_token && (
                   <div>
                     <strong className="text-[#1A2424]">Active invitation</strong> — preview link:
-                    <a className="ml-1 underline text-[#9E3C3C]" target="_blank" rel="noopener noreferrer" href={`/gallery/invite/${prospect.active_invite_token}`} data-testid={`preview-link-${prospect.id}`}>
+                    <a className="ml-1 underline text-[#9E3C3C] mr-3" target="_blank" rel="noopener noreferrer" href={`/gallery/invite/${prospect.active_invite_token}`} data-testid={`preview-link-${prospect.id}`}>
                       /gallery/invite/{prospect.active_invite_token.slice(0, 8)}… <ExternalLink size={11} className="inline" />
+                    </a>
+                    <a className="underline text-[#476B6B] inline-flex items-center gap-1" target="_blank" rel="noopener noreferrer" href={`/gallery/invite/${prospect.active_invite_token}`} data-testid={`sanity-check-link-${prospect.id}`}>
+                      <Eye size={11} /> Sanity-check before send
                     </a>
                   </div>
                 )}

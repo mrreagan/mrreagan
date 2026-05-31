@@ -80,7 +80,8 @@ export default function PartnerTypes() {
               <th className="py-2 pr-4 font-serif text-base">Foundation gets</th>
               <th className="py-2 pr-4 font-serif text-base">You get</th>
               <th className="py-2 pr-4 font-serif text-base">Money</th>
-              <th className="py-2 font-serif text-base">Mission alignment</th>
+              <th className="py-2 pr-4 font-serif text-base">Mission alignment</th>
+              <th className="py-2 font-serif text-base">Try it</th>
             </tr>
           </thead>
           <tbody>
@@ -103,6 +104,11 @@ export default function PartnerTypes() {
                     <p className="text-[10px] text-[#476B6B] mt-1 italic">{t.financial.notes}</p>
                   </td>
                   <td className="py-4 text-[#5C6B6B] italic max-w-[260px]">{t.mission_alignment}</td>
+                  <td className="py-4 pr-2">
+                    <Link to={`/partner/types/${t.slug}/try`} className="btn-secondary text-xs whitespace-nowrap" data-testid={`partner-types-try-btn-${t.slug}`}>
+                      Try the dashboard →
+                    </Link>
+                  </td>
                 </tr>
               );
             })}
