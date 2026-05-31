@@ -112,9 +112,13 @@ export default function PartnerInvite() {
 
   return (
     <div className="container-page py-10" data-testid="partner-invite-page">
-      <span className="label text-[#C9A961]" data-testid="invite-label">{spec.title} invitation</span>
-      <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
-        <Sparkles size={26} strokeWidth={1.2} className="text-[#C9A961]" /> Hi, {inv.display_name}
+      {/* Quiet brand mark */}
+      <div className="flex items-center gap-2 mb-1">
+        <Sparkles size={18} strokeWidth={1.2} className="text-[#C9A961]" />
+        <span className="label text-[#C9A961]" data-testid="invite-label">{spec.title} invitation</span>
+      </div>
+      <h1 className="editorial-h1 mt-1 text-left" data-testid="invite-greeting">
+        Hi, {inv.display_name}
       </h1>
       <div className="divider-flame" />
 
