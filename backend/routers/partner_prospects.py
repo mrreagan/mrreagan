@@ -176,16 +176,57 @@ PREVIEW_SPECS: dict[str, dict] = {
         "default_headline": "Maker · Vendor partner",
         "default_bio_hint": "What do you make? What story does it tell?",
         "options": {
+            # All percentages reward longer commitment with a BETTER vendor split.
+            # Monthly is the foundation's highest cut; 2-year is the lowest.
+            # Off-site referrals are always 100% to the vendor — Birthright is
+            # paid only by the subscription on those orders.
             "subscription_tiers": [
-                {"key": "monthly", "label": "Monthly · $49", "rev_share": 82},
-                {"key": "annual", "label": "Annual · $499", "rev_share": 78, "ribbon": "Most chosen"},
-                {"key": "two_year", "label": "2-year · $899", "rev_share": 75},
+                {
+                    "key": "monthly",
+                    "label": "Monthly",
+                    "price_display": "$49 / month",
+                    "monthly_equivalent": "$49 / mo",
+                    "pod_vendor_pct": 75,
+                    "pod_foundation_pct": 25,
+                    "offsite_vendor_pct": 100,
+                    "offsite_foundation_pct": 0,
+                    "summary": "Lowest commitment. Foundation takes 25% on Birthright-fulfilled orders. Off-site orders stay 100% yours.",
+                },
+                {
+                    "key": "annual",
+                    "label": "Annual",
+                    "price_display": "$499 / year",
+                    "monthly_equivalent": "$41.58 / mo effective",
+                    "pod_vendor_pct": 78,
+                    "pod_foundation_pct": 22,
+                    "offsite_vendor_pct": 100,
+                    "offsite_foundation_pct": 0,
+                    "ribbon": "Most chosen",
+                    "summary": "Lower subscription/mo + better split on Birthright-fulfilled orders.",
+                },
+                {
+                    "key": "two_year",
+                    "label": "2-year",
+                    "price_display": "$899 / 24 months",
+                    "monthly_equivalent": "$37.46 / mo effective",
+                    "pod_vendor_pct": 82,
+                    "pod_foundation_pct": 18,
+                    "offsite_vendor_pct": 100,
+                    "offsite_foundation_pct": 0,
+                    "summary": "Best monthly rate and the highest vendor keep on Birthright-fulfilled orders.",
+                },
             ],
+            # Per-line clarity about what 'rev share' actually means in context.
+            "revenue_breakdown_headers": {
+                "subscription": "What you pay Birthright",
+                "pod": "Order on birthright.org (we fulfill via Printful/Lulu)",
+                "offsite": "Order on your own store (we send buyer to you with ?via= tag)",
+            },
             "fulfillment_modes": [
-                {"key": "printful", "label": "Print-on-demand (Printful)", "blurb": "Apparel, mugs — Birthright handles fulfillment."},
-                {"key": "lulu", "label": "Print-on-demand (Lulu)", "blurb": "Journals, notebooks — Birthright handles fulfillment."},
-                {"key": "off_site", "label": "Referral to your own store", "blurb": "We send buyers to you with a ?via= attribution tag."},
-                {"key": "manual", "label": "Foundation-fulfilled", "blurb": "Inventory + ship through Birthright (case-by-case)."},
+                {"key": "printful", "label": "Print-on-demand (Printful)", "blurb": "Apparel, mugs — Birthright handles fulfillment.", "channel": "pod"},
+                {"key": "lulu", "label": "Print-on-demand (Lulu)", "blurb": "Journals, notebooks — Birthright handles fulfillment.", "channel": "pod"},
+                {"key": "off_site", "label": "Referral to your own store", "blurb": "We send buyers to you with a ?via= attribution tag. You keep 100%.", "channel": "offsite"},
+                {"key": "manual", "label": "Foundation-fulfilled", "blurb": "Inventory + ship through Birthright (case-by-case).", "channel": "pod"},
             ],
             "media": [
                 "AI Studio (Claude copy + Nano Banana mockups) for new product drafts",
@@ -206,7 +247,7 @@ PREVIEW_SPECS: dict[str, dict] = {
                 "100% of the gross on off-site referrals (we don't touch the money).",
                 "The option to pause or unlist products at any time.",
             ],
-            "foundation_share": "18%–25% on POD orders (you keep 82% / 78% / 75% with longer subscriptions). 0% on off-site referrals — we're paid only by your subscription.",
+            "foundation_share": "On Birthright-fulfilled (POD) orders the foundation keeps 18%-25% (you keep the rest), and the foundation's cut goes DOWN the longer you commit. On off-site referrals the foundation keeps 0% — we're paid only by your subscription. Every order's split is shown to the buyer at checkout.",
         },
     },
 
@@ -304,6 +345,8 @@ class ProspectCreate(BaseModel):
     # picked, not just that they were.
     highlight_url: Optional[str] = Field(default=None, max_length=600,
         description="Primary link to the prospect's site OR the specific page/product/service/comment that motivated the invitation.")
+    highlight_image_url: Optional[str] = Field(default=None, max_length=600,
+        description="Optional image (e.g., a photo of the product or a screenshot of the page) that visually anchors the highlight on the invitation preview.")
     highlight_label: Optional[Literal[
         "site", "product", "service", "page", "item",
         "comment", "post", "mission", "statement", "about", "other",
@@ -338,6 +381,7 @@ class ProspectUpdate(BaseModel):
     portfolio_url: Optional[str] = Field(default=None, max_length=600)
     social_url: Optional[str] = Field(default=None, max_length=600)
     highlight_url: Optional[str] = Field(default=None, max_length=600)
+    highlight_image_url: Optional[str] = Field(default=None, max_length=600)
     highlight_label: Optional[Literal[
         "site", "product", "service", "page", "item",
         "comment", "post", "mission", "statement", "about", "other",
@@ -411,6 +455,7 @@ def _invite_public_slice(inv: dict) -> dict:
         "default_headline": inv.get("default_headline"),
         "default_bio": inv.get("default_bio"),
         "highlight_url": inv.get("highlight_url"),
+        "highlight_image_url": inv.get("highlight_image_url"),
         "highlight_label": inv.get("highlight_label"),
         "highlight_excerpt": inv.get("highlight_excerpt"),
         "highlight_reason": inv.get("highlight_reason"),
@@ -621,6 +666,7 @@ async def create_prospect(data: ProspectCreate, user: dict = Depends(require_rol
         "portfolio_url": (data.portfolio_url or "").strip() or None,
         "social_url": (data.social_url or "").strip() or None,
         "highlight_url": (data.highlight_url or "").strip() or None,
+        "highlight_image_url": (data.highlight_image_url or "").strip() or None,
         "highlight_label": data.highlight_label,
         "highlight_excerpt": (data.highlight_excerpt or "").strip() or None,
         "highlight_reason": (data.highlight_reason or "").strip() or None,
@@ -920,6 +966,7 @@ async def promote_prospect(prospect_id: str, data: ProspectPromote,
         # Carry the highlight to the public preview so the prospect sees WHY
         # they were chosen, not just THAT they were chosen.
         "highlight_url": p.get("highlight_url"),
+        "highlight_image_url": p.get("highlight_image_url"),
         "highlight_label": p.get("highlight_label"),
         "highlight_excerpt": p.get("highlight_excerpt"),
         "highlight_reason": p.get("highlight_reason"),

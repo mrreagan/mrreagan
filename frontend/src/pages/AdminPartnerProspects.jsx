@@ -137,7 +137,7 @@ function CreateForm({ onClose, onCreated }) {
   const [form, setForm] = useState({
     partner_type: "facilitator", display_name: "", contact_email: "", contact_phone: "",
     location: "", headline_excerpt: "", bio_excerpt: "", portfolio_url: "", social_url: "",
-    highlight_url: "", highlight_label: "site", highlight_excerpt: "", highlight_reason: "",
+    highlight_url: "", highlight_image_url: "", highlight_label: "site", highlight_excerpt: "", highlight_reason: "",
     mission_alignment: "",
     referred_by: "", internal_notes: "",
     initial_interaction_channel: "email", initial_interaction_notes: "",
@@ -233,6 +233,15 @@ function CreateForm({ onClose, onCreated }) {
               ))}
             </select>
           </div>
+        </div>
+        <div className="mt-3">
+          <p className="label">Highlight image URL (optional)</p>
+          <input value={form.highlight_image_url} onChange={(e) => setForm({ ...form, highlight_image_url: e.target.value })} className="input-field" placeholder="https://… an image of the product, page, or work itself" data-testid="highlight-image-input" />
+          {form.highlight_image_url && (
+            <div className="mt-2 max-w-xs border border-[#E5DDD0] rounded overflow-hidden">
+              <img src={form.highlight_image_url} alt="highlight preview" className="w-full max-h-48 object-cover" />
+            </div>
+          )}
         </div>
         <div className="mt-3">
           <p className="label">Excerpt (the actual content — a quote, a description, the mission statement text)</p>

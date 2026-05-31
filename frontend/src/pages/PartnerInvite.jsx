@@ -145,21 +145,32 @@ export default function PartnerInvite() {
           href={inv.highlight_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 max-w-2xl block p-4 rounded border border-[#C9A961] bg-white hover:bg-[#FAF8F5] transition"
+          className="mt-4 max-w-2xl block rounded border border-[#C9A961] bg-white hover:bg-[#FAF8F5] transition overflow-hidden"
           data-testid="highlight-card"
         >
-          <p className="text-[10px] uppercase tracking-[1.5px] text-[#476B6B] mb-2">
-            What we saw — your {(inv.highlight_label || "site").replace("_", " ")}
-          </p>
-          {inv.highlight_excerpt && (
-            <blockquote className="text-[15px] italic text-[#1A2424] border-l-2 border-[#C9A961] pl-3 mb-2">
-              "{inv.highlight_excerpt}"
-            </blockquote>
+          {inv.highlight_image_url && (
+            <div className="w-full bg-[#F4F1EA] flex items-center justify-center" data-testid="highlight-image">
+              <img
+                src={inv.highlight_image_url}
+                alt={inv.highlight_label || "highlight"}
+                className="w-full max-h-[360px] object-cover"
+              />
+            </div>
           )}
-          <p className="text-xs text-[#9E3C3C] font-serif break-all">{inv.highlight_url}</p>
-          {inv.highlight_reason && (
-            <p className="text-xs text-[#5C6B6B] mt-2 leading-relaxed">{inv.highlight_reason}</p>
-          )}
+          <div className="p-4">
+            <p className="text-[10px] uppercase tracking-[1.5px] text-[#476B6B] mb-2">
+              What we saw — your {(inv.highlight_label || "site").replace("_", " ")}
+            </p>
+            {inv.highlight_excerpt && (
+              <blockquote className="text-[15px] italic text-[#1A2424] border-l-2 border-[#C9A961] pl-3 mb-2">
+                "{inv.highlight_excerpt}"
+              </blockquote>
+            )}
+            <p className="text-xs text-[#9E3C3C] font-serif break-all">{inv.highlight_url}</p>
+            {inv.highlight_reason && (
+              <p className="text-xs text-[#5C6B6B] mt-2 leading-relaxed">{inv.highlight_reason}</p>
+            )}
+          </div>
         </a>
       )}
 
@@ -176,37 +187,73 @@ export default function PartnerInvite() {
         />
       </div>
 
-      {/* Subscription tiers */}
+      {/* Subscription tiers — clear breakdown of WHAT you pay and WHAT YOU KEEP on each order channel */}
       {tiers.length > 0 && (
-        <section className="mt-8 max-w-2xl">
+        <section className="mt-8 max-w-3xl" data-testid="tiers-section">
           <p className="label">Subscription tier</p>
-          <p className="text-xs text-[#5C6B6B] mt-1 mb-3">Pick your own — the foundation has marked their suggestion.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <p className="text-xs text-[#5C6B6B] mt-1 mb-3">
+            Pick your own — longer commitments give you a better split on Birthright-fulfilled orders.
+            <strong className="text-[#1A2424]"> Off-site referrals are always 100% yours</strong> — the foundation
+            is paid only by your subscription on those.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {tiers.map((t) => {
               const ribbon = t.ribbon || (inv.suggested_subscription_tier === t.key ? "Suggested" : null);
               const isSelected = tier === t.key;
+              const hasStructuredBreakdown = t.pod_vendor_pct != null;
               return (
                 <button
                   key={t.key}
                   onClick={() => setTier(t.key)}
-                  className={`relative text-left p-3 border rounded transition ${
-                    isSelected ? "border-[#9E3C3C] bg-[#FAF8F5]" : "border-[#E5DDD0] hover:border-[#C9A961]"
+                  className={`relative text-left p-4 border rounded transition flex flex-col ${
+                    isSelected ? "border-[#9E3C3C] border-2 bg-[#FAF8F5]" : "border-[#E5DDD0] hover:border-[#C9A961]"
                   }`}
                   data-testid={`tier-option-${t.key}`}
                 >
                   {ribbon && (
                     <span className="absolute -top-2 right-2 bg-[#C9A961] text-white text-[9px] uppercase tracking-wider px-2 py-0.5 rounded">{ribbon}</span>
                   )}
-                  <div className="font-serif text-sm text-[#1A2424]">{t.label}</div>
-                  {t.rev_share != null && (
-                    <div className="text-[10px] text-[#476B6B] mt-1">Rev share: {t.rev_share}%</div>
+                  <div className="font-serif text-base text-[#1A2424]">{t.label || t.key}</div>
+                  {t.price_display && (
+                    <div className="text-sm text-[#1A2424] font-semibold mt-1">{t.price_display}</div>
                   )}
-                  {t.rev_share_birthright_ip != null && (
-                    <div className="text-[10px] text-[#476B6B] mt-1">
-                      Birthright IP: {t.rev_share_birthright_ip}% · Own: {t.rev_share_other}%
-                    </div>
+                  {t.monthly_equivalent && t.monthly_equivalent !== t.price_display && (
+                    <div className="text-[10px] text-[#5C6B6B]">{t.monthly_equivalent}</div>
                   )}
-                  {t.blurb && <div className="text-[10px] text-[#5C6B6B] mt-1 leading-relaxed">{t.blurb}</div>}
+                  {hasStructuredBreakdown ? (
+                    <>
+                      <div className="mt-3 pt-3 border-t border-[#E5DDD0] space-y-2">
+                        <div>
+                          <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">On birthright.org</p>
+                          <p className="text-xs text-[#1A2424] mt-0.5">
+                            You keep <strong>{t.pod_vendor_pct}%</strong><br />
+                            <span className="text-[#5C6B6B]">Foundation {t.pod_foundation_pct}%</span>
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] uppercase tracking-wider text-[#476B6B]">Off-site (your store)</p>
+                          <p className="text-xs text-[#1A2424] mt-0.5">
+                            You keep <strong>{t.offsite_vendor_pct}%</strong>
+                          </p>
+                        </div>
+                      </div>
+                      {t.summary && (
+                        <p className="text-[10px] text-[#5C6B6B] mt-2 leading-relaxed italic">{t.summary}</p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {t.rev_share != null && (
+                        <div className="text-[10px] text-[#476B6B] mt-2">Rev share: {t.rev_share}%</div>
+                      )}
+                      {t.rev_share_birthright_ip != null && (
+                        <div className="text-[10px] text-[#476B6B] mt-2">
+                          Birthright IP: {t.rev_share_birthright_ip}% · Own: {t.rev_share_other}%
+                        </div>
+                      )}
+                      {t.blurb && <div className="text-[10px] text-[#5C6B6B] mt-1 leading-relaxed">{t.blurb}</div>}
+                    </>
+                  )}
                 </button>
               );
             })}
