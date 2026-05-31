@@ -201,8 +201,14 @@ async def list_galleries(
     return out
 
 
-@router.get("/{slug}")
-async def get_artist_gallery(slug: str):
+@router.get("/_artist_by_slug/{slug}")
+async def get_artist_gallery_internal(slug: str):
+    """Internal helper used by the public route at the end of the file. Keeps
+    the path-matching ordering safe."""
+    return await _get_artist_gallery_impl(slug)
+
+
+async def _get_artist_gallery_impl(slug: str):
     """Public — full gallery space + works (grouped by collection). If the artist
     has an active featured slot for today, the curated mini-gallery from that slot
     overrides the regular gallery_space fields and the featured_work_ids are
@@ -492,6 +498,14 @@ NEW_ACCOUNT_DAYS = 30
 NEW_ACCOUNT_WEIGHT = 0.25
 NOMINATION_HALF_LIFE_DAYS = 365  # 12 months
 SCHEDULE_HORIZON_DAYS = 60  # public schedule shows next 60 days only
+ROLL_FORWARD_WEIGHT = 0.5  # unfeatured nominations carry forward at half weight
+
+# Statement-on-image position cycle. Each slot in a month-lineup picks one
+# of these by its sort-index, so adjacent slots get visually different
+# overlay positions. All positions are safety-padded and tested for
+# readability across a wide range of hero images. Once the month starts
+# a slot's position is locked permanently.
+STATEMENT_POSITIONS = ("tl", "br", "tr", "bl", "cb")
 
 
 def _today_iso_date() -> str:
@@ -632,6 +646,44 @@ def _slot_sort_key(slot: dict) -> tuple:
     return (foundation_first, slot.get("starts_at", ""), (slot.get("artist_display_name") or "").lower())
 
 
+def _statement_position_for_index(idx: int) -> str:
+    """Pick a statement-overlay position for a slot's index in the month lineup.
+    Uses the canonical STATEMENT_POSITIONS cycle so adjacent slots get visually
+    different placements (top-left, bottom-right, top-right, bottom-left,
+    center-bottom, …).
+    """
+    return STATEMENT_POSITIONS[idx % len(STATEMENT_POSITIONS)]
+
+
+async def _ensure_locked_statement_positions(db, slots: list[dict]) -> list[dict]:
+    """For active-month slots that don't yet have a locked statement_position,
+    assign one based on the slot's index in the canonical sort order and
+    persist it. Once locked, never changes — even if the lineup is reshuffled.
+
+    Returns the slots list with `statement_position` populated.
+    """
+    if not slots:
+        return slots
+    ordered = sorted(slots, key=_slot_sort_key)
+    now = now_iso()
+    for idx, slot in enumerate(ordered):
+        if slot.get("statement_position") and slot.get("statement_position_locked_at"):
+            continue
+        pos = _statement_position_for_index(idx)
+        slot["statement_position"] = pos
+        slot["statement_position_locked_at"] = now
+        await db.featured_artist_slots.update_one(
+            {"id": slot["id"], "statement_position_locked_at": {"$in": [None, ""]}},
+            {"$set": {"statement_position": pos, "statement_position_locked_at": now}},
+        )
+        # Fallback: in case the slot existed without the field at all
+        await db.featured_artist_slots.update_one(
+            {"id": slot["id"], "statement_position_locked_at": {"$exists": False}},
+            {"$set": {"statement_position": pos, "statement_position_locked_at": now}},
+        )
+    return ordered
+
+
 @router.get("/featured")
 async def list_featured(include_upcoming: bool = True, include_past: bool = False, limit: int = Query(20, ge=1, le=100)):
     """Public — current accepted featured artists + upcoming accepted slots + (optionally) past.
@@ -748,6 +800,9 @@ async def nominate_artist(data: FeaturedNomination, user: dict = Depends(get_cur
     nominator_email = (user.get("email") or "").lower()
     nominator_name = f"{user.get('first_name','')} {user.get('last_name','')}".strip() or nominator_email or "anon"
     now = now_iso()
+    # Nominations target the upcoming curation window (next month). At end of
+    # month, leftovers roll-forward to the month after at half weight.
+    period_target = _next_month_label(_month_label(now[:10]))
     # Upsert per (artist, nominator) — keeps it one-per-user-per-artist
     existing = await db.featured_nominations.find_one(
         {"artist_slug": data.artist_slug, "nominator_user_id": user["id"]},
@@ -763,6 +818,7 @@ async def nominate_artist(data: FeaturedNomination, user: dict = Depends(get_cur
                 "allow_artist_contact": data.allow_artist_contact,
                 "nominator_email": nominator_email,
                 "nominator_name": nominator_name,
+                "period_target": period_target,
                 "refreshed_at": now,
                 "created_at": now,  # decay resets to "fresh"
             }},
@@ -782,6 +838,8 @@ async def nominate_artist(data: FeaturedNomination, user: dict = Depends(get_cur
             "trust_flags": flags,
             "allow_artist_contact": data.allow_artist_contact,
             "artist_acknowledged_at": None,
+            "period_target": period_target,
+            "rolled_forward_from": None,
             "created_at": now,
         }
         await db.featured_nominations.insert_one(dict(doc))
@@ -1584,3 +1642,10 @@ async def featured_pipeline():
 
 # A small import block for datetime to keep grouped at top of helpers
 from datetime import datetime  # noqa: E402
+
+
+# Registered LAST so single-segment routes like /featured, /artists, /markup-pct
+# get priority. Everything below this point would shadow them.
+@router.get("/{slug}")
+async def get_artist_gallery(slug: str):
+    return await _get_artist_gallery_impl(slug)
