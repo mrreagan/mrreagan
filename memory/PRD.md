@@ -949,18 +949,61 @@ See `/app/memory/test_credentials.md`
 ### Backlog — apply "Explore vs Embrace" framework to other partner roles
 The featured-artist invitation is the cleanest expression of the framework. To meet the user's intent ("the same framework and experience for every person coming to the site exploring every role"), the following need updates so non-committal preview happens before partnership enrollment:
 
-- **P1: Partner Apply tokenized invites for ALL partner types** — extend `featured_artist_invites` infrastructure to `partner_invites` for Facilitator, Community, Research, Vendor, Steward. Generate from `/admin/partners/invite` (already exists), but instead of a one-line email, send the same explore-before-embrace pattern (preview the dashboard, see all features, then opt-in).
-- **P1: Public "Explore as if you were one" mode on each partner-type page** — `/partner/types` currently shows a comparison table. Add a "Try the dashboard" button per type that opens a read-only sandboxed view of the dashboard for that type, so prospects can model the experience without applying.
-- **P2: Community membership preview** — `/gather/community/:slug` currently requires login to see message board. Add a public read-only preview with a "Join to participate" CTA, mirroring the artist invite pattern.
-- **P2: Research collaborator preview** — let visitors browse a real research artifact's flow (submit/review/publish) in read-only mode.
-- **P2: Vendor catalog setup preview** — `/dashboard/vendor/studio` walkthrough in a sandboxed flow for prospects.
-- **P2: Steward role preview** — show what moderating a community looks like for someone considering taking on the role.
-- **P3: Universal "Modeling vs. Committing" indicator** — site-wide banner pattern showing visitors when they're in preview mode vs. when they've actually committed/enrolled. Single component, used by every partner preview surface.
+- ✅ **DONE — Iter 42**: Generic prospect+invite system covering all 6 partner types (a, b, c, d, e, f, g, h, i)
 
-These backlog items inherit the core pattern:
-1. Generate a tokenized link or set up a public preview URL.
-2. Show full UI + defaults + all options + what acceptance means.
-3. Single opt-in step at the bottom: create account + sign agreement → commit.
+See iter 42 below for details.
+
+## Iter 42 — Explore-before-Embrace framework, generalized to ALL partner types (May 31, 2026)
+
+The Artist-only invite system from iter 41 is now a **first-class framework for every partner role**.
+
+### Backend — `routers/partner_prospects.py` (new file)
+- **Generic collections**: `partner_prospects` + `partner_invites` (carry a `partner_type` field).
+- **6 partner-type preview specs** in `PREVIEW_SPECS`: facilitator, community, research, vendor, artist, steward. Each spec has `title`, `blurb`, `default_headline`, `options` (subscription tiers, fulfillment_modes for vendor, media list, policies for steward, accent colors for artist), and `what_acceptance_means` (summary, obligations, you_keep, foundation_share).
+- **Public endpoints (no auth)**:
+  - `GET /api/partners/preview-specs` — full index for /partner/types
+  - `GET /api/partners/preview-specs/{partner_type}` — single spec for /partner/types/{type}/try
+  - `GET /api/partners/invite/{token}` — invite + spec slice (increments preview_count)
+  - `POST /api/partners/invite/{token}/accept` — atomic enroll: user + partner_profile + JWT
+  - `POST /api/partners/invite/{token}/decline` — one-click decline
+- **Admin endpoints**:
+  - `GET/POST/PUT/DELETE /api/partners/admin/prospects` (filter by partner_type, status, q-search)
+  - `POST /admin/prospects/{id}/interactions` — auto-advance status to responded_interested
+  - `POST /admin/prospects/{id}/promote` — issues invite token, emails `partner_foundation_invite`
+  - `GET /admin/invites` — admin tracker w/ counts
+- **Route ordering fix**: `partner_prospects_router` registered BEFORE `partners_router` in `server.py` so `/partners/preview-specs` doesn't get shadowed by `/partners/{slug}`.
+
+### Tests — `tests/test_iter42_partner_prospects_generic.py` (20 tests, **20/20 PASS**)
+- Per-type preview spec endpoints (6 partner types parametrized)
+- Prospect CRUD + interactions auto-advance (parametrized across 5 types)
+- Promote → preview → accept end-to-end (parametrized across 5 types)
+- Decline path, anon access blocked, promote requires contact_email
+
+### Frontend — 4 new files + targeted edits
+- **`/components/PreviewModeBanner.jsx` (NEW)** — Universal "Modeling vs. Committing" indicator (3 variants). data-testid="preview-mode-banner". Used by every Explore-before-Embrace surface.
+- **`/pages/PartnerInvite.jsx` (NEW)** — public generic invite preview at `/partner/invite/:token`. Subscription tier picker, optional fulfillment_modes (vendor), media list, What-Enrolling-Means panel, Accept (password + checkbox + tier) and Decline buttons. Reuses backend spec response → works for ALL 6 types.
+- **`/pages/PartnerTypeTry.jsx` (NEW)** — public sandbox preview at `/partner/types/:type/try`. Renders the role's full spec without a token; CTAs to Apply / Compare / Ask a question.
+- **`/pages/AdminPartnerProspects.jsx` (NEW)** — generic admin tracker at `/admin/partners/prospects`. Filter by partner_type + status, log prospects, log interactions, issue invitations w/ optional note + suggested tier. Includes "Sanity-check before send" preview-as-the-prospect-would-see-it link on each active invitation.
+- **`/pages/PartnerTypes.jsx` (EDIT)** — comparison table has a "Try the dashboard →" column per row (data-testid='partner-types-try-btn-{slug}') for all 6 types.
+- **`/pages/AdminGalleryProspects.jsx` (EDIT)** — refined testids (`prospect-card`, `promote-prospect-btn-{id}`, `log-interaction-btn-{id}`, `sanity-check-link-{id}`).
+- **`/pages/AdminDashboard.jsx` (EDIT)** — quick-action card linking to `/admin/partners/prospects`.
+- **`/App.js` (EDIT)** — new routes: `/partner/types/:type/try`, `/partner/invite/:token`, `/admin/partners/prospects`.
+
+### What this changes for users
+- Anyone visiting `/partner/types` can click "Try the dashboard →" on any of 6 roles → fully public read-only walkthrough.
+- Foundation leaders can log prospects for ANY partner type in `/admin/partners/prospects`.
+- Issued invitations carry a tokenized link to a role-specific Explore-before-Embrace preview. Commitment is one explicit final step.
+- Every preview surface shows the universal `<PreviewModeBanner>` — visitors know exactly when they're modeling vs. when they've committed.
+
+### Combined backend test status (iters 39+40+41+42): **48/48 PASS**
+
+### Remaining backlog (P2/P3, not in this iteration)
+- **j**: Advanced cross-site search + vendor filters (P2)
+- **k**: AI cost-recovery bundle (+$25/mo on partner subscriptions) (P2)
+- **l**: Refund/clawback cascade + Partnership Agreement v2 re-sign (P2)
+- **m**: AI cover variations re-roll button (P3)
+- **n**: More Lulu presets (hardcover gift, 8.5×11 workbook, 5×8 pocket) (P3)
+- **o**: Foundation revenue dashboard tile (Printful margin + Lulu margin + combined) (P3)
 
 See `/app/memory/test_credentials.md`
 
