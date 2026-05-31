@@ -412,7 +412,7 @@ class PhotoModerationAction(BaseModel):
 
 # ============ PARTNERS / GOVERNANCE / LEGAL (Phase 6A.2) ============
 
-PARTNER_TYPES = ("facilitator", "community", "research", "vendor")
+PARTNER_TYPES = ("facilitator", "community", "research", "vendor", "artist", "steward")
 PROPOSAL_CATEGORIES = ("rev_share", "policy", "membership", "indemnification", "other")
 
 
@@ -532,7 +532,7 @@ PARTNER_STATUS = ("pending", "approved", "rejected", "revoked")
 
 class PartnerApplyData(BaseModel):
     """Per-type application payload. Self-apply uses `partner_type` to pick fields."""
-    partner_type: Literal["facilitator", "community", "research", "vendor"]
+    partner_type: Literal["facilitator", "community", "research", "vendor", "artist", "steward"]
     headline: str = Field(min_length=5, max_length=160)
     bio: str = Field(min_length=20, max_length=4000)
     website_url: Optional[str] = None
@@ -553,13 +553,23 @@ class PartnerApplyData(BaseModel):
     # Vendor-specific
     business_name: Optional[str] = Field(default=None, max_length=200)
     product_categories: Optional[str] = Field(default=None, max_length=500)
+    # Artist-specific
+    mediums: Optional[str] = Field(default=None, max_length=500, description="Comma-separated: painting, photography, ceramics, chamber music…")
+    artist_statement: Optional[str] = Field(default=None, max_length=4000)
+    own_gallery_url: Optional[str] = Field(default=None, max_length=600)
+    representative_works_url: Optional[str] = Field(default=None, max_length=600)
+    accepts_commissions: Optional[bool] = None
+    # Steward-specific
+    requested_community_slug: Optional[str] = Field(default=None, max_length=200, description="Geographic path e.g. north-america/us/california/santa-cruz")
+    community_ties: Optional[str] = Field(default=None, max_length=4000, description="How are you rooted in this community?")
+    moderation_experience: Optional[str] = Field(default=None, max_length=2000)
     # Founding-partner request flag (v1.11.0 step 5)
     apply_as_founding_partner: bool = False
 
 
 class PartnerInviteCreate(BaseModel):
     email: str = Field(min_length=3, max_length=200)
-    partner_type: Literal["facilitator", "community", "research", "vendor"]
+    partner_type: Literal["facilitator", "community", "research", "vendor", "artist", "steward"]
     admin_note: Optional[str] = Field(default="", max_length=1000)
 
 

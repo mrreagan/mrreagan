@@ -38,6 +38,13 @@ import AdminStudio from "./pages/AdminStudio";
 import AdminStudioQueue from "./pages/AdminStudioQueue";
 import AdminLuluOps from "./pages/AdminLuluOps";
 import AdminEmailOps from "./pages/AdminEmailOps";
+import GatherLanding from "./pages/GatherLanding";
+import GatherCommunity from "./pages/GatherCommunity";
+import GatherPropose from "./pages/GatherPropose";
+import GalleryLanding from "./pages/GalleryLanding";
+import GalleryArtist from "./pages/GalleryArtist";
+import ArtistStudio from "./pages/ArtistStudio";
+import PartnerTypes from "./pages/PartnerTypes";
 import VendorStudio from "./pages/VendorStudio";
 import AdminWorkshops from "./pages/AdminWorkshops";
 import PhotoModeration from "./pages/PhotoModeration";
@@ -163,6 +170,7 @@ function AppRoutes() {
 
       {/* Partner — canonical /partner. /partners preserved as redirect. */}
       <Route path="/partner" element={<PartnersDirectory />} />
+      <Route path="/partner/types" element={<PartnerTypes />} />
       <Route path="/partner/apply" element={<PartnerApply />} />
       <Route path="/partner/subscribe" element={<PartnerSubscribe />} />
       <Route path="/partner/:slug" element={<PartnerProfilePage />} />
@@ -170,6 +178,19 @@ function AppRoutes() {
       <Route path="/partners/apply" element={<Navigate to="/partner/apply" replace />} />
       <Route path="/partners/subscribe" element={<Navigate to="/partner/subscribe" replace />} />
       <Route path="/partners/:slug" element={<PartnerRedirect />} />
+
+      {/* Gather — communities by geography */}
+      <Route path="/gather" element={<GatherLanding />} />
+      <Route path="/gather/propose" element={<GatherPropose />} />
+      <Route path="/gather/community/*" element={<GatherCommunity />} />
+
+      {/* Gallery — artist exhibition + sales */}
+      <Route path="/gallery" element={<GalleryLanding />} />
+      <Route path="/gallery/:slug" element={<GalleryArtist />} />
+      <Route
+        path="/gallery/me/studio"
+        element={<ProtectedRoute><ArtistStudio /></ProtectedRoute>}
+      />
 
       {/* Join — canonical /join. /join-us preserved as redirect. */}
       <Route path="/join" element={<JoinUs />} />

@@ -46,7 +46,7 @@ admin_router = APIRouter(prefix="/admin/partners", tags=["admin-partners"])
 
 # ============ HELPERS ============
 
-PARTNER_TYPE_VALUES = ("facilitator", "community", "research", "vendor")
+PARTNER_TYPE_VALUES = ("facilitator", "community", "research", "vendor", "artist", "steward")
 
 # Fields that get persisted into application.data (everything except partner_type)
 _APP_DATA_FIELDS = (
@@ -55,6 +55,9 @@ _APP_DATA_FIELDS = (
     "organization", "audience_size", "referral_plan",
     "institution", "area_of_research", "sample_publications_url",
     "business_name", "product_categories",
+    "mediums", "artist_statement", "own_gallery_url",
+    "representative_works_url", "accepts_commissions",
+    "requested_community_slug", "community_ties", "moderation_experience",
     "apply_as_founding_partner",
 )
 
@@ -118,6 +121,16 @@ async def _validate_apply(db, user: dict, data: PartnerApplyData) -> None:
         raise HTTPException(
             status_code=400,
             detail="Please indicate whether you intend to present Birthright IP materials.",
+        )
+    if data.partner_type == "artist" and not (data.own_gallery_url or data.representative_works_url):
+        raise HTTPException(
+            status_code=400,
+            detail="Please share a link to your own gallery or a sample of representative works so admins can verify your practice.",
+        )
+    if data.partner_type == "steward" and not (data.requested_community_slug or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Please specify which community you'd like to steward (e.g. north-america/us/california/santa-cruz).",
         )
 
 

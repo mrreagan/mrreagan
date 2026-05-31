@@ -117,6 +117,8 @@ from routers.link_preview import router as link_preview_router
 from routers.studio import router as studio_router, admin_router as studio_admin_router
 from routers.printful import router as printful_router
 from routers.lulu import router as lulu_router
+from routers.gather import router as gather_router, admin_router as gather_admin_router
+from routers.gallery import router as gallery_router
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -186,6 +188,9 @@ api_router.include_router(studio_router)
 api_router.include_router(studio_admin_router)
 api_router.include_router(printful_router)
 api_router.include_router(lulu_router)
+api_router.include_router(gather_router)
+api_router.include_router(gather_admin_router)
+api_router.include_router(gallery_router)
 
 
 @api_router.post("/webhook/stripe")
@@ -228,6 +233,12 @@ async def startup_event() -> None:
         await ensure_agreement_v2_published(db)
     except Exception as e:
         logger.error(f"Runtime seed/repair error: {e}")
+    try:
+        from utils.gather_seed import seed_geographic_tree
+        result = await seed_geographic_tree(db)
+        logger.info(f"Gather hierarchy: inserted {result['inserted']} (total {result['total_now']}).")
+    except Exception as e:
+        logger.error(f"Gather seed error: {e}")
     try:
         from utils.scheduler import start_scheduler
         start_scheduler()

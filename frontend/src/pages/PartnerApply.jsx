@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";import { toast } from "sonner";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
-import { Users, Briefcase, Microscope, Store, AlertCircle } from "lucide-react";
+import { Users, Briefcase, Microscope, Store, AlertCircle, Palette, MapPin } from "lucide-react";
 import StudioVendorNudge from "../components/StudioVendorNudge";
 
 const TYPE_OPTIONS = [
@@ -10,6 +10,8 @@ const TYPE_OPTIONS = [
   { value: "community",   label: "Community",   icon: Briefcase, blurb: "Refer participants and amplify the work through your network." },
   { value: "research",    label: "Research",    icon: Microscope, blurb: "Advance the science with empirical or clinical contributions." },
   { value: "vendor",      label: "Vendor",      icon: Store, blurb: "Offer complementary materials, services, or tools to participants." },
+  { value: "artist",      label: "Artist",      icon: Palette, blurb: "Painter, photographer, sculptor, musician, ceramicist — practice as presence." },
+  { value: "steward",     label: "Steward",     icon: MapPin, blurb: "Host and moderate one local Gather community node." },
 ];
 
 const EMPTY = {
@@ -34,6 +36,14 @@ const EMPTY = {
   // vendor
   business_name: "",
   product_categories: "",
+  mediums: "",
+  artist_statement: "",
+  own_gallery_url: "",
+  representative_works_url: "",
+  accepts_commissions: false,
+  requested_community_slug: "",
+  community_ties: "",
+  moderation_experience: "",
   // founding partner request
   apply_as_founding_partner: false,
 };
@@ -248,6 +258,54 @@ export default function PartnerApply() {
               <label className="label">Product categories</label>
               <input className="input-field mt-1" value={form.product_categories} onChange={(e) => update("product_categories", e.target.value)} placeholder="e.g. journals, audio courses, somatic tools..." data-testid="apply-categories" maxLength={500} />
             </div>
+          </fieldset>
+        )}
+
+        {form.partner_type === "artist" && (
+          <fieldset className="card p-4 space-y-3" data-testid="apply-artist-fields">
+            <legend className="label px-1">Artist details</legend>
+            <div>
+              <label className="label">Mediums (comma-separated)</label>
+              <input className="input-field mt-1" value={form.mediums || ""} onChange={(e) => update("mediums", e.target.value)} placeholder="e.g. oil painting, chamber music, ceramics, photography" data-testid="apply-mediums" maxLength={500} />
+            </div>
+            <div>
+              <label className="label">Your own gallery / website URL</label>
+              <input className="input-field mt-1" value={form.own_gallery_url || ""} onChange={(e) => update("own_gallery_url", e.target.value)} placeholder="https://yourname.com" data-testid="apply-own-gallery" />
+              <p className="text-[10px] text-[#5C6B6B] mt-1">Required so we can verify list prices match across sites.</p>
+            </div>
+            <div>
+              <label className="label">Representative works (link to portfolio, Instagram, SoundCloud…)</label>
+              <input className="input-field mt-1" value={form.representative_works_url || ""} onChange={(e) => update("representative_works_url", e.target.value)} data-testid="apply-rep-works" />
+            </div>
+            <div>
+              <label className="label">Artist statement (optional, can edit later)</label>
+              <textarea className="input-field mt-1" rows={3} value={form.artist_statement || ""} onChange={(e) => update("artist_statement", e.target.value)} maxLength={4000} data-testid="apply-artist-statement" />
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={!!form.accepts_commissions} onChange={(e) => update("accepts_commissions", e.target.checked)} data-testid="apply-accepts-commissions" />
+              I accept commission inquiries
+            </label>
+            <p className="text-[10px] text-[#5C6B6B] italic">Birthright lists your work at YOUR list price and adds a 20% gift to the foundation at checkout. The buyer sees the math; you keep your full price.</p>
+          </fieldset>
+        )}
+
+        {form.partner_type === "steward" && (
+          <fieldset className="card p-4 space-y-3" data-testid="apply-steward-fields">
+            <legend className="label px-1">Steward details</legend>
+            <div>
+              <label className="label">Community you'd steward (slug path)</label>
+              <input className="input-field mt-1" value={form.requested_community_slug || ""} onChange={(e) => update("requested_community_slug", e.target.value)} placeholder="north-america/us/california/santa-cruz" data-testid="apply-community-slug" maxLength={200} required />
+              <p className="text-[10px] text-[#5C6B6B] mt-1">Visit <Link to="/gather" className="underline">Gather</Link> to find or propose your community first.</p>
+            </div>
+            <div>
+              <label className="label">How are you rooted here?</label>
+              <textarea className="input-field mt-1" rows={3} value={form.community_ties || ""} onChange={(e) => update("community_ties", e.target.value)} maxLength={4000} data-testid="apply-community-ties" />
+            </div>
+            <div>
+              <label className="label">Moderation experience (optional)</label>
+              <textarea className="input-field mt-1" rows={2} value={form.moderation_experience || ""} onChange={(e) => update("moderation_experience", e.target.value)} maxLength={2000} data-testid="apply-mod-experience" />
+            </div>
+            <p className="text-[10px] text-[#5C6B6B] italic">Steward is a service role — no revenue share. You'll be recognized as a steward of your local Gather space, with tools to welcome new neighbors, moderate, and pin local events.</p>
           </fieldset>
         )}
 

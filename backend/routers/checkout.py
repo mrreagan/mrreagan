@@ -142,6 +142,7 @@ async def checkout_workshop(
 async def _validate_cart_and_total(db, items, user) -> tuple[float, list, bool]:
     """Validate items, enforce gating, compute total server-side.
     Returns (total, line_items, needs_shipping)."""
+    from routers.gallery import gallery_markup_for  # noqa: PLC0415
     total = 0.0
     line_items = []
     needs_shipping = False
@@ -154,12 +155,28 @@ async def _validate_cart_and_total(db, items, user) -> tuple[float, list, bool]:
                 status_code=400,
                 detail=f"'{p.get('name')}' is sold on the vendor's own site and can't be checked out through Birthright.",
             )
-        if p.get("fulfillable_via") in ("printful", "lulu"):
+        if p.get("is_gallery_artwork") and p.get("availability") not in (None, "available"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"'{p.get('name')}' is not currently available for purchase.",
+            )
+        if p.get("fulfillable_via") in ("printful", "lulu") or p.get("is_gallery_artwork"):
             needs_shipping = True
         await _enforce_material_gating(db, p, user)
         qty = max(1, int(item.quantity))
-        total += float(p["price"]) * qty
-        line_items.append({"product_id": p["id"], "name": p["name"], "price": p["price"], "quantity": qty})
+        line_total = float(p["price"]) * qty
+        markup = gallery_markup_for(p) * qty
+        total += line_total + markup
+        line_items.append({
+            "product_id": p["id"],
+            "name": p["name"],
+            "price": p["price"],
+            "quantity": qty,
+            "is_gallery_artwork": bool(p.get("is_gallery_artwork")),
+            "gallery_artist_user_id": p.get("gallery_artist_user_id"),
+            "gallery_artist_name": p.get("gallery_artist_name"),
+            "foundation_markup_per_unit": round(gallery_markup_for(p), 2),
+        })
     return round(total, 2), line_items, needs_shipping
 
 

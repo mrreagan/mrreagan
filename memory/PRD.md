@@ -502,6 +502,58 @@ Domain: birthright.live · Address: 2148 W Earll Dr, Phoenix, AZ 85015
   - Non-admin → 403.
 - **Combined regression**: iter28..37 = **86/86 PASS**.
 
+## Iteration 33 — Artist & Steward partner types · Gather (communities) · Gallery (artist exhibition + 20% checkout) · Partner Types comparison page (May 31, 2026)
+
+User asked for a way to honor *makers and creators who are more than just product salesmen* (chamber musicians, painters, photographers, sculptors, ceramicists). And a way to gather people locally around the work. Two new top-level tabs + two new partner types + a unified "ways to partner" page.
+
+### A) New partner types: Artist + Steward
+- **`models.PARTNER_TYPES`** expanded to `("facilitator", "community", "research", "vendor", "artist", "steward")`. The `PartnerApplyData` and `PartnerInviteCreate` literals accept all six. Artist + Steward fields added: `mediums`, `artist_statement`, `own_gallery_url`, `representative_works_url`, `accepts_commissions`, `requested_community_slug`, `community_ties`, `moderation_experience`.
+- **Validation**: Artist must provide `own_gallery_url` OR `representative_works_url` (so admins can verify list prices match across sites). Steward must specify a `requested_community_slug` (e.g. `north-america/us/california/santa-cruz`).
+- **Invites work for free** — admin's existing `POST /api/admin/partners/invite` now supports both new types because the Literal flows through.
+- **Apply form** (`pages/PartnerApply.jsx`) gains 2 new type cards + 2 conditional fieldsets with all the new fields.
+
+### B) Partner Types comparison page (`/partner/types`)
+- New page lists all six partner types side-by-side with five columns: **what you do**, **foundation gets**, **you get**, **money** (rate + basis + notes), **mission alignment**. Designed to be the single honest reference for partnership terms. Linked from the Partner tab + footer.
+
+### C) Gallery tab (`/gallery`)
+- **Backend** (`routers/gallery.py`):
+  - `GALLERY_MARKUP_PCT = 0.20` constant + `gallery_markup_for(product)` helper.
+  - `GET /api/gallery/markup-pct` (public), `GET /api/gallery/artists` (public listing), `GET /api/gallery/{slug}` (full artist page with works + collections + space + markup_pct).
+  - Artist self-serve: `GET/PUT /api/gallery/me/space` (statement, layout, accent_color, hero/studio photos, audio_intro_url, video_reel_url, open_studio_text, performance_schedule, commissions_open, commission_inquiry_text, newsletter_signup_url, own_gallery_url, donate_proceeds_to_foundation, foundation_absorbs_markup).
+  - Works CRUD on the existing `products` collection w/ `is_gallery_artwork=True` + `gallery_artist_user_id` flags. Each work carries medium / dimensions / year / edition / availability / collection_slug / process_notes / living_with_text. Required attestation: `list_price_matches_own_gallery=True`.
+  - Collections CRUD per artist.
+  - Commission inquiries: `POST /api/gallery/inquiries` (gated on `commissions_open`), `GET /api/gallery/me/inquiries` for the artist.
+- **Checkout markup**: `routers/checkout.py::_validate_cart_and_total` calls `gallery_markup_for(p)` per item; line items now record `is_gallery_artwork`, `gallery_artist_user_id`, `gallery_artist_name`, `foundation_markup_per_unit`. Buyer sees the math explicitly: `$artist + $foundation_gift = $total`. Optional `foundation_absorbs_markup=true` per product yields 0% markup (foundation gifts the markup back, rare).
+- **Frontend**:
+  - `pages/GalleryLanding.jsx` — searchable artist directory with hero images + counts.
+  - `pages/GalleryArtist.jsx` — per-artist Gallery page with statement, hero, studio photo, audio intro player, performance reel link, open studio, performance schedule, works grid (each with full markup math + add-to-cart), collections badges, commission inquiry form.
+  - `pages/ArtistStudio.jsx` (`/gallery/me/studio`) — artist dashboard to edit space + manage works + collections + inquiries. New work form has required attestation checkbox.
+
+### D) Gather tab (`/gather`) — community spaces by geography
+- **Hierarchy**: hybrid — pre-seeded continents + 30+ countries + US states (12) + Canadian provinces (5) + UK nations (4) on backend startup via `utils/gather_seed.py::seed_geographic_tree` (idempotent). Stewards propose cities/neighborhoods; admin approves.
+- **Backend** (`routers/gather.py`):
+  - `GET /api/gather/tree?parent_slug=…` (default returns continents).
+  - `GET /api/gather/community/{slug:path}` — community metadata + recent posts + upcoming events + resources + steward list + viewer flags.
+  - `GET /api/gather/search?q=…` — free-text label search.
+  - Membership: `POST /join`, `POST /leave`.
+  - Posts: create (any member), pin/hide (stewards or admin only).
+  - Events + Resources: steward-or-admin gate.
+  - Proposals: `POST /gather/propose` (any signed-in user) → admin `GET/POST /admin/gather/proposals[/{id}/approve|reject]`. Neighborhoods must sit under cities; cities under country/region.
+  - Steward assignment: admin `POST/DELETE /admin/gather/community/{slug}/stewards/{user_id}`. Max 2 per node.
+- **Frontend**:
+  - `pages/GatherLanding.jsx` — drill-down grid (kind badges + member counts), search, propose-here tile.
+  - `pages/GatherCommunity.jsx` — community page with welcome text, stewards row, tabbed (Message board / Events / Resources), inline post composer, steward moderation actions (pin/hide).
+  - `pages/GatherPropose.jsx` — propose-a-city/neighborhood form with parent context.
+- **Cost containment**: all storage in MongoDB, no real-time chat, no paid geocoder. Map view deferred (would use free OpenStreetMap tiles via Leaflet if needed).
+
+### E) Nav + tests
+- Top nav (`components/Layout.jsx`) now has 10 tabs: Practice · Equip · **Gallery** · **Gather** · Research · Partner · Sponsor · Lead · Join · Connect. Footer matches.
+- **Tests** (`tests/test_iter38_artist_steward_gather_gallery.py` — 17/17 PASS):
+  - Partner types: tuple membership, literal acceptance, artist + steward field requirements, admin invite for both types.
+  - Gather: seed presence (6 continents, 20+ countries, 15+ regions), tree drill-down at 3 levels, search, full membership + posts + events + resources flow, steward moderation gate, proposal lifecycle + rejection rules, steward assignment.
+  - Gallery: markup helper math, markup-pct endpoint, artist profile required, full e2e (create work → public gallery → checkout adds 20% → foundation_absorbs_markup → 0% markup), commission inquiry gating.
+- **Combined regression**: iter28..38 = **103/103 PASS**.
+
 ## Backlog — prioritized
 
 

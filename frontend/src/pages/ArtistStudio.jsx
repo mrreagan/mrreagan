@@ -1,0 +1,218 @@
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Palette, Plus, Trash2, Save, Sparkles } from "lucide-react";
+import api from "../lib/api";
+import { useAuth } from "../contexts/AuthContext";
+
+const LAYOUTS = ["single-wall", "two-column", "salon-hang", "audio-forward"];
+const ACCENTS = ["flame", "moss", "river", "ochre", "indigo", "graphite"];
+
+export default function ArtistStudio() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [space, setSpace] = useState(null);
+  const [works, setWorks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [savingSpace, setSavingSpace] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+
+  useEffect(() => {
+    if (!user) { navigate("/sign-in"); return; }
+    refresh();
+  // eslint-disable-next-line
+  }, []);
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const [s, w] = await Promise.all([
+        api.get("/gallery/me/space"),
+        api.get("/gallery/me/works"),
+      ]);
+      setSpace(s.data);
+      setWorks(w.data || []);
+    } catch (err) {
+      if (err?.response?.status === 403) {
+        toast.error("You need an approved Artist partner profile first.");
+        navigate("/partner/apply");
+      } else { toast.error("Couldn't load gallery"); }
+    } finally { setLoading(false); }
+  };
+
+  const saveSpace = async () => {
+    setSavingSpace(true);
+    try {
+      const { id, user_id, created_at, updated_at, ...patch } = space;
+      const r = await api.put("/gallery/me/space", patch);
+      setSpace(r.data);
+      toast.success("Gallery space saved");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Save failed"); }
+    finally { setSavingSpace(false); }
+  };
+
+  const deleteWork = async (id) => {
+    if (!window.confirm("Remove this work?")) return;
+    try { await api.delete(`/gallery/me/works/${id}`); refresh(); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Delete failed"); }
+  };
+
+  if (loading || !space) return <div className="container-page py-12">Loading…</div>;
+
+  return (
+    <div className="container-page py-12" data-testid="artist-studio-page">
+      <span className="label">Artist · Your gallery</span>
+      <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
+        <Palette size={26} strokeWidth={1.2} /> Manage your gallery space
+      </h1>
+      <div className="divider-flame" />
+
+      {/* Gallery space settings */}
+      <section className="card p-6 mt-6 max-w-3xl" data-testid="artist-space-form">
+        <h2 className="font-serif text-xl">Gallery space</h2>
+        <p className="text-xs text-[#5C6B6B] mt-1">How your room feels. Optional fields are exactly that — leave anything blank.</p>
+        <div className="space-y-3 mt-4 text-sm">
+          <label className="block">
+            <span className="block label !mt-0 !mb-1">Artist statement</span>
+            <textarea value={space.statement || ""} onChange={(e) => setSpace({ ...space, statement: e.target.value })} className="input-field w-full" rows={4} data-testid="artist-statement-input" />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="block label !mt-0 !mb-1">Layout</span>
+              <select value={space.layout || "single-wall"} onChange={(e) => setSpace({ ...space, layout: e.target.value })} className="input-field w-full" data-testid="artist-layout-select">
+                {LAYOUTS.map((l) => <option key={l} value={l}>{l.replace("-", " ")}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="block label !mt-0 !mb-1">Accent color</span>
+              <select value={space.accent_color || "flame"} onChange={(e) => setSpace({ ...space, accent_color: e.target.value })} className="input-field w-full" data-testid="artist-accent-select">
+                {ACCENTS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </label>
+          </div>
+          {[
+            ["hero_image_url", "Hero image URL"],
+            ["studio_photo_url", "Photo of you in studio"],
+            ["audio_intro_url", "Audio intro URL (~30s mp3)"],
+            ["video_reel_url", "Performance reel URL"],
+            ["newsletter_signup_url", "Newsletter signup URL"],
+            ["own_gallery_url", "Your own gallery URL"],
+          ].map(([k, label]) => (
+            <label key={k} className="block">
+              <span className="block label !mt-0 !mb-1">{label}</span>
+              <input value={space[k] || ""} onChange={(e) => setSpace({ ...space, [k]: e.target.value })} className="input-field w-full" data-testid={`artist-${k}-input`} />
+            </label>
+          ))}
+          <label className="block">
+            <span className="block label !mt-0 !mb-1">Open studio (dates, address, RSVP)</span>
+            <textarea value={space.open_studio_text || ""} onChange={(e) => setSpace({ ...space, open_studio_text: e.target.value })} className="input-field w-full" rows={3} data-testid="artist-open-studio-input" />
+          </label>
+          <label className="block">
+            <span className="block label !mt-0 !mb-1">Performance schedule (one per line)</span>
+            <textarea value={space.performance_schedule || ""} onChange={(e) => setSpace({ ...space, performance_schedule: e.target.value })} className="input-field w-full" rows={3} data-testid="artist-perf-input" />
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={!!space.commissions_open} onChange={(e) => setSpace({ ...space, commissions_open: e.target.checked })} data-testid="artist-commissions-toggle" />
+            Accept commission inquiries
+          </label>
+          {space.commissions_open && (
+            <label className="block">
+              <span className="block label !mt-0 !mb-1">Commission inquiry intro (optional)</span>
+              <textarea value={space.commission_inquiry_text || ""} onChange={(e) => setSpace({ ...space, commission_inquiry_text: e.target.value })} className="input-field w-full" rows={3} data-testid="artist-commission-text-input" />
+            </label>
+          )}
+          <details className="text-xs text-[#5C6B6B]">
+            <summary className="cursor-pointer">Advanced (rare)</summary>
+            <label className="inline-flex items-center gap-2 mt-2">
+              <input type="checkbox" checked={!!space.donate_proceeds_to_foundation} onChange={(e) => setSpace({ ...space, donate_proceeds_to_foundation: e.target.checked })} data-testid="artist-donate-toggle" />
+              Donate all my proceeds back to the foundation
+            </label>
+          </details>
+        </div>
+        <button onClick={saveSpace} disabled={savingSpace} className="btn-primary text-sm mt-4 inline-flex items-center gap-2" data-testid="artist-save-space-btn">
+          <Save size={14} /> {savingSpace ? "Saving…" : "Save"}
+        </button>
+      </section>
+
+      {/* Works */}
+      <section className="mt-8 max-w-3xl" data-testid="artist-works-section">
+        <div className="flex items-center justify-between">
+          <h2 className="font-serif text-xl">Your works ({works.length})</h2>
+          <button onClick={() => setShowNew(true)} className="btn-primary text-sm inline-flex items-center gap-1" data-testid="artist-add-work-btn">
+            <Plus size={14} /> Add a work
+          </button>
+        </div>
+        {showNew && <NewWorkForm onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); refresh(); }} />}
+        {works.length === 0 ? (
+          <p className="text-sm text-[#5C6B6B] italic mt-3">No works yet. Click "Add a work" to publish your first piece.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+            {works.map((w) => (
+              <div key={w.id} className="card overflow-hidden" data-testid={`artist-work-row-${w.id}`}>
+                <div className="aspect-square bg-[#F4F1EA]"><img src={w.image_url} alt={w.name} className="w-full h-full object-cover" /></div>
+                <div className="p-3 text-sm">
+                  <p className="font-serif">{w.name}</p>
+                  <p className="text-xs text-[#5C6B6B]">${w.price.toFixed(2)} · {w.availability}</p>
+                  <button onClick={() => deleteWork(w.id)} className="text-[#9E3C3C] text-xs hover:underline mt-1" data-testid={`artist-delete-work-${w.id}`}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function NewWorkForm({ onClose, onCreated }) {
+  const [f, setF] = useState({
+    name: "", description: "", list_price: 0,
+    image_url: "", medium: "", dimensions: "", year: 2026, edition: "1/1",
+    availability: "available", list_price_matches_own_gallery: false,
+  });
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!f.list_price_matches_own_gallery) {
+      toast.error("Please confirm your list price matches your own gallery.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post("/gallery/me/works", { ...f, list_price: parseFloat(f.list_price) });
+      toast.success("Work published");
+      onCreated();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Publish failed");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <form onSubmit={submit} className="card p-4 mt-3 space-y-2 text-sm" data-testid="artist-new-work-form">
+      <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Title" required className="input-field" data-testid="new-work-name" />
+      <textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder="Short description (≥10 chars)" required minLength={10} className="input-field" rows={3} data-testid="new-work-desc" />
+      <div className="grid grid-cols-2 gap-2">
+        <input value={f.list_price} onChange={(e) => setF({ ...f, list_price: e.target.value })} type="number" step="0.01" placeholder="List price ($)" className="input-field" required data-testid="new-work-price" />
+        <input value={f.year} onChange={(e) => setF({ ...f, year: parseInt(e.target.value, 10) || 0 })} type="number" placeholder="Year" className="input-field" data-testid="new-work-year" />
+        <input value={f.medium} onChange={(e) => setF({ ...f, medium: e.target.value })} placeholder="Medium" className="input-field" data-testid="new-work-medium" />
+        <input value={f.dimensions} onChange={(e) => setF({ ...f, dimensions: e.target.value })} placeholder="Dimensions" className="input-field" data-testid="new-work-dim" />
+        <input value={f.edition} onChange={(e) => setF({ ...f, edition: e.target.value })} placeholder="Edition (1/1, 12/100)" className="input-field" data-testid="new-work-edition" />
+        <select value={f.availability} onChange={(e) => setF({ ...f, availability: e.target.value })} className="input-field" data-testid="new-work-avail">
+          <option value="available">Available</option>
+          <option value="not_for_sale">Not for sale</option>
+          <option value="sold">Sold</option>
+        </select>
+      </div>
+      <input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} placeholder="Image URL" required className="input-field" data-testid="new-work-image" />
+      <label className="flex items-start gap-2 text-xs">
+        <input type="checkbox" checked={f.list_price_matches_own_gallery} onChange={(e) => setF({ ...f, list_price_matches_own_gallery: e.target.checked })} data-testid="new-work-attest" />
+        <span>I attest this list price matches the price on my own gallery / website. (Birthright adds a 20% foundation markup on top at checkout.)</span>
+      </label>
+      <div className="flex gap-2">
+        <button disabled={busy} className="btn-primary text-sm" data-testid="new-work-submit">{busy ? "Publishing…" : "Publish"}</button>
+        <button type="button" onClick={onClose} className="btn-outline text-sm">Cancel</button>
+      </div>
+    </form>
+  );
+}
