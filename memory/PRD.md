@@ -907,3 +907,60 @@ User asked for a way to honor *makers and creators who are more than just produc
 - **Verified**: `/experiences` renders cleanly desktop + mobile; tier teaser + 3 existing workshops appear in the right buckets; both redirects work; mobile menu lists "Experiences" only; mobile Sign in tappable at top-right (46x48 hit area).
 
 See `/app/memory/test_credentials.md`
+
+## Iter 39 + 40 + 41 — Featured Artists complete arc (May 31, 2026)
+
+### Iter 39 — Featured Artists monthly rotation backend
+- **Backend** (`routers/gallery.py`): full monthly cadence: nomination (`POST /api/gallery/featured/nominate`, 150-char reason, 12-month half-life decay, new-account 0.25× weight + silent trust flags, period_target=next-month), private artist nomination receipts (`/api/gallery/me/nominations-received`), reach-back through Birthright relay (`/api/gallery/me/nominations/{id}/reach-back`), admin shortlist (`/api/gallery/admin/featured/shortlist`), admin scheduling with cooling-off + 5-per-month cap + 1-per-month Foundation source cap, artist lifecycle (`accept`/`decline`/`curation`/`copy-to-gallery`/`copy-from-gallery`), end-of-month roll-forward at 50% weight, public pipeline (`/featured/pipeline`) showing current_month + next_month + nominations_open without per-artist counts.
+- **Route ordering fix**: moved `/gallery/{slug}` to register LAST so `/featured`, `/artists`, `/markup-pct`, `/admin/...`, `/invite/...`, etc. don't get shadowed.
+- **Tests**: `tests/test_iter39_featured_artists.py` — **17/17 PASS**.
+
+### Iter 40 — Statement position lock + 5-option statement composer
+- **Statement position lock** — server assigns one of `(tl, tr, bl, br, cb)` per slot based on its index in the canonical month sort order (Foundation first, then by start date, then alphabetical). Adjacent slots in the lineup get visually different positions. Locked permanently the first time the active month is read; never changes. Lives on `featured_artist_slots.statement_position` + `statement_position_locked_at`.
+- **180-char ceiling** on `signature_statement` (was 280) — brevity is the soul of wit. Recommendation: 90-150 chars.
+- **5 composer options** via `GET /api/gallery/me/featured/{slot_id}/statement-options`:
+  1. Freeform — write your own
+  2. AI summary — Claude distill of bio+statement (≤180 chars), editable
+  3. Nomination quote — sentences community members wrote about you (fit/unfit flagged)
+  4. Own statement line — extracted ≤180-char sentences from the artist's gallery_spaces.statement
+  5. Blank — image speaks for itself
+- **Statement source persisted** in `signature_statement_source` on the slot.
+- **Tests**: `tests/test_iter40_statement_position_options.py` — **6/6 PASS** (position cycle, lock-on-first-view, 5 options, owner gating, length cap, adjacent positions differ).
+
+### Iter 41 — Foundation Prospects + Explore-before-Embrace invitations
+**The "Explore vs Embrace" framework**: every potential partner can browse the full experience of a role — UI, defaults, all options, what acceptance means — **without committing**. Commitment is the explicit, opt-in final step.
+
+- **Prospect outreach tracker** (`/admin/gallery/prospects`):
+  - Backend: `featured_artist_prospects` collection w/ status workflow (outreach_sent → responded_interested → in_conversation → invited → promoted_to_featured / responded_declined / dormant / archived), interaction history (channel + notes + response_received auto-advances status), foundation_score, internal_notes.
+  - Endpoints: GET/POST/PUT/DELETE `/api/gallery/admin/prospects`, POST `/admin/prospects/{id}/interactions`, DELETE `/admin/prospects/{id}/interactions/{int_id}`, POST `/admin/prospects/{id}/promote` (issues invitation, does NOT create account yet).
+- **Tokenized invitations** (`featured_artist_invites` collection):
+  - 30-day url-safe token, anyone with the link can preview (no auth needed).
+  - `GET /api/gallery/invite/{token}` — public preview returning the artist's pre-curated mock + full options menu (statement composer with 5 keys, 4 layouts, 6 accent colors, 5 statement positions, media list) + `what_acceptance_means` (obligations/keeps/foundation_share).
+  - `POST /api/gallery/invite/{token}/accept` — atomic: creates user account, partner_profile (status=active, source=foundation), gallery_space, featured_artist_slot (status=accepted, source=foundation). Returns JWT for auto-login. Requires `agreed_to_partnership_terms=true`.
+  - `POST /api/gallery/invite/{token}/decline` — one-click decline, optional reason.
+  - `GET /api/gallery/admin/invites` — admin tracker w/ status counts.
+- **Email template `featured_artist_foundation_invite`**: shows a Paige-style preview card with the artist's default selections (gradient hero + default statement + default layout/accent) + a list of all customizable options + a CTA "Open your featured artist preview →".
+- **Frontend pages**:
+  - `/admin/gallery/prospects` (`AdminGalleryProspects.jsx`) — log prospect → add interactions → issue invitation modal with month + period_label + editorial_reason.
+  - `/gallery/invite/:token` (`FeaturedInvite.jsx`) — fully interactive preview: live statement overlay rendering, 5-option statement composer, 4 layouts, 6 colors, 5 position previews, "All curation options available after you accept" list, "What enrolling means" panel (obligations/keeps/foundation share), Accept (password + agreement) + Decline (one-click).
+  - `GalleryLanding.jsx` now has `<FeaturedArtistsRibbon>` — current-month slate w/ locked statement-position overlays.
+- **Tests**: `tests/test_iter41_prospects_invites.py` — **5/5 PASS** (prospect CRUD + interactions auto-advance, preview-then-accept lifecycle, decline, admin invites listing, anon access blocked).
+
+### Backlog — apply "Explore vs Embrace" framework to other partner roles
+The featured-artist invitation is the cleanest expression of the framework. To meet the user's intent ("the same framework and experience for every person coming to the site exploring every role"), the following need updates so non-committal preview happens before partnership enrollment:
+
+- **P1: Partner Apply tokenized invites for ALL partner types** — extend `featured_artist_invites` infrastructure to `partner_invites` for Facilitator, Community, Research, Vendor, Steward. Generate from `/admin/partners/invite` (already exists), but instead of a one-line email, send the same explore-before-embrace pattern (preview the dashboard, see all features, then opt-in).
+- **P1: Public "Explore as if you were one" mode on each partner-type page** — `/partner/types` currently shows a comparison table. Add a "Try the dashboard" button per type that opens a read-only sandboxed view of the dashboard for that type, so prospects can model the experience without applying.
+- **P2: Community membership preview** — `/gather/community/:slug` currently requires login to see message board. Add a public read-only preview with a "Join to participate" CTA, mirroring the artist invite pattern.
+- **P2: Research collaborator preview** — let visitors browse a real research artifact's flow (submit/review/publish) in read-only mode.
+- **P2: Vendor catalog setup preview** — `/dashboard/vendor/studio` walkthrough in a sandboxed flow for prospects.
+- **P2: Steward role preview** — show what moderating a community looks like for someone considering taking on the role.
+- **P3: Universal "Modeling vs. Committing" indicator** — site-wide banner pattern showing visitors when they're in preview mode vs. when they've actually committed/enrolled. Single component, used by every partner preview surface.
+
+These backlog items inherit the core pattern:
+1. Generate a tokenized link or set up a public preview URL.
+2. Show full UI + defaults + all options + what acceptance means.
+3. Single opt-in step at the bottom: create account + sign agreement → commit.
+
+See `/app/memory/test_credentials.md`
+

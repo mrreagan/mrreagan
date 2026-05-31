@@ -2,14 +2,20 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { Palette, Search } from "lucide-react";
+import FeaturedArtistsRibbon from "../components/gallery/FeaturedArtistsRibbon";
 
 export default function GalleryLanding() {
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [featured, setFeatured] = useState({ slots: [], period_label: null });
 
   useEffect(() => {
     api.get("/gallery/artists").then((r) => setArtists(r.data || [])).finally(() => setLoading(false));
+    api.get("/gallery/featured/pipeline").then((r) => {
+      const cm = r.data?.current_month || {};
+      setFeatured({ slots: cm.slots || [], period_label: cm.period_label });
+    }).catch(() => {});
   }, []);
 
   const filtered = q.trim().length < 2 ? artists : artists.filter((a) =>
@@ -36,6 +42,8 @@ export default function GalleryLanding() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search artists…" className="input-field pl-9" data-testid="gallery-search-input" />
         </div>
       </div>
+
+      <FeaturedArtistsRibbon slots={featured.slots} periodLabel={featured.period_label} />
 
       {loading ? (
         <p className="text-sm text-[#5C6B6B] mt-8">Loading…</p>

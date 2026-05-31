@@ -43,6 +43,8 @@ import GatherCommunity from "./pages/GatherCommunity";
 import GatherPropose from "./pages/GatherPropose";
 import GalleryLanding from "./pages/GalleryLanding";
 import GalleryArtist from "./pages/GalleryArtist";
+import FeaturedInvite from "./pages/FeaturedInvite";
+import AdminGalleryProspects from "./pages/AdminGalleryProspects";
 import ArtistStudio from "./pages/ArtistStudio";
 import PartnerTypes from "./pages/PartnerTypes";
 import VendorStudio from "./pages/VendorStudio";
@@ -186,6 +188,7 @@ function AppRoutes() {
 
       {/* Gallery — artist exhibition + sales */}
       <Route path="/gallery" element={<GalleryLanding />} />
+      <Route path="/gallery/invite/:token" element={<FeaturedInvite />} />
       <Route path="/gallery/:slug" element={<GalleryArtist />} />
       <Route
         path="/gallery/me/studio"
@@ -426,6 +429,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminFeatured />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/gallery/prospects"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminGalleryProspects />
           </ProtectedRoute>
         }
       />
