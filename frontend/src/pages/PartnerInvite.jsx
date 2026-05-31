@@ -124,7 +124,49 @@ export default function PartnerInvite() {
         </blockquote>
       )}
 
-      <p className="text-base text-[#5C6B6B] max-w-2xl mt-4">{spec.blurb}</p>
+      {/* MISSION ALIGNMENT BLUF — leads the entire invitation */}
+      {inv.mission_alignment && (
+        <div
+          className="mt-6 max-w-2xl p-6 rounded-lg border-2 border-[#9E3C3C] bg-gradient-to-br from-[#FAF8F5] to-[#F4F1EA]"
+          data-testid="mission-alignment-card"
+        >
+          <p className="text-[10px] uppercase tracking-[2px] text-[#9E3C3C] mb-3">
+            Why we're reaching out
+          </p>
+          <p className="font-serif text-lg sm:text-xl text-[#1A2424] leading-relaxed">
+            {inv.mission_alignment}
+          </p>
+        </div>
+      )}
+
+      {/* Highlight — what specifically caught the foundation's eye */}
+      {inv.highlight_url && (
+        <a
+          href={inv.highlight_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 max-w-2xl block p-4 rounded border border-[#C9A961] bg-white hover:bg-[#FAF8F5] transition"
+          data-testid="highlight-card"
+        >
+          <p className="text-[10px] uppercase tracking-[1.5px] text-[#476B6B] mb-2">
+            What we saw — your {(inv.highlight_label || "site").replace("_", " ")}
+          </p>
+          {inv.highlight_excerpt && (
+            <blockquote className="text-[15px] italic text-[#1A2424] border-l-2 border-[#C9A961] pl-3 mb-2">
+              "{inv.highlight_excerpt}"
+            </blockquote>
+          )}
+          <p className="text-xs text-[#9E3C3C] font-serif break-all">{inv.highlight_url}</p>
+          {inv.highlight_reason && (
+            <p className="text-xs text-[#5C6B6B] mt-2 leading-relaxed">{inv.highlight_reason}</p>
+          )}
+        </a>
+      )}
+
+      <p className="text-base text-[#5C6B6B] max-w-2xl mt-6">
+        For these reasons, we'd like to invite you to partner with us as a <strong className="text-[#1A2424]">{spec.title}</strong>.
+      </p>
+      <p className="text-sm text-[#5C6B6B] max-w-2xl mt-2">{spec.blurb}</p>
 
       <div className="mt-6 max-w-2xl" data-testid="invite-no-commitment-banner">
         <PreviewModeBanner

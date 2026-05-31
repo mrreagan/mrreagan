@@ -298,6 +298,27 @@ class ProspectCreate(BaseModel):
     bio_excerpt: Optional[str] = Field(default=None, max_length=4000)
     portfolio_url: Optional[str] = Field(default=None, max_length=600)
     social_url: Optional[str] = Field(default=None, max_length=600)
+    # "This is what caught the foundation's eye" — the specific thing on the
+    # prospect's site/profile that's the *reason* for the invitation. Surfaces
+    # prominently on the invitation preview so the artist knows why they were
+    # picked, not just that they were.
+    highlight_url: Optional[str] = Field(default=None, max_length=600,
+        description="Primary link to the prospect's site OR the specific page/product/service/comment that motivated the invitation.")
+    highlight_label: Optional[Literal[
+        "site", "product", "service", "page", "item",
+        "comment", "post", "mission", "statement", "about", "other",
+    ]] = Field(default=None,
+        description="What kind of thing is at highlight_url — used to label it on the preview.")
+    highlight_excerpt: Optional[str] = Field(default=None, max_length=4000,
+        description="A short excerpt of the specific content (quote, product description, statement of mission) so the artist knows exactly what the foundation responded to.")
+    highlight_reason: Optional[str] = Field(default=None, max_length=2000,
+        description="Why this specific thing — one or two sentences from the foundation explaining what resonated.")
+    # The mission-alignment BLUF — leads the entire invitation. Equity in
+    # mission is the real benefit of partnership; finance is just what makes
+    # it viable. Required for a high-quality invitation, but optional at the
+    # API level so leaders can save drafts and add it before promoting.
+    mission_alignment: Optional[str] = Field(default=None, max_length=6000,
+        description="How this partner's work aligns with and supports the Birthright mission. Leads every invitation as the BLUF — comes BEFORE the role description, the financial terms, or the highlight link. This is the heart of why we extend an invitation.")
     referred_by: Optional[str] = Field(default=None, max_length=200)
     internal_notes: Optional[str] = Field(default=None, max_length=4000)
     initial_interaction_channel: Optional[Literal[
@@ -316,6 +337,14 @@ class ProspectUpdate(BaseModel):
     bio_excerpt: Optional[str] = Field(default=None, max_length=4000)
     portfolio_url: Optional[str] = Field(default=None, max_length=600)
     social_url: Optional[str] = Field(default=None, max_length=600)
+    highlight_url: Optional[str] = Field(default=None, max_length=600)
+    highlight_label: Optional[Literal[
+        "site", "product", "service", "page", "item",
+        "comment", "post", "mission", "statement", "about", "other",
+    ]] = None
+    highlight_excerpt: Optional[str] = Field(default=None, max_length=4000)
+    highlight_reason: Optional[str] = Field(default=None, max_length=2000)
+    mission_alignment: Optional[str] = Field(default=None, max_length=6000)
     referred_by: Optional[str] = Field(default=None, max_length=200)
     internal_notes: Optional[str] = Field(default=None, max_length=4000)
     foundation_score: Optional[int] = Field(default=None, ge=0, le=5)
@@ -376,10 +405,16 @@ def _invite_public_slice(inv: dict) -> dict:
     return {
         "partner_type": inv.get("partner_type"),
         "display_name": inv.get("display_name"),
+        "contact_email": inv.get("contact_email"),
         "note_to_prospect": inv.get("note_to_prospect"),
         "suggested_subscription_tier": inv.get("suggested_subscription_tier"),
         "default_headline": inv.get("default_headline"),
         "default_bio": inv.get("default_bio"),
+        "highlight_url": inv.get("highlight_url"),
+        "highlight_label": inv.get("highlight_label"),
+        "highlight_excerpt": inv.get("highlight_excerpt"),
+        "highlight_reason": inv.get("highlight_reason"),
+        "mission_alignment": inv.get("mission_alignment"),
         "status": inv.get("status"),
         "expires_at": inv.get("expires_at"),
         "preview_count": inv.get("preview_count", 0),
@@ -421,7 +456,9 @@ def _email_subject(partner_type: str, display_name: str) -> str:
     return f"You're invited — Birthright {title}"
 
 
-def _email_html(partner_type: str, prospect_name: str, note: Optional[str], preview_url: str) -> str:
+def _email_html(partner_type: str, prospect_name: str, note: Optional[str],
+                preview_url: str, highlight: Optional[dict] = None,
+                mission_alignment: Optional[str] = None) -> str:
     spec = PREVIEW_SPECS.get(partner_type, {})
     title = spec.get("title", partner_type.title())
     blurb = spec.get("blurb", "")
@@ -429,21 +466,62 @@ def _email_html(partner_type: str, prospect_name: str, note: Optional[str], prev
         f"<blockquote style=\"border-left:3px solid #C9A961;padding:8px 14px;"
         f"color:#1A2424;font-style:italic;margin:18px 0;background:#FAF8F5\">{note}</blockquote>"
     ) if note else ""
+    # Mission alignment BLUF — LEADS the invitation. Equity in mission is the
+    # real benefit; finance is just viability. This card sits BEFORE the role
+    # description, the highlight, and the tier picker.
+    mission_block = ""
+    if mission_alignment:
+        mission_block = (
+            f"<div style=\"background:linear-gradient(135deg,#FAF8F5 0%,#F4F1EA 100%);"
+            f"border:1px solid #C9A961;border-radius:8px;padding:22px 24px;margin:22px 0 18px 0\">"
+            f"<p style=\"font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#9E3C3C;margin:0 0 10px 0\">"
+            f"Why we're reaching out</p>"
+            f"<p style=\"font-family:Georgia,serif;font-size:17px;line-height:1.5;color:#1A2424;margin:0\">"
+            f"{mission_alignment}</p>"
+            f"</div>"
+        )
+    highlight_block = ""
+    if highlight and highlight.get("url"):
+        label = (highlight.get("label") or "site").replace("_", " ")
+        excerpt = (
+            f"<blockquote style=\"margin:8px 0 4px 0;font-style:italic;color:#1A2424;"
+            f"border-left:2px solid #C9A961;padding-left:10px;font-size:14px\">&ldquo;{highlight['excerpt']}&rdquo;</blockquote>"
+        ) if highlight.get("excerpt") else ""
+        reason = (
+            f"<p style=\"font-size:13px;color:#5C6B6B;margin:8px 0 0 0\">{highlight['reason']}</p>"
+        ) if highlight.get("reason") else ""
+        highlight_block = (
+            f"<div style=\"background:#F4F1EA;border:1px solid #E5DDD0;border-radius:8px;"
+            f"padding:16px 20px;margin:0 0 22px 0\">"
+            f"<p style=\"font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#476B6B;margin:0 0 6px 0\">"
+            f"What we saw — your {label}</p>"
+            f"{excerpt}"
+            f"<a href=\"{highlight['url']}\" style=\"color:#9E3C3C;font-size:13px;font-family:Georgia,serif;word-break:break-all\">"
+            f"{highlight['url']}</a>"
+            f"{reason}"
+            f"</div>"
+        )
     return (
         f"<div style=\"font-family:Georgia,serif;color:#1A2424;max-width:580px;line-height:1.6\">"
-        f"<h2 style=\"font-weight:400;font-size:24px\">Hi {prospect_name},</h2>"
-        f"<p>The Birthright Foundation would like to invite you to partner with us as a <strong>{title}</strong>.</p>"
-        f"<p style=\"font-size:14px;color:#5C6B6B\">{blurb}</p>"
+        f"<h2 style=\"font-weight:400;font-size:24px;margin-bottom:6px\">Hi {prospect_name},</h2>"
+        # Mission BLUF LEADS the entire invitation
+        f"{mission_block}"
+        # The specific thing the foundation responded to
+        f"{highlight_block}"
+        # Optional personal note
         f"{note_block}"
-        f"<div style=\"background:#FAF8F5;border:1px solid #E5DDD0;border-radius:8px;padding:18px;margin:24px 0\">"
+        # Then — and only then — the role description
+        f"<p style=\"font-size:15px\">For these reasons, we'd like to invite you to partner with us as a "
+        f"<strong>{title}</strong>.</p>"
+        f"<p style=\"font-size:14px;color:#5C6B6B\">{blurb}</p>"
+        f"<div style=\"background:#FAF8F5;border:1px solid #E5DDD0;border-radius:8px;padding:18px;margin:22px 0\">"
         f"<p style=\"font-size:13px;color:#5C6B6B;margin:0 0 6px 0\">Default selections you can change:</p>"
         f"<ul style=\"font-size:13px;color:#1A2424;padding-left:20px;line-height:1.7;margin:0\">"
         f"<li>A pre-filled dashboard ready for you to explore</li>"
         f"<li>Suggested subscription tier (you pick your own)</li>"
-        f"<li>Sample bio + headline drawn from what we know about your practice</li>"
         f"<li>Every option you can configure, displayed up front</li>"
         f"</ul></div>"
-        f"<div style=\"background:#FAF8F5;border-left:3px solid #C9A961;padding:14px 18px;margin:24px 0;"
+        f"<div style=\"background:#FAF8F5;border-left:3px solid #C9A961;padding:14px 18px;margin:22px 0;"
         f"font-size:13px;color:#5C6B6B\">"
         f"<strong style=\"color:#1A2424\">No commitment to look around.</strong> Explore the role first. You only enroll when "
         f"you click <em>Accept &amp; enroll</em> on the preview."
@@ -542,6 +620,11 @@ async def create_prospect(data: ProspectCreate, user: dict = Depends(require_rol
         "bio_excerpt": (data.bio_excerpt or "").strip() or None,
         "portfolio_url": (data.portfolio_url or "").strip() or None,
         "social_url": (data.social_url or "").strip() or None,
+        "highlight_url": (data.highlight_url or "").strip() or None,
+        "highlight_label": data.highlight_label,
+        "highlight_excerpt": (data.highlight_excerpt or "").strip() or None,
+        "highlight_reason": (data.highlight_reason or "").strip() or None,
+        "mission_alignment": (data.mission_alignment or "").strip() or None,
         "referred_by": (data.referred_by or "").strip() or None,
         "internal_notes": (data.internal_notes or "").strip() or None,
         "status": "outreach_sent",
@@ -626,6 +709,193 @@ async def add_interaction(prospect_id: str, data: ProspectInteraction,
     return _prospect_doc(await db.partner_prospects.find_one({"id": prospect_id}, {"_id": 0}))
 
 
+class MissionSuggestRequest(BaseModel):
+    # Optional override fields — if not provided, we read them from the prospect.
+    partner_type: Optional[Literal["facilitator", "community", "research", "vendor", "artist", "steward"]] = None
+    highlight_url: Optional[str] = Field(default=None, max_length=600)
+    highlight_label: Optional[str] = Field(default=None, max_length=40)
+    highlight_excerpt: Optional[str] = Field(default=None, max_length=4000)
+    highlight_reason: Optional[str] = Field(default=None, max_length=2000)
+    headline_excerpt: Optional[str] = Field(default=None, max_length=400)
+    bio_excerpt: Optional[str] = Field(default=None, max_length=4000)
+
+
+@router.post("/admin/prospects/draft-suggest-mission")
+async def draft_suggest_mission(
+    data: MissionSuggestRequest,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Generate 3 mission-alignment drafts WITHOUT requiring a saved prospect.
+    Used while the foundation leader is still filling out the new-prospect form."""
+    if not data.partner_type or data.partner_type not in PARTNER_TYPES:
+        raise HTTPException(400, "partner_type is required and must be a known type.")
+    spec = PREVIEW_SPECS.get(data.partner_type, {})
+    fields = {
+        "display_name": None,
+        "headline": data.headline_excerpt,
+        "bio": data.bio_excerpt,
+        "highlight_url": data.highlight_url,
+        "highlight_label": data.highlight_label,
+        "highlight_excerpt": data.highlight_excerpt,
+        "highlight_reason": data.highlight_reason,
+        "location": None,
+    }
+    if not any([fields["headline"], fields["bio"], fields["highlight_excerpt"]]):
+        raise HTTPException(400,
+            "Provide at least one of headline, bio, or highlight excerpt before requesting suggestions.")
+    return await _generate_mission_drafts(data.partner_type, spec, fields)
+
+
+@router.post("/admin/prospects/{prospect_id}/suggest-mission-alignment")
+async def suggest_mission_alignment(
+    prospect_id: str,
+    data: Optional[MissionSuggestRequest] = None,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Return 3 Claude-drafted candidates for the mission-alignment BLUF —
+    one warm, one formal, one poetic — so the foundation leader picks the voice
+    that fits the prospect.
+
+    Inference inputs (in priority order):
+      1. The fields on the request body if provided (live, before save)
+      2. The fields on the saved prospect document
+    Plus:
+      3. The per-partner-type mission/blurb from PREVIEW_SPECS
+      4. Birthright Foundation's core mission language (constant below)
+    """
+    from database import db
+    p = await db.partner_prospects.find_one({"id": prospect_id}, {"_id": 0})
+    if not p:
+        raise HTTPException(404, "Prospect not found")
+    payload = data or MissionSuggestRequest()
+    partner_type = payload.partner_type or p.get("partner_type")
+    if partner_type not in PARTNER_TYPES:
+        raise HTTPException(400, "Unknown partner_type")
+    spec = PREVIEW_SPECS.get(partner_type, {})
+
+    fields = {
+        "display_name": p.get("display_name"),
+        "headline": payload.headline_excerpt or p.get("headline_excerpt"),
+        "bio": payload.bio_excerpt or p.get("bio_excerpt"),
+        "highlight_url": payload.highlight_url or p.get("highlight_url"),
+        "highlight_label": payload.highlight_label or p.get("highlight_label"),
+        "highlight_excerpt": payload.highlight_excerpt or p.get("highlight_excerpt"),
+        "highlight_reason": payload.highlight_reason or p.get("highlight_reason"),
+        "location": p.get("location"),
+    }
+
+    return await _generate_mission_drafts(partner_type, spec, fields)
+
+
+# Core Birthright Foundation mission language — used as the Claude grounding.
+BIRTHRIGHT_MISSION_GROUNDING = (
+    "The Birthright Foundation exists to make the practice of secure presence — "
+    "between parents and children, between partners, between neighbors — "
+    "ordinary, durable, and beautiful. We support workshops, gatherings, "
+    "research, and the makers who hold the work with dignity. Partnership "
+    "with Birthright is equity in this mission first; financial scaffolding "
+    "second. We invite people whose existing work already moves toward "
+    "presence, repair, and quiet, unsentimental love of one's own people."
+)
+
+
+async def _generate_mission_drafts(partner_type: str, spec: dict, fields: dict) -> dict:
+    """Call Claude (via emergentintegrations) for 3 mission-alignment drafts
+    in distinct voices. Falls back to deterministic templates if the API
+    fails (so the admin UI never blocks on a network hiccup)."""
+    grounding = (
+        f"Partner type: {spec.get('title') or partner_type}\n"
+        f"Role blurb: {spec.get('blurb') or ''}\n"
+        f"Mission grounding for this role: {(spec.get('what_acceptance_means') or {}).get('summary', '')}\n"
+        f"Prospect: {fields.get('display_name') or ''}\n"
+        f"Headline: {fields.get('headline') or ''}\n"
+        f"Bio excerpt: {(fields.get('bio') or '')[:1200]}\n"
+        f"What we noticed on their {fields.get('highlight_label') or 'site'}: "
+        f"{(fields.get('highlight_excerpt') or '')[:1200]}\n"
+        f"Why this resonated for us: {(fields.get('highlight_reason') or '')[:600]}\n"
+        f"Foundation mission language: {BIRTHRIGHT_MISSION_GROUNDING}"
+    )
+    system_prompt = (
+        "You write the opening Bottom Line Up Front (BLUF) of a Birthright Foundation "
+        "partnership invitation. The BLUF is two to four sentences that explain to the "
+        "prospect, on the basis of THIS specific person's work, how their existing practice "
+        "already aligns with and supports Birthright's mission of making secure presence "
+        "ordinary, durable, and beautiful. \n"
+        "\n"
+        "Constraints:\n"
+        " - 2-4 sentences. No more than ~80 words.\n"
+        " - Specific. Reference what you noticed about them, not abstract platitudes.\n"
+        " - Second person, addressed TO them.\n"
+        " - No exclamation marks. No sales-y language. No 'we love what you do'.\n"
+        " - Mission alignment FIRST. Don't talk about money, tiers, or features.\n"
+        " - Don't introduce yourself ('Hi, we're the Birthright Foundation'). Assume context.\n"
+        "\n"
+        "Return ONLY a JSON array of three objects, no preamble, no markdown fence. Each object:\n"
+        "  { \"voice\": \"warm|formal|poetic\", \"text\": \"the BLUF\" }\n"
+    )
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            raise RuntimeError("No EMERGENT_LLM_KEY available")
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"mission-bluf-{gen_id()[:8]}",
+            system_message=system_prompt,
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        msg = UserMessage(text=grounding)
+        out = await chat.send_message(msg)
+        import json as _json
+        # Be tolerant of common Claude wrapping
+        cleaned = (out or "").strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```[a-z]*", "", cleaned).rstrip("` \n")
+        drafts = _json.loads(cleaned)
+        if not isinstance(drafts, list) or len(drafts) < 3:
+            raise ValueError("Unexpected shape from Claude")
+        # Normalize
+        out_drafts = []
+        for d in drafts[:3]:
+            voice = (d.get("voice") or "warm").lower().strip()
+            text = (d.get("text") or "").strip()
+            if not text:
+                continue
+            out_drafts.append({"voice": voice, "text": text})
+        if len(out_drafts) >= 3:
+            return {"source": "ai", "drafts": out_drafts}
+        raise ValueError("Not enough non-empty drafts")
+    except Exception as ex:
+        logger.warning("Mission-alignment AI suggestion failed (%s); using fallback templates.", ex)
+        return {"source": "fallback", "drafts": _fallback_mission_drafts(partner_type, spec, fields)}
+
+
+def _fallback_mission_drafts(partner_type: str, spec: dict, fields: dict) -> list[dict]:
+    """Deterministic alignment drafts when Claude is unavailable. Use the
+    prospect's noticed-content + per-type mission as scaffolding."""
+    name = fields.get("display_name") or "you"
+    label = fields.get("highlight_label") or "work"
+    excerpt = (fields.get("highlight_excerpt") or "").strip()
+    quote = f' "{excerpt[:140]}"' if excerpt else ""
+    title = (spec.get("title") or partner_type).lower()
+    return [
+        {"voice": "warm", "text": (
+            f"What we saw in your {label}{quote} is already the work Birthright tries to make ordinary — "
+            f"steady, undefended attention to the people in front of you. Partnering as a {title} would put "
+            f"institutional scaffolding behind a practice you are clearly already doing."
+        )},
+        {"voice": "formal", "text": (
+            f"Your {label} demonstrates the kind of disciplined, present-tense practice the Birthright Foundation "
+            f"is constituted to support. We extend this {title} partnership on the basis that your existing work "
+            f"already advances our shared aim of making secure presence durable and beautiful."
+        )},
+        {"voice": "poetic", "text": (
+            f"There is a quiet in what you make. The {label} shows it. Birthright tends a small fire that wants "
+            f"more keepers like you — people whose work is already a slow form of love. Partner with us as a "
+            f"{title} and the fire grows by exactly one room."
+        )},
+    ]
+
+
 @router.post("/admin/prospects/{prospect_id}/promote")
 async def promote_prospect(prospect_id: str, data: ProspectPromote,
                            user: dict = Depends(require_roles("admin"))):
@@ -647,6 +917,15 @@ async def promote_prospect(prospect_id: str, data: ProspectPromote,
         "contact_email": p["contact_email"],
         "default_headline": p.get("headline_excerpt") or spec.get("default_headline"),
         "default_bio": p.get("bio_excerpt") or "",
+        # Carry the highlight to the public preview so the prospect sees WHY
+        # they were chosen, not just THAT they were chosen.
+        "highlight_url": p.get("highlight_url"),
+        "highlight_label": p.get("highlight_label"),
+        "highlight_excerpt": p.get("highlight_excerpt"),
+        "highlight_reason": p.get("highlight_reason"),
+        # Mission alignment leads every invitation — equity in mission is the
+        # real benefit; finance is just viability scaffolding.
+        "mission_alignment": p.get("mission_alignment"),
         "note_to_prospect": (data.note_to_prospect or "").strip() or None,
         "suggested_subscription_tier": data.suggested_subscription_tier,
         "status": "sent",
@@ -680,7 +959,16 @@ async def promote_prospect(prospect_id: str, data: ProspectPromote,
         await send_email(
             to=p["contact_email"],
             subject=_email_subject(p["partner_type"], p["display_name"]),
-            html=_email_html(p["partner_type"], p["display_name"], invite["note_to_prospect"], preview_url),
+            html=_email_html(
+                p["partner_type"], p["display_name"], invite["note_to_prospect"], preview_url,
+                highlight={
+                    "url": p.get("highlight_url"),
+                    "label": p.get("highlight_label"),
+                    "excerpt": p.get("highlight_excerpt"),
+                    "reason": p.get("highlight_reason"),
+                } if p.get("highlight_url") else None,
+                mission_alignment=p.get("mission_alignment"),
+            ),
             text=_email_text(p["partner_type"], p["display_name"], preview_url),
             template_name="partner_foundation_invite",
             metadata={"invite_id": invite["id"], "partner_type": p["partner_type"]},

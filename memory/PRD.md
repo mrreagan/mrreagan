@@ -1004,6 +1004,11 @@ The Artist-only invite system from iter 41 is now a **first-class framework for 
 - **m**: AI cover variations re-roll button (P3)
 - **n**: More Lulu presets (hardcover gift, 8.5×11 workbook, 5×8 pocket) (P3)
 - **o**: Foundation revenue dashboard tile (Printful margin + Lulu margin + combined) (P3)
+- **p**: **Token spend visibility for partner wallets (P2)** — if/when Birthright introduces a token-metered AI feature for partners (e.g. partner AI Studio for vendors, agentic concierge calls), provide in-product per-action visibility so partners know what they're spending BEFORE the budget is exhausted. This is a deliberate design principle inherited from the user's experience with platforms that don't expose per-action metering — Birthright will be transparent by default. Suggested surfaces:
+  - Live "this action will cost ~X tokens" estimate before the partner clicks Run
+  - Running total of session spend visible in the partner dashboard header
+  - Per-feature breakdown ("AI Studio: 1,240 tokens this month · Concierge: 320 tokens · Featured mission drafts: 80 tokens")
+  - Downloadable CSV of every token-billed action in the partner's history
 
 See `/app/memory/test_credentials.md`
 

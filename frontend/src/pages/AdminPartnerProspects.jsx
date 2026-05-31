@@ -137,10 +137,15 @@ function CreateForm({ onClose, onCreated }) {
   const [form, setForm] = useState({
     partner_type: "facilitator", display_name: "", contact_email: "", contact_phone: "",
     location: "", headline_excerpt: "", bio_excerpt: "", portfolio_url: "", social_url: "",
+    highlight_url: "", highlight_label: "site", highlight_excerpt: "", highlight_reason: "",
+    mission_alignment: "",
     referred_by: "", internal_notes: "",
     initial_interaction_channel: "email", initial_interaction_notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showSuggestModal, setShowSuggestModal] = useState(false);
+  const [suggestions, setSuggestions] = useState(null);
+  const [loadingSuggest, setLoadingSuggest] = useState(false);
 
   const submit = async () => {
     if (form.display_name.trim().length < 2) return toast.error("Display name required.");
@@ -152,6 +157,33 @@ function CreateForm({ onClose, onCreated }) {
     } catch (e) {
       toast.error(e.response?.data?.detail || "Couldn't log prospect.");
     } finally { setSubmitting(false); }
+  };
+
+  // Ephemeral "draft" suggest — works before the prospect is saved by POSTing
+  // form fields directly. After the prospect exists we'd hit the same endpoint
+  // with the saved id.
+  const suggestMissionAlignment = async () => {
+    setLoadingSuggest(true);
+    try {
+      // Two-step: save a draft prospect, get its id, call the endpoint, delete?
+      // Simpler: backend accepts override fields. Use the "draft" path:
+      const r = await api.post(`/partners/admin/prospects/draft-suggest-mission`, {
+        partner_type: form.partner_type,
+        display_name: form.display_name,
+        headline_excerpt: form.headline_excerpt,
+        bio_excerpt: form.bio_excerpt,
+        highlight_url: form.highlight_url,
+        highlight_label: form.highlight_label,
+        highlight_excerpt: form.highlight_excerpt,
+        highlight_reason: form.highlight_reason,
+      });
+      setSuggestions(r.data);
+      setShowSuggestModal(true);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Couldn't generate suggestions.");
+    } finally {
+      setLoadingSuggest(false);
+    }
   };
 
   return (
@@ -180,6 +212,72 @@ function CreateForm({ onClose, onCreated }) {
         <p className="label">Bio excerpt (their words or paraphrased — used as their default bio)</p>
         <textarea value={form.bio_excerpt} onChange={(e) => setForm({ ...form, bio_excerpt: e.target.value })} rows={2} className="input-field" data-testid="prospect-bio-input" />
       </div>
+
+      {/* Highlight section — what specifically on their site/profile caught the foundation's eye */}
+      <div className="mt-4 p-4 rounded border border-[#C9A961] bg-white" data-testid="highlight-section">
+        <p className="font-serif text-sm text-[#1A2424] mb-1">What caught the foundation's eye</p>
+        <p className="text-[11px] text-[#5C6B6B] mb-3 italic">
+          A specific page, product, service, comment, mission statement — the actual thing on their site that
+          prompted this invitation. Shown prominently on the invitation so the prospect knows what we responded to.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="sm:col-span-2">
+            <p className="label">Highlight URL</p>
+            <input value={form.highlight_url} onChange={(e) => setForm({ ...form, highlight_url: e.target.value })} className="input-field" placeholder="https://…" data-testid="highlight-url-input" />
+          </div>
+          <div>
+            <p className="label">Kind of thing</p>
+            <select value={form.highlight_label} onChange={(e) => setForm({ ...form, highlight_label: e.target.value })} className="input-field" data-testid="highlight-label-input">
+              {["site", "product", "service", "page", "item", "comment", "post", "mission", "statement", "about", "other"].map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mt-3">
+          <p className="label">Excerpt (the actual content — a quote, a description, the mission statement text)</p>
+          <textarea value={form.highlight_excerpt} onChange={(e) => setForm({ ...form, highlight_excerpt: e.target.value })} rows={2} className="input-field" data-testid="highlight-excerpt-input" placeholder="Paste the specific paragraph or sentence you want them to know you noticed." />
+        </div>
+        <div className="mt-3">
+          <p className="label">Why this resonated (foundation's reaction — 1-2 sentences)</p>
+          <textarea value={form.highlight_reason} onChange={(e) => setForm({ ...form, highlight_reason: e.target.value })} rows={2} className="input-field" data-testid="highlight-reason-input" placeholder="What about this drew you in — written in your own voice." />
+        </div>
+      </div>
+
+      {/* Mission alignment BLUF — leads every invitation */}
+      <div className="mt-4 p-4 rounded border-2 border-[#9E3C3C] bg-[#FAF8F5]" data-testid="mission-alignment-section">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-serif text-sm text-[#1A2424] mb-1 flex items-center gap-2">
+              <Sparkles size={13} className="text-[#9E3C3C]" />
+              Mission alignment BLUF
+              <span className="text-[10px] uppercase tracking-wider text-[#9E3C3C] bg-white px-1.5 py-0.5 rounded">leads the invitation</span>
+            </p>
+            <p className="text-[11px] text-[#5C6B6B] mb-3 italic">
+              The opening of every invitation — equity in mission is the real benefit; finance is just viability.
+              Two to four sentences explaining how their existing work already aligns with Birthright's mission.
+            </p>
+          </div>
+          <button
+            onClick={suggestMissionAlignment}
+            disabled={loadingSuggest || (!form.bio_excerpt && !form.highlight_excerpt && !form.headline_excerpt)}
+            className="btn-secondary text-xs whitespace-nowrap"
+            data-testid="suggest-mission-btn"
+          >
+            {loadingSuggest ? "Thinking…" : "✨ Suggest 3 drafts"}
+          </button>
+        </div>
+        <textarea
+          value={form.mission_alignment}
+          onChange={(e) => setForm({ ...form, mission_alignment: e.target.value })}
+          rows={4}
+          className="input-field font-serif text-[15px]"
+          data-testid="mission-alignment-input"
+          placeholder="On the basis of what we noticed on your site, your work already advances Birthright's mission of…"
+        />
+        <p className="text-[10px] text-[#5C6B6B] mt-1">{(form.mission_alignment || "").length} chars · Aim for 2-4 sentences (~80 words).</p>
+      </div>
+
       <div className="mt-3">
         <p className="label">Internal notes (Foundation-only)</p>
         <textarea value={form.internal_notes} onChange={(e) => setForm({ ...form, internal_notes: e.target.value })} rows={2} className="input-field" data-testid="prospect-notes-input" />
@@ -196,6 +294,58 @@ function CreateForm({ onClose, onCreated }) {
       <div className="mt-4 flex gap-2">
         <button onClick={submit} disabled={submitting} className="btn-primary" data-testid="create-prospect-submit">{submitting ? "Saving…" : "Save prospect"}</button>
         <button onClick={onClose} className="btn-secondary" data-testid="create-prospect-cancel">Cancel</button>
+      </div>
+
+      {showSuggestModal && suggestions && (
+        <MissionDraftsModal
+          drafts={suggestions.drafts}
+          source={suggestions.source}
+          onClose={() => setShowSuggestModal(false)}
+          onPick={(text) => {
+            setForm({ ...form, mission_alignment: text });
+            setShowSuggestModal(false);
+            toast.success("Draft inserted — edit it freely.");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+const VOICE_DESCRIPTOR = {
+  warm: "Warm · personal · conversational",
+  formal: "Formal · institutional · disciplined",
+  poetic: "Poetic · spare · image-led",
+};
+
+function MissionDraftsModal({ drafts, source, onClose, onPick }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-start sm:items-center justify-center p-4 overflow-y-auto" data-testid="mission-drafts-modal">
+      <div className="bg-white rounded-lg max-w-3xl w-full p-6 mt-8 sm:mt-0">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div>
+            <p className="font-serif text-xl text-[#1A2424] flex items-center gap-2">
+              <Sparkles size={16} className="text-[#9E3C3C]" /> Three drafts to choose from
+            </p>
+            <p className="text-xs text-[#5C6B6B] mt-1 italic">
+              {source === "ai" ? "Generated by Claude based on what you noticed about this prospect." : "Template fallback — Claude wasn't reachable. Edit freely."}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-[#5C6B6B] hover:text-[#1A2424] text-xl leading-none" data-testid="drafts-close">×</button>
+        </div>
+        <div className="space-y-3 mt-4">
+          {drafts.map((d, i) => (
+            <div key={i} className="border border-[#E5DDD0] rounded p-4 hover:border-[#9E3C3C] transition" data-testid={`draft-${d.voice}`}>
+              <p className="text-[10px] uppercase tracking-wider text-[#9E3C3C] mb-2">{VOICE_DESCRIPTOR[d.voice] || d.voice}</p>
+              <p className="font-serif text-[15px] text-[#1A2424] leading-relaxed">{d.text}</p>
+              <div className="mt-3 flex justify-end">
+                <button onClick={() => onPick(d.text)} className="btn-primary text-xs" data-testid={`pick-draft-${d.voice}`}>
+                  Use this draft →
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
