@@ -57,7 +57,33 @@ React, FastAPI, MongoDB, Emergent Integrations (Claude Sonnet 4.5, Gemini Nano B
 **(d) Refund/clawback cascade ✅ (verified — already shipped in iter23)**
 - Backend cascade logic (`utils/refund_cascade.py`), admin endpoints (`routers/refunds.py`), and admin UI (`pages/AdminRefunds.jsx`) were already complete; 17 cascade tests pass.
 
-### Prior session highlights
+### 2026-06-01 (later) — Partnership Agreement v2 re-sign (P2) ✅
+
+All 5 sub-items from the agreed plan shipped, tested by testing_agent_v3_fork (14/14 backend + 5/5 frontend pass, zero high/critical bugs).
+
+**1. Admin UI** — New page `/admin/legal/agreements` (`pages/AdminAgreements.jsx`):
+   - Three summary tiles (Active version · Active partners · % signed of active version)
+   - Version list with signature counts, progress bars, and "View signers" ledger modal
+   - "Draft & publish new version" modal with Markdown body editor
+   - "Seed from Birthright v2.0 starter" button pulls the curated body (~7,150 chars)
+   - Confirmation dialog before publish (lists what publish will do)
+   - Linked from `/admin` dashboard quick-actions card
+
+**2. Broader gate** — `utils/agreement_gate.py` now exports `require_active_agreement_partner` (admin-bypass variant). Applied to:
+   - `POST /api/me/research` (research artifact create)
+   - `POST /api/me/featured/checkout` (featured slot purchase)
+   - `PUT /api/me/payouts/w9` (W9 form)
+   - `PUT /api/me/payouts/method` (payout method change)
+   - `POST /api/studio/generate` (AI Studio draft generation)
+
+**3. Smarter banner** — `components/AgreementResignBanner.jsx` now shows a "What's blocked? (N)" toggle that reveals the per-partner list. The list is computed server-side in `GET /legal/indemnification/my-status` from the user's active partner profiles, so it's always honest.
+
+**4. Email notification on publish** — `_notify_partners_of_new_version` helper in `routers/legal.py` fires a fire-and-forget asyncio task after a new version is activated; emails every user with at least one active non-sample partner profile, deduped by user_id.
+
+**5. Real v2 body** — `agreements/v2_body.py` contains a ~7,150-char Markdown agreement covering: voluntary participation, per-role revenue share, 1.5× AI markup disclosure, content licensing with revocable non-exclusive grant, refund/clawback cascade, 12-month sunset clause, conduct standards, data + privacy, indemnification, termination, amendment + re-sign mechanics, and governing law. Counsel must replace dollar figures before live launch.
+
+**Admin-bypass design decision** — `require_active_agreement_partner` exempts users with `role == "admin"` so admins can publish v2 without first signing v2 (bootstrap deadlock). `require_active_agreement` (gating all users including admins) remains unchanged on the DM and subscription flows.
+
 - Featured Artists backend (12-month decay, locked statement position, 180-char limit)
 - "Explore-before-Embrace" tokenized invitation system for ALL 6 partner types
 - PreviewModeBanner + Public sandbox per role
@@ -69,7 +95,7 @@ React, FastAPI, MongoDB, Emergent Integrations (Claude Sonnet 4.5, Gemini Nano B
 ## Backlog
 
 ### P2
-- Partnership Agreement v2 re-sign (deferred — needs its own design pass)
+- ~~Partnership Agreement v2 re-sign~~ ✅ Shipped 2026-06-01 (see Changelog above)
 
 ### P3
 - AI cost-recovery bundle — **DROPPED** (50% Foundation markup already does the job; double-dipping)
