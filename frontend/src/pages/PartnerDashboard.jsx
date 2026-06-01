@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { CheckCircle2, Clock, XCircle, Pencil, Globe, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { SubscriptionStatusCard } from "./PartnerSubscribe";
 import PartnerEarningsCard from "../components/PartnerEarningsCard";
+import AiSpendCard from "../components/AiSpendCard";
 
 const STATUS_BADGE = {
   pending:  { label: "Pending",  cls: "bg-[#C9A961]/15 text-[#8B7128] border-[#C9A961]/40", icon: Clock },
@@ -129,6 +130,11 @@ export default function PartnerDashboard() {
               </div>
               <span className="text-xs text-[#476B6B]">Open →</span>
             </Link>
+          )}
+          {profiles.some((p) => p.status === "active" && !p.is_sample) && (
+            <div className="mt-4" data-testid="ai-spend-card-wrapper">
+              <AiSpendCard />
+            </div>
           )}
         </section>
       )}

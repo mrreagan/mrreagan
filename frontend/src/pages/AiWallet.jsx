@@ -188,6 +188,42 @@ export default function AiWallet() {
         </div>
       </div>
 
+      {/* Time-window spend rollups — answers "what have I been spending lately?" */}
+      {data.spend_windows && (
+        <div className="card p-5 mb-6" data-testid="spend-windows-card">
+          <div className="flex items-baseline justify-between gap-3 flex-wrap">
+            <p className="label">Recent spend</p>
+            <p className="text-[10px] text-[#5C6B6B] italic">All amounts include the {data.pricing?.foundation_markup_pct || 50}% Foundation markup.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-4 mt-3">
+            <WindowStat label="Today" data={data.spend_windows.today} testid="window-today" />
+            <WindowStat label="Last 7 days" data={data.spend_windows.week} testid="window-week" />
+            <WindowStat label="Last 30 days" data={data.spend_windows.month} testid="window-month" />
+          </div>
+          {(data.spend_windows.by_feature_30d || []).length > 0 && (
+            <div className="mt-5 border-t border-[#E5E1D8] pt-4" data-testid="by-feature-30d">
+              <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B] mb-2">By feature · last 30 days</p>
+              <ul className="space-y-1.5">
+                {data.spend_windows.by_feature_30d.map((f) => {
+                  const max = Math.max(...data.spend_windows.by_feature_30d.map((x) => x.cost_usd), 0.0001);
+                  const pct = Math.max(2, (f.cost_usd / max) * 100);
+                  return (
+                    <li key={f.feature} className="flex items-center gap-3 text-sm" data-testid={`feature-row-${f.feature}`}>
+                      <span className="w-32 text-[#1A2424] capitalize truncate">{(f.feature || "unknown").replace(/_/g, " ")}</span>
+                      <div className="flex-1 h-2 rounded-full bg-[#FAF8F5] overflow-hidden">
+                        <div className="h-full bg-[#476B6B]" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="w-20 text-right text-xs text-[#5C6B6B]">{f.events} {f.events === 1 ? "call" : "calls"}</span>
+                      <span className="w-20 text-right font-mono text-sm">${f.cost_usd.toFixed(4)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Foundation pricing disclosure — shown immediately under the hero */}
       {data.pricing && (
         <div className="rounded-2xl border-2 border-[#C9A961] bg-[#FFF8E1] p-5 mb-6" data-testid="ai-wallet-pricing-disclosure">
@@ -287,6 +323,20 @@ export default function AiWallet() {
           </tbody>
         </table>
       )}
+    </div>
+  );
+}
+
+function WindowStat({ label, data, testid }) {
+  const cost = Number(data?.cost_usd || 0);
+  const events = Number(data?.events || 0);
+  // Use 4 decimal precision for sub-dollar amounts (AI usage is fractions of cents).
+  const precision = cost < 1 ? 4 : 2;
+  return (
+    <div data-testid={testid}>
+      <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">{label}</p>
+      <p className="font-serif text-2xl mt-1">${cost.toFixed(precision)}</p>
+      <p className="text-[11px] text-[#5C6B6B] mt-0.5">{events} {events === 1 ? "AI call" : "AI calls"}</p>
     </div>
   );
 }

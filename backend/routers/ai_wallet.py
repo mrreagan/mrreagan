@@ -25,6 +25,47 @@ admin_router = APIRouter(prefix="/admin/ai-wallet", tags=["ai-wallet-admin"])
 
 # ============ ME ============
 
+async def _spend_windows(db, user_id: str) -> dict:
+    """Return today/week/month spend rollups + by-feature breakdown (30d).
+
+    All windows are computed from `ai_usage_events.created_at` (ISO strings).
+    Uses MongoDB `$gte` on the ISO string — works because ISO 8601 sorts
+    lexicographically the same as chronologically.
+    """
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    since_today = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    since_week = (now - timedelta(days=7)).isoformat()
+    since_month = (now - timedelta(days=30)).isoformat()
+
+    async def _sum(since_iso: str) -> dict:
+        pipeline = [
+            {"$match": {"user_id": user_id, "created_at": {"$gte": since_iso}}},
+            {"$group": {"_id": None, "events": {"$sum": 1}, "cost_usd": {"$sum": "$cost_usd"}}},
+        ]
+        rows = await db.ai_usage_events.aggregate(pipeline).to_list(1)
+        if not rows:
+            return {"events": 0, "cost_usd": 0.0}
+        r = rows[0]
+        return {"events": int(r.get("events") or 0), "cost_usd": round(float(r.get("cost_usd") or 0), 4)}
+
+    today = await _sum(since_today)
+    week = await _sum(since_week)
+    month = await _sum(since_month)
+
+    by_feature_pipeline = [
+        {"$match": {"user_id": user_id, "created_at": {"$gte": since_month}}},
+        {"$group": {"_id": "$feature", "events": {"$sum": 1}, "cost_usd": {"$sum": "$cost_usd"}}},
+        {"$sort": {"cost_usd": -1}},
+    ]
+    by_feature = [
+        {"feature": r["_id"] or "unknown", "events": int(r.get("events") or 0),
+         "cost_usd": round(float(r.get("cost_usd") or 0), 4)}
+        for r in await db.ai_usage_events.aggregate(by_feature_pipeline).to_list(50)
+    ]
+    return {"today": today, "week": week, "month": month, "by_feature_30d": by_feature}
+
+
 @my_router.get("/me")
 async def my_wallet(user: dict = Depends(get_current_user)):
     from database import db
@@ -35,16 +76,36 @@ async def my_wallet(user: dict = Depends(get_current_user)):
     recent_entries = await db.ai_wallet_entries.find(
         {"user_id": user["id"]}, {"_id": 0}
     ).sort("created_at", -1).to_list(25)
+    spend = await _spend_windows(db, user["id"])
     return {
         "wallet": w,
         "topup_packs_usd": TOPUP_PACKS_USD,
         "recent_usage": recent_events,
         "recent_entries": recent_entries,
+        "spend_windows": spend,
         "pricing": {
             "multiplier": PRICE_MULTIPLIER,
             "foundation_markup_pct": FOUNDATION_MARKUP_PCT,
             "disclosure": PRICING_DISCLOSURE,
         },
+    }
+
+
+@my_router.get("/me/summary")
+async def my_wallet_summary(user: dict = Depends(get_current_user)):
+    """Lightweight read for dashboard at-a-glance tile. Returns only the
+    minimum needed to render a one-line summary without pulling 25 events.
+    """
+    from database import db
+    w = await get_wallet(db, user["id"])
+    spend = await _spend_windows(db, user["id"])
+    return {
+        "balance_usd": float(w.get("balance_usd") or 0.0),
+        "lifetime_spend_usd": float(w.get("lifetime_spend_usd") or 0.0),
+        "this_month_spend_usd": spend["month"]["cost_usd"],
+        "this_month_events": spend["month"]["events"],
+        "low_balance": (w.get("balance_usd") or 0.0) < 1.0,
+        "auto_recharge_enabled": bool(w.get("auto_recharge_enabled")),
     }
 
 
@@ -134,7 +195,11 @@ async def usage_report(
 ):
     from database import db
     from datetime import datetime, timezone, timedelta
-    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=days)).isoformat()
+    since_today = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    since_week = (now - timedelta(days=7)).isoformat()
+    since_month = (now - timedelta(days=30)).isoformat()
 
     pipeline = [
         {"$match": {"created_at": {"$gte": since}}},
@@ -159,10 +224,49 @@ async def usage_report(
          "cost_usd": round(r["cost_usd"], 4)}
         for r in rows
     ]
-    # Totals
+    # Totals across the selected window
     total_cost = sum(r["cost_usd"] for r in rows)
     total_events = sum(r["event_count"] for r in rows)
-    wallets = await db.ai_wallets.find({}, {"_id": 0}).to_list(500)
+
+    # Time-window rollups (always today/week/month — independent of `days` filter)
+    async def _window_total(since_iso: str) -> dict:
+        agg = await db.ai_usage_events.aggregate([
+            {"$match": {"created_at": {"$gte": since_iso}}},
+            {"$group": {"_id": None, "events": {"$sum": 1}, "cost_usd": {"$sum": "$cost_usd"}}},
+        ]).to_list(1)
+        if not agg:
+            return {"events": 0, "cost_usd": 0.0}
+        a = agg[0]
+        return {"events": int(a.get("events") or 0), "cost_usd": round(float(a.get("cost_usd") or 0), 4)}
+
+    windows = {
+        "today": await _window_total(since_today),
+        "week": await _window_total(since_week),
+        "month": await _window_total(since_month),
+    }
+
+    # Hydrate wallets with user email for human-readable display.
+    wallet_rows = await db.ai_wallets.find({}, {"_id": 0}).to_list(500)
+    user_ids = [w["user_id"] for w in wallet_rows if w.get("user_id")]
+    user_lookup: dict[str, dict] = {}
+    if user_ids:
+        async for u in db.users.find(
+            {"id": {"$in": user_ids}},
+            {"_id": 0, "id": 1, "email": 1, "first_name": 1, "last_name": 1, "role": 1},
+        ):
+            user_lookup[u["id"]] = u
+    wallets = []
+    for w in wallet_rows:
+        u = user_lookup.get(w.get("user_id")) or {}
+        wallets.append({
+            **w,
+            "user_email": u.get("email"),
+            "user_name": (f"{u.get('first_name','')} {u.get('last_name','')}".strip() or None),
+            "user_role": u.get("role"),
+        })
+    # Sort wallets by lifetime spend desc so admin sees heavy users first.
+    wallets.sort(key=lambda x: -(x.get("lifetime_spend_usd") or 0))
+
     return {
         "days": days,
         "since": since,
@@ -170,6 +274,7 @@ async def usage_report(
         "total_cost_usd": round(total_cost, 4),
         "by_user_feature": by_user_feature,
         "wallets": wallets,
+        "windows": windows,
     }
 
 
