@@ -1,0 +1,26 @@
+{
+  "summary": "Iter 44 — Partnership Agreement v2 re-sign hardening verified end-to-end. 14/14 backend pytest tests pass covering admin endpoints (versions list with signature_count + active_partner_count, default-v2-draft 7000+ chars admin-only, signatures hydration with user_email/ip_address, publish flow with rollback), per-partner blocked_actions list for Elena, gate firing on /me/research, /me/payouts/w9, /me/payouts/method (all 409 agreement_required), admin bypass on /studio/generate, /me/research, /me/payouts/w9 (no 409), and sign flow. 5/5 UI checks pass: /admin dashboard has Partnership agreements quick-action card; /admin/legal/agreements renders 3 tiles + version list with progress bars + Draft & publish button; Draft modal opens with 'Seed from Birthright v2.0 starter' button + version/summary/body fields; AgreementResignBanner shows for unsigned admin with 'What's blocked? (N)' toggle that reveals blocked list; /legal/agreement renders body + sign button.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter44_agreement_v2.py",
+    "/app/test_reports/pytest/iter44_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "legal.py POST /indemnification/versions uses asyncio.create_task without awaiting at process shutdown — if uvicorn reloads or container restarts mid-publish, partner notification emails for some recipients may be dropped silently. Consider a lightweight outbox table or background-task queue for delivery guarantees in production.",
+    "agreement_gate.require_active_agreement_partner exempts admins by role string match `role == 'admin'`. If a foundation_admin or similar role is added later, gate will silently lock them out. Suggest centralising 'is_foundation_operator(user)' helper.",
+    "my-status blocked_actions logic is duplicated knowledge with the gates themselves — a single source-of-truth registry mapping endpoint -> friendly label would keep banner/UI honest as new gated endpoints are added.",
+    "Publish endpoint version field is capped at 20 chars (pydantic) — UI 'Seed from Birthright v2.0 starter' is fine ('2.0' = 3 chars), but admin-facing copy nowhere surfaces this constraint. A simple maxLength hint on the input would prevent confusing 422s."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter44_agreement_v2.py (new)"
+  ],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "100% (5/5 UI checks)"},
+  "test_credentials": "admin@birthright.org / birthright2026, elena@birthright.org / birthright2026, demo@birthright.org / birthright2026 — all verified working.",
+  "seed_data_creation": "test_demo_sign_flow signs demo@birthright.org for the currently active version (vtest-1780126982). test_publish_new_version_and_rollback creates and then deletes a throwaway 't44-<ts>' version doc and restores prior active state via direct Mongo ops in the same container. No persistent test pollution.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Active indemnification version in DB is currently 'vtest-1780126982' (from prior testing), NOT '2.0' — agent_to_agent_context_note flagged this is expected. The 3 stale-fixture failures in test_iter23_refunds_agreement.py (test_active_version_is_v2, test_versions_list_v1_inactive_v2_active, test_demo_dm_thread_blocked_unsigned) were NOT re-run per instructions. demo@birthright.org is now SIGNED on the active version — if a future test needs an unsigned non-admin partner, use elena@birthright.org. Publish test uses a strict rollback path; if it ever fails mid-test, the throwaway version may remain active — re-running the test or manually flipping `indemnification_versions` records in Mongo is the fix.",
+  "rca of the issue": "No bugs. All 16 requested behaviors validated. Code-review comments above are forward-looking, not regressions."
+}

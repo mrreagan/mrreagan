@@ -29,6 +29,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from auth_utils import get_current_user, require_roles
+from utils.agreement_gate import require_active_agreement_partner
 from models import DisbursementSettings, PayoutMarkPaid, PayoutMethodSet, W9Form, gen_id, now_iso
 from utils.audit import log_action
 from utils.mailer import send_email
@@ -151,7 +152,9 @@ async def get_my_w9(user: dict = Depends(get_current_user)):
 
 
 @my_router.put("/w9")
-async def upsert_my_w9(data: W9Form, user: dict = Depends(get_current_user)):
+async def upsert_my_w9(data: W9Form,
+                       user: dict = Depends(get_current_user),
+                       _gated: dict = Depends(require_active_agreement_partner)):
     from database import db
     doc = {
         **data.model_dump(),
@@ -178,7 +181,9 @@ async def get_my_payout_method(user: dict = Depends(get_current_user)):
 
 
 @my_router.put("/method")
-async def set_my_payout_method(data: PayoutMethodSet, user: dict = Depends(get_current_user)):
+async def set_my_payout_method(data: PayoutMethodSet,
+                                user: dict = Depends(get_current_user),
+                                _gated: dict = Depends(require_active_agreement_partner)):
     from database import db
     if data.method_type == "stripe_connect":
         if not data.stripe_account_id:

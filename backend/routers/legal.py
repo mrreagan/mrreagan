@@ -63,7 +63,38 @@ async def get_active_version():
 async def list_versions(user: dict = Depends(require_roles("admin"))):
     from database import db
     versions = await db.indemnification_versions.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
-    return versions
+    # Hydrate with signature counts so the admin UI doesn't need a 2nd round-trip.
+    counts: dict[str, int] = {}
+    async for r in db.indemnification_signatures.aggregate([
+        {"$group": {"_id": "$version_id", "n": {"$sum": 1}}},
+    ]):
+        counts[r["_id"]] = int(r.get("n") or 0)
+    for v in versions:
+        v["signature_count"] = counts.get(v["id"], 0)
+    # Total active partner pool size — useful denominator for "% signed".
+    active_partner_count = await db.partner_profiles.count_documents({
+        "status": "active",
+        "$or": [{"is_sample": {"$exists": False}}, {"is_sample": False}],
+    })
+    return {"versions": versions, "active_partner_count": active_partner_count}
+
+
+@router.get("/indemnification/default-v2-draft")
+async def default_v2_draft(user: dict = Depends(require_roles("admin"))):
+    """Return the Birthright-curated v2 body + summary so the admin UI can
+    seed its draft editor with a real, production-grade starting point.
+
+    The body still must be reviewed by counsel — that's called out in the
+    body itself — but it covers the structural sections (rev share, AI
+    markup, licensing, sunset, refunds) so admins aren't authoring from
+    scratch.
+    """
+    from agreements.v2_body import V2_VERSION, V2_SUMMARY_OF_CHANGES, V2_BODY
+    return {
+        "version": V2_VERSION,
+        "summary_of_changes": V2_SUMMARY_OF_CHANGES,
+        "body": V2_BODY,
+    }
 
 
 @router.post("/indemnification/versions")
@@ -71,7 +102,14 @@ async def create_version(
     data: IndemnificationCreate,
     user: dict = Depends(require_roles("admin")),
 ):
-    """Publish a new version. It becomes active immediately and deactivates the prior one."""
+    """Publish a new version. It becomes active immediately and deactivates the prior one.
+
+    On activation, fires a fire-and-forget notification email to every
+    active partner (anyone with at least one non-sample active
+    partner_profile) so the rollout meets the §11 re-sign notice
+    requirement. Email failures are logged but do not roll back the
+    publish — the in-product banner is the second comms channel.
+    """
     from database import db
     existing = await db.indemnification_versions.find_one({"version": data.version})
     if existing:
@@ -101,8 +139,89 @@ async def create_version(
         target_type="indemnification_version", target_id=version_id,
         metadata={"version": data.version},
     )
+    # Fire-and-forget partner notification — don't block the response.
+    import asyncio
+    try:
+        asyncio.create_task(_notify_partners_of_new_version(doc))
+    except Exception as ex:
+        logger.warning("Partner notification dispatch failed: %s", ex)
     doc.pop("_id", None)
     return doc
+
+
+async def _notify_partners_of_new_version(version: dict) -> None:
+    """Email every active partner that a new agreement version is live.
+
+    Looks up users via the partner_profiles collection (active +
+    non-sample) and de-duplicates by user_id so a partner with multiple
+    roles only gets one email. Failures per-recipient are logged and
+    swallowed.
+    """
+    from database import db
+    from utils.mailer import send_email
+    import os
+    app_url = os.environ.get("PUBLIC_APP_URL", "").rstrip("/")
+    review_url = f"{app_url}/legal/agreement" if app_url else "/legal/agreement"
+
+    # Collect unique user_ids with at least one active non-sample profile.
+    seen_user_ids: set[str] = set()
+    async for prof in db.partner_profiles.find(
+        {
+            "status": "active",
+            "$or": [{"is_sample": {"$exists": False}}, {"is_sample": False}],
+        },
+        {"_id": 0, "user_id": 1},
+    ).limit(2000):
+        if prof.get("user_id"):
+            seen_user_ids.add(prof["user_id"])
+    if not seen_user_ids:
+        logger.info("Agreement v%s published — no active partners to notify.", version["version"])
+        return
+
+    users_to_email: list[dict] = []
+    async for u in db.users.find(
+        {"id": {"$in": list(seen_user_ids)}},
+        {"_id": 0, "id": 1, "email": 1, "first_name": 1},
+    ).limit(500):
+        if u.get("email"):
+            users_to_email.append(u)
+
+    summary = (version.get("summary_of_changes") or "").strip() or "Substantive update to the partner agreement."
+    subject = f"Action required: Birthright Agreement v{version['version']}"
+    sent = 0
+    for u in users_to_email:
+        try:
+            await send_email(
+                to=u["email"],
+                subject=subject,
+                html=(
+                    f"<p>Hi {u.get('first_name','there')},</p>"
+                    f"<p>We've published <strong>Agreement v{version['version']}</strong>. "
+                    f"Continued access to partner write-side features (publishing products, "
+                    f"artifacts, featured slots, AI Studio drafts, subscription changes) "
+                    f"requires your acceptance of the new version. Browsing and earnings "
+                    f"reads are not affected.</p>"
+                    f"<p><strong>What changed</strong><br>{summary}</p>"
+                    f"<p><a href='{review_url}' style='display:inline-block;padding:10px 18px;"
+                    f"background:#476B6B;color:#FAF8F5;text-decoration:none;border-radius:6px'>"
+                    f"Review &amp; accept v{version['version']}</a></p>"
+                    f"<p>The in-product banner will also prompt you next time you sign in.</p>"
+                    f"<p>— Birthright Foundation</p>"
+                ),
+                text=(
+                    f"Hi {u.get('first_name','there')},\n\n"
+                    f"Birthright Agreement v{version['version']} is now active. Accept it before "
+                    f"publishing new partner content or changing your subscription.\n\n"
+                    f"What changed: {summary}\n\n"
+                    f"Review & accept: {review_url}\n\n— Birthright Foundation"
+                ),
+                template_name="agreement_resign",
+                metadata={"version_id": version["id"], "version": version["version"]},
+            )
+            sent += 1
+        except Exception as ex:
+            logger.warning("Agreement v%s notify failed for %s: %s", version["version"], u.get("email"), ex)
+    logger.info("Agreement v%s notify: %d/%d sent.", version["version"], sent, len(users_to_email))
 
 
 # ============ SIGNATURES ============
@@ -140,18 +259,50 @@ async def sign_active(request: Request, user: dict = Depends(get_current_user)):
 
 @router.get("/indemnification/my-status")
 async def my_status(user: dict = Depends(get_current_user)):
-    """Check whether the signed-in user has accepted the active version."""
+    """Check whether the signed-in user has accepted the active version.
+
+    Also returns `blocked_actions` — a per-partner-role list of write-side
+    features the user will lose access to until they sign. Used by the
+    AgreementResignBanner to render specific, honest copy instead of
+    generic "you might lose access" wording.
+    """
     from database import db
     active = await db.indemnification_versions.find_one({"active": True}, {"_id": 0})
     if not active:
-        return {"active_version": None, "signed": False}
+        return {"active_version": None, "signed": False, "blocked_actions": []}
     sig = await db.indemnification_signatures.find_one(
         {"user_id": user["id"], "version_id": active["id"]}, {"_id": 0}
     )
+    signed = bool(sig)
+
+    blocked: list[str] = []
+    if not signed:
+        # Compute the per-role blocked list from the user's active profiles.
+        # We always include the universal pair (DMs + subscriptions) since
+        # those gates apply to everyone, signed-in or not.
+        blocked.append("Open new direct message threads")
+        blocked.append("Start or change a subscription")
+        roles: set[str] = set()
+        async for prof in db.partner_profiles.find(
+            {"user_id": user["id"], "status": "active",
+             "$or": [{"is_sample": {"$exists": False}}, {"is_sample": False}]},
+            {"_id": 0, "partner_type": 1},
+        ):
+            if prof.get("partner_type"):
+                roles.add(prof["partner_type"])
+        if "vendor" in roles or "facilitator" in roles or "artist" in roles or "research" in roles:
+            blocked.append("Generate new AI Studio drafts")
+        if "research" in roles:
+            blocked.append("Publish research artifacts")
+        if roles:
+            blocked.append("Purchase featured slots")
+            blocked.append("Update W9 or payout method")
+
     return {
         "active_version": {"id": active["id"], "version": active["version"]},
-        "signed": bool(sig),
+        "signed": signed,
         "signed_at": sig.get("signed_at") if sig else None,
+        "blocked_actions": blocked,
     }
 
 
@@ -163,4 +314,13 @@ async def list_signatures(
     from database import db
     query = {"version_id": version_id} if version_id else {}
     sigs = await db.indemnification_signatures.find(query, {"_id": 0}).sort("signed_at", -1).to_list(2000)
+    # Hydrate with user email + IP normalization for the admin ledger UI.
+    user_ids = list({s.get("user_id") for s in sigs if s.get("user_id")})
+    emails: dict[str, str] = {}
+    if user_ids:
+        async for u in db.users.find({"id": {"$in": user_ids}}, {"_id": 0, "id": 1, "email": 1}):
+            emails[u["id"]] = u.get("email")
+    for s in sigs:
+        s["user_email"] = emails.get(s.get("user_id"))
+        s["ip_address"] = s.get("ip")  # alias for the older field name
     return sigs

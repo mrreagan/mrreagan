@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from emergentintegrations.payments.stripe.checkout import CheckoutSessionRequest
 
 from auth_utils import get_current_user, require_roles
+from utils.agreement_gate import require_active_agreement_partner
 from models import (
     FeaturePartnerRequest,
     FeatureCheckoutRequest,
@@ -164,6 +165,7 @@ async def checkout_featured_slot(
     data: FeatureCheckoutRequest,
     request: Request,
     user: dict = Depends(get_current_user),
+    _gated: dict = Depends(require_active_agreement_partner),
 ):
     """Create Stripe checkout for a featured slot. On payment success the
     featured window activates for the configured duration."""

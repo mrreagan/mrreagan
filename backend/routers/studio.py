@@ -28,6 +28,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from auth_utils import get_current_user
+from utils.agreement_gate import require_active_agreement_partner
 from models import gen_id, now_iso
 from utils.ai_billing import (
     FOUNDATION_MARKUP_PCT,
@@ -292,7 +293,9 @@ async def estimate_cost(req: EstimateRequest, user: dict = Depends(get_current_u
 
 
 @router.post("/generate", status_code=201)
-async def generate_draft(req: GenerateRequest, user: dict = Depends(get_current_user)):
+async def generate_draft(req: GenerateRequest,
+                         user: dict = Depends(get_current_user),
+                         _gated: dict = Depends(require_active_agreement_partner)):
     """Run the full generation pipeline and save a draft product. Idempotent
     only at the database level — each call genuinely spends AI dollars."""
     from database import db

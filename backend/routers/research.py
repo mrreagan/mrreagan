@@ -21,6 +21,7 @@ from emergentintegrations.payments.stripe.checkout import CheckoutSessionRequest
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from auth_utils import get_current_user, require_roles
+from utils.agreement_gate import require_active_agreement_partner
 from models import (
     ResearchArtifactCreate,
     ResearchArtifactUpdate,
@@ -205,7 +206,9 @@ async def my_artifacts(user: dict = Depends(get_current_user)):
 
 
 @my_router.post("")
-async def create_artifact(data: ResearchArtifactCreate, user: dict = Depends(get_current_user)):
+async def create_artifact(data: ResearchArtifactCreate,
+                          user: dict = Depends(get_current_user),
+                          _gated: dict = Depends(require_active_agreement_partner)):
     from database import db
     profile = await _require_research_profile(db, user)
     payload = data.model_dump()

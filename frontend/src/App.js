@@ -91,6 +91,7 @@ import AgreementPage from "./pages/AgreementPage";
 import AdminResearch from "./pages/AdminResearch";
 import AiWallet from "./pages/AiWallet";
 import AdminAiUsage from "./pages/AdminAiUsage";
+import AdminAgreements from "./pages/AdminAgreements";
 import AiOverview from "./pages/AiOverview";
 import Connect from "./pages/Connect";
 import ScrollToTop from "./components/ScrollToTop";
@@ -547,6 +548,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminAiUsage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/legal/agreements"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminAgreements />
           </ProtectedRoute>
         }
       />
