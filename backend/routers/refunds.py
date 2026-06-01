@@ -55,6 +55,82 @@ async def list_cascades(
     return rows
 
 
+@admin_router.get("/refundable-transactions")
+async def list_refundable_transactions(
+    txn_type: Optional[str] = None,
+    q: Optional[str] = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    user: dict = Depends(require_roles("admin")),
+):
+    """Paid, not-yet-refunded transactions, enriched with user email.
+
+    Powers the refund-modal picker so admins don't have to hunt UUIDs in the
+    DB. Sorted newest first. Excludes already-refunded transactions.
+    """
+    from database import db
+    query: dict = {
+        "payment_status": {"$nin": ["refunded", "failed", "expired", "cancelled"]},
+    }
+    if txn_type and txn_type != "all":
+        query["type"] = txn_type
+    rows = await db.payment_transactions.find(
+        query,
+        {"_id": 0, "id": 1, "session_id": 1, "user_id": 1, "type": 1,
+         "amount": 1, "currency": 1, "payment_status": 1, "created_at": 1,
+         "metadata": 1},
+    ).sort("created_at", -1).to_list(500)
+
+    # Enrich with user email — most transactions have user_id, some don't (anon donations).
+    user_ids = list({r["user_id"] for r in rows if r.get("user_id")})
+    user_lookup: dict[str, dict] = {}
+    if user_ids:
+        async for u in db.users.find(
+            {"id": {"$in": user_ids}},
+            {"_id": 0, "id": 1, "email": 1, "first_name": 1, "last_name": 1},
+        ):
+            user_lookup[u["id"]] = u
+
+    enriched = []
+    for r in rows:
+        u = user_lookup.get(r.get("user_id") or "", {})
+        enriched.append({
+            "id": r["id"],
+            "session_id": r.get("session_id"),
+            "type": r.get("type"),
+            "amount": float(r.get("amount") or 0),
+            "currency": r.get("currency") or "usd",
+            "payment_status": r.get("payment_status"),
+            "created_at": r.get("created_at"),
+            "user_id": r.get("user_id"),
+            "user_email": u.get("email"),
+            "user_name": (f"{u.get('first_name','')} {u.get('last_name','')}".strip() or None),
+        })
+
+    # Optional client-side-style filter applied server-side for convenience
+    if q and len(q.strip()) >= 2:
+        needle = q.strip().lower()
+        enriched = [
+            t for t in enriched
+            if needle in (t.get("user_email") or "").lower()
+            or needle in (t.get("user_name") or "").lower()
+            or needle in (t.get("type") or "").lower()
+            or needle in (t.get("id") or "").lower()
+            or needle in (t.get("session_id") or "").lower()
+        ]
+
+    # Distinct type counts for the picker tabs (computed before pagination).
+    type_counts: dict[str, int] = {}
+    for t in enriched:
+        k = t.get("type") or "unknown"
+        type_counts[k] = type_counts.get(k, 0) + 1
+
+    return {
+        "transactions": enriched[:limit],
+        "total": len(enriched),
+        "type_counts": type_counts,
+    }
+
+
 @admin_router.get("/{cascade_id}")
 async def get_cascade(cascade_id: str, user: dict = Depends(require_roles("admin"))):
     from database import db

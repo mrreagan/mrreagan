@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { RotateCcw, AlertTriangle, X } from "lucide-react";
+import { RotateCcw, AlertTriangle, X, Search } from "lucide-react";
 import api from "../lib/api";
 
 export default function AdminRefunds() {
@@ -11,6 +11,7 @@ export default function AdminRefunds() {
 
   const [refundOpen, setRefundOpen] = useState(false);
   const [txnId, setTxnId] = useState("");
+  const [selectedTxn, setSelectedTxn] = useState(null);
   const [reason, setReason] = useState("");
   const [skipStripe, setSkipStripe] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -33,20 +34,25 @@ export default function AdminRefunds() {
 
   const fireCascade = async () => {
     if (!txnId.trim() || reason.trim().length < 5) {
-      toast.error("Transaction ID and reason (≥ 5 chars) required");
+      toast.error("Pick a transaction and write a reason (≥ 5 chars)");
       return;
     }
     setBusy(true);
     try {
       await api.post("/admin/refunds", { txn_id: txnId.trim(), reason: reason.trim(), skip_stripe: skipStripe });
       toast.success("Refund cascade fired");
-      setRefundOpen(false); setTxnId(""); setReason(""); setSkipStripe(false);
+      closeRefundModal();
       load();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Cascade failed");
     } finally {
       setBusy(false);
     }
+  };
+
+  const closeRefundModal = () => {
+    setRefundOpen(false);
+    setTxnId(""); setReason(""); setSkipStripe(false); setSelectedTxn(null);
   };
 
   const resolveClawback = async () => {
@@ -162,13 +168,13 @@ export default function AdminRefunds() {
       )}
 
       {refundOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" data-testid="refund-modal">
-          <div className="bg-white rounded shadow-xl max-w-lg w-full p-6">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-y-auto" data-testid="refund-modal">
+          <div className="bg-white rounded shadow-xl max-w-3xl w-full p-6 my-8">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-serif text-xl inline-flex items-center gap-2">
                 <AlertTriangle size={18} strokeWidth={1.5} className="text-[#9E3C3C]" /> Fire refund cascade
               </h3>
-              <button onClick={() => setRefundOpen(false)} className="text-[#5C6B6B] hover:text-[#1A2424]" aria-label="Close">
+              <button onClick={closeRefundModal} className="text-[#5C6B6B] hover:text-[#1A2424]" aria-label="Close">
                 <X size={16} strokeWidth={1.5} />
               </button>
             </div>
@@ -176,19 +182,50 @@ export default function AdminRefunds() {
               This refunds the Stripe charge AND undoes its side-effects (registrations, subs, featured slots, promotions)
               AND reverses derived partner credits. Already-paid credits will go to the pending-clawback queue.
             </p>
-            <label className="block mt-4 text-[10px] uppercase tracking-wider text-[#5C6B6B] mb-1">Payment transaction ID</label>
-            <input value={txnId} onChange={(e) => setTxnId(e.target.value)} className="input-field text-sm w-full font-mono" placeholder="payment_transactions.id" data-testid="refund-txn-id" />
-            <label className="block mt-3 text-[10px] uppercase tracking-wider text-[#5C6B6B] mb-1">Reason</label>
+
+            <TransactionPicker
+              onSelect={(t) => { setTxnId(t.id); setSelectedTxn(t); }}
+              selectedId={txnId}
+            />
+
+            <label className="block mt-4 text-[10px] uppercase tracking-wider text-[#5C6B6B] mb-1">Selected transaction</label>
+            {selectedTxn ? (
+              <div className="border border-[#476B6B] rounded p-3 bg-[#FAF8F5] text-sm" data-testid="selected-txn">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium capitalize">{selectedTxn.type?.replace(/_/g, " ")} · ${selectedTxn.amount.toFixed(2)}</p>
+                    <p className="text-xs text-[#5C6B6B]">{selectedTxn.user_email || "(no email)"} · {new Date(selectedTxn.created_at).toLocaleDateString()}</p>
+                    <p className="text-[10px] font-mono text-[#5C6B6B] truncate">{selectedTxn.id}</p>
+                  </div>
+                  <button onClick={() => { setSelectedTxn(null); setTxnId(""); }} className="text-xs text-[#9E3C3C] hover:underline shrink-0" data-testid="clear-selected-txn">
+                    Clear
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <details className="text-xs text-[#5C6B6B] mt-1" data-testid="paste-id-details">
+                <summary className="cursor-pointer hover:text-[#1A2424]">Or paste a transaction ID directly</summary>
+                <input
+                  value={txnId}
+                  onChange={(e) => { setTxnId(e.target.value); setSelectedTxn(null); }}
+                  className="input-field text-sm w-full font-mono mt-2"
+                  placeholder="payment_transactions.id"
+                  data-testid="refund-txn-id"
+                />
+              </details>
+            )}
+
+            <label className="block mt-4 text-[10px] uppercase tracking-wider text-[#5C6B6B] mb-1">Reason</label>
             <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="input-field text-sm w-full" rows={3} placeholder="Audit-logged" data-testid="refund-reason" />
             <label className="flex items-center gap-2 mt-3 text-sm">
               <input type="checkbox" checked={skipStripe} onChange={(e) => setSkipStripe(e.target.checked)} data-testid="refund-skip-stripe" />
               Skip Stripe call (use for comp'd or already-out-of-band-refunded charges)
             </label>
             <div className="flex gap-2 mt-5">
-              <button onClick={fireCascade} disabled={busy} className="btn-primary text-xs bg-[#9E3C3C] hover:bg-[#7E2C2C]" data-testid="refund-confirm">
+              <button onClick={fireCascade} disabled={busy || !txnId} className="btn-primary text-xs bg-[#9E3C3C] hover:bg-[#7E2C2C] disabled:opacity-50" data-testid="refund-confirm">
                 {busy ? "Firing…" : "Confirm cascade"}
               </button>
-              <button onClick={() => setRefundOpen(false)} className="btn-outline text-xs">Cancel</button>
+              <button onClick={closeRefundModal} className="btn-outline text-xs">Cancel</button>
             </div>
           </div>
         </div>
@@ -219,6 +256,115 @@ export default function AdminRefunds() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+function TransactionPicker({ onSelect, selectedId }) {
+  const [data, setData] = useState(null);
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const params = { limit: 50 };
+      if (typeFilter !== "all") params.txn_type = typeFilter;
+      if (q.trim().length >= 2) params.q = q.trim();
+      const r = await api.get("/admin/refunds/refundable-transactions", { params });
+      setData(r.data);
+    } catch {
+      toast.error("Couldn't load transactions");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reload on type-filter changes; debounce search input.
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [typeFilter]);
+  useEffect(() => {
+    const t = setTimeout(load, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [q]);
+
+  const counts = data?.type_counts || {};
+  const typeOptions = [
+    { v: "all",                 label: "All" },
+    { v: "workshop",            label: "Workshop" },
+    { v: "order",               label: "Merch order" },
+    { v: "subscription",        label: "Subscription" },
+    { v: "featured_slot",       label: "Featured slot" },
+    { v: "research_promotion",  label: "Research promo" },
+    { v: "sponsorship",         label: "Sponsorship" },
+    { v: "donation",            label: "Donation" },
+    { v: "ai_wallet_topup",     label: "AI top-up" },
+  ];
+
+  return (
+    <div className="mt-5 border border-[#E5E1D8] rounded p-3 bg-[#FAF8F5]" data-testid="txn-picker">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+        <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">Pick a transaction to refund</p>
+        <p className="text-[10px] text-[#5C6B6B]">{data?.total ?? "—"} refundable in total</p>
+      </div>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {typeOptions.map((t) => (
+          <button
+            key={t.v}
+            onClick={() => setTypeFilter(t.v)}
+            className={`px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-medium border transition ${
+              typeFilter === t.v ? "bg-[#476B6B] text-white border-[#476B6B]" : "bg-white border-[#E5E1D8] hover:border-[#476B6B] text-[#5C6B6B]"
+            }`}
+            data-testid={`txn-type-${t.v}`}
+          >
+            {t.label}{counts[t.v] != null && t.v !== "all" ? ` (${counts[t.v]})` : ""}
+          </button>
+        ))}
+      </div>
+      <div className="relative">
+        <Search size={12} strokeWidth={1.6} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5C6B6B]" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Filter by email, name, or ID…"
+          className="input-field text-xs w-full pl-7"
+          data-testid="txn-picker-search"
+        />
+      </div>
+      <div className="mt-2 max-h-64 overflow-y-auto border border-[#E5E1D8] rounded bg-white">
+        {loading ? (
+          <p className="text-xs text-[#5C6B6B] p-3">Loading…</p>
+        ) : (data?.transactions || []).length === 0 ? (
+          <p className="text-xs text-[#5C6B6B] italic p-3" data-testid="txn-picker-empty">No refundable transactions match.</p>
+        ) : (
+          <ul className="divide-y divide-[#E5E1D8]">
+            {data.transactions.map((t) => {
+              const active = t.id === selectedId;
+              return (
+                <li key={t.id}>
+                  <button
+                    onClick={() => onSelect(t)}
+                    className={`w-full text-left px-3 py-2 hover:bg-[#FAF8F5] transition flex items-center gap-3 ${active ? "bg-[#E5F0EA]" : ""}`}
+                    data-testid={`txn-picker-row-${t.id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-xs font-medium capitalize text-[#1A2424]">{(t.type || "").replace(/_/g, " ")}</span>
+                        <span className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">{t.payment_status}</span>
+                        <span className="text-[10px] text-[#5C6B6B]">{new Date(t.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-[11px] text-[#5C6B6B] truncate">{t.user_email || "(no user)"}{t.user_name ? ` — ${t.user_name}` : ""}</p>
+                    </div>
+                    <span className="text-sm font-medium text-[#1A2424] shrink-0">${t.amount.toFixed(2)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
