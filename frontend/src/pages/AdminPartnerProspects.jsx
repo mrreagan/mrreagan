@@ -391,8 +391,8 @@ function Card({ prospect, isOpen, onToggle, onChanged }) {
 
   return (
     <div className="card p-4" data-testid={`prospect-card-${prospect.id}`}>
-      <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={onToggle} data-testid={`prospect-toggle-${prospect.id}`}>
-        <div className="flex-1 min-w-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggle} data-testid={`prospect-toggle-${prospect.id}`}>
           <div className="flex items-baseline gap-3 flex-wrap">
             <p className="font-serif text-base text-[#1A2424] truncate">{prospect.display_name}</p>
             <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FAF8F5] border border-[#C9A961] text-[#476B6B] capitalize">{prospect.partner_type}</span>
@@ -406,6 +406,19 @@ function Card({ prospect, isOpen, onToggle, onChanged }) {
           </div>
           <p className="text-xs text-[#476B6B] mt-2">{(prospect.interactions || []).length} interaction{prospect.interactions?.length === 1 ? "" : "s"} · updated {prospect.updated_at?.slice(0, 10)}</p>
         </div>
+        {prospect.active_invite_token && (
+          <a
+            href={`/partner/invite/${prospect.active_invite_token}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 inline-flex items-center gap-1 text-[11px] text-[#9E3C3C] hover:underline whitespace-nowrap mt-0.5"
+            data-testid={`inline-preview-link-${prospect.id}`}
+            title="Open the invitation as the prospect would see it"
+          >
+            <Eye size={11} /> View live preview <ExternalLink size={10} />
+          </a>
+        )}
       </div>
 
       {isOpen && (
