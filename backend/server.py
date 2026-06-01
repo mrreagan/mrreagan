@@ -52,6 +52,7 @@ from routers.legal import router as legal_router
 from routers.audit import router as audit_router
 from routers.partners import router as partners_router, admin_router as partners_admin_router
 from routers.partner_prospects import router as partner_prospects_router
+from routers.search import router as search_router
 from routers.subscriptions import router as subscriptions_router, admin_router as subscriptions_admin_router
 from routers.referrals import public_router as referrals_public_router, my_router as referrals_my_router, admin_router as referrals_admin_router
 from routers.reports import my_router as reports_my_router, admin_router as reports_admin_router
@@ -136,6 +137,7 @@ api_router.include_router(governance_router)
 api_router.include_router(legal_router)
 api_router.include_router(audit_router)
 api_router.include_router(partner_prospects_router)
+api_router.include_router(search_router)
 api_router.include_router(partners_router)
 api_router.include_router(partners_admin_router)
 api_router.include_router(subscriptions_router)

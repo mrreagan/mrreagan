@@ -50,6 +50,15 @@ POD_PRESETS: dict[str, dict] = {
         "default_page_count": 144,
         "applies_to": ["journal"],
     },
+    # Pocket-size paperback journal — intended for the daily-carry market
+    # (purse / coat pocket / glove box). Page count tuned smaller so the
+    # book stays slim and pocketable.
+    "pocket_journal_5x8_bw_pb": {
+        "pod_package_id": "0500X0800BWSTDPB060UW444MXX",
+        "label": "Pocket journal · 5×8 · paperback · B&W · 60# cream",
+        "default_page_count": 96,
+        "applies_to": ["journal", "notebook"],
+    },
 }
 
 LULU_CATEGORIES = {"journal", "notebook"}

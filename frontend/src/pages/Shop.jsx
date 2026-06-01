@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
-import { ShopFilters, ProductGrid } from "../components/shop/ShopParts";
+import { ShopFilters, ShopSourceFilters, ProductGrid } from "../components/shop/ShopParts";
 import FounderCollectionRail from "../components/shop/FounderCollectionRail";
 
 export default function Shop() {
   const [products, setProducts] = useState([]);
   const [filter, setFilter] = useState("merch");
+  const [source, setSource] = useState("any");          // any | foundation | vendor
+  const [vendor, setVendor] = useState("all");           // slug | name | "all"
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,15 +19,42 @@ export default function Shop() {
       .finally(() => setLoading(false));
   }, [filter]);
 
-  // Founder Collection only renders on the public-merch view. Workshop materials
-  // and "all" filters keep the existing untouched grid.
-  const showFounderRail = filter === "merch" || filter === "all";
+  // Reset vendor selection whenever source switches away from "vendor".
+  useEffect(() => { if (source !== "vendor") setVendor("all"); }, [source]);
+
+  // Distinct vendors derived from the current product set. Only shown when
+  // the user filters by "Vendor partners" so the dropdown stays compact.
+  const vendors = useMemo(() => {
+    const map = new Map();
+    products.forEach((p) => {
+      if (p.is_vendor_product && p.vendor_name) {
+        const key = p.vendor_slug || p.vendor_name;
+        if (!map.has(key)) map.set(key, { slug: p.vendor_slug, name: p.vendor_name });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [products]);
+
+  // Apply the new source / vendor filters on top of the type filter.
+  const sourceFiltered = useMemo(() => {
+    let rows = products;
+    if (source === "foundation") rows = rows.filter((p) => !p.is_vendor_product);
+    else if (source === "vendor") rows = rows.filter((p) => p.is_vendor_product);
+    if (source === "vendor" && vendor !== "all") {
+      rows = rows.filter((p) => (p.vendor_slug || p.vendor_name) === vendor);
+    }
+    return rows;
+  }, [products, source, vendor]);
+
+  // Founder Collection only renders on the public-merch view AND when not
+  // filtered down to vendor-only items (the rail is Foundation-curated).
+  const showFounderRail = (filter === "merch" || filter === "all") && source !== "vendor";
   const founderItems = showFounderRail
-    ? products.filter((p) => p.collection === "founder_collection")
+    ? sourceFiltered.filter((p) => p.collection === "founder_collection")
     : [];
   const restItems = showFounderRail
-    ? products.filter((p) => p.collection !== "founder_collection")
-    : products;
+    ? sourceFiltered.filter((p) => p.collection !== "founder_collection")
+    : sourceFiltered;
 
   return (
     <div className="container-page py-16" data-testid="shop-page">
@@ -43,10 +72,24 @@ export default function Shop() {
       {founderItems.length > 0 && <FounderCollectionRail products={founderItems} />}
 
       <ShopFilters active={filter} onChange={setFilter} />
+      <ShopSourceFilters
+        source={source}
+        onSourceChange={setSource}
+        vendor={vendor}
+        onVendorChange={setVendor}
+        vendors={vendors}
+      />
       {loading ? (
         <p className="text-sm text-[#5C6B6B] mt-12">Loading...</p>
       ) : (
-        <ProductGrid products={restItems} />
+        <>
+          {restItems.length === 0 && (
+            <p className="text-sm text-[#5C6B6B] italic mt-12" data-testid="shop-empty-filtered">
+              No products match these filters. Try a different source or type.
+            </p>
+          )}
+          {restItems.length > 0 && <ProductGrid products={restItems} />}
+        </>
       )}
     </div>
   );

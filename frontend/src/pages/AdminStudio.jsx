@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Sparkles, Coins, FlaskConical, Heart, ShoppingBag, Trash2, ArrowRight, AlertTriangle, Package } from "lucide-react";
+import { Sparkles, Coins, FlaskConical, Heart, ShoppingBag, Trash2, ArrowRight, AlertTriangle, Package, RefreshCw, Check } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -345,11 +345,51 @@ function DraftCard({ draft, onChange }) {
   const [discarding, setDiscarding] = useState(false);
   const [fulfilling, setFulfilling] = useState(false);
   const [showLulu, setShowLulu] = useState(false);
+  const [rerolling, setRerolling] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
+  const [settingPrimary, setSettingPrimary] = useState(null); // url being promoted
 
   const printfulSupported = ["cap", "tee", "hoodie", "mug"].includes(draft.category);
   const luluSupported = ["journal", "notebook"].includes(draft.category);
   const onPrintful = !!draft.printful_sync_product_id;
   const onLulu = draft.fulfillable_via === "lulu";
+  const gallery = draft.image_gallery || [];
+  const hasGallery = gallery.length > 1;
+
+  const reroll = async () => {
+    if (!window.confirm("Generate 2 new cover variations? This spends AI credits (~$0.12).")) return;
+    setRerolling(true);
+    try {
+      const r = await api.post(`/studio/drafts/${draft.id}/reroll-cover?count=2`);
+      toast.success(`${r.data.new_image_urls.length} new covers generated — pick one to promote.`);
+      setShowGallery(true);
+      onChange?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Re-roll failed");
+    } finally {
+      setRerolling(false);
+    }
+  };
+
+  const setPrimary = async (imageUrl) => {
+    setSettingPrimary(imageUrl);
+    try {
+      await api.post(
+        `/studio/drafts/${draft.id}/set-primary-image`,
+        null,
+        { params: { image_url: imageUrl } },
+      );
+      toast.success("Cover updated");
+      if (onLulu && luluSupported) {
+        toast.info("Heads-up: this draft is linked to Lulu — regenerate the cover PDF in the Lulu form below to push the new image to fulfillment.");
+      }
+      onChange?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Couldn't promote that image");
+    } finally {
+      setSettingPrimary(null);
+    }
+  };
 
   const setProductPrice = async (newPrice) => {
     try {
@@ -440,9 +480,51 @@ function DraftCard({ draft, onChange }) {
 
   return (
     <div className="card overflow-hidden flex flex-col" data-testid={`draft-card-${draft.id}`}>
-      <div className="aspect-square bg-[#F4F1EA] flex items-center justify-center overflow-hidden">
+      <div className="aspect-square bg-[#F4F1EA] flex items-center justify-center overflow-hidden relative">
         <img src={draft.image_url} alt={draft.name} className="w-full h-full object-contain p-2" />
+        {hasGallery && (
+          <button
+            onClick={() => setShowGallery(!showGallery)}
+            className="absolute bottom-2 right-2 inline-flex items-center gap-1 bg-white/95 backdrop-blur text-[10px] uppercase tracking-wider font-medium text-[#476B6B] border border-[#E5E1D8] rounded-full px-2 py-1 hover:border-[#476B6B] transition"
+            data-testid={`draft-gallery-toggle-${draft.id}`}
+          >
+            {showGallery ? "Hide" : `${gallery.length} options`}
+          </button>
+        )}
       </div>
+      {showGallery && hasGallery && (
+        <div className="px-4 py-3 border-b border-[#E5E1D8] bg-[#FAF8F5]" data-testid={`draft-gallery-${draft.id}`}>
+          <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B] mb-2">Pick the cover</p>
+          <div className="grid grid-cols-4 gap-2">
+            {gallery.map((url) => {
+              const isActive = url === draft.image_url;
+              const isBusy = settingPrimary === url;
+              return (
+                <button
+                  key={url}
+                  onClick={() => !isActive && setPrimary(url)}
+                  disabled={isActive || isBusy}
+                  className={`relative aspect-square rounded overflow-hidden border-2 transition ${
+                    isActive ? "border-[#476B6B] ring-2 ring-[#476B6B]/30" : "border-[#E5E1D8] hover:border-[#C9A961]"
+                  }`}
+                  data-testid={`draft-gallery-pick-${draft.id}-${url.split("/").pop()}`}
+                  title={isActive ? "Currently the cover" : "Set as cover"}
+                >
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  {isActive && (
+                    <div className="absolute inset-0 bg-[#476B6B]/20 flex items-center justify-center">
+                      <Check size={14} strokeWidth={2.2} className="text-white drop-shadow" />
+                    </div>
+                  )}
+                  {isBusy && (
+                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center text-[10px] text-[#476B6B]">…</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="p-4 flex flex-col gap-2 flex-1">
         <span className="label !mt-0 !text-[#C9A961]">{draft.category}</span>
         <p className="font-serif text-lg leading-tight">{draft.name}</p>
@@ -477,6 +559,16 @@ function DraftCard({ draft, onChange }) {
           </label>
           <button onClick={publish} disabled={publishing || !price} className="btn-primary text-xs flex-1 inline-flex items-center justify-center gap-1" data-testid={`draft-publish-${draft.id}`}>
             {publishing ? "Publishing…" : <>Publish <ArrowRight size={11} strokeWidth={1.8} /></>}
+          </button>
+          <button
+            onClick={reroll}
+            disabled={rerolling}
+            className="btn-outline text-xs px-2 py-1.5 inline-flex items-center gap-1 !border-[#C9A961] !text-[#8B7128] hover:!bg-[#FFF8E1]"
+            title="Generate 2 new cover variations (~$0.12)"
+            data-testid={`draft-reroll-${draft.id}`}
+          >
+            <RefreshCw size={12} strokeWidth={1.5} className={rerolling ? "animate-spin" : ""} />
+            {rerolling ? "…" : "Re-roll"}
           </button>
           <button onClick={discard} disabled={discarding} className="btn-outline !text-[#9E3C3C] !border-[#9E3C3C] text-xs px-2 py-1.5" aria-label="Discard" data-testid={`draft-discard-${draft.id}`}>
             <Trash2 size={12} strokeWidth={1.5} />

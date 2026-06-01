@@ -1,71 +1,130 @@
 # Birthright Foundation Platform — PRD
 
 ## Original Problem Statement
-Build a website using "birthright" branding with a storefront for merch and workshop resources. Features include workshop advertising, registration, and various partner roles. Phases 6B/6C scope added Partner Economy workflows and agentic AI capabilities. Most recent scope: finalize Featured Artists rotation system and a platform-wide "Explore-before-Embrace" partner invitation framework across all 6 partner types (Artist, Vendor, Facilitator, Community, Research, Steward), featuring Claude AI-generated Mission Alignment BLUFs and highlight cards.
+Build a website using "birthright" branding with a storefront for merch and workshop resources. Features include workshop advertising, registration, and various partner roles. Phases 6B/6C scope added Partner Economy workflows and agentic AI capabilities. Phase 7 scope: Featured Artists rotation, platform-wide "Explore-before-Embrace" partner invitation framework across all 6 partner types, and Phase 7+ cross-site discovery.
 
 ## User Personas
-- **Foundation Admin** — manages prospects across all partner types, issues tokenized invitations, oversees governance, reviews Featured Artist rotation.
+- **Foundation Admin** — manages prospects across all partner types, issues tokenized invitations, fires refund cascades, manages AI Studio drafts, reviews Featured Artist rotation.
 - **Partner (six roles)** — Artist, Vendor, Facilitator, Community, Research, Steward. Each gets a tailored Explore-before-Embrace preview before committing.
 - **Participant** — registers for workshops, buys merch, joins community.
 
 ## Core Requirements (delivered)
 - React + FastAPI + MongoDB full-stack platform.
 - Stripe checkouts, WebSockets chat, AI Studio with POD fulfillment dispatch (Printful + Lulu).
-- Gather/Gallery tabs, complete Featured Artists 12-month decay rotation with locked statement positions.
-- Comprehensive "Explore-before-Embrace" tokenized invitation system covering all 6 partner roles, with AI-assisted Mission Alignment drafting.
+- Gather/Gallery tabs, Featured Artists rotation, "Explore-before-Embrace" invitation system across all 6 partner roles.
+- Comprehensive AI wallet with per-partner balance + per-foundation usage reporting.
+- Cross-site global search across workshops, partners, shop, research, and gallery.
 
 ## Tech Stack
 React, FastAPI, MongoDB, Emergent Integrations (Claude Sonnet 4.5, Gemini Nano Banana), Printful API, Lulu API, Stripe, JWT-based tokenized invitations.
 
-## What's Implemented (CHANGELOG)
-### 2026-06-01
-- Added inline "View live preview ↗" link on collapsed prospect cards in `AdminPartnerProspects.jsx` (saves admins a click per prospect).
-- Created idempotent demo seed `backend/scripts/seed_demo_prospects.py` adding three new exemplar prospects:
-  - **Research** — Dr. Priya Raghavan (Toronto, ON)
-  - **Steward** — Joaquín Estrada (Phoenix, AZ)
-  - **Artist** — Ines Whitfield (Asheville, NC)
-- All six partner types now have demo prospects with working invite tokens.
+## CHANGELOG
+
+### 2026-06-01 — Backlog batch (5 items)
+
+**(a) Token spend visibility ✅**
+- New `GET /ai-wallet/me/summary` lightweight endpoint for dashboard tile
+- Enhanced `GET /ai-wallet/me` with `spend_windows` (today/week/month + by_feature_30d)
+- Enhanced `GET /admin/ai-wallet/usage-report` with email resolution + Foundation-wide window rollups + wallets sorted by lifetime spend
+- New `AiSpendCard` component on partner dashboard (at-a-glance balance + this month spend, low-balance warning)
+- AI Wallet page now has a "Recent spend" card with horizontal bar chart per feature
+- Admin AI Usage page shows real emails + roles (was: raw UUIDs)
+
+**(b) Refund picker polish ✅**
+- New `GET /admin/refunds/refundable-transactions` endpoint with user-email enrichment, type counts, and search filter
+- AdminRefunds modal now uses a scrollable transaction picker with type filter pills + search + "selected transaction" card
+- Paste-by-ID kept as an escape hatch in collapsible details
+
+**(b-original) Advanced Search & Discovery ✅**
+- New `routers/search.py` with `GET /search/global?q=…&types=…&per_type_limit=…` fanout endpoint
+- Searches workshops, products, partners, research artifacts, and gallery artists in one call
+- New `GlobalSearch` modal component triggered by magnifier icon in the header (Cmd/Ctrl-K shortcut, Esc to close, 250ms debounce)
+- Grouped results with section headings, type counts, image thumbnails, hover state
+- Shop now has a vendor-source filter row (All sources / Foundation / Vendor partners) + per-vendor dropdown
+
+**(e) AI cover variations ✅**
+- New `POST /studio/drafts/{id}/reroll-cover?count=N&set_primary_index=…` endpoint that re-uses the saved brief + category to generate 1–4 new cover images
+- New images are APPENDED to `image_gallery` so admin can compare; one can be promoted to primary atomically
+- New `POST /studio/drafts/{id}/set-primary-image` endpoint to swap primary from any gallery image (no AI cost)
+- AdminStudio draft cards now have a gold "Re-roll" button + inline 4-column gallery picker that shows all options with a checkmark on the current cover
+- Surfaces a "regen PDFs" hint when the draft is Lulu-linked
+
+**(f) More Lulu presets ✅**
+- Added `pocket_journal_5x8_bw_pb` preset (5×8 pocket paperback journal, 96 default pages)
+- 8.5×11 workbook and hardcover gift journal presets already existed
+- 3 of 3 requested presets now available in `/api/lulu/presets`
+
+**(d) Refund/clawback cascade ✅ (verified — already shipped in iter23)**
+- Backend cascade logic (`utils/refund_cascade.py`), admin endpoints (`routers/refunds.py`), and admin UI (`pages/AdminRefunds.jsx`) were already complete; 17 cascade tests pass.
 
 ### Prior session highlights
-- Featured Artists backend logic: 12-month decay, 60-day horizon, Foundation slot sorting.
-- Artist statement position lock (5 randomized safe UI spots) + 180-char limit.
-- "Explore-before-Embrace" tokenized invitation system for ALL 6 partner types.
-- Universal "Modeling vs. Committing" PreviewModeBanner.
-- Public "Try the dashboard" sandbox per role.
-- Mission Alignment BLUF + Highlight card with image upload on invites.
-- Claude AI 3-draft Mission Alignment suggestion endpoint.
-- Refined, concise tier pricing descriptions across all partner types.
+- Featured Artists backend (12-month decay, locked statement position, 180-char limit)
+- "Explore-before-Embrace" tokenized invitation system for ALL 6 partner types
+- PreviewModeBanner + Public sandbox per role
+- Mission Alignment BLUF + Highlight card with image upload on invites
+- Claude AI 3-draft Mission Alignment suggestion endpoint
+- Inline "View live preview" link on admin prospect cards (2026-06-01)
+- Demo prospects for Research, Steward, and Artist roles (2026-06-01)
 
-## Backlog (Prioritized)
+## Backlog
+
 ### P2
-- Token spend visibility for wallets — show token balance/spend directly in the Birthright platform.
-- Advanced Search & Discovery — cross-site search, vendor filters.
-- AI cost-recovery bundle — one-click "+$25/mo AI" addition on partner subscription plans.
-- Refund/clawback cascade + Partnership Agreement v2 re-sign.
+- Partnership Agreement v2 re-sign (deferred — needs its own design pass)
 
 ### P3
-- AI cover variations button — re-roll image + regenerate PDFs.
-- More Lulu presets — hardcover gift journal, 8.5×11 workbook, 5×8 pocket.
-- Foundation revenue dashboard tile — Printful margin + Lulu margin + combined.
+- AI cost-recovery bundle — **DROPPED** (50% Foundation markup already does the job; double-dipping)
+- Foundation revenue dashboard tile (Printful margin + Lulu margin + combined)
 
 ## Key API Endpoints
-- `GET /api/partners/preview/types/{slug}` — Public sandbox per partner type.
-- `GET /api/partners/invite/{token}` — Tokenized invitation preview (public, increments preview_count).
-- `POST /api/partners/invite/{token}/accept` — Atomic account + partner profile creation.
-- `POST /api/partners/admin/prospects` — Admin creates prospect.
-- `POST /api/partners/admin/prospects/draft-suggest-mission` — Claude 3-draft generation.
-- `POST /api/partners/admin/prospects/{id}/promote` — Issue tokenized invitation.
+
+### Partner & Discovery
+- `GET /api/partners/preview/types/{slug}` — Public sandbox per partner type
+- `GET /api/partners/invite/{token}` — Tokenized invitation preview
+- `POST /api/partners/invite/{token}/accept` — Atomic account + partner profile creation
+- `GET /api/search/global?q=…` — Cross-site fanout search
+
+### AI Wallet
+- `GET /api/ai-wallet/me` — Full wallet (balance + events + spend windows)
+- `GET /api/ai-wallet/me/summary` — Lightweight dashboard tile data
+- `GET /api/admin/ai-wallet/usage-report?days=…` — Foundation-wide AI spend report
+
+### Refunds
+- `GET /api/admin/refunds/refundable-transactions?q=…&txn_type=…` — Picker data source
+- `POST /api/admin/refunds` — Fire cascade
+- `GET /api/admin/clawbacks` — Pending clawbacks
+
+### Studio
+- `POST /api/studio/drafts/{id}/reroll-cover?count=N&set_primary_index=I` — AI re-roll
+- `POST /api/studio/drafts/{id}/set-primary-image?image_url=…` — Swap primary
+
+### Lulu
+- `GET /api/lulu/presets` — Now returns 4 presets (added pocket 5×8)
 
 ## Test Credentials
 - Admin: `admin@birthright.org` / `birthright2026`
 - Demo participant: `demo@birthright.org` / `birthright2026`
-- (Test credentials live in `/app/memory/test_credentials.md`.)
+- (Credentials also live in `/app/memory/test_credentials.md`.)
 
 ## File Map (Reference)
-- `/app/backend/routers/partner_prospects.py` — generic prospect CRUD, AI drafts, invitations.
-- `/app/backend/routers/gallery.py` — Featured Artists rotation logic.
-- `/app/backend/scripts/seed_demo_prospects.py` — idempotent demo prospect seeder.
-- `/app/frontend/src/pages/AdminPartnerProspects.jsx` — admin tracker with inline preview link.
-- `/app/frontend/src/pages/PartnerInvite.jsx` — public Explore-before-Embrace page.
-- `/app/frontend/src/pages/PartnerTypeTry.jsx` — public sandbox by role.
-- `/app/frontend/src/components/PreviewModeBanner.jsx` — universal modeling-vs-committing banner.
+
+### Backend
+- `/app/backend/routers/search.py` — NEW global search
+- `/app/backend/routers/ai_wallet.py` — Enhanced (spend_windows, summary, email-resolved admin report)
+- `/app/backend/routers/refunds.py` — Enhanced (refundable-transactions picker endpoint)
+- `/app/backend/routers/studio.py` — Enhanced (reroll-cover, set-primary-image)
+- `/app/backend/routers/lulu.py` — Enhanced (pocket 5×8 preset)
+- `/app/backend/routers/partner_prospects.py` — Generic prospect CRUD, AI drafts, invitations
+- `/app/backend/scripts/seed_demo_prospects.py` — Idempotent demo seeder for all 6 partner types
+
+### Frontend
+- `/app/frontend/src/components/GlobalSearch.jsx` — NEW header search modal
+- `/app/frontend/src/components/AiSpendCard.jsx` — NEW dashboard AI tile
+- `/app/frontend/src/components/Layout.jsx` — Wires GlobalSearch into header
+- `/app/frontend/src/components/shop/ShopParts.jsx` — Added ShopSourceFilters
+- `/app/frontend/src/pages/Shop.jsx` — Vendor source filter integration
+- `/app/frontend/src/pages/AiWallet.jsx` — Recent spend card + bar chart
+- `/app/frontend/src/pages/AdminAiUsage.jsx` — Window rollups + email-resolved wallets
+- `/app/frontend/src/pages/AdminRefunds.jsx` — Transaction picker
+- `/app/frontend/src/pages/AdminStudio.jsx` — Re-roll button + gallery picker
+- `/app/frontend/src/pages/AdminPartnerProspects.jsx` — Inline preview link
+- `/app/frontend/src/pages/PartnerDashboard.jsx` — Mounts AiSpendCard

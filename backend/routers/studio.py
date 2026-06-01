@@ -531,6 +531,146 @@ async def publish_draft(product_id: str, user: dict = Depends(get_current_user))
     return {"ok": True}
 
 
+@router.post("/drafts/{product_id}/reroll-cover")
+async def reroll_cover(
+    product_id: str,
+    count: int = 2,
+    set_primary_index: Optional[int] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Generate N new cover images for an existing AI Studio draft.
+
+    Uses the draft's saved `studio_brief`, `category`, and primary audience
+    so the new options stay on-brand. New images are APPENDED to the
+    `image_gallery`; the original is preserved for comparison. Pass
+    `set_primary_index` to immediately promote one of the newly-generated
+    images to `image_url`.
+
+    Bills the user's AI wallet. Access: admin or the draft's creator.
+
+    Returns the updated draft (so the frontend can re-render without an
+    extra GET).
+
+    Note: PDF regen for journal/notebook drafts is intentionally NOT
+    triggered automatically — that lives in the Lulu flow and should be
+    initiated explicitly so the admin sees the costed action.
+    """
+    if count < 1 or count > 4:
+        raise HTTPException(400, "count must be between 1 and 4")
+    from database import db
+    doc = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Draft not found")
+    if not doc.get("studio_draft"):
+        raise HTTPException(400, "Re-roll is only available on AI Studio drafts.")
+    if user.get("role") != "admin" and doc.get("created_by") != user["id"]:
+        raise HTTPException(403, "You can only re-roll covers on your own drafts.")
+
+    # Bill against the wallet up front (estimate per image; same pricing path
+    # as initial generation).
+    estimated = compute_cost(IMAGE_MODEL, images=count)
+    await require_balance(db, user, min_usd=estimated, feature="AI Studio re-roll")
+
+    brief = (doc.get("studio_brief") or doc.get("description") or "").strip()
+    if not brief:
+        raise HTTPException(400, "This draft has no saved brief — re-roll needs one to stay on-brand.")
+    audiences = doc.get("studio_audiences") or ["general_equip"]
+    audience = audiences[0]
+    category = doc.get("category") or "merch"
+
+    # Generate images — mirrors the loop in `generate_draft` so we don't
+    # diverge in style/prompt handling.
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    import base64
+    new_image_urls: list[str] = []
+    for i in range(count):
+        prompt = _build_image_prompt(brief, category, audience)
+        try:
+            img_chat = (
+                LlmChat(
+                    api_key=EMERGENT_LLM_KEY,
+                    session_id=f"studio-reroll-{user['id']}-{uuid.uuid4().hex[:8]}",
+                    system_message="You generate clean, brand-aligned product mockups for Birthright Foundation.",
+                )
+                .with_model("gemini", "gemini-3.1-flash-image-preview")
+                .with_params(modalities=["image", "text"])
+            )
+            _, images = await img_chat.send_message_multimodal_response(UserMessage(text=prompt))
+        except Exception as ex:
+            logger.exception("Re-roll image generation failed on %d/%d", i + 1, count)
+            raise HTTPException(502, f"Image generation failed: {ex}") from ex
+        if not images:
+            raise HTTPException(502, "Image generation returned no output")
+        img_data = images[0].get("data") if isinstance(images[0], dict) else images[0]
+        img_bytes = base64.b64decode(img_data) if isinstance(img_data, str) else img_data
+        filename = f"studio-reroll-{_slugify(category)}-{uuid.uuid4().hex[:8]}.png"
+        out_path = STATIC_DIR / filename
+        await asyncio.to_thread(out_path.write_bytes, img_bytes)
+        new_image_urls.append(f"/api/static/products/{filename}")
+
+    await record_usage(
+        db, user, feature="studio", model=IMAGE_MODEL,
+        images=count,
+        meta={"action": "reroll_cover", "product_id": product_id, "count": count},
+    )
+
+    # Append new images; preserve existing gallery so admin can compare/revert.
+    updated_gallery = list(doc.get("image_gallery") or []) + new_image_urls
+    update_set: dict = {
+        "image_gallery": updated_gallery,
+        "studio_reroll_count": int(doc.get("studio_reroll_count") or 0) + count,
+        "studio_last_rerolled_at": now_iso(),
+    }
+    new_primary_url: Optional[str] = None
+    if set_primary_index is not None:
+        if not (0 <= set_primary_index < count):
+            raise HTTPException(400, f"set_primary_index out of range (0..{count - 1})")
+        new_primary_url = new_image_urls[set_primary_index]
+        update_set["image_url"] = new_primary_url
+
+    await db.products.update_one({"id": product_id}, {"$set": update_set})
+    fresh = await db.products.find_one({"id": product_id}, {"_id": 0})
+    return {
+        "ok": True,
+        "new_image_urls": new_image_urls,
+        "primary_set_to": new_primary_url,
+        "needs_pdf_regen": (
+            category in ("journal", "notebook")
+            and doc.get("fulfillable_via") == "lulu"
+            and new_primary_url is not None
+        ),
+        "draft": fresh,
+    }
+
+
+@router.post("/drafts/{product_id}/set-primary-image")
+async def set_primary_image(
+    product_id: str,
+    image_url: str,
+    user: dict = Depends(get_current_user),
+):
+    """Promote one of the gallery images to the primary `image_url`.
+
+    Companion to the re-roll endpoint: lets the admin pick any gallery
+    entry (original OR re-rolled) as the cover. No AI cost.
+    """
+    from database import db
+    doc = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Draft not found")
+    if not doc.get("studio_draft"):
+        raise HTTPException(400, "Only AI Studio drafts can have their primary image swapped here.")
+    if user.get("role") != "admin" and doc.get("created_by") != user["id"]:
+        raise HTTPException(403, "You can only edit your own drafts.")
+    if image_url not in (doc.get("image_gallery") or []):
+        raise HTTPException(400, "image_url is not in this draft's gallery.")
+    await db.products.update_one(
+        {"id": product_id},
+        {"$set": {"image_url": image_url}},
+    )
+    return {"ok": True, "image_url": image_url}
+
+
 @router.delete("/drafts/{product_id}")
 async def discard_draft(product_id: str, user: dict = Depends(get_current_user)):
     """Discard a draft (and delete its generated images from disk best-effort).

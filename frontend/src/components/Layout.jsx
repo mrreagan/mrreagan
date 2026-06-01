@@ -6,6 +6,7 @@ import { useCart } from "../contexts/CartContext";
 import { ShoppingBag, Menu, X, User, LogOut, ChevronDown } from "lucide-react";
 import AgreementResignBanner from "./AgreementResignBanner";
 import AssistantWidget from "./AssistantWidget";
+import GlobalSearch from "./GlobalSearch";
 
 const NAV_EXPLORE = [
   { to: "/practice",  label: "Practice" },
@@ -229,6 +230,7 @@ export function Header() {
         </Link>
         <DesktopNav />
         <div className="flex items-center gap-2">
+          <GlobalSearch />
           <CartButton count={count} />
           {user ? <UserMenu user={user} onLogout={handleLogout} /> : <AuthButtons />}
           <button

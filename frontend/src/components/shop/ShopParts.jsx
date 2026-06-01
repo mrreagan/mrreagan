@@ -12,6 +12,12 @@ const FILTERS = [
   { id: "all", label: "All" },
 ];
 
+const SOURCE_FILTERS = [
+  { id: "any",        label: "All sources" },
+  { id: "foundation", label: "Foundation" },
+  { id: "vendor",     label: "Vendor partners" },
+];
+
 export function ShopFilters({ active, onChange }) {
   return (
     <div className="mt-8 flex gap-2 flex-wrap" data-testid="shop-filters">
@@ -27,6 +33,45 @@ export function ShopFilters({ active, onChange }) {
           {f.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* Source + per-vendor filter row.
+ *
+ * Lives directly under ShopFilters. Lets shoppers narrow merch by where
+ * it comes from: Foundation-stocked, vendor partners overall, or a
+ * specific vendor brand. The per-vendor dropdown is only meaningful when
+ * "Vendor partners" is selected.
+ */
+export function ShopSourceFilters({ source, onSourceChange, vendor, onVendorChange, vendors }) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="shop-source-filters">
+      {SOURCE_FILTERS.map((f) => (
+        <button
+          key={f.id}
+          onClick={() => onSourceChange(f.id)}
+          className={`px-3 py-1.5 rounded-full text-[11px] uppercase tracking-wider font-medium border transition ${
+            source === f.id ? "bg-[#C9A961] text-white border-[#C9A961]" : "bg-white text-[#1A2424] border-[#E5E1D8] hover:border-[#C9A961]"
+          }`}
+          data-testid={`shop-source-${f.id}`}
+        >
+          {f.label}
+        </button>
+      ))}
+      {source === "vendor" && vendors && vendors.length > 0 && (
+        <select
+          value={vendor || "all"}
+          onChange={(e) => onVendorChange(e.target.value)}
+          className="text-[11px] uppercase tracking-wider font-medium border border-[#E5E1D8] rounded-full px-3 py-1.5 bg-white"
+          data-testid="shop-vendor-select"
+        >
+          <option value="all">All vendor partners</option>
+          {vendors.map((v) => (
+            <option key={v.slug || v.name} value={v.slug || v.name}>{v.name}</option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
