@@ -1,16 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
-import { Users, Briefcase, Microscope, Store, Search, Sparkles } from "lucide-react";
+import { Users, Briefcase, Microscope, Store, Search, Sparkles, Palette, Compass } from "lucide-react";
 import ShareButton from "../components/ShareButton";
 import MessageButton from "../components/MessageButton";
 import StudioVendorNudge from "../components/StudioVendorNudge";
 
 const TYPE_CONFIG = {
-  facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users, color: "#476B6B", description: "Practitioners trained to lead Birthright workshops." },
-  community:   { label: "Community",    singular: "Community",   icon: Briefcase, color: "#C9A961", description: "Organizations and individuals who refer participants and amplify the work." },
+  facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users,      color: "#476B6B", description: "Practitioners trained to lead Birthright workshops." },
+  community:   { label: "Community",    singular: "Community",   icon: Briefcase,  color: "#C9A961", description: "Organizations and individuals who refer participants and amplify the work." },
   research:    { label: "Research",     singular: "Research",    icon: Microscope, color: "#2E5C46", description: "Academic and clinical partners advancing attachment science." },
-  vendor:      { label: "Vendors",      singular: "Vendor",      icon: Store, color: "#B86A5C", description: "Aligned vendors of complementary materials and services." },
+  vendor:      { label: "Vendors",      singular: "Vendor",      icon: Store,      color: "#B86A5C", description: "Aligned vendors of complementary materials and services." },
+  artist:      { label: "Artists",      singular: "Artist",      icon: Palette,    color: "#8B5E3C", description: "Featured artists whose work threads attachment, repair, and presence into the world." },
+  steward:     { label: "Stewards",     singular: "Steward",     icon: Compass,    color: "#5C6B6B", description: "Community elders and mentors who hold long-term presence for others." },
 };
 
 export default function PartnersDirectory() {
@@ -19,7 +21,7 @@ export default function PartnersDirectory() {
 
   // Initialize filters from URL so the AI Concierge (and any deep link) can
   // land users directly on a filtered view, e.g. /partners?partner_type=vendor.
-  const validTypes = ["all", "facilitator", "vendor", "community", "research"];
+  const validTypes = ["all", "facilitator", "vendor", "community", "research", "artist", "steward"];
   const initialType = (() => {
     const t = searchParams.get("partner_type");
     return validTypes.includes(t) ? t : "all";
