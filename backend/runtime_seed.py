@@ -470,6 +470,52 @@ SAMPLE_PARTNER_PROFILES = [
         "photo_url": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600",
         "is_founding_partner": False,
     },
+    # ---- Artists ----
+    {
+        "slug": "sample-rosa-mendieta",
+        "partner_type": "artist",
+        "display_name": "Rosa Mendieta",
+        "headline": "Ceramicist working with repair, kintsugi-adjacent technique, and broken-vessel-as-prayer language.",
+        "bio": "Studio potter in northern New Mexico whose practice centers the rupture and the mend. Each piece is fired, intentionally broken, and rebuilt with visible seams. Rosa represents the practicing artist whose work threads attachment, repair, and presence into objects people can hold. Birthright partnership gives her a curated audience and the foundation gains visual vocabulary for the work — a partnership of equals where neither side underwrites the other.",
+        "location": "Taos, NM",
+        "website_url": "https://example.com/rosa-mendieta",
+        "photo_url": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=600",
+        "is_founding_partner": True,
+    },
+    {
+        "slug": "sample-toby-greene",
+        "partner_type": "artist",
+        "display_name": "Toby Greene",
+        "headline": "Documentary photographer chronicling intergenerational repair in five long-term family series.",
+        "bio": "Brooklyn-based documentary photographer whose decade-long projects follow specific families across rupture and reconciliation. Sells limited-edition prints through the Birthright gallery and contributes a quarterly photo-essay to the Research section. Represents the established mid-career artist who values Birthright as a sympathetic curatorial home — not their only outlet, but the one whose mission they recognize as native to their work.",
+        "location": "Brooklyn, NY",
+        "website_url": "https://example.com/toby-greene",
+        "photo_url": "https://images.unsplash.com/photo-1495367774574-a32e2826bd0e?w=600",
+        "is_founding_partner": False,
+    },
+    # ---- Stewards ----
+    {
+        "slug": "sample-elder-mary-redcloud",
+        "partner_type": "steward",
+        "display_name": "Elder Mary Redcloud",
+        "headline": "Mentor and witness in a women's circle that has met monthly for twenty-eight years.",
+        "bio": "Convener of a long-running women's circle on the high plains — twenty-eight years, three generations of members, no website, no marketing, no curriculum. Mary represents the steward whose authority is entirely earned through presence. Birthright partnership formalizes a steward role she has already carried for half her life, providing a small monthly honorarium and an institutional doorway for women in surrounding communities who need her circle.",
+        "location": "Rapid City, SD",
+        "website_url": None,
+        "photo_url": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600",
+        "is_founding_partner": True,
+    },
+    {
+        "slug": "sample-rev-marcus-bell",
+        "partner_type": "steward",
+        "display_name": "Reverend Marcus Bell",
+        "headline": "Retired AME pastor running a Sunday-evening open-doors hour for anyone — congregation or not.",
+        "bio": "Retired AME pastor in Birmingham whose 'open hour' on Sunday evenings has run continuously for thirty-six years. Anyone may come; nothing is required; coffee is provided. Marcus represents the second steward archetype — the elder whose role is the doorway itself. Birthright partnership recognizes him formally as a Steward, covers the room rental, and quietly lists his open hour as a resource for participants navigating spiritual aftermath of relational repair work.",
+        "location": "Birmingham, AL",
+        "website_url": "https://example.com/marcus-bell",
+        "photo_url": "https://images.unsplash.com/photo-1542178243-bc20204b769f?w=600",
+        "is_founding_partner": False,
+    },
 ]
 
 

@@ -41,13 +41,13 @@ export default function PartnerProfilePage() {
         <ArrowLeft size={12} strokeWidth={1.5} /> Back to directory
       </Link>
       {profile.is_sample && (
-        <div className="mt-4 card p-4 bg-[#FFFBEF] border-l-4 border-[#C9A961]" data-testid="sample-banner">
-          <p className="text-xs uppercase tracking-wider text-[#8B7128] font-semibold inline-flex items-center gap-1">
-            <Sparkles size={12} strokeWidth={2} /> Sample profile
+        <div className="mt-4 card p-4 bg-[#FFF1F1] border-l-4 border-[#9E3C3C]" data-testid="sample-banner">
+          <p className="text-xs uppercase tracking-wider text-[#9E3C3C] font-bold inline-flex items-center gap-1">
+            <Sparkles size={12} strokeWidth={2} /> Sample profile · not a real partner
           </p>
           <p className="text-sm text-[#1A2424] mt-1">
-            This is an illustrative persona showing what a great Birthright partner profile looks like. Not a real, active partner.{" "}
-            <Link to="/partner/apply" className="underline text-[#476B6B]">Apply to become a partner</Link>.
+            This is an illustrative persona showing what a great Birthright {profile.partner_type} partner profile looks like. The person below is fictional — but the role, structure, and partnership terms are real.{" "}
+            <Link to="/partner/apply" className="underline text-[#476B6B]">Apply to become a real partner →</Link>
           </p>
         </div>
       )}

@@ -187,8 +187,12 @@ function PartnerCard({ profile, sampleMode }) {
           </span>
         )}
         {isSample && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold bg-[#C9A961] text-[#1A2424]" data-testid={`sample-ribbon-${profile.slug}`}>
-            <Sparkles size={9} strokeWidth={2} /> Sample
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-bold bg-[#9E3C3C] text-white shadow-sm"
+            title="This is a sample profile illustrating the partner persona — not a real partner."
+            data-testid={`sample-ribbon-${profile.slug}`}
+          >
+            <Sparkles size={9} strokeWidth={2} /> Sample profile
           </span>
         )}
         {isFounding && (
