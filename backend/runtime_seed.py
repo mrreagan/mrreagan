@@ -490,7 +490,7 @@ SAMPLE_PARTNER_PROFILES = [
         "bio": "Brooklyn-based documentary photographer whose decade-long projects follow specific families across rupture and reconciliation. Sells limited-edition prints through the Birthright gallery and contributes a quarterly photo-essay to the Research section. Represents the established mid-career artist who values Birthright as a sympathetic curatorial home — not their only outlet, but the one whose mission they recognize as native to their work.",
         "location": "Brooklyn, NY",
         "website_url": "https://example.com/toby-greene",
-        "photo_url": "https://images.unsplash.com/photo-1495367774574-a32e2826bd0e?w=600",
+        "photo_url": "https://images.unsplash.com/photo-1463453091185-61582044d556?w=600",
         "is_founding_partner": False,
     },
     # ---- Stewards ----
