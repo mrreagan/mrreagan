@@ -169,6 +169,12 @@ async def generate_one(idx: str, slug: str, phrase: str, focal: str,
 
 async def _semaphored(sem, idx, slug, phrase, focal, shape, placement):
     async with sem:
+        # Skip-if-exists makes the script safely re-runnable after budget
+        # interruptions — only missing images regenerate.
+        target = OUT_DIR / f"birthright-engraving-{idx}-{slug}-{shape}-url-{placement}.png"
+        if target.exists() and target.stat().st_size > 10_000:
+            print(f"  · skip (exists) {target.name}")
+            return
         try:
             await generate_one(idx, slug, phrase, focal, shape, placement)
         except Exception as ex:
