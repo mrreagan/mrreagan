@@ -97,7 +97,7 @@ STYLE_BASE = (
     "Editorial, minimalist leather-patch design intended for laser "
     "engraving. Pure white background. All graphics and text rendered "
     "in solid black ink only — no color, no gradients, no shading, no "
-    "textures. Composition centered and generously spaced. The quotation "
+    "textures. Composition centered and generously spaced. The phrase "
     "uses a CONTEMPORARY EDITORIAL SERIF, italic — similar in feeling to "
     "Canela, Le Jour Serif, Tiempos Headline, or a high-contrast Caslon "
     "italic. Characteristics: strong stroke contrast between thick and "
@@ -105,47 +105,73 @@ STYLE_BASE = (
     "graceful descenders. This is the same editorial serif used on a "
     "high-end magazine masthead or boutique brand mission statement — "
     "not a generic Times New Roman, not a slab serif, not a script. "
-    "TYPOGRAPHIC EMPHASIS: within the quotation, ONE designated focal "
-    "word (specified below per quote) is set in UPRIGHT ROMAN (not "
-    "italic) of the same typeface, at the same size or very slightly "
-    "larger, creating elegant editorial contrast against the surrounding "
-    "italic text. The focal word should feel like the visual payoff of "
-    "the phrase. All other words remain in graceful italic. Overall "
-    "feeling: contemplative, sacred, modern but timeless. Absolutely no "
-    "embellishments, decorative borders, ornaments, or extra graphic "
-    "elements beyond the flame icon, the quotation, the URL, and (if "
-    "applicable) the hexagonal outline. White space is the design."
+    "TYPE SIZE: the phrase is set LARGE — bold and dominant — filling "
+    "roughly 60-70% of the canvas width so it reads as the unmistakable "
+    "hero of the composition. The flame icon and URL are deliberately "
+    "small supporting marks, not equal partners with the phrase. "
+    "CRITICAL TEXT RULES: the phrase appears as plain words on the "
+    "canvas — NO quotation marks of any kind (no “ ”, no \" \", no ' ', "
+    "no ‘ ’, no brackets, no parentheses), and NO trailing period, "
+    "comma, ellipsis, exclamation point, or any other punctuation at "
+    "the end of the phrase. The phrase begins with its first word and "
+    "ends with its last word — nothing wraps, surrounds, or trails it. "
+    "Overall feeling: contemplative, sacred, modern but timeless. "
+    "Absolutely no embellishments, decorative borders, ornaments, or "
+    "extra graphic elements beyond the flame icon, the phrase, the URL, "
+    "and (if applicable) the hexagonal outline. White space is the "
+    "design."
 )
 
 PHRASES = [
+    # (idx, slug, phrase, emphasis_instruction)
     ("01", "secure-connection",
-     'Secure connection is your birthright.',  'birthright'),
+     'Secure connection is your birthright',
+     "Within the phrase, the single word \"birthright\" is set in "
+     "UPRIGHT ROMAN (not italic) of the same typeface, the same size or "
+     "only a hair larger, creating elegant editorial contrast against "
+     "the surrounding italic text. All other words remain in graceful "
+     "italic. No other emphasis."),
     ("02", "founder-of-your-love-story",
-     'You are the founder of your own love story.', 'founder'),
+     'You are the founder of your own love story',
+     "Within the phrase, the two-word fragment \"your own\" is set in "
+     "italic at a SLIGHTLY LARGER size than the rest of the phrase — "
+     "perhaps 110-115% the size of the other words. NOT bold, NOT a "
+     "different weight, NOT a different typeface — only larger. Every "
+     "other word in the phrase is set at the same size as every other "
+     "non-emphasized word, all in graceful italic. No other emphasis."),
     ("03", "created-for-connection",
-     'We are created for connection.', 'connection'),
+     'We are created for connection',
+     "The phrase is set in graceful italic throughout. No single word "
+     "is emphasized in any way — no upright roman, no bold, no size "
+     "change, no brackets, no parentheses. The phrase reads as one "
+     "uniform italic line."),
     ("04", "the-bond-is-the-cure",
-     'The bond is the cure.', 'cure'),
+     'The bond is the cure',
+     "The phrase is set in graceful italic throughout. No single word "
+     "is emphasized in any way — no upright roman, no bold, no size "
+     "change. The phrase reads as one uniform italic line."),
     ("05", "repair-is-older-than-rupture",
-     'Repair is older than rupture.', 'Repair'),
+     'Repair is older than rupture',
+     "The phrase is set in graceful italic throughout. No single word "
+     "is emphasized in any way — no upright roman, no bold, no size "
+     "change. The phrase reads as one uniform italic line."),
 ]
 
 
-async def generate_one(idx: str, slug: str, phrase: str, focal: str,
+async def generate_one(idx: str, slug: str, phrase: str, emphasis: str,
                        shape: str, placement: str) -> Path:
     prompt = (
         f"{STYLE_BASE}\n\n"
         f"SHAPE: {SHAPES[shape]}\n\n"
         f"LAYOUT: {LAYOUTS[placement]}\n\n"
-        f"The quotation to typeset, exactly as written, is:\n"
-        f'    "{phrase}"\n\n'
-        f"FOCAL WORD for typographic emphasis: \"{focal}\". "
-        f"All other words in the quotation are set in graceful italic; "
-        f"the word \"{focal}\" alone is set in upright roman (not italic) "
-        f"of the same typeface, the same color, the same size or only a "
-        f"hair larger, so it lands as the visual payoff.\n\n"
-        f"No other text appears anywhere in the image except this "
-        f"quotation and the small 'birthright.live' URL line."
+        f"The exact phrase to typeset, with no surrounding punctuation, "
+        f"is:\n    {phrase}\n\n"
+        f"Reminder: the phrase appears on the canvas exactly as those "
+        f"words, with no opening quote, no closing quote, and no "
+        f"trailing punctuation. Just the words.\n\n"
+        f"TYPOGRAPHIC EMPHASIS: {emphasis}\n\n"
+        f"No other text appears anywhere in the image except the phrase "
+        f"and the small 'birthright.live' URL line."
     )
     chat = (
         LlmChat(
@@ -167,28 +193,38 @@ async def generate_one(idx: str, slug: str, phrase: str, focal: str,
     return out
 
 
-async def _semaphored(sem, idx, slug, phrase, focal, shape, placement):
+async def _semaphored(sem, idx, slug, phrase, emphasis, shape, placement):
     async with sem:
-        # Skip-if-exists makes the script safely re-runnable after budget
-        # interruptions — only missing images regenerate.
         target = OUT_DIR / f"birthright-engraving-{idx}-{slug}-{shape}-url-{placement}.png"
         if target.exists() and target.stat().st_size > 10_000:
             print(f"  · skip (exists) {target.name}")
             return
         try:
-            await generate_one(idx, slug, phrase, focal, shape, placement)
+            await generate_one(idx, slug, phrase, emphasis, shape, placement)
         except Exception as ex:
             print(f"  ✗ {idx}-{shape}-{placement} FAILED: {ex}")
 
 
+SHAPES_TO_RUN = ("rectangle",)
+LAYOUTS_TO_RUN = ("middle",)
+
 async def main() -> None:
     tasks = []
     sem = asyncio.Semaphore(5)
-    for shape in SHAPES:
-        for placement in LAYOUTS:
-            for idx, slug, phrase, focal in PHRASES:
-                tasks.append(_semaphored(sem, idx, slug, phrase, focal, shape, placement))
-    print(f"Generating {len(tasks)} images (max 5 in parallel)…")
+    # Wipe any matching pre-existing images so the skip-guard doesn't
+    # block this iteration's rerolls.
+    for shape in SHAPES_TO_RUN:
+        for placement in LAYOUTS_TO_RUN:
+            for idx, slug, *_ in PHRASES:
+                p = OUT_DIR / f"birthright-engraving-{idx}-{slug}-{shape}-url-{placement}.png"
+                if p.exists():
+                    p.unlink()
+    for shape in SHAPES_TO_RUN:
+        for placement in LAYOUTS_TO_RUN:
+            for idx, slug, phrase, emphasis in PHRASES:
+                tasks.append(_semaphored(sem, idx, slug, phrase, emphasis, shape, placement))
+    print(f"Generating {len(tasks)} images "
+          f"(shapes={SHAPES_TO_RUN}, placements={LAYOUTS_TO_RUN})…")
     await asyncio.gather(*tasks)
     print("Done.")
 

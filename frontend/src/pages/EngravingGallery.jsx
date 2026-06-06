@@ -17,11 +17,11 @@ import React, { useState } from "react";
 import { Flame, Download, ImageOff } from "lucide-react";
 
 const PHRASES = [
-  { idx: "01", slug: "secure-connection",            phrase: "Secure connection is your birthright.", focal: "birthright" },
-  { idx: "02", slug: "founder-of-your-love-story",   phrase: "You are the founder of your own love story.", focal: "founder" },
-  { idx: "03", slug: "created-for-connection",       phrase: "We are created for connection.", focal: "connection" },
-  { idx: "04", slug: "the-bond-is-the-cure",         phrase: "The bond is the cure.", focal: "cure" },
-  { idx: "05", slug: "repair-is-older-than-rupture", phrase: "Repair is older than rupture.", focal: "Repair" },
+  { idx: "01", slug: "secure-connection",            phrase: "Secure connection is your birthright",         emphasis: "“birthright” in upright roman" },
+  { idx: "02", slug: "founder-of-your-love-story",   phrase: "You are the founder of your own love story",   emphasis: "“your own” italic + slightly larger" },
+  { idx: "03", slug: "created-for-connection",       phrase: "We are created for connection",                emphasis: "no emphasis · uniform italic" },
+  { idx: "04", slug: "the-bond-is-the-cure",         phrase: "The bond is the cure",                         emphasis: "no emphasis · uniform italic" },
+  { idx: "05", slug: "repair-is-older-than-rupture", phrase: "Repair is older than rupture",                 emphasis: "no emphasis · uniform italic" },
 ];
 
 const SHAPES = [
@@ -98,11 +98,11 @@ function PhraseSection({ phrase, shape }) {
       <div className="flex items-baseline gap-3 mb-1">
         <span className="font-serif text-xl text-[#C9A961]">{phrase.idx}</span>
         <h2 className="font-serif text-2xl italic text-[#1A2424]">
-          “{phrase.phrase}”
+          {phrase.phrase}
         </h2>
       </div>
       <p className="text-[11px] uppercase tracking-wider text-[#5C6B6B] mb-5">
-        Focal word: <span className="text-[#476B6B] not-italic font-medium">{phrase.focal}</span>
+        Emphasis: <span className="text-[#476B6B] not-italic font-medium">{phrase.emphasis}</span>
       </p>
 
       <div className="grid md:grid-cols-3 gap-5">
