@@ -119,9 +119,11 @@ const ITEMS = [
   },
 ];
 
-const heroSrc = (it) => `/fb-assets/v2/hero-${it.idx}-${it.slug}.png`;
+const heroSrc = (it) => `/fb-assets/v4/hero-${it.idx}-${it.slug}.png`;
 const v2Src = (it) => `/fb-assets/v2/fb-${it.idx}-${it.slug}.png`;
 const v3Src = (it) => `/fb-assets/v3/fb-${it.idx}-${it.slug}.png`;
+const v4Src = (it) => `/fb-assets/v4/fb-${it.idx}-${it.slug}.png`;
+const v4lsSrc = (it) => `/fb-assets/v4-landscape/fb-ls-${it.idx}-${it.slug}.png`;
 
 function Tile({ href, label, dims, alt, testid }) {
   return (
@@ -160,12 +162,14 @@ export default function FbPromoGallery() {
             Facebook promo assets
           </h1>
           <p className="text-sm text-[#3D6373] mt-3 max-w-2xl leading-relaxed">
-            Each phrase has three assets: a square <strong>hero</strong> shot
-            (1080×1080), a portrait <strong>v2 card</strong> with the
-            paraphrased explanation (1080×1620), and a portrait{" "}
-            <strong>v3 card</strong> with the verbatim "What this means"
-            summary (1080×1920). Pick whichever you prefer per phrase. Tap
-            any image to open at full resolution.
+            <strong>v4 landscape</strong> (1920×1080) is the recommended
+            format — hero on the left, the verbatim "What this means" copy
+            on the right with room to breathe. v4 heroes use a 3/4
+            perspective, alternating tilts, a signature object per phrase
+            (signet ring · pen · paired cups · key · kintsugi dish) and
+            softer lighting. Earlier portrait drafts (v2 paraphrased, v3
+            verbatim) are tucked inside the "Show earlier drafts" toggle
+            on each section. Tap any image to open full resolution.
           </p>
         </header>
 
@@ -185,41 +189,66 @@ export default function FbPromoGallery() {
                 </p>
               </div>
 
-              {/* ── Row A : Hero + v2 ─────────────────────────────────── */}
-              <div className="grid sm:grid-cols-2 gap-5 mt-6">
+              {/* ── Row 0 : v4 landscape (NEW — recommended) ─────────── */}
+              <div className="mt-6">
+                <Tile
+                  href={v4lsSrc(it)}
+                  label="v4 landscape — recommended"
+                  dims="1920 × 1080"
+                  alt={`v4 landscape — ${it.phrase}`}
+                  testid={`fb-promo-${it.idx}-v4ls`}
+                />
+              </div>
+
+              {/* ── Row A : Hero (v4) + v4 portrait card ─────────────── */}
+              <div className="grid sm:grid-cols-2 gap-5 mt-5">
                 <Tile
                   href={heroSrc(it)}
-                  label="Hero"
-                  dims="1080 × 1080"
+                  label="v4 hero — perspective + signature"
+                  dims="1024 × 1024"
                   alt={`Hero — ${it.phrase}`}
                   testid={`fb-promo-${it.idx}-hero`}
                 />
                 <Tile
-                  href={v2Src(it)}
-                  label="v2 card"
-                  dims="1080 × 1620"
-                  alt={`v2 card — ${it.phrase}`}
-                  testid={`fb-promo-${it.idx}-v2`}
+                  href={v4Src(it)}
+                  label="v4 portrait card"
+                  dims="1080 × 1920"
+                  alt={`v4 portrait — ${it.phrase}`}
+                  testid={`fb-promo-${it.idx}-v4`}
                 />
               </div>
 
-              {/* ── Row B : v3 (verbatim) + its full text ─────────────── */}
-              <div className="grid sm:grid-cols-2 gap-5 mt-5">
-                <Tile
-                  href={v3Src(it)}
-                  label="v3 card — verbatim"
-                  dims="1080 × 1920"
-                  alt={`v3 card — ${it.phrase}`}
-                  testid={`fb-promo-${it.idx}-v3`}
-                />
-                <div className="max-w-xl">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-[#A87A4A] mb-3">
-                    What this means — verbatim
-                  </p>
-                  <p className="text-[#3D6373] text-base sm:text-[17px] leading-relaxed font-serif italic">
-                    {it.v3Text}
-                  </p>
+              {/* ── Row B : older v2 + v3 (kept for comparison) ──────── */}
+              <details className="mt-5">
+                <summary className="cursor-pointer text-xs uppercase tracking-[0.2em] text-[#A87A4A] py-2">
+                  Show earlier drafts (v2 + v3)
+                </summary>
+                <div className="grid sm:grid-cols-2 gap-5 mt-3">
+                  <Tile
+                    href={v2Src(it)}
+                    label="v2 card (paraphrased)"
+                    dims="1080 × 1620"
+                    alt={`v2 — ${it.phrase}`}
+                    testid={`fb-promo-${it.idx}-v2`}
+                  />
+                  <Tile
+                    href={v3Src(it)}
+                    label="v3 card (verbatim)"
+                    dims="1080 × 1920"
+                    alt={`v3 — ${it.phrase}`}
+                    testid={`fb-promo-${it.idx}-v3`}
+                  />
                 </div>
+              </details>
+
+              {/* ── Verbatim text typeset for reference ──────────────── */}
+              <div className="mt-6 max-w-3xl">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-[#A87A4A] mb-3">
+                  What this means — verbatim
+                </p>
+                <p className="text-[#2C4E5A] text-base sm:text-[17px] leading-relaxed font-serif italic">
+                  {it.v3Text}
+                </p>
               </div>
             </section>
           ))}
