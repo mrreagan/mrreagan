@@ -98,6 +98,8 @@ import MarketingIndex from "./pages/MarketingIndex";
 import ArtistPartnershipTerms from "./pages/ArtistPartnershipTerms";
 import OffSiteReport from "./pages/OffSiteReport";
 import PayoutMethod from "./pages/PayoutMethod";
+import PatchesLanding from "./pages/PatchesLanding";
+import AdminArtistPayouts from "./pages/AdminArtistPayouts";
 import AiOverview from "./pages/AiOverview";
 import Connect from "./pages/Connect";
 import ScrollToTop from "./components/ScrollToTop";
@@ -571,6 +573,9 @@ function AppRoutes() {
       <Route path="/partner/artist" element={<ArtistPartnershipTerms />} />
       <Route path="/partner/me/off-site-report" element={<OffSiteReport />} />
       <Route path="/partner/me/payout-method" element={<PayoutMethod />} />
+      <Route path="/shop/patches" element={<PatchesLanding />} />
+      <Route path="/patches" element={<PatchesLanding />} />
+      <Route path="/admin/artist/payouts" element={<AdminArtistPayouts />} />
       <Route
         path="/dashboard/ai-wallet"
         element={

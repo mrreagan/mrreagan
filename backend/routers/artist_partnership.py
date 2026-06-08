@@ -261,7 +261,8 @@ async def monthly_revenue(
         buckets.append((y, m))
         m -= 1
         if m == 0:
-            m = 12; y -= 1
+            m = 12
+            y -= 1
     buckets.reverse()
     keys = [f"{y:04d}-{m:02d}" for (y, m) in buckets]
     series = {k: {"patronage": 0.0, "off_site": 0.0} for k in keys}
@@ -423,6 +424,102 @@ async def admin_mark_paid(
         }},
     )
     return {"ok": True, "stripe_transfer_id": stripe_tx_id}
+
+
+# -------- Bulk payout (monthly disbursement) --------
+
+class BulkPayRequest(BaseModel):
+    payout_ids: Optional[list[str]] = Field(
+        default=None,
+        description="If omitted, all pending payouts where the artist has "
+                     "a Stripe Connect account in 'ready' status will be paid.",
+    )
+    notes: Optional[str] = Field(default=None, max_length=2000)
+
+
+@admin_router.post("/payouts/bulk-pay")
+async def admin_bulk_pay(
+    data: BulkPayRequest,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Iterate through pending payouts and fire a Stripe Connect Transfer
+    for each artist with a ready Connect account. Returns a per-row result
+    array; failed transfers leave the row in `pending` with a reason."""
+    from database import db
+    from utils.stripe_connect import create_transfer
+
+    q = {"status": "pending"}
+    if data.payout_ids:
+        q["id"] = {"$in": data.payout_ids}
+    rows = await db.artist_sale_payouts.find(q, {"_id": 0}).to_list(2000)
+
+    # Pre-load all artist payout methods in one query.
+    artist_ids = list({r.get("artist_user_id")
+                        for r in rows if r.get("artist_user_id")})
+    methods = await db.partner_payout_methods.find(
+        {"user_id": {"$in": artist_ids}}, {"_id": 0},
+    ).to_list(len(artist_ids) + 1) if artist_ids else []
+    by_artist = {m["user_id"]: m for m in methods}
+
+    results = []
+    paid_total = 0.0
+    for p in rows:
+        m = by_artist.get(p.get("artist_user_id") or "")
+        if not m or m.get("method_type") != "stripe_connect":
+            results.append({
+                "payout_id": p["id"], "ok": False,
+                "skipped": "no_stripe_connect_method",
+            })
+            continue
+        if m.get("stripe_connect_status") != "ready":
+            results.append({
+                "payout_id": p["id"], "ok": False,
+                "skipped": f"connect_status_{m.get('stripe_connect_status')}",
+            })
+            continue
+        try:
+            tx = create_transfer(
+                amount_usd=float(p["list_price"]),
+                destination_account_id=m["stripe_account_id"],
+                transfer_group=p["order_id"],
+                idempotency_key=f"birthright-payout-{p['id']}",
+                metadata={
+                    "payout_id": p["id"],
+                    "artist_user_id": p.get("artist_user_id") or "",
+                    "order_id": p.get("order_id") or "",
+                    "bulk": "true",
+                },
+            )
+            await db.artist_sale_payouts.update_one(
+                {"id": p["id"]},
+                {"$set": {
+                    "status": "paid",
+                    "paid_at": now_iso(),
+                    "paid_by_admin": user["email"],
+                    "payout_method": "stripe_connect",
+                    "payout_reference": tx["id"],
+                    "stripe_transfer_id": tx["id"],
+                    "notes": data.notes,
+                }},
+            )
+            paid_total += float(p["list_price"])
+            results.append({"payout_id": p["id"], "ok": True,
+                              "stripe_transfer_id": tx["id"]})
+        except Exception as e:
+            logger.exception("Bulk pay transfer failed: %s", e)
+            results.append({"payout_id": p["id"], "ok": False,
+                              "error": str(e)[:300]})
+    return {
+        "attempted": len(rows),
+        "paid": sum(1 for r in results if r["ok"]),
+        "skipped": sum(1 for r in results if r.get("skipped")),
+        "failed": sum(1 for r in results if not r["ok"] and not r.get("skipped")),
+        "total_paid_usd": round(paid_total, 2),
+        "results": results,
+    }
+
+
+# ------- Public "patches" line for the marketing landing page -------
 
 
 # ============ ADMIN — tier overrides ============
