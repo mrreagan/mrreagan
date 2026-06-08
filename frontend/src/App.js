@@ -94,6 +94,7 @@ import AdminAiUsage from "./pages/AdminAiUsage";
 import AdminAgreements from "./pages/AdminAgreements";
 import EngravingGallery from "./pages/EngravingGallery";
 import FbPromoGallery from "./pages/FbPromoGallery";
+import MarketingIndex from "./pages/MarketingIndex";
 import AiOverview from "./pages/AiOverview";
 import Connect from "./pages/Connect";
 import ScrollToTop from "./components/ScrollToTop";
@@ -563,6 +564,7 @@ function AppRoutes() {
       />
       <Route path="/engraving" element={<EngravingGallery />} />
       <Route path="/fb-promo" element={<FbPromoGallery />} />
+      <Route path="/marketing" element={<MarketingIndex />} />
       <Route
         path="/dashboard/ai-wallet"
         element={
