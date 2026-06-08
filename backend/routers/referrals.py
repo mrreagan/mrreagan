@@ -118,32 +118,62 @@ async def referral_redirect(
 
 async def resolve_referral_for_checkout(db, referral_code: Optional[str]) -> Optional[dict]:
     """Return {code, partner_profile_id, partner_user_id, partner_type, pct} if
-    `referral_code` resolves to an active community partner with active subscription;
-    otherwise None."""
+    `referral_code` resolves to an eligible partner with an active subscription;
+    otherwise None.
+
+    Currently recognised partner types:
+      • community — uses the global / subscription-resolved rev_share %.
+      • artist    — uses the tier-based inbound % (Emerging…Flourishing)."""
     if not referral_code:
         return None
     code_up = referral_code.strip().upper()
     profile = await db.partner_profiles.find_one(
         {"referral_code": code_up, "status": "active"}, {"_id": 0}
     )
-    if not profile or profile["partner_type"] != "community":
+    if not profile:
         return None
-    rev = await resolve_rev_share(db, profile["user_id"], "community")
+    if profile["partner_type"] == "community":
+        rev = await resolve_rev_share(db, profile["user_id"], "community")
+        pct = float(rev["pct"])
+        source = rev["source"]
+    elif profile["partner_type"] == "artist":
+        from utils.artist_tier import resolve_artist_tier
+        tier = await resolve_artist_tier(db, profile["user_id"])
+        pct = float(tier["inbound_pct"])
+        source = f"artist_tier_{tier['tier_key']}"
+    else:
+        return None
     return {
         "code": code_up,
         "partner_profile_id": profile["id"],
         "partner_user_id": profile["user_id"],
         "partner_type": profile["partner_type"],
-        "pct": float(rev["pct"]),
-        "rev_share_source": rev["source"],
+        "pct": pct,
+        "rev_share_source": source,
     }
 
 
 async def record_referral(db, txn: dict, attribution: dict, subject: dict) -> Optional[str]:
-    """Insert a referral row after fulfilment. Idempotent on payment_session_id."""
+    """Insert a referral row after fulfilment. Idempotent on payment_session_id.
+
+    For ARTIST partners we additionally enforce 'first purchase only' per
+    (partner, buyer) pair — once an artist has earned a referral on a given
+    buyer's purchase, subsequent purchases by that same buyer do not yield
+    further artist referrals."""
     existing = await db.referrals.find_one({"payment_session_id": txn["session_id"]})
     if existing:
         return None
+    if attribution.get("partner_type") == "artist":
+        buyer_id = txn.get("user_id")
+        if buyer_id:
+            prior = await db.referrals.find_one({
+                "partner_user_id": attribution["partner_user_id"],
+                "buyer_user_id": buyer_id,
+                "status": {"$in": ["earned", "paid"]},
+            }, {"_id": 0, "id": 1})
+            if prior:
+                # Already credited this artist for this buyer once.
+                return None
     amount = float(txn.get("amount") or 0)
     payout = round(amount * float(attribution["pct"]) / 100, 2)
     doc = {

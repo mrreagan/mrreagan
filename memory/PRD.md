@@ -1,58 +1,74 @@
 # Birthright Foundation Platform — PRD
 
 ## Original Problem Statement
-Finalize Phase 6B/6C features, Partner Economy workflows, and Agentic AI capabilities for the Birthright Foundation web platform (React + FastAPI + MongoDB).
+React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-theory research, artist gallery, partner economy, AI-powered patron experiences, and merch.
 
 ## Persona
-- **Founder/Operator** — marketing assets, dashboards, governance.
-- **Partners** (Vendors / Artists / Stewards / Researchers) — Partner Economy modules.
+- **Founder/Operator** — governance, payouts, content, dashboards.
+- **Artists** — gallery partnership, patronage payouts, tiered referral economics.
+- **Partners** (Vendors / Stewards / Researchers / Community) — Partner Economy modules.
 - **Members** — research, events, merch.
 
 ## Core Brand Aesthetic
-- Cream / warm parchment / soft natural light
-- Editorial serif italics (Cormorant Garamond) + bold-upright roman focal word
-- Thin gold hairline rules + brand teal `#2C4E5A` ink
-- Generous whitespace
-- Sacred-but-secular tone
+- Cream `#F8F2E5` + brand teal `#2C4E5A` + gold `#A87A4A`
+- Cormorant Garamond italic + bold-upright roman focal word
+- Generous whitespace, gold hairline rules, sacred-but-secular tone
 
-## What's Been Implemented (recent)
-- Phase 1-7 platform (complete).
-- **(2026-02) Patch Series marketing assets**:
-  - v4 landscape 1920×1080 (canonical FB) + v4 portrait 1080×1920 + v4 hero 1024×1024
-  - v4-multi: IG square 1080×1080, IG Story/Reel 1080×1920, Twitter/X 1600×900
-  - Heroes use 3/4 perspective, alternating tilts, signature objects (ring · pen · cups · key · kintsugi), softer lighting.
-  - v2/v3 retained as drafts behind disclosure.
-- **(2026-02) Internal marketing section** (`/marketing` + `/fb-promo`, link-only, not in nav).
-- **(2026-02) Foundation Revenue · POD Margin tile**:
-  - Backend `GET /api/admin/foundation/revenue/pod-margin?days=N` aggregates Printful + Lulu revenue/cost/margin from `db.orders.items[*] ⋈ db.products`.
-  - Surfaces `missing_cost_skus` for data hygiene.
-  - Window toggle: all-time / 30 / 90 / 365.
-  - Mounted on `/admin` below the StatsGrid.
-  - Tests: `test_iter37_foundation_revenue.py` — 4 cases passing (auth gates, shape, math, windowing, missing-cost flag).
+## What's Been Implemented (recent — Feb 2026)
+
+### Patch Series marketing assets
+- v4 + v4-landscape + v4-multi (IG square / IG Story / Twitter)
+- `/marketing` index page + `/fb-promo` gallery (link-only, not in nav)
+
+### Foundation Revenue · POD Margin tile
+- `GET /api/admin/foundation/revenue/pod-margin?days=N` (admin-gated)
+- Mounted on `/admin` dashboard below StatsGrid
+- 4 pytest cases passing
+
+### Artist Partnership — Tracks 1+2+3 + tier system (this session)
+- **Patronage payouts** (artist gets list price, Foundation kept 20% buyer markup): `db.artist_sale_payouts` ledger, checkout hook in `_create_order_from_txn`, idempotent
+- **Tiered economics**:
+  - 🌱 Emerging $0–$5K, 10% in, 0% out
+  - 🌿 Sustaining $5K–$15K, 8% in, 2% out
+  - 🌳 Established $15K–$40K, 6% in, 4% out
+  - 🌸 Thriving $40K–$100K, 5% in, 6% out
+  - 🌟 Flourishing $100K+, 5% in, 8% out
+- Outbound = marginal brackets (progressive-tax style)
+- Basis = trailing-12-month Birthright-attributed revenue (on-site at list + off-site self-reported with `?via=birthright`)
+- **Inbound referrals** for artists: extended `resolve_referral_for_checkout` to accept artist partner type, uses tier-based pct, first-purchase-only guard per (artist, buyer) pair
+- **Off-site (outbound)** flow: lifted `is_off_site` + `external_url` allowance to artworks via `ArtworkCreate.is_off_site/external_url`; quarterly self-reporting via existing `partner_sales_reports`
+- **Admin tools**: `GET /admin/artist/payouts`, `POST /admin/artist/payouts/{id}/mark-paid`, `GET/POST /admin/artist/tier-overrides`
+- **Artist dashboard tier card** on `/artist/studio` (current tier + basis + runway to next + override reason if applicable)
+- **Public clarity page** `/partner/artist` — exhaustive Artist Partnership Terms with live tier table, worked examples, attribution rules, non-negotiables. Clarity-before-commitment honored.
+- **6 pytest cases passing** (boundary tier math, marginal bracket math at all tiers incl. $250K Flourishing example landing at $16,800, public tier-table endpoint shape, patronage payout creation & idempotency)
 
 ## P0 / Active
-- *None* — patch pack accepted by founder; POD margin tile shipped and tested.
+- *None* — Tracks 1+2+3+tier system shipped, tested, and documented to user.
 
 ## P3 / Backlog
-- Public "Patches" product landing page on birthright.live (linked from shop, destination for the FB ads).
+- Artist `/partner/me/off-site-report` UI page (data layer already exists via `partner_sales_reports`).
+- Stripe Connect for auto-payout to artists (currently manual admin-disbursement).
+- Public artwork detail UI surfacing of "Ships from artist's studio" badge + dual CTA (patronage / off-site).
+- Push & deploy preview → birthright.live.
+- Foundation revenue dashboard tile sparkline.
 - Additional marketing campaign packs under `/marketing`.
-- Push & deploy to make `/marketing`, `/fb-promo` permanent at birthright.live.
 
-## Key Files (current session)
-- `/app/backend/routers/foundation_revenue.py` (new)
-- `/app/backend/scripts/generate_fb_promo_assets_v4.py` (canonical hero pipeline)
-- `/app/backend/scripts/generate_fb_promo_assets_v4_landscape.py` (FB landscape)
-- `/app/backend/scripts/generate_fb_promo_variants.py` (IG + Twitter sizes)
-- `/app/backend/tests/test_iter37_foundation_revenue.py` (new)
-- `/app/frontend/src/pages/AdminDashboard.jsx` (added `<PodMarginTile />`)
-- `/app/frontend/src/pages/FbPromoGallery.jsx` (added IG + Twitter tiles)
-- `/app/frontend/src/pages/MarketingIndex.jsx` (new — `/marketing` index)
-- `/app/frontend/public/fb-assets/v4/`, `v4-landscape/`, `v4-multi/` — output PNGs
+## Key Files (this session)
+- `/app/backend/utils/artist_tier.py` (new — tier resolver + marginal-bracket math)
+- `/app/backend/routers/artist_partnership.py` (new — payouts + tier + admin)
+- `/app/backend/routers/checkout.py` (added patronage payout hook)
+- `/app/backend/routers/referrals.py` (artist-aware attribution + first-purchase guard)
+- `/app/backend/routers/gallery.py` (added artist_external_url + is_off_site to ArtworkCreate/Update)
+- `/app/backend/server.py` (router registration)
+- `/app/backend/tests/test_iter38_artist_partnership.py` (new — 6 cases)
+- `/app/frontend/src/pages/ArtistPartnershipTerms.jsx` (new — public clarity page)
+- `/app/frontend/src/pages/ArtistStudio.jsx` (added ArtistTierCard)
+- `/app/frontend/src/App.js` (route `/partner/artist`)
 
 ## 3rd-Party Integrations
-- Gemini Nano Banana (image-to-image) via Emergent LLM key
+- Gemini Nano Banana via Emergent LLM key
 - Claude Sonnet 4.5 via Emergent LLM key
-- Stripe / Printful / Lulu / Resend — user-provided keys
+- Stripe / Printful / Lulu / Resend — user keys
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`.

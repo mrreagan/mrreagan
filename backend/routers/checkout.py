@@ -448,6 +448,17 @@ async def _create_order_from_txn(db, txn: dict) -> None:
             {"id": order["id"]},
             {"$set": {"fulfillments": [], "dispatch_error": str(e)[:300]}},
         )
+
+    # Gallery patronage payouts (artist receives list_price; Foundation
+    # kept the 20% hospitality markup at checkout).
+    try:
+        from routers.artist_partnership import record_patronage_payouts
+        payout_ids = await record_patronage_payouts(db, order)
+        if payout_ids:
+            logger.info("order %s: %d artist patronage payout(s) created",
+                         order["id"], len(payout_ids))
+    except Exception as e:
+        logger.exception("artist patronage payout creation failed: %s", e)
     # Referral attribution
     try:
         from routers.referrals import resolve_referral_for_checkout, record_referral

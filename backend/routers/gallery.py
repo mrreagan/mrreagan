@@ -68,7 +68,24 @@ class ArtworkCreate(BaseModel):
     collection_slug: Optional[str] = Field(default=None, max_length=120)
     process_notes: Optional[str] = Field(default=None, max_length=4000)
     living_with_text: Optional[str] = Field(default=None, max_length=4000)
+    artist_external_url: Optional[str] = Field(default=None, max_length=600)
+    is_off_site: Optional[bool] = None
+    external_url: Optional[str] = Field(default=None, max_length=600)
     list_price_matches_own_gallery: bool = Field(description="Required attestation: same price as on artist's own gallery.")
+    # Artist external links — surfaced on the public artwork detail
+    # as "See more from this artist" / "Buy on the artist's site".
+    artist_external_url: Optional[str] = Field(
+        default=None, max_length=600,
+        description="Optional direct URL to this exact artwork on the artist's own website.",
+    )
+    is_off_site: bool = Field(
+        default=False,
+        description="If true, buyers can also be sent to the artist's own site via /api/out (a quarterly self-reported off-site referral cycle applies).",
+    )
+    external_url: Optional[str] = Field(
+        default=None, max_length=600,
+        description="Required when is_off_site=True. The artist's website URL.",
+    )
 
 
 class ArtworkUpdate(BaseModel):
@@ -359,6 +376,10 @@ async def create_work(data: ArtworkCreate, user: dict = Depends(get_current_user
         "process_notes": data.process_notes,
         "living_with_text": data.living_with_text,
         "list_price_attested": True,
+        # Off-site / external link fields
+        "artist_external_url": data.artist_external_url,
+        "is_off_site": bool(data.is_off_site),
+        "external_url": data.external_url if data.is_off_site else None,
         # Reuse vendor moderation surface — admin can flag works after the fact
         "is_vendor_product": False,
         "moderation_status": "active",

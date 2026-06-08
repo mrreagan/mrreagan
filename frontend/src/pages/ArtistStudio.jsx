@@ -1,12 +1,74 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Palette, Plus, Trash2, Save, Sparkles } from "lucide-react";
+import { Palette, Plus, Trash2, Save, Sparkles, ArrowUpRight } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
 const LAYOUTS = ["single-wall", "two-column", "salon-hang", "audio-forward"];
 const ACCENTS = ["flame", "moss", "river", "ochre", "indigo", "graphite"];
+
+
+// Tier card — fetches the current artist's tier + basis + runway.
+function ArtistTierCard() {
+  const [tier, setTier] = useState(null);
+  useEffect(() => {
+    api.get("/partner/me/artist-tier").then((r) => setTier(r.data)).catch(() => {});
+  }, []);
+  if (!tier) return null;
+  const fmt = (n) => `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return (
+    <section className="card p-6 mt-6 max-w-3xl" data-testid="artist-tier-card">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <div>
+          <p className="label text-[#C9A961]">Your partnership tier</p>
+          <h2 className="font-serif italic text-2xl mt-1">
+            {tier.tier_icon} {tier.tier_label}
+          </h2>
+        </div>
+        <Link
+          to="/partner/artist"
+          data-testid="artist-tier-card-terms-link"
+          className="text-xs uppercase tracking-[0.18em] text-[#476B6B] hover:text-[#1A2424] inline-flex items-center gap-1"
+        >
+          Full terms <ArrowUpRight size={14} strokeWidth={1.6} />
+        </Link>
+      </div>
+
+      <dl className="grid sm:grid-cols-3 gap-4 mt-5 text-sm">
+        <div>
+          <dt className="label">12-mo Birthright revenue</dt>
+          <dd className="font-serif text-lg mt-1">{fmt(tier.basis_12mo)}</dd>
+        </div>
+        <div>
+          <dt className="label">Inbound % (you earn)</dt>
+          <dd className="font-serif text-lg mt-1">{tier.inbound_pct}%</dd>
+        </div>
+        <div>
+          <dt className="label">Outbound % (you contribute)</dt>
+          <dd className="font-serif text-lg mt-1">
+            {tier.outbound_pct}%
+            {tier.effective_outbound_pct > 0 && tier.effective_outbound_pct !== tier.outbound_pct && (
+              <span className="text-xs text-[#5C6B6B] italic ml-2">eff. {tier.effective_outbound_pct}%</span>
+            )}
+          </dd>
+        </div>
+      </dl>
+
+      {tier.next_tier_label && (
+        <p className="text-xs text-[#5C6B6B] italic mt-4">
+          <strong>{fmt(tier.distance_usd)}</strong> until {tier.next_tier_label}.
+          Tier transitions take effect on the 1st of the following month.
+        </p>
+      )}
+      {tier.source === "admin_override" && (
+        <p className="text-xs text-[#C9A961] italic mt-2">
+          Tier set manually by Foundation operator: {tier.override_reason}
+        </p>
+      )}
+    </section>
+  );
+}
 
 export default function ArtistStudio() {
   const { user } = useAuth();
@@ -66,6 +128,9 @@ export default function ArtistStudio() {
         <Palette size={26} strokeWidth={1.2} /> Manage your gallery space
       </h1>
       <div className="divider-flame" />
+
+      {/* Tier card — your current partnership tier, basis, runway */}
+      <ArtistTierCard />
 
       {/* Gallery space settings */}
       <section className="card p-6 mt-6 max-w-3xl" data-testid="artist-space-form">
