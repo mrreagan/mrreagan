@@ -25,7 +25,7 @@ const CAMPAIGNS = [
       </>
     ),
     cover: "/fb-assets/v4-landscape/fb-ls-01-secure-connection.png",
-    count: "5 × landscape · 5 × portrait · 5 × hero",
+    count: "1× landscape · 1× portrait · 1× hero · 1× IG square · 1× IG story · 1× Twitter — per phrase (×5)",
   },
   // Future campaigns slot in here ↓
   // {

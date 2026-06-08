@@ -1,57 +1,58 @@
 # Birthright Foundation Platform — PRD
 
 ## Original Problem Statement
-Finalize Phase 6B/6C features, Partner Economy workflows, and Agentic AI capabilities for the Birthright Foundation web platform (React + FastAPI + MongoDB). Recent focus has shifted to marketing-asset production for the brand's first physical product line — laser-engraved leather patches carrying 5 attachment-theory phrases.
+Finalize Phase 6B/6C features, Partner Economy workflows, and Agentic AI capabilities for the Birthright Foundation web platform (React + FastAPI + MongoDB).
 
 ## Persona
-- **Founder/Operator** — building marketing assets for FB, IG, and the storefront.
+- **Founder/Operator** — marketing assets, dashboards, governance.
 - **Partners** (Vendors / Artists / Stewards / Researchers) — Partner Economy modules.
 - **Members** — research, events, merch.
 
 ## Core Brand Aesthetic
 - Cream / warm parchment / soft natural light
 - Editorial serif italics (Cormorant Garamond) + bold-upright roman focal word
-- Thin gold hairline rules
+- Thin gold hairline rules + brand teal `#2C4E5A` ink
 - Generous whitespace
-- Sacred but secular tone
+- Sacred-but-secular tone
 
 ## What's Been Implemented (recent)
-- Phase 1-7 platform: complete (admin, partners, payouts, AI Studio, POD fulfillment, refunds/clawbacks, global search, AI spend visibility, Partnership Agreement v2, public Partners directory, hidden `/engraving` gallery).
-- **(2026-02) Facebook Promo Pack — Patch Series**:
-  - v1: paraphrased copy, mixed angles.
-  - v2: flat-lay top-down heroes, paraphrased copy, brand teal+gold cards.
-  - v3: verbatim "What this means" summaries, 1080×1920 portrait, brand teal+gold.
-  - v4: 3/4 perspective heroes with signature objects (signet ring / pen / paired cups / key / kintsugi dish), alternating tilts (corrected so #1 + #3 + #5 share consistent direction), softer lighting, locked rounded-rectangle patch shape.
-  - **v4-landscape (1920×1080) — recommended canonical format**, hero on left + verbatim copy on right.
-- **(2026-02) Internal Marketing Section**:
-  - `/marketing` — index page listing campaign packs (link-only, not in nav, not indexed).
-  - `/fb-promo` — the FB Patch Pack gallery (link-only, not in nav).
-  - Future campaigns slot in via single entry in `MarketingIndex.jsx::CAMPAIGNS`.
+- Phase 1-7 platform (complete).
+- **(2026-02) Patch Series marketing assets**:
+  - v4 landscape 1920×1080 (canonical FB) + v4 portrait 1080×1920 + v4 hero 1024×1024
+  - v4-multi: IG square 1080×1080, IG Story/Reel 1080×1920, Twitter/X 1600×900
+  - Heroes use 3/4 perspective, alternating tilts, signature objects (ring · pen · cups · key · kintsugi), softer lighting.
+  - v2/v3 retained as drafts behind disclosure.
+- **(2026-02) Internal marketing section** (`/marketing` + `/fb-promo`, link-only, not in nav).
+- **(2026-02) Foundation Revenue · POD Margin tile**:
+  - Backend `GET /api/admin/foundation/revenue/pod-margin?days=N` aggregates Printful + Lulu revenue/cost/margin from `db.orders.items[*] ⋈ db.products`.
+  - Surfaces `missing_cost_skus` for data hygiene.
+  - Window toggle: all-time / 30 / 90 / 365.
+  - Mounted on `/admin` below the StatsGrid.
+  - Tests: `test_iter37_foundation_revenue.py` — 4 cases passing (auth gates, shape, math, windowing, missing-cost flag).
 
 ## P0 / Active
-- *None* — FB Patch Pack accepted by founder. Pending deploy to make URLs permanent.
+- *None* — patch pack accepted by founder; POD margin tile shipped and tested.
 
 ## P3 / Backlog
-- Foundation revenue dashboard tile (Printful margin + Lulu margin + combined).
-- Multi-platform variants of Patch Pack (IG 1:1, Reels/Stories 9:16, Twitter/X 1600×900) on demand.
-- Future marketing campaign packs added under `/marketing`.
+- Public "Patches" product landing page on birthright.live (linked from shop, destination for the FB ads).
+- Additional marketing campaign packs under `/marketing`.
+- Push & deploy to make `/marketing`, `/fb-promo` permanent at birthright.live.
 
 ## Key Files (current session)
-- `/app/backend/scripts/generate_fb_promo_assets.py` (v1 — historical)
-- `/app/backend/scripts/generate_fb_promo_assets_v2.py` (v2 — historical)
-- `/app/backend/scripts/generate_fb_promo_assets_v3.py` (v3 — cards only, verbatim copy)
-- `/app/backend/scripts/generate_fb_promo_assets_v4.py` (v4 — current canonical hero + portrait card pipeline)
-- `/app/backend/scripts/generate_fb_promo_assets_v4_landscape.py` (v4 landscape — current canonical 1920×1080)
-- `/app/frontend/public/fb-assets/v4/` — v4 portrait heroes & cards
-- `/app/frontend/public/fb-assets/v4-landscape/` — v4 landscape cards
+- `/app/backend/routers/foundation_revenue.py` (new)
+- `/app/backend/scripts/generate_fb_promo_assets_v4.py` (canonical hero pipeline)
+- `/app/backend/scripts/generate_fb_promo_assets_v4_landscape.py` (FB landscape)
+- `/app/backend/scripts/generate_fb_promo_variants.py` (IG + Twitter sizes)
+- `/app/backend/tests/test_iter37_foundation_revenue.py` (new)
+- `/app/frontend/src/pages/AdminDashboard.jsx` (added `<PodMarginTile />`)
+- `/app/frontend/src/pages/FbPromoGallery.jsx` (added IG + Twitter tiles)
 - `/app/frontend/src/pages/MarketingIndex.jsx` (new — `/marketing` index)
-- `/app/frontend/src/pages/FbPromoGallery.jsx` (new — `/fb-promo` gallery)
-- `/app/scripts/fonts/CormorantGaramond-*.ttf` — pipeline fonts
+- `/app/frontend/public/fb-assets/v4/`, `v4-landscape/`, `v4-multi/` — output PNGs
 
 ## 3rd-Party Integrations
-- Gemini Nano Banana (gemini-3.1-flash-image-preview) — image-to-image heroes via Emergent LLM key
-- Claude Sonnet 4.5 — text/agentic via Emergent LLM key
-- Stripe, Printful, Lulu, Resend — user-provided keys
+- Gemini Nano Banana (image-to-image) via Emergent LLM key
+- Claude Sonnet 4.5 via Emergent LLM key
+- Stripe / Printful / Lulu / Resend — user-provided keys
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`.

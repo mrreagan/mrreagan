@@ -107,6 +107,7 @@ from routers.refunds import (
     admin_router as refunds_admin_router,
     clawback_router as clawback_router,
 )
+from routers.foundation_revenue import admin_router as foundation_revenue_router
 from routers.assistant import router as assistant_router
 from routers.ai_wallet import (
     my_router as ai_wallet_my_router,
@@ -179,6 +180,7 @@ api_router.include_router(disputes_my_router)
 api_router.include_router(disputes_admin_router)
 api_router.include_router(ombudsman_router)
 api_router.include_router(refunds_admin_router)
+api_router.include_router(foundation_revenue_router)
 api_router.include_router(clawback_router)
 api_router.include_router(assistant_router)
 api_router.include_router(ai_wallet_my_router)

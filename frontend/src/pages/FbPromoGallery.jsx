@@ -124,6 +124,9 @@ const v2Src = (it) => `/fb-assets/v2/fb-${it.idx}-${it.slug}.png`;
 const v3Src = (it) => `/fb-assets/v3/fb-${it.idx}-${it.slug}.png`;
 const v4Src = (it) => `/fb-assets/v4/fb-${it.idx}-${it.slug}.png`;
 const v4lsSrc = (it) => `/fb-assets/v4-landscape/fb-ls-${it.idx}-${it.slug}.png`;
+const igSqSrc = (it) => `/fb-assets/v4-multi/ig-sq-${it.idx}-${it.slug}.png`;
+const igStorySrc = (it) => `/fb-assets/v4-multi/ig-story-${it.idx}-${it.slug}.png`;
+const twSrc = (it) => `/fb-assets/v4-multi/tw-${it.idx}-${it.slug}.png`;
 
 function Tile({ href, label, dims, alt, testid }) {
   return (
@@ -162,14 +165,16 @@ export default function FbPromoGallery() {
             Facebook promo assets
           </h1>
           <p className="text-sm text-[#3D6373] mt-3 max-w-2xl leading-relaxed">
-            <strong>v4 landscape</strong> (1920×1080) is the recommended
-            format — hero on the left, the verbatim "What this means" copy
-            on the right with room to breathe. v4 heroes use a 3/4
+            <strong>v4 landscape</strong> (1920×1080) is the canonical
+            Facebook format. Multi-platform variants now live alongside it:{" "}
+            <strong>Instagram square</strong> (1080×1080),{" "}
+            <strong>Instagram Story / Reel</strong> (1080×1920), and{" "}
+            <strong>Twitter / X</strong> (1600×900). v4 heroes use a 3/4
             perspective, alternating tilts, a signature object per phrase
             (signet ring · pen · paired cups · key · kintsugi dish) and
             softer lighting. Earlier portrait drafts (v2 paraphrased, v3
-            verbatim) are tucked inside the "Show earlier drafts" toggle
-            on each section. Tap any image to open full resolution.
+            verbatim) are tucked inside the "Show earlier drafts" toggle on
+            each section. Tap any image to open full resolution.
           </p>
         </header>
 
@@ -211,10 +216,39 @@ export default function FbPromoGallery() {
                 />
                 <Tile
                   href={v4Src(it)}
-                  label="v4 portrait card"
+                  label="v4 portrait card (Facebook)"
                   dims="1080 × 1920"
                   alt={`v4 portrait — ${it.phrase}`}
                   testid={`fb-promo-${it.idx}-v4`}
+                />
+              </div>
+
+              {/* ── Row IG : Instagram square + Story/Reel ───────────── */}
+              <div className="grid sm:grid-cols-2 gap-5 mt-5">
+                <Tile
+                  href={igSqSrc(it)}
+                  label="Instagram square (feed)"
+                  dims="1080 × 1080"
+                  alt={`IG square — ${it.phrase}`}
+                  testid={`fb-promo-${it.idx}-igsq`}
+                />
+                <Tile
+                  href={igStorySrc(it)}
+                  label="Instagram Story / Reel"
+                  dims="1080 × 1920"
+                  alt={`IG story — ${it.phrase}`}
+                  testid={`fb-promo-${it.idx}-igstory`}
+                />
+              </div>
+
+              {/* ── Row Twitter : single full-width tile ─────────────── */}
+              <div className="mt-5">
+                <Tile
+                  href={twSrc(it)}
+                  label="Twitter / X card"
+                  dims="1600 × 900"
+                  alt={`Twitter — ${it.phrase}`}
+                  testid={`fb-promo-${it.idx}-tw`}
                 />
               </div>
 

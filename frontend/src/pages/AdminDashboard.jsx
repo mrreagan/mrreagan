@@ -39,6 +39,126 @@ function StatsGrid({ stats }) {
   );
 }
 
+// ---------- POD margin tile (Printful + Lulu) ----------
+function PodMarginTile() {
+  const [data, setData] = useState(null);
+  const [days, setDays] = useState(0);   // 0 = all-time
+  const [err, setErr] = useState(false);
+
+  useEffect(() => {
+    api
+      .get(`/admin/foundation/revenue/pod-margin?days=${days}`)
+      .then((r) => setData(r.data))
+      .catch(() => setErr(true));
+  }, [days]);
+
+  if (err) return null;
+
+  const fmt = (n) =>
+    `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const rows = data
+    ? [
+        { id: "printful", label: "Printful (merch)", bucket: data.printful },
+        { id: "lulu", label: "Lulu (books)", bucket: data.lulu },
+        { id: "combined", label: "Combined POD", bucket: data.combined, bold: true },
+      ]
+    : [];
+
+  return (
+    <section className="card p-6 mt-8" data-testid="admin-pod-margin">
+      <div className="flex items-baseline justify-between gap-4 flex-wrap">
+        <div>
+          <p className="label text-[#C9A961]">Foundation revenue · POD margin</p>
+          <h2 className="font-serif text-xl mt-1">Printful + Lulu</h2>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          {[
+            { v: 0, l: "All-time" },
+            { v: 30, l: "30 days" },
+            { v: 90, l: "90 days" },
+            { v: 365, l: "1 year" },
+          ].map((opt) => (
+            <button
+              key={opt.v}
+              onClick={() => setDays(opt.v)}
+              data-testid={`pod-margin-window-${opt.v}`}
+              className={`px-3 py-1 rounded-full transition border ${
+                days === opt.v
+                  ? "border-[#476B6B] text-[#476B6B] bg-[#F0F6F4]"
+                  : "border-[#E5E1D8] text-[#5C6B6B] hover:text-[#1A2424]"
+              }`}
+            >
+              {opt.l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!data ? (
+        <p className="text-sm text-[#5C6B6B] mt-4">Loading POD margin…</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto mt-5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#E5E1D8]">
+                  <th className="text-left py-2 label">Provider</th>
+                  <th className="text-right py-2 label">Revenue</th>
+                  <th className="text-right py-2 label">POD cost</th>
+                  <th className="text-right py-2 label">Margin</th>
+                  <th className="text-right py-2 label">Margin %</th>
+                  <th className="text-right py-2 label">Units</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr
+                    key={r.id}
+                    data-testid={`pod-margin-row-${r.id}`}
+                    className={`border-b border-[#E5E1D8] last:border-0 ${
+                      r.bold ? "font-medium bg-[#FAF8F5]" : ""
+                    }`}
+                  >
+                    <td className="py-2.5">{r.label}</td>
+                    <td className="py-2.5 text-right">{fmt(r.bucket.revenue)}</td>
+                    <td className="py-2.5 text-right text-[#5C6B6B]">{fmt(r.bucket.cost)}</td>
+                    <td className="py-2.5 text-right text-[#2E5C46]">{fmt(r.bucket.margin)}</td>
+                    <td className="py-2.5 text-right">
+                      {r.bucket.margin_pct ? `${r.bucket.margin_pct}%` : "—"}
+                    </td>
+                    <td className="py-2.5 text-right text-[#5C6B6B]">{r.bucket.units}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {data.missing_cost_skus?.length > 0 && (
+            <div
+              className="mt-4 text-xs text-[#C9A961] bg-[#FFF8E8] border border-[#F0E2B2] rounded px-3 py-2"
+              data-testid="pod-margin-missing-cost"
+            >
+              <strong>Data hygiene:</strong> {data.missing_cost_skus.length} POD SKU
+              {data.missing_cost_skus.length === 1 ? "" : "s"} {data.missing_cost_skus.length === 1 ? "is" : "are"} missing a
+              base cost and {data.missing_cost_skus.length === 1 ? "was" : "were"} treated as 100% margin:{" "}
+              <span className="text-[#5C6B6B]">{data.missing_cost_skus.slice(0, 5).join(", ")}{data.missing_cost_skus.length > 5 ? "…" : ""}</span>
+            </div>
+          )}
+
+          <p className="text-xs text-[#5C6B6B] mt-3">
+            {data.order_count} paid order{data.order_count === 1 ? "" : "s"} in window.
+            Margin = retail revenue − POD wholesale cost. Foundation revenue
+            (Birthright-fulfilled merch, workshops, subscriptions) is tracked
+            separately under{" "}
+            <Link to="/admin/reports" className="underline">Foundation reports</Link>.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
 // ---------- Quick action card ----------
 function QuickActionCard({ to, icon: Icon, title, description }) {
   return (
@@ -280,6 +400,7 @@ export default function AdminDashboard() {
       <h1 className="editorial-h1 mt-2">Foundation overview</h1>
       <div className="divider-flame" />
       <StatsGrid stats={stats} />
+      <PodMarginTile />
       <TabBar active={tab} onChange={setTab} />
       <div className="mt-8">
         {tab === "overview" && <OverviewTab />}
