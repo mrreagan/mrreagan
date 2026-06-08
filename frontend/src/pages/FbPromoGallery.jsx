@@ -2,10 +2,13 @@
  *
  * URL: /fb-promo
  *
- * Shows all 5 hero shots + 5 social cards side-by-side per phrase so the
- * founder can preview them on any device (desktop or mobile) without
- * downloading. Click any image to open the full-resolution file in a new
- * tab. A single button per phrase lets you save both files.
+ * For each phrase shows:
+ *   1. Hero shot (square 1080x1080)
+ *   2. v2 social card (paraphrased explanation — earlier draft)
+ *   3. v3 social card (VERBATIM "What this means" summary — original)
+ *
+ * Both v2 and v3 cards are 1080x1620 / 1080x1920 portrait, ready to drop
+ * straight into the Facebook feed. Tap any image to open full resolution.
  */
 import React from "react";
 import { Download } from "lucide-react";
@@ -16,16 +19,18 @@ const ITEMS = [
     slug: "secure-connection",
     phrase: "Secure connection is your birthright",
     vibe: "cream linen + dried lavender",
-    explanation: (
+    v3Text: (
       <>
-        Before you earned it, before you proved yourself worthy, before the
-        world taught you to bargain for love — connection was already yours.
-        A secure bond is not a reward for good behaviour. It is the
-        inheritance every person is born holding.
+        This isn't aspirational. It's not "if you're lucky" or "for some
+        people." It's the constitutional truth that every human being
+        arrives wired for, and worthy of, a steady, responsive bond. We
+        don't earn secure attachment — we recognize it as the default we
+        were built for, even when life pulled us away from it. To carry
+        this phrase is to refuse the lie that connection has to be
+        deserved, performed, or paid for.
         <br /><br />
-        <em className="text-[#1A2A33]">
-          To return to it is not to gain something new; it is to remember
-          what you already are.
+        <em className="text-[#1A2A33] not-italic">
+          <span className="italic">You were born holding the deed.</span>
         </em>
       </>
     ),
@@ -35,13 +40,19 @@ const ITEMS = [
     slug: "founder-of-love-story",
     phrase: "You are the founder of your own love story",
     vibe: "ivory deckle paper + olive leaf",
-    explanation: (
+    v3Text: (
       <>
-        No one writes your story for you. Not the family you came from, not
-        the wounds you carry, not the script the world handed you. You are
-        the founder — the one who chooses, who repairs, who begins again.
+        Most of us inherited a love story before we could write one — from
+        our parents' marriage, our family's silences, our culture's
+        clichés about how romance is supposed to go. To be the founder is
+        to take the pen back. Not to discard what was given, but to
+        author the next chapter consciously: who you love, how you love,
+        what counts as a happy ending.
         <br /><br />
-        <em className="text-[#1A2A33]">The pen has always been in your hand.</em>
+        <em className="text-[#1A2A33]">
+          The bond you build now isn't an extension of what came before —
+          it's a fresh founding document, and you're the one signing it.
+        </em>
       </>
     ),
   },
@@ -50,15 +61,18 @@ const ITEMS = [
     slug: "created-for-connection",
     phrase: "We are created for connection",
     vibe: "pale stone + rosemary in cream dish",
-    explanation: (
+    v3Text: (
       <>
-        Our nervous systems are not built for isolation. From the first
-        breath, we calibrate ourselves through the eyes, voice and warmth
-        of another. Loneliness is not a personality trait — it is a signal
-        that we were designed for something more.
+        This is Sue Johnson's discovery dressed as theology and biology
+        at the same time. Whether you read "created" as a divine act or a
+        developmental one, the message is identical: your nervous system
+        was not designed to thrive alone. The hunger you feel for
+        closeness isn't a personal failing or a sign of weakness — it's
+        the original blueprint asserting itself.
         <br /><br />
         <em className="text-[#1A2A33]">
-          Connection is not optional. It is constitutive.
+          We are not solitary creatures who occasionally bond. We are
+          bonding creatures who occasionally find ourselves alone.
         </em>
       </>
     ),
@@ -68,15 +82,18 @@ const ITEMS = [
     slug: "bond-is-the-cure",
     phrase: "The bond is the cure",
     vibe: "off-white raw silk + bronze key",
-    explanation: (
+    v3Text: (
       <>
-        Insight will not heal you. Strategies will not heal you. A book, a
-        podcast, a perfectly worded boundary — none of them will heal you.
-        The bond heals you. The repeated experience of being seen, held,
-        and stayed with by someone who will not leave — that is the
-        medicine.
+        We chase cures in books, therapy, podcasts, and prescriptions.
+        Sometimes one of them helps. But the deepest healing for
+        relational wounds always comes through a different relationship —
+        one that proves the old story wrong by living a steadier one in
+        its place. The bond itself, when it is finally safe and
+        responsive, becomes the medicine.
         <br /><br />
-        <em className="text-[#1A2A33]">Everything else is the wrapper.</em>
+        <em className="text-[#1A2A33]">
+          Not a metaphor. Not a side effect. The cure.
+        </em>
       </>
     ),
   },
@@ -85,17 +102,17 @@ const ITEMS = [
     slug: "repair-is-older",
     phrase: "Repair is older than rupture",
     vibe: "patch inside cream porcelain dish with gold kintsugi seams",
-    explanation: (
+    v3Text: (
       <>
-        Long before the first wound, repair was already inside us. Babies
-        cry and reach. Parents return. The dance of rupture and repair is
-        older than language, older than memory, older than the breach
-        itself.
+        Most people assume rupture comes first and repair is the scramble
+        afterward. But mother-infant repair cycles begin in the first
+        weeks of life — before any conscious wound is ever named. The
+        dance of rupture-and-repair is the relationship; it's been native
+        to you since before you had language for either.
         <br /><br />
         <em className="text-[#1A2A33]">
-          The capacity to mend is not something we acquire — it is
-          something we are born holding, waiting for the moment we are
-          brave enough to use it.
+          You don't have to learn repair from scratch. You have to
+          remember it.
         </em>
       </>
     ),
@@ -103,7 +120,30 @@ const ITEMS = [
 ];
 
 const heroSrc = (it) => `/fb-assets/v2/hero-${it.idx}-${it.slug}.png`;
-const cardSrc = (it) => `/fb-assets/v2/fb-${it.idx}-${it.slug}.png`;
+const v2Src = (it) => `/fb-assets/v2/fb-${it.idx}-${it.slug}.png`;
+const v3Src = (it) => `/fb-assets/v3/fb-${it.idx}-${it.slug}.png`;
+
+function Tile({ href, label, dims, alt, testid }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group block"
+      data-testid={testid}
+    >
+      <div className="relative bg-white/40 border border-[#E5DCC4] overflow-hidden">
+        <img src={href} alt={alt} className="w-full h-auto block" loading="lazy" />
+        <span className="absolute top-3 left-3 text-[10px] uppercase tracking-[0.18em] bg-[#F8F2E5]/95 text-[#2C4E5A] px-2 py-1">
+          {label} · {dims}
+        </span>
+        <span className="absolute top-3 right-3 bg-white/90 border border-[#E5DCC4] rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition">
+          <Download size={14} strokeWidth={1.6} className="text-[#2C4E5A]" />
+        </span>
+      </div>
+    </a>
+  );
+}
 
 export default function FbPromoGallery() {
   return (
@@ -114,19 +154,22 @@ export default function FbPromoGallery() {
       <div className="max-w-5xl mx-auto px-5 py-10 sm:py-14">
         <header className="mb-10 sm:mb-14">
           <p className="text-xs uppercase tracking-[0.25em] text-[#A87A4A] mb-3">
-            Internal review · v2
+            Internal review
           </p>
           <h1 className="text-3xl sm:text-4xl font-serif italic text-[#2C4E5A] leading-tight">
             Facebook promo assets
           </h1>
-          <p className="text-sm text-[#3D6373] mt-3 max-w-xl">
-            Five phrases × two assets each. Hero shots (square, 1080×1080)
-            for stand-alone posts; portrait cards (1080×1620) ready to drop
-            into the Facebook feed. Tap any image to open full resolution.
+          <p className="text-sm text-[#3D6373] mt-3 max-w-2xl leading-relaxed">
+            Each phrase has three assets: a square <strong>hero</strong> shot
+            (1080×1080), a portrait <strong>v2 card</strong> with the
+            paraphrased explanation (1080×1620), and a portrait{" "}
+            <strong>v3 card</strong> with the verbatim "What this means"
+            summary (1080×1920). Pick whichever you prefer per phrase. Tap
+            any image to open at full resolution.
           </p>
         </header>
 
-        <div className="space-y-16 sm:space-y-20">
+        <div className="space-y-20">
           {ITEMS.map((it) => (
             <section
               key={it.idx}
@@ -142,58 +185,41 @@ export default function FbPromoGallery() {
                 </p>
               </div>
 
+              {/* ── Row A : Hero + v2 ─────────────────────────────────── */}
               <div className="grid sm:grid-cols-2 gap-5 mt-6">
-                <a
+                <Tile
                   href={heroSrc(it)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group block"
-                  data-testid={`fb-promo-${it.idx}-hero`}
-                >
-                  <div className="relative bg-white/40 border border-[#E5DCC4] overflow-hidden">
-                    <img
-                      src={heroSrc(it)}
-                      alt={`Hero — ${it.phrase}`}
-                      className="w-full h-auto block"
-                      loading="lazy"
-                    />
-                    <span className="absolute top-3 left-3 text-[10px] uppercase tracking-[0.18em] bg-[#F8F2E5]/95 text-[#2C4E5A] px-2 py-1">
-                      Hero · 1080 × 1080
-                    </span>
-                    <span className="absolute top-3 right-3 bg-white/90 border border-[#E5DCC4] rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition">
-                      <Download size={14} strokeWidth={1.6} className="text-[#2C4E5A]" />
-                    </span>
-                  </div>
-                </a>
-
-                <a
-                  href={cardSrc(it)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group block"
-                  data-testid={`fb-promo-${it.idx}-card`}
-                >
-                  <div className="relative bg-white/40 border border-[#E5DCC4] overflow-hidden">
-                    <img
-                      src={cardSrc(it)}
-                      alt={`Social card — ${it.phrase}`}
-                      className="w-full h-auto block"
-                      loading="lazy"
-                    />
-                    <span className="absolute top-3 left-3 text-[10px] uppercase tracking-[0.18em] bg-[#F8F2E5]/95 text-[#2C4E5A] px-2 py-1">
-                      Card · 1080 × 1620
-                    </span>
-                    <span className="absolute top-3 right-3 bg-white/90 border border-[#E5DCC4] rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition">
-                      <Download size={14} strokeWidth={1.6} className="text-[#2C4E5A]" />
-                    </span>
-                  </div>
-                </a>
+                  label="Hero"
+                  dims="1080 × 1080"
+                  alt={`Hero — ${it.phrase}`}
+                  testid={`fb-promo-${it.idx}-hero`}
+                />
+                <Tile
+                  href={v2Src(it)}
+                  label="v2 card"
+                  dims="1080 × 1620"
+                  alt={`v2 card — ${it.phrase}`}
+                  testid={`fb-promo-${it.idx}-v2`}
+                />
               </div>
 
-              <div className="mt-6 max-w-2xl">
-                <p className="text-[#3D6373] text-base sm:text-lg leading-relaxed font-serif">
-                  {it.explanation}
-                </p>
+              {/* ── Row B : v3 (verbatim) + its full text ─────────────── */}
+              <div className="grid sm:grid-cols-2 gap-5 mt-5">
+                <Tile
+                  href={v3Src(it)}
+                  label="v3 card — verbatim"
+                  dims="1080 × 1920"
+                  alt={`v3 card — ${it.phrase}`}
+                  testid={`fb-promo-${it.idx}-v3`}
+                />
+                <div className="max-w-xl">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-[#A87A4A] mb-3">
+                    What this means — verbatim
+                  </p>
+                  <p className="text-[#3D6373] text-base sm:text-[17px] leading-relaxed font-serif italic">
+                    {it.v3Text}
+                  </p>
+                </div>
               </div>
             </section>
           ))}
