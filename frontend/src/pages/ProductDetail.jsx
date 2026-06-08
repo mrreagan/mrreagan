@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { useCart } from "../contexts/CartContext";
 import { toast } from "sonner";
-import { ShoppingBag, Lock, ArrowLeft, ExternalLink } from "lucide-react";
+import { ShoppingBag, Lock, ArrowLeft, ExternalLink, Palette } from "lucide-react";
 import ReviewSection, { AggregateRatingBadge } from "../components/ReviewSection";
 import ShareButton from "../components/ShareButton";
 
@@ -43,10 +43,27 @@ export default function ProductDetail() {
               )}
             </p>
           )}
+          {p.is_gallery_artwork && (
+            <p className="text-xs uppercase tracking-wider text-[#A87A4A] mt-2 inline-flex items-center gap-2" data-testid="product-artist-badge">
+              <Palette size={12} strokeWidth={1.6} /> By{" "}
+              {p.gallery_artist_slug ? (
+                <Link to={`/gallery/${p.gallery_artist_slug}`} className="text-[#476B6B] hover:underline">{p.gallery_artist_name}</Link>
+              ) : (
+                <span className="text-[#476B6B]">{p.gallery_artist_name}</span>
+              )}
+              <span className="text-[#5C6B6B]">· ships directly from the artist&apos;s studio</span>
+            </p>
+          )}
           <div className="mt-2">
             <AggregateRatingBadge subjectType="product" subjectId={p.id} />
           </div>
           <p className="font-serif text-3xl text-[#1A2424] mt-4">${p.price?.toFixed(2)}</p>
+          {p.is_gallery_artwork && !p.foundation_absorbs_markup && (
+            <p className="text-xs text-[#A87A4A] italic mt-1" data-testid="product-patronage-note">
+              + 20% Foundation patronage at checkout ($
+              {(p.price * 0.2).toFixed(2)} supports artist gallery curation)
+            </p>
+          )}
           <p className="text-base text-[#5C6B6B] mt-6 leading-relaxed">{p.description}</p>
 
           {p.locked ? (
@@ -63,7 +80,7 @@ export default function ProductDetail() {
             <div className="mt-8" data-testid="product-off-site-block">
               <div className="card p-5 bg-[#F4F1EA] border-2 border-[#476B6B]">
                 <p className="label !mt-0 !text-[#476B6B] inline-flex items-center gap-1">
-                  <ExternalLink size={11} strokeWidth={1.8} /> Sold on the vendor's own site
+                  <ExternalLink size={11} strokeWidth={1.8} /> Sold on the vendor&apos;s own site
                 </p>
                 <p className="text-sm text-[#5C6B6B] mt-2 leading-relaxed">
                   {p.vendor_name ? `${p.vendor_name} handles the order on their own store. ` : ""}
@@ -81,22 +98,50 @@ export default function ProductDetail() {
               </div>
             </div>
           ) : (
-            <div className="mt-8 flex items-center gap-4">
-              <div className="flex items-center border border-[#E5E1D8] rounded-full overflow-hidden">
-                <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-4 py-2 hover:bg-[#FAF8F5]" data-testid="product-qty-minus">−</button>
-                <span className="px-4 py-2 font-medium" data-testid="product-qty">{qty}</span>
-                <button onClick={() => setQty(qty + 1)} className="px-4 py-2 hover:bg-[#FAF8F5]" data-testid="product-qty-plus">+</button>
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center border border-[#E5E1D8] rounded-full overflow-hidden">
+                  <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-4 py-2 hover:bg-[#FAF8F5]" data-testid="product-qty-minus">−</button>
+                  <span className="px-4 py-2 font-medium" data-testid="product-qty">{qty}</span>
+                  <button onClick={() => setQty(qty + 1)} className="px-4 py-2 hover:bg-[#FAF8F5]" data-testid="product-qty-plus">+</button>
+                </div>
+                <button
+                  onClick={() => {
+                    addItem(p, qty);
+                    toast.success(`Added ${qty} × ${p.name}`);
+                  }}
+                  className="btn-primary"
+                  data-testid="product-add-to-cart"
+                >
+                  <ShoppingBag size={16} strokeWidth={1.5} />
+                  {p.is_gallery_artwork
+                    ? "Patron with 20% Foundation support"
+                    : "Add to cart"}
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  addItem(p, qty);
-                  toast.success(`Added ${qty} × ${p.name}`);
-                }}
-                className="btn-primary"
-                data-testid="product-add-to-cart"
-              >
-                <ShoppingBag size={16} strokeWidth={1.5} /> Add to cart
-              </button>
+
+              {p.is_gallery_artwork && p.artist_external_url && (() => {
+                const ext = p.artist_external_url;
+                const sep = ext.includes("?") ? "&" : "?";
+                const taggedHref = `${ext}${sep}via=birthright`;
+                return (
+                  <div
+                    className="text-xs text-[#5C6B6B] flex items-center gap-2"
+                    data-testid="product-artist-direct"
+                  >
+                    <span>or</span>
+                    <a
+                      href={taggedHref}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-[#476B6B] hover:underline inline-flex items-center gap-1"
+                    >
+                      visit this work on the artist&apos;s own site
+                      <ExternalLink size={11} strokeWidth={1.6} />
+                    </a>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

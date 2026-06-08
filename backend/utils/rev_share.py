@@ -84,7 +84,8 @@ async def resolve_off_site_pct(db, profile: dict) -> dict:
 
     Precedence:
       1. `profile.rev_share_overrides.off_site_pct` if set
-      2. The partner's resolved on-site pct via `resolve_rev_share` (active sub or global)
+      2. For ARTIST partners: their tier-based outbound_pct (Emerging…Flourishing)
+      3. The partner's resolved on-site pct via `resolve_rev_share` (active sub or global)
     """
     overrides = profile.get("rev_share_overrides") or {}
     if overrides.get("off_site_pct") is not None:
@@ -92,6 +93,14 @@ async def resolve_off_site_pct(db, profile: dict) -> dict:
             "pct": float(overrides["off_site_pct"]),
             "source": "override",
             "tier_key": "off_site_override",
+        }
+    if profile.get("partner_type") == "artist":
+        from utils.artist_tier import resolve_artist_tier
+        tier = await resolve_artist_tier(db, profile["user_id"])
+        return {
+            "pct": float(tier["outbound_pct"]),
+            "source": f"artist_tier_{tier['tier_key']}",
+            "tier_key": tier["tier_key"],
         }
     base = await resolve_rev_share(db, profile["user_id"], profile["partner_type"])
     return {

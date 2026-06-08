@@ -96,6 +96,8 @@ import EngravingGallery from "./pages/EngravingGallery";
 import FbPromoGallery from "./pages/FbPromoGallery";
 import MarketingIndex from "./pages/MarketingIndex";
 import ArtistPartnershipTerms from "./pages/ArtistPartnershipTerms";
+import OffSiteReport from "./pages/OffSiteReport";
+import PayoutMethod from "./pages/PayoutMethod";
 import AiOverview from "./pages/AiOverview";
 import Connect from "./pages/Connect";
 import ScrollToTop from "./components/ScrollToTop";
@@ -567,6 +569,8 @@ function AppRoutes() {
       <Route path="/fb-promo" element={<FbPromoGallery />} />
       <Route path="/marketing" element={<MarketingIndex />} />
       <Route path="/partner/artist" element={<ArtistPartnershipTerms />} />
+      <Route path="/partner/me/off-site-report" element={<OffSiteReport />} />
+      <Route path="/partner/me/payout-method" element={<PayoutMethod />} />
       <Route
         path="/dashboard/ai-wallet"
         element={
