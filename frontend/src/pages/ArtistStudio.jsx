@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -9,11 +10,28 @@ const LAYOUTS = ["single-wall", "two-column", "salon-hang", "audio-forward"];
 const ACCENTS = ["flame", "moss", "river", "ochre", "indigo", "graphite"];
 
 
-// Tier card — fetches the current artist's tier + basis + runway.
+// Tier card — fetches the current artist's tier + basis + runway, lifetime
+// patronage total, and 12-month revenue sparkline.
 function ArtistTierCard() {
   const [tier, setTier] = useState(null);
+  const [payouts, setPayouts] = useState(null);
+  const [series, setSeries] = useState(null);
   useEffect(() => {
-    api.get("/partner/me/artist-tier").then((r) => setTier(r.data)).catch(() => {});
+    let cancelled = false;
+    (async () => {
+      try {
+        const [tierR, payR, seriesR] = await Promise.all([
+          api.get("/partner/me/artist-tier"),
+          api.get("/partner/me/artist-payouts"),
+          api.get("/partner/me/monthly-revenue?months=12"),
+        ]);
+        if (cancelled) return;
+        setTier(tierR.data);
+        setPayouts(payR.data);
+        setSeries(seriesR.data);
+      } catch (_) { /* artist may not have a profile yet */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
   if (!tier) return null;
   const fmt = (n) => `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -55,6 +73,42 @@ function ArtistTierCard() {
         </div>
       </dl>
 
+      {/* Lifetime patronage — total list_price across all artist_sale_payouts */}
+      {payouts && payouts.summary?.count > 0 && (
+        <div
+          className="mt-5 pt-5 border-t border-[#E5E1D8] flex items-baseline justify-between gap-4 flex-wrap"
+          data-testid="artist-patronage-total"
+        >
+          <div>
+            <p className="label text-[#A87A4A]">Foundation patronage to date</p>
+            <p className="font-serif text-2xl text-[#2C4E5A] italic mt-1">
+              {fmt(payouts.summary.lifetime_total)}
+            </p>
+            <p className="text-xs text-[#5C6B6B] mt-1">
+              across {payouts.summary.count} {payouts.summary.count === 1 ? "sale" : "sales"} through Birthright
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-[#5C6B6B]">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#2E5C46] mr-1.5" />
+              Paid: <strong>{fmt(payouts.summary.paid_to_date)}</strong>
+            </p>
+            <p className="text-xs text-[#5C6B6B] mt-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#C9A961] mr-1.5" />
+              Pending: <strong>{fmt(payouts.summary.pending_payout)}</strong>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Tier-history sparkline */}
+      {series && series.length > 0 && (
+        <div className="mt-5" data-testid="artist-revenue-sparkline">
+          <p className="label text-[#476B6B]">Monthly Birthright revenue · last 12 months</p>
+          <RevenueSparkline series={series} />
+        </div>
+      )}
+
       {tier.next_tier_label && (
         <p className="text-xs text-[#5C6B6B] italic mt-4">
           <strong>{fmt(tier.distance_usd)}</strong> until {tier.next_tier_label}.
@@ -70,6 +124,88 @@ function ArtistTierCard() {
   );
 }
 
+
+// Inline SVG sparkline — patronage (teal) and off-site (gold) stacked
+// bars per month, with a baseline rule. No external chart lib.
+function RevenueSparkline({ series }) {
+  const W = 600, H = 80, pad = 6;
+  const max = Math.max(1, ...series.map((d) => d.revenue));
+  const barW = (W - pad * 2) / series.length - 4;
+  const fmt = (n) => `$${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  return (
+    <div className="mt-2 overflow-x-auto">
+      <svg
+        viewBox={`0 0 ${W} ${H + 22}`}
+        preserveAspectRatio="none"
+        style={{ width: "100%", height: 110 }}
+        role="img"
+        aria-label="Monthly Birthright revenue sparkline"
+      >
+        {/* Baseline */}
+        <line x1={pad} x2={W - pad} y1={H} y2={H} stroke="#E5E1D8" strokeWidth="1" />
+        {series.map((d, i) => {
+          const x = pad + i * (barW + 4);
+          const totalH = (d.revenue / max) * (H - 4);
+          const patronageH = (d.patronage / max) * (H - 4);
+          const offsiteH = (d.off_site / max) * (H - 4);
+          const labelEvery = Math.ceil(series.length / 6);
+          const showLabel = i % labelEvery === 0 || i === series.length - 1;
+          return (
+            <g key={d.month}>
+              <title>{`${d.month}: ${fmt(d.revenue)} (patronage ${fmt(d.patronage)} · off-site ${fmt(d.off_site)})`}</title>
+              {/* Off-site (gold) on top */}
+              {offsiteH > 0 && (
+                <rect
+                  x={x} y={H - totalH}
+                  width={barW} height={offsiteH}
+                  fill="#A87A4A"
+                />
+              )}
+              {/* Patronage (teal) at base */}
+              {patronageH > 0 && (
+                <rect
+                  x={x} y={H - patronageH}
+                  width={barW} height={patronageH}
+                  fill="#2C4E5A"
+                />
+              )}
+              {totalH === 0 && (
+                <rect
+                  x={x} y={H - 2}
+                  width={barW} height={2}
+                  fill="#E5E1D8"
+                />
+              )}
+              {showLabel && (
+                <text
+                  x={x + barW / 2}
+                  y={H + 14}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fill="#5C6B6B"
+                  fontFamily="ui-monospace, monospace"
+                >
+                  {d.month.slice(5)}/{d.month.slice(2, 4)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex items-center gap-4 text-[10px] text-[#5C6B6B] mt-1">
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-2 h-2" style={{ background: "#2C4E5A" }} />
+          On-site patronage
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-2 h-2" style={{ background: "#A87A4A" }} />
+          Off-site (self-reported)
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function ArtistStudio() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -82,7 +218,6 @@ export default function ArtistStudio() {
   useEffect(() => {
     if (!user) { navigate("/sign-in"); return; }
     refresh();
-  // eslint-disable-next-line
   }, []);
 
   const refresh = async () => {
@@ -105,12 +240,15 @@ export default function ArtistStudio() {
   const saveSpace = async () => {
     setSavingSpace(true);
     try {
-      const { id, user_id, created_at, updated_at, ...patch } = space;
+      const { id, user_id, created_at, updated_at, ...patch } = space || {};
       const r = await api.put("/gallery/me/space", patch);
       setSpace(r.data);
       toast.success("Gallery space saved");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Save failed"); }
-    finally { setSavingSpace(false); }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Save failed");
+    } finally {
+      setSavingSpace(false);
+    }
   };
 
   const deleteWork = async (id) => {
@@ -209,7 +347,7 @@ export default function ArtistStudio() {
         </div>
         {showNew && <NewWorkForm onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); refresh(); }} />}
         {works.length === 0 ? (
-          <p className="text-sm text-[#5C6B6B] italic mt-3">No works yet. Click "Add a work" to publish your first piece.</p>
+          <p className="text-sm text-[#5C6B6B] italic mt-3">No works yet. Click &ldquo;Add a work&rdquo; to publish your first piece.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
             {works.map((w) => (

@@ -233,6 +233,99 @@ async def stripe_connect_status(user: dict = Depends(get_current_user)):
         return {"connected": False, "error": str(e)[:200]}
 
 
+# -------- Monthly revenue series (for sparkline) --------
+@my_router.get("/monthly-revenue")
+async def monthly_revenue(
+    months: int = 12,
+    user: dict = Depends(get_current_user),
+):
+    """Return Birthright-attributed revenue per calendar month for the
+    trailing `months` months. Each entry sums:
+      • on-site patronage at list_price for paid orders that month
+      • off-site self-reported revenue with period_end in that month
+
+    Output shape:
+        [{ "month": "2025-03", "revenue": 0.0, "patronage": 0.0,
+            "off_site": 0.0 }, …]
+    Always returns `months` entries (zero-padded so the sparkline has a
+    stable x-axis)."""
+    from database import db
+    from datetime import datetime, timedelta, timezone
+
+    months = max(1, min(months, 36))
+    today = datetime.now(timezone.utc).date()
+    # Build the list of (year, month) buckets oldest → newest.
+    buckets: list[tuple[int, int]] = []
+    y, m = today.year, today.month
+    for _ in range(months):
+        buckets.append((y, m))
+        m -= 1
+        if m == 0:
+            m = 12; y -= 1
+    buckets.reverse()
+    keys = [f"{y:04d}-{m:02d}" for (y, m) in buckets]
+    series = {k: {"patronage": 0.0, "off_site": 0.0} for k in keys}
+
+    cutoff_dt = datetime(buckets[0][0], buckets[0][1], 1,
+                          tzinfo=timezone.utc)
+    cutoff = cutoff_dt.isoformat()
+
+    # On-site patronage — group artist's paid line items by created_at month.
+    orders = await db.orders.find(
+        {"status": "paid", "created_at": {"$gte": cutoff}},
+        {"_id": 0, "items": 1, "created_at": 1},
+    ).to_list(50_000)
+    pids = {li.get("product_id")
+            for o in orders for li in (o.get("items") or [])
+            if li.get("product_id")}
+    if pids:
+        artist_products = await db.products.find(
+            {"id": {"$in": list(pids)},
+             "is_gallery_artwork": True,
+             "gallery_artist_user_id": user["id"]},
+            {"_id": 0, "id": 1, "price": 1},
+        ).to_list(len(pids) + 1)
+        price_by_id = {p["id"]: float(p.get("price") or 0)
+                        for p in artist_products}
+    else:
+        price_by_id = {}
+
+    for o in orders:
+        key = (o.get("created_at") or "")[:7]
+        if key not in series:
+            continue
+        for li in o.get("items") or []:
+            pid = li.get("product_id")
+            if pid in price_by_id:
+                series[key]["patronage"] += price_by_id[pid] * int(
+                    li.get("quantity") or 0)
+
+    # Off-site self-reported — bucket by period_end month.
+    reports = await db.partner_sales_reports.find(
+        {"partner_user_id": user["id"],
+         "period_end": {"$gte": keys[0] + "-01"}},
+        {"_id": 0, "amount_usd": 1, "period_end": 1, "status": 1},
+    ).to_list(2000)
+    for r in reports:
+        key = (r.get("period_end") or "")[:7]
+        if key not in series:
+            continue
+        # Count submitted + approved (since artist sees the value they
+        # actually earned).
+        if r.get("status") in ("approved", "submitted"):
+            series[key]["off_site"] += float(r.get("amount_usd") or 0)
+
+    return [
+        {
+            "month": k,
+            "patronage": round(series[k]["patronage"], 2),
+            "off_site": round(series[k]["off_site"], 2),
+            "revenue": round(series[k]["patronage"] + series[k]["off_site"], 2),
+        }
+        for k in keys
+    ]
+
+
 # ============ ADMIN — patronage payouts ============
 @admin_router.get("/payouts")
 async def admin_list_payouts(
