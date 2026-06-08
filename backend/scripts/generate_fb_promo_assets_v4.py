@@ -59,7 +59,7 @@ PHRASES = [
         "phrase": "Secure connection is your birthright",
         "focal": "birthright",
         "source": SRC_DIR / "2074.jpeg",
-        "tilt": "rotated slightly counter-clockwise (about 10-12° to the left)",
+        "tilt": "rotated slightly counter-clockwise (about 8-10° to the left), matching the tilt direction used for phrase #3 — the top edge of the patch should slope upward toward the right side of the frame",
         "signature": (
             "a small antique brass signet ring resting on the linen just "
             "to the lower-left of the patch (suggesting identity, "
@@ -180,7 +180,7 @@ PHRASES = [
         "phrase": "Repair is older than rupture",
         "focal": "Repair",
         "source": SRC_DIR / "2073.jpeg",
-        "tilt": "rotated slightly counter-clockwise (about 6-8° to the left)",
+        "tilt": "rotated slightly counter-clockwise (about 8-10° to the left), matching the tilt direction used for phrase #3 — the top edge of the patch should slope upward toward the right side of the frame",
         "signature": (
             "the patch rests directly INSIDE a shallow handmade cream "
             "porcelain dish whose body bears delicate gold kintsugi "
