@@ -40,6 +40,57 @@ public_router = APIRouter(prefix="/partner/artist", tags=["artist-partnership-pu
 admin_router = APIRouter(prefix="/admin/artist", tags=["artist-partnership-admin"])
 
 
+PUBLIC_TIER_MESSAGES = {
+    "emerging": (
+        "Welcomed to the gallery — your patronage helps build this "
+        "artist's foundation from the ground up."
+    ),
+    "sustaining": (
+        "Your patronage has helped this artist reach the Sustaining "
+        "tier — a working practice with consistent earnings."
+    ),
+    "established": (
+        "Your patronage has helped grow this artist's practice into "
+        "an established livelihood."
+    ),
+    "thriving": (
+        "Your patronage has been part of this artist's thriving "
+        "success story."
+    ),
+    "flourishing": (
+        "This artist has built a flourishing practice — and "
+        "Foundation patronage has been a meaningful part of that story."
+    ),
+}
+
+
+@public_router.get("/{slug}/impact")
+async def public_artist_impact(slug: str):
+    """Anonymous public widget data: tier label + icon + a gentle
+    public-facing message. NO basis dollars, NO percentages, NO override
+    reasoning. Designed for the artist's public gallery page so visitors
+    can see that buying through Birthright meaningfully supports the
+    artist's career, without exposing private revenue numbers."""
+    from database import db
+    profile = await db.partner_profiles.find_one(
+        {"slug": slug, "partner_type": "artist", "status": "active",
+         "public": True},
+        {"_id": 0, "user_id": 1, "display_name": 1},
+    )
+    if not profile:
+        raise HTTPException(404, "Artist not found")
+    tier = await resolve_artist_tier(db, profile["user_id"])
+    return {
+        "tier_key": tier["tier_key"],
+        "tier_label": tier["tier_label"],
+        "tier_icon": tier["tier_icon"],
+        "message": PUBLIC_TIER_MESSAGES.get(
+            tier["tier_key"], PUBLIC_TIER_MESSAGES["emerging"],
+        ),
+        # No basis_12mo, no pct, no override reason — strictly anonymous.
+    }
+
+
 # ============ PUBLIC — tier table for the clarity page ============
 @public_router.get("/tier-table")
 async def public_tier_table():

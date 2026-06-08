@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Palette, ShoppingBag, ExternalLink, Mail, Mic, Video, Calendar } from "lucide-react";
+import { Palette, ShoppingBag, ExternalLink, Mail, Mic, Video, Calendar, Heart } from "lucide-react";
 import api from "../lib/api";
 import { useCart } from "../contexts/CartContext";
 
@@ -13,6 +13,47 @@ const ACCENT_RING = {
   indigo: "ring-[#3F4A8C]/40",
   graphite: "ring-[#5C6B6B]/40",
 };
+
+
+// Anonymous "Foundation impact" widget — shows the artist's tier label +
+// gentle public message. NO dollar amounts, NO percentages, NO private
+// data of any kind.
+function FoundationImpactWidget({ slug }) {
+  const [impact, setImpact] = useState(null);
+  useEffect(() => {
+    if (!slug) return;
+    api.get(`/partner/artist/${slug}/impact`)
+      .then((r) => setImpact(r.data))
+      .catch(() => {});
+  }, [slug]);
+  if (!impact) return null;
+  return (
+    <aside
+      className="border border-[#E5DCC4] bg-[#F8F2E5] rounded-lg p-4 mt-3"
+      data-testid={`gallery-impact-${impact.tier_key}`}
+    >
+      <div className="flex items-start gap-3">
+        <Heart size={18} strokeWidth={1.6} className="text-[#A87A4A] shrink-0 mt-0.5" />
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-[#A87A4A] mb-1">
+            Foundation impact · {impact.tier_label}
+          </p>
+          <p className="text-sm text-[#2C4E5A] font-serif italic leading-relaxed">
+            <span className="not-italic mr-1">{impact.tier_icon}</span>
+            {impact.message}
+          </p>
+          <Link
+            to="/partner/artist"
+            className="text-[11px] uppercase tracking-[0.18em] text-[#A87A4A] hover:text-[#2C4E5A] mt-2 inline-block"
+            data-testid="gallery-impact-learn-link"
+          >
+            How patronage tiers work →
+          </Link>
+        </div>
+      </div>
+    </aside>
+  );
+}
 
 export default function GalleryArtist() {
   const { slug } = useParams();
@@ -75,6 +116,7 @@ export default function GalleryArtist() {
           <p className="text-base leading-relaxed font-serif text-[#0F2424]" data-testid="gallery-statement">
             {space?.statement || artist.bio}
           </p>
+          <FoundationImpactWidget slug={slug} />
           {space?.studio_photo_url && (
             <img src={space.studio_photo_url} alt="In the studio" className="w-full rounded-lg" data-testid="gallery-studio-photo" />
           )}
