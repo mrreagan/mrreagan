@@ -18,13 +18,15 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Wallet, ArrowUpRight, Save, ShieldCheck } from "lucide-react";
+import { Wallet, ArrowUpRight, Save, ShieldCheck, ExternalLink, CheckCircle2, Clock } from "lucide-react";
 import api from "../lib/api";
 
 export default function PayoutMethod() {
   const [method, setMethod] = useState(null);
+  const [stripeStatus, setStripeStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [form, setForm] = useState({
     method_type: "stripe_connect",
     stripe_account_id: "",
@@ -35,22 +37,49 @@ export default function PayoutMethod() {
   });
 
   useEffect(() => {
-    api.get("/me/payouts/method").then((r) => {
-      const m = r.data || {};
-      setMethod(m && m.method_type ? m : null);
-      if (m && m.method_type) {
-        setForm((f) => ({
-          ...f,
-          method_type: m.method_type,
-          stripe_account_id: m.stripe_account_id || "",
-          bank_name: m.bank_name || "",
-          account_holder_name: m.account_holder_name || "",
-          routing_number: m.routing_number || "",
-          // account_number is never returned from the server (encrypted)
-        }));
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await api.get("/me/payouts/method");
+        if (cancelled) return;
+        const m = r.data || {};
+        setMethod(m && m.method_type ? m : null);
+        if (m && m.method_type) {
+          setForm((f) => ({
+            ...f,
+            method_type: m.method_type,
+            stripe_account_id: m.stripe_account_id || "",
+            bank_name: m.bank_name || "",
+            account_holder_name: m.account_holder_name || "",
+            routing_number: m.routing_number || "",
+          }));
+        }
+        // Also refresh Stripe Connect status (live from Stripe).
+        try {
+          const sr = await api.get("/partner/me/stripe-connect/status");
+          if (!cancelled) setStripeStatus(sr.data);
+        } catch (_) { /* silent */ }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    }).finally(() => setLoading(false));
+    })();
+    return () => { cancelled = true; };
   }, []);
+
+  const beginStripeOnboarding = async () => {
+    setConnecting(true);
+    try {
+      const r = await api.post("/partner/me/stripe-connect/onboarding-link", {
+        origin: window.location.origin,
+      });
+      if (r.data?.onboarding_url) {
+        window.location.href = r.data.onboarding_url;
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Couldn't start Stripe onboarding");
+      setConnecting(false);
+    }
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -151,23 +180,102 @@ export default function PayoutMethod() {
           </div>
 
           {form.method_type === "stripe_connect" ? (
-            <div>
-              <label className="label">Stripe Connect account ID</label>
-              <input
-                value={form.stripe_account_id}
-                onChange={(e) => setForm({ ...form, stripe_account_id: e.target.value })}
-                placeholder="acct_1ABC234DEF5gHIJK"
-                className="input-field w-full font-mono text-sm"
-                data-testid="payout-stripe-account"
-              />
-              <p className="text-xs text-[#5C6B6B] mt-2 leading-relaxed">
-                Don&apos;t have one yet? Create a free Stripe account at{" "}
-                <a href="https://dashboard.stripe.com/register" target="_blank" rel="noreferrer" className="underline text-[#476B6B]">
-                  dashboard.stripe.com/register
-                </a>{" "}
-                — once your account is active, paste your account ID
-                (starts with <code className="text-[10px] bg-[#FAF8F5] px-1 py-0.5">acct_</code>) above. Foundation will route your payouts directly through Stripe with no platform fees on your end.
+            <div className="space-y-4">
+              {/* Live Stripe Connect status (if we already have an account) */}
+              {stripeStatus?.connected && (
+                <div
+                  className={`p-4 border rounded ${
+                    stripeStatus.stage === "ready"
+                      ? "border-[#BAD5BF] bg-[#E8F1EA]"
+                      : "border-[#F0E2B2] bg-[#FFF8E8]"
+                  }`}
+                  data-testid="stripe-connect-status-card"
+                >
+                  <div className="flex items-start gap-3">
+                    {stripeStatus.stage === "ready" ? (
+                      <CheckCircle2 size={20} strokeWidth={1.6} className="text-[#2E5C46] shrink-0 mt-0.5" />
+                    ) : (
+                      <Clock size={20} strokeWidth={1.6} className="text-[#C9A961] shrink-0 mt-0.5" />
+                    )}
+                    <div className="text-sm">
+                      {stripeStatus.stage === "ready" ? (
+                        <>
+                          <p className="font-medium text-[#1A2424]">Connected and ready</p>
+                          <p className="text-xs text-[#5C6B6B] mt-1">
+                            Foundation patronage payouts and inbound
+                            referral earnings will arrive directly in
+                            your Stripe account.
+                          </p>
+                        </>
+                      ) : stripeStatus.stage === "pending_review" ? (
+                        <>
+                          <p className="font-medium text-[#1A2424]">Stripe is reviewing your information</p>
+                          <p className="text-xs text-[#5C6B6B] mt-1">
+                            Usually takes a few minutes to a day. You&apos;ll receive an email from Stripe when it&apos;s ready.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium text-[#1A2424]">Onboarding incomplete</p>
+                          <p className="text-xs text-[#5C6B6B] mt-1">
+                            Finish entering your information on Stripe to
+                            start receiving payouts.
+                          </p>
+                        </>
+                      )}
+                      <p className="text-[10px] text-[#5C6B6B] font-mono mt-2">
+                        {stripeStatus.stripe_account_id}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={beginStripeOnboarding}
+                disabled={connecting}
+                data-testid="stripe-connect-onboarding-btn"
+                className="w-full p-4 bg-[#635BFF] text-white rounded font-medium hover:bg-[#5246E5] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
+              >
+                <ExternalLink size={16} strokeWidth={1.8} />
+                {connecting
+                  ? "Opening Stripe…"
+                  : stripeStatus?.connected
+                    ? (stripeStatus.stage === "ready"
+                        ? "Manage your Stripe account"
+                        : "Continue onboarding on Stripe")
+                    : "Connect with Stripe (one click)"}
+              </button>
+              <p className="text-xs text-[#5C6B6B] text-center">
+                Securely hosted by Stripe. We never see your bank or tax
+                details — only an opaque account ID we use to send your
+                money to you.
               </p>
+
+              {/* Manual paste fallback for advanced users */}
+              <details className="text-xs">
+                <summary className="cursor-pointer text-[#476B6B] hover:text-[#1A2424] tracking-wider uppercase">
+                  Or paste an existing Stripe Connect account ID
+                </summary>
+                <div className="mt-3 space-y-2">
+                  <input
+                    value={form.stripe_account_id}
+                    onChange={(e) => setForm({ ...form, stripe_account_id: e.target.value })}
+                    placeholder="acct_1ABC234DEF5gHIJK"
+                    className="input-field w-full font-mono text-sm"
+                    data-testid="payout-stripe-account"
+                  />
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="btn-secondary text-xs inline-flex items-center gap-2"
+                  >
+                    <Save size={12} strokeWidth={1.6} />
+                    {saving ? "Saving…" : "Save account ID"}
+                  </button>
+                </div>
+              </details>
             </div>
           ) : (
             <>
@@ -216,15 +324,17 @@ export default function PayoutMethod() {
           )}
 
           <div className="pt-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn-primary inline-flex items-center gap-2"
-              data-testid="payout-method-save"
-            >
-              <Save size={14} strokeWidth={1.6} />
-              {saving ? "Saving…" : "Save payout method"}
-            </button>
+            {form.method_type === "manual_ach" && (
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn-primary inline-flex items-center gap-2"
+                data-testid="payout-method-save"
+              >
+                <Save size={14} strokeWidth={1.6} />
+                {saving ? "Saving…" : "Save payout method"}
+              </button>
+            )}
           </div>
         </form>
       </section>

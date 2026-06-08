@@ -113,6 +113,7 @@ from routers.artist_partnership import (
     my_router as artist_partnership_my_router,
     admin_router as artist_partnership_admin_router,
 )
+from routers.stripe_connect_webhook import router as stripe_connect_webhook_router
 from routers.assistant import router as assistant_router
 from routers.ai_wallet import (
     my_router as ai_wallet_my_router,
@@ -189,6 +190,7 @@ api_router.include_router(foundation_revenue_router)
 api_router.include_router(artist_partnership_public_router)
 api_router.include_router(artist_partnership_my_router)
 api_router.include_router(artist_partnership_admin_router)
+api_router.include_router(stripe_connect_webhook_router)
 api_router.include_router(clawback_router)
 api_router.include_router(assistant_router)
 api_router.include_router(ai_wallet_my_router)

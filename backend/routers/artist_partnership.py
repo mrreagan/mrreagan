@@ -180,6 +180,59 @@ async def my_patronage_payouts(user: dict = Depends(get_current_user)):
     }
 
 
+# -------- Stripe Connect onboarding (artist-facing) --------
+
+class StripeOnboardingRequest(BaseModel):
+    origin: str = Field(min_length=8, max_length=400,
+                         description="The site origin (window.location.origin) for return/refresh URLs.")
+
+
+@my_router.post("/stripe-connect/onboarding-link")
+async def stripe_connect_onboarding_link(
+    body: StripeOnboardingRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Create (or reuse) the artist's Stripe Connect Express account and
+    return a hosted onboarding URL. The artist completes KYC + bank
+    linkage on Stripe-hosted pages and is redirected back to
+    `/partner/me/payout-method`."""
+    from database import db
+    try:
+        from utils.stripe_connect import (
+            create_or_get_express_account, create_onboarding_link,
+        )
+        acct = await create_or_get_express_account(
+            db, artist_user_id=user["id"], email=user["email"],
+        )
+        origin = body.origin.rstrip("/")
+        url = create_onboarding_link(
+            acct["id"],
+            refresh_url=f"{origin}/partner/me/payout-method?stripe=refresh",
+            return_url=f"{origin}/partner/me/payout-method?stripe=return",
+        )
+        return {"onboarding_url": url, "stripe_account_id": acct["id"]}
+    except Exception as e:
+        logger.exception("Stripe Connect onboarding link failed: %s", e)
+        raise HTTPException(
+            502,
+            f"Couldn't create the Stripe onboarding link. "
+            f"Make sure Stripe Connect is enabled on the Foundation's "
+            f"platform account. Details: {str(e)[:200]}",
+        )
+
+
+@my_router.get("/stripe-connect/status")
+async def stripe_connect_status(user: dict = Depends(get_current_user)):
+    """Refresh the artist's Stripe Connect status from Stripe."""
+    from database import db
+    try:
+        from utils.stripe_connect import refresh_account_status
+        return await refresh_account_status(db, artist_user_id=user["id"])
+    except Exception as e:
+        logger.exception("Stripe Connect status refresh failed: %s", e)
+        return {"connected": False, "error": str(e)[:200]}
+
+
 # ============ ADMIN — patronage payouts ============
 @admin_router.get("/payouts")
 async def admin_list_payouts(
@@ -220,6 +273,50 @@ async def admin_mark_paid(
         raise HTTPException(404, "Payout not found")
     if p["status"] == "paid":
         raise HTTPException(400, "Already marked paid")
+
+    # If admin asked for Stripe Connect transfer, attempt it before
+    # flipping status. On failure, surface the Stripe error directly so
+    # the operator can decide (retry, mark-paid manually with method=ach,
+    # etc).
+    stripe_tx_id: Optional[str] = None
+    if data.payout_method == "stripe_connect":
+        method = await db.partner_payout_methods.find_one(
+            {"user_id": p.get("artist_user_id")}, {"_id": 0},
+        )
+        if not method or not method.get("stripe_account_id"):
+            raise HTTPException(
+                400,
+                "Artist has no Stripe Connect account on file. Ask them "
+                "to onboard at /partner/me/payout-method first.",
+            )
+        if method.get("stripe_connect_status") != "ready":
+            raise HTTPException(
+                400,
+                f"Stripe account is not ready for transfers "
+                f"(status: {method.get('stripe_connect_status')}). "
+                f"Artist must complete onboarding first.",
+            )
+        try:
+            from utils.stripe_connect import create_transfer
+            tx = create_transfer(
+                amount_usd=float(p["list_price"]),
+                destination_account_id=method["stripe_account_id"],
+                transfer_group=p["order_id"],
+                idempotency_key=f"birthright-payout-{p['id']}",
+                metadata={
+                    "payout_id": p["id"],
+                    "artist_user_id": p.get("artist_user_id") or "",
+                    "order_id": p.get("order_id") or "",
+                    "artwork": (p.get("artwork_name") or "")[:200],
+                },
+            )
+            stripe_tx_id = tx["id"]
+        except Exception as e:
+            logger.exception("Stripe Connect transfer failed: %s", e)
+            raise HTTPException(
+                502, f"Stripe transfer failed: {str(e)[:300]}",
+            )
+
     await db.artist_sale_payouts.update_one(
         {"id": payout_id},
         {"$set": {
@@ -227,11 +324,12 @@ async def admin_mark_paid(
             "paid_at": now_iso(),
             "paid_by_admin": user["email"],
             "payout_method": data.payout_method,
-            "payout_reference": data.payout_reference,
+            "payout_reference": stripe_tx_id or data.payout_reference,
+            "stripe_transfer_id": stripe_tx_id,
             "notes": data.notes,
         }},
     )
-    return {"ok": True}
+    return {"ok": True, "stripe_transfer_id": stripe_tx_id}
 
 
 # ============ ADMIN — tier overrides ============
