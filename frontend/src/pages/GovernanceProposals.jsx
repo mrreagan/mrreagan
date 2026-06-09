@@ -150,7 +150,7 @@ export default function GovernanceProposals() {
             <span className="label inline-flex items-center gap-1"><FileText size={11} strokeWidth={1.5} /> Legal</span>
             <h3 className="font-serif text-xl mt-1">Universal indemnification agreement</h3>
             <p className="text-sm text-[#5C6B6B] mt-1 max-w-xl">
-              Every Birthright participant and partner is asked to review and sign one universal agreement. Read the current version, see what's changed, and sign.
+              Every birthright participant and partner is asked to review and sign one universal agreement. Read the current version, see what's changed, and sign.
             </p>
           </div>
           <Link to="/legal/indemnification" className="btn-outline" data-testid="view-indemnification-link">

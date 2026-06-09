@@ -46,7 +46,7 @@ export default function PartnerProfilePage() {
             <Sparkles size={12} strokeWidth={2} /> Sample profile · not a real partner
           </p>
           <p className="text-sm text-[#1A2424] mt-1">
-            This is an illustrative persona showing what a great Birthright {profile.partner_type} partner profile looks like. The person below is fictional — but the role, structure, and partnership terms are real.{" "}
+            This is an illustrative persona showing what a great birthright {profile.partner_type} partner profile looks like. The person below is fictional — but the role, structure, and partnership terms are real.{" "}
             <Link to="/partner/apply" className="underline text-[#476B6B]">Apply to become a real partner →</Link>
           </p>
         </div>

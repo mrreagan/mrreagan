@@ -53,7 +53,7 @@ export default function AdminStudioQueue() {
       <p className="text-base text-[#5C6B6B] max-w-2xl">
         Vendor AI Studio submissions awaiting review. Approve to publish to the
         public store, request changes to send feedback, or reject if the draft
-        doesn't fit Birthright's brand.
+        doesn't fit birthright's brand.
       </p>
 
       <div className="flex flex-wrap gap-1 mt-6 border-b border-[#E5E1D8]" role="tablist">
@@ -143,7 +143,7 @@ function ModerationCard({ draft, onChange }) {
               {draft.external_url} ↗
             </a>
             <p className="text-[10px] text-[#5C6B6B] mt-1">
-              Approve to list as a referral. Customers buy on the vendor's own site; vendor self-reports those sales and pays Birthright a referral commission on the traffic we send.
+              Approve to list as a referral. Customers buy on the vendor's own site; vendor self-reports those sales and pays birthright a referral commission on the traffic we send.
             </p>
           </div>
         )}

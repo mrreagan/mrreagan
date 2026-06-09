@@ -13,7 +13,7 @@ import api from "../lib/api";
  *   1. Version list (active version highlighted, signature counts, "% of
  *      active partners signed")
  *   2. Draft & publish modal (markdown body + summary of changes + version
- *      string). "Seed from Birthright v2.0 draft" pulls the curated default
+ *      string). "Seed from birthright v2.0 draft" pulls the curated default
  *      so the admin isn't authoring from scratch.
  *   3. Signature ledger per version (who signed, when, sticky modal)
  */
@@ -49,7 +49,7 @@ export default function AdminAgreements() {
       setVersion(r.data.version);
       setSummary(r.data.summary_of_changes);
       setBody(r.data.body);
-      toast.success("Seeded with Birthright v2.0 starter content");
+      toast.success("Seeded with birthright v2.0 starter content");
     } catch {
       toast.error("Couldn't load default v2 draft");
     }
@@ -233,7 +233,7 @@ function DraftModal({ version, setVersion, summary, setSummary, body, setBody, o
           className="btn-outline text-xs inline-flex items-center gap-1 mb-3 !border-[#C9A961] !text-[#8B7128]"
           data-testid="seed-from-v2"
         >
-          <Sparkles size={11} strokeWidth={1.5} /> Seed from Birthright v2.0 starter
+          <Sparkles size={11} strokeWidth={1.5} /> Seed from birthright v2.0 starter
         </button>
 
         <div className="grid sm:grid-cols-2 gap-3 mb-3">

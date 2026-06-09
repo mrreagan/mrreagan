@@ -5,7 +5,7 @@
  *
  * The artist can browse a fully pre-curated mock of their featured page with
  * default selections + the full menu of options. They only commit (enroll as
- * a Birthright Artist partner) by clicking "Accept & enroll" at the bottom.
+ * a birthright Artist partner) by clicking "Accept & enroll" at the bottom.
  * Decline is one click, no questions asked (optional note).
  */
 import React, { useEffect, useState } from "react";
@@ -113,7 +113,7 @@ export default function FeaturedInvite() {
         layout, accent_color: accentColor,
       });
       if (r.data.session_token) setStoredToken(r.data.session_token);
-      toast.success("Welcome — you're enrolled as a Birthright Featured Artist.");
+      toast.success("Welcome — you're enrolled as a birthright Featured Artist.");
       navigate(r.data.next || "/gallery/me/space");
     } catch (e) {
       toast.error(e.response?.data?.detail || "Couldn't accept the invitation.");
@@ -162,7 +162,7 @@ export default function FeaturedInvite() {
         <Eye size={18} className="text-[#476B6B] mt-0.5 flex-shrink-0" />
         <div className="text-sm text-[#1A2424] leading-relaxed">
           <strong>Explore freely, no commitment.</strong> Try every option below — change the statement,
-          swap colors, see how the page would feel. You only enroll as a Birthright Artist when
+          swap colors, see how the page would feel. You only enroll as a birthright Artist when
           you click <em>Accept & enroll</em> at the bottom.
         </div>
       </div>
@@ -371,7 +371,7 @@ export default function FeaturedInvite() {
       ) : (
         <section className="mt-8 max-w-2xl card p-5" data-testid="accept-form">
           <p className="font-serif text-lg text-[#1A2424]">One last step — set your password</p>
-          <p className="text-xs text-[#5C6B6B] mt-1">We'll create your Birthright Artist account using <strong className="text-[#1A2424]">{inv.contact_email || "your email"}</strong>.</p>
+          <p className="text-xs text-[#5C6B6B] mt-1">We'll create your birthright Artist account using <strong className="text-[#1A2424]">{inv.contact_email || "your email"}</strong>.</p>
           <input
             type="password"
             placeholder="Choose a password (8+ characters)"
@@ -390,7 +390,7 @@ export default function FeaturedInvite() {
               data-testid="accept-terms-checkbox"
             />
             <span className="leading-relaxed">
-              I've read the above and agree to the Birthright <em>Artist Partnership Agreement</em>.
+              I've read the above and agree to the birthright <em>Artist Partnership Agreement</em>.
               I understand that enrolling creates my partner profile and locks in this month's featured slot.
             </span>
           </label>

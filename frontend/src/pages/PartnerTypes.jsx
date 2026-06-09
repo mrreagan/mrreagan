@@ -6,7 +6,7 @@ const TYPES = [
   {
     slug: "facilitator", icon: Users, color: "text-[#9E3C3C]",
     label: "Facilitator",
-    one_liner: "You lead Birthright workshops, retreats, or classes in your community.",
+    one_liner: "You lead birthright workshops, retreats, or classes in your community.",
     foundation_benefit: "Trained practitioners extend the work into new geographies.",
     partner_benefit: "Workshop listing, registration, materials access, gathering tools, payouts via revenue share.",
     financial: { rate: "Up to 65%", basis: "Birthright-IP workshop revenue", notes: "Off-site sales attributed via referral codes earn 25% by default." },
@@ -27,7 +27,7 @@ const TYPES = [
     one_liner: "You publish briefs, papers, or studies relevant to secure attachment + presence work.",
     foundation_benefit: "Keeps the work intellectually honest. Builds the evidence base.",
     partner_benefit: "Research profile, AI Research Collaborator credits, archive of your published artifacts.",
-    financial: { rate: "0% direct; promotion fees", basis: "Optional Birthright-funded promotion of your work", notes: "Honoraria available for invited papers." },
+    financial: { rate: "0% direct; promotion fees", basis: "Optional birthright-funded promotion of your work", notes: "Honoraria available for invited papers." },
     mission_alignment: "Make the work knowable. Citations welcome, conjecture marked.",
   },
   {

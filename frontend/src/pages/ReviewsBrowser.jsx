@@ -76,7 +76,7 @@ export default function ReviewsBrowser() {
       <h1 className="editorial-h1 mt-2">What people say</h1>
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B] max-w-xl">
-        Every transactional offering on Birthright has reviews from real participants and buyers. Browse, compare, decide.
+        Every transactional offering on birthright has reviews from real participants and buyers. Browse, compare, decide.
       </p>
 
       <div className="mt-8 space-y-4">

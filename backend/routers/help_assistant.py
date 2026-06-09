@@ -170,7 +170,7 @@ async def get_voice():
     render the welcome message without an extra LLM round-trip."""
     v = _kb().get("voice", {})
     return {
-        "agent_name": v.get("name", "Birthright Help"),
+        "agent_name": v.get("name", "birthright Help"),
         "agent_label": v.get("agent_label", "AI Agent"),
         "greeting": v.get("greeting", "Hi there. How can I help?"),
         "starter_prompts": [
@@ -249,7 +249,7 @@ async def chat(body: ChatIn,
         f"[{i+1}] {e['id']}: {e['answer']}" for i, e in enumerate(snippets)
     ) or "(none)"
     sys_prompt = (
-        "You are Birthright Help — a warm, plainspoken AI support agent for "
+        "You are birthright Help — a warm, plainspoken AI support agent for "
         "birthright.live, a Foundation that publishes practitioner research, "
         "runs workshops, and supports an artist economy.\n\n"
         f"VOICE: {voice.get('tone', 'warm, plainspoken')}\n"

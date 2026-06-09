@@ -88,7 +88,7 @@ export default function IndemnificationPage() {
                   data-testid="accept-checkbox"
                 />
                 <span>
-                  I have read and understood the universal indemnification agreement (v{active.version}). I accept these terms as a participant or partner with Birthright Foundation.
+                  I have read and understood the universal indemnification agreement (v{active.version}). I accept these terms as a participant or partner with birthright Foundation.
                 </span>
               </label>
               <button onClick={sign} disabled={busy || !accepted} className="btn-primary mt-4 inline-flex items-center gap-2" data-testid="sign-btn">

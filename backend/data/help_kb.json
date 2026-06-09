@@ -1,9 +1,9 @@
 {
   "version": "2026-02-09",
   "voice": {
-    "name": "Birthright Help",
+    "name": "birthright Help",
     "agent_label": "AI Agent",
-    "greeting": "Hi there. You're speaking with Birthright Help. I'm trained on this platform and ready to assist — you can ask for a human at any time.",
+    "greeting": "Hi there. You're speaking with birthright Help. I'm trained on this platform and ready to assist — you can ask for a human at any time.",
     "human_handoff": "I'll flag this for the human team at the Foundation. They typically reply within one business day at support@birthright.live.",
     "fallback": "I'm not sure about that one. Want me to flag it for a human at the Foundation?",
     "tone": "warm, plainspoken, never clinical, never pushy"
@@ -27,14 +27,35 @@
       "id": "patches",
       "tags": ["patch", "patches", "leather", "engraved", "engraving", "merch", "buy patch", "founder collection", "7cs", "7c's", "farmstead"],
       "patterns": ["where can i buy patches", "the patches", "leather patches", "engraved patches", "founder patches"],
-      "answer": "The five leather-engraved patches live in the Founder Collection at /equip. They're hand-engraved to order by 7C's Farmstead in 2–4 weeks. Each patch is $38 with a 20% Foundation patronage built in that funds artist payouts. Click any patch card and tap 'Buy on 7C's Farmstead →' to order direct from the artisan.",
+      "answer": "The five leather-engraved patches live in the Founder Collection at /equip. They're hand-engraved to order by 7C's Farmstead in 2–4 weeks. Each patch is $10 plus shipping. You can also buy the full set of five as a bundle for $40 (saves $10 versus buying each individually). Click any patch card and tap 'Buy on 7C's Farmstead →' to order direct from the artisan.",
       "follow_up_label": "Want a direct link to the patches?"
+    },
+    {
+      "id": "patch-bundle",
+      "tags": ["bundle", "all five", "set", "full set", "complete set", "collection"],
+      "patterns": ["buy all the patches", "all five patches", "full set", "patch bundle", "discount on patches", "patch collection"],
+      "answer": "Yes — the full set of five engraved patches is offered as a bundle for $40 (vs $50 if you buy each individually). Open the bundle in the Founder Collection at /equip and tap 'Order direct' to send the order through 7C's Farmstead with shipping calculated at checkout on their site.",
+      "follow_up_label": "Want me to take you there?"
+    },
+    {
+      "id": "patch-shipping",
+      "tags": ["shipping", "delivery", "lead time", "how long", "when will"],
+      "patterns": ["how long does shipping take", "patch delivery", "when will my patch arrive", "shipping cost", "lead time"],
+      "answer": "Patches are made to order by 7C's Farmstead, so lead time is typically 2–4 weeks. Shipping cost is calculated at checkout on 7C's site based on your address. If you need a patch by a specific date, mention it in the order notes and 7C's will tell you whether the timeline works.",
+      "follow_up_label": "Anything else about the patches?"
+    },
+    {
+      "id": "patch-revenue-share",
+      "tags": ["revenue", "cut", "commission", "kickback", "affiliate", "patches money"],
+      "patterns": ["does birthright make money on patches", "what's the foundation's cut", "patches revenue"],
+      "answer": "On patches, birthright is set up as an affiliate of 7C's Farmstead — they remit 15% of every birthright-attributed sale to the Foundation, reconciled quarterly. The buyer pays the same $10 (or $40 bundle) plus shipping either way; the Foundation's share comes out of 7C's margin, not on top of the listed price.",
+      "follow_up_label": "Want to know about the broader revenue framework?"
     },
     {
       "id": "artist-tiers",
       "tags": ["artist", "tier", "tiers", "patronage", "inbound", "outbound", "emerging", "sustaining", "established", "thriving", "flourishing"],
       "patterns": ["how do tiers work", "artist tier", "how do i level up", "tier system", "patronage tier"],
-      "answer": "Artists progress through five tiers — Emerging, Sustaining, Established, Thriving, Flourishing — based on rolling 12-month Birthright-attributed revenue. Each tier carries an inbound % (you earn from referred sales) and a small outbound % (you contribute back to the ecosystem). See the full breakdown at /partner/artist. Tier transitions take effect on the 1st of the following month.",
+      "answer": "Artists progress through five tiers — Emerging, Sustaining, Established, Thriving, Flourishing — based on rolling 12-month birthright-attributed revenue. Each tier carries an inbound % (you earn from referred sales) and a small outbound % (you contribute back to the ecosystem). See the full breakdown at /partner/artist. Tier transitions take effect on the 1st of the following month.",
       "follow_up_label": "Want to know what tier you're currently at?"
     },
     {
@@ -106,6 +127,55 @@
       "patterns": ["refer a friend", "referral program", "affiliate link", "how do i earn"],
       "answer": "Every active partner has a referral code. Share your code (or your gallery URL — every visit through a /api/r/{code} link drops a 30-day attribution cookie). Sales attributed to you pay an inbound percentage based on your tier (3–5% for Artists; partner tiers vary). Your code is on your Partner Studio dashboard.",
       "follow_up_label": "Want to see your referral code?"
+    },
+    {
+      "id": "donate",
+      "tags": ["donate", "donation", "contribute", "support", "give", "patronage"],
+      "patterns": ["how do i donate", "make a donation", "contribute money", "give to birthright", "support the foundation"],
+      "answer": "Thank you for the impulse. The cleanest way to support the work right now is through Founding Membership at /join — a one-time contribution that funds the Foundation's earliest years. We're also happy to receive larger directed gifts (estates, sponsorships, scholarship funds); email support@birthright.live and a human will respond personally.",
+      "follow_up_label": "Want me to take you to /join?"
+    },
+    {
+      "id": "careers",
+      "tags": ["job", "jobs", "career", "careers", "work for", "hiring", "apply", "employment"],
+      "patterns": ["do you have jobs", "are you hiring", "work for birthright", "join the team", "apply for a job"],
+      "answer": "We don't currently run open recruitment — the Foundation is small and grows by invitation. If you'd like to be considered for future practitioner or partnership roles, email support@birthright.live with a short note about your background and what calls you to the work. We keep these on file and reach out when fit emerges.",
+      "follow_up_label": "Want me to flag this for a human?"
+    },
+    {
+      "id": "sponsorship",
+      "tags": ["sponsor", "sponsorship", "scholarship", "underwrite"],
+      "patterns": ["sponsor a workshop", "scholarship program", "underwrite", "fund a workshop"],
+      "answer": "Workshop sponsorship and scholarships go through /sponsor — you can either fund a named workshop ($500–$5,000 depending on cohort size) or contribute to the general scholarship pool, which the Foundation matches at 25%. Larger directed sponsorships (named cohorts, research briefs) are arranged directly with the team.",
+      "follow_up_label": "Want me to take you to /sponsor?"
+    },
+    {
+      "id": "press-media",
+      "tags": ["press", "media", "interview", "podcast", "feature", "journalist"],
+      "patterns": ["press inquiry", "media inquiry", "interview request", "podcast guest", "feature birthright"],
+      "answer": "For press, podcast, or feature requests, email support@birthright.live with the outlet, your timeline, and what you'd like to cover. The Foundation does selective interviews — typically prioritizing outlets aligned with practitioner education over consumer wellness content.",
+      "follow_up_label": "Want to send a quick note?"
+    },
+    {
+      "id": "data-privacy",
+      "tags": ["privacy", "data", "tracking", "cookies", "gdpr", "ccpa"],
+      "patterns": ["privacy policy", "what data do you collect", "do you sell my data", "cookies on birthright"],
+      "answer": "We collect the minimum needed to run the platform — your account email, what you've purchased, and the workshops you've registered for. We never sell or share personal data. Full privacy details are at /privacy. For GDPR/CCPA data requests, email support@birthright.live with the subject 'Data request' and we'll respond within 30 days.",
+      "follow_up_label": "Want me to flag a data request?"
+    },
+    {
+      "id": "gift-purchase",
+      "tags": ["gift", "buy as gift", "for someone", "send to friend"],
+      "patterns": ["buy as a gift", "gift a workshop", "gift a patch", "send to a friend", "gift card"],
+      "answer": "You can buy any item or workshop seat as a gift — at checkout, put the recipient's name and email in the order notes and we'll personalize the welcome. For patches via 7C's Farmstead, mention the recipient's shipping address in their order form. We don't yet have a dedicated gift-card SKU, but it's on the roadmap.",
+      "follow_up_label": "Want me to flag a gift card request?"
+    },
+    {
+      "id": "homepage-tour",
+      "tags": ["tour", "what does this site do", "navigate", "where to start", "first time"],
+      "patterns": ["give me a tour", "where do i start", "first time here", "show me around", "what should i look at"],
+      "answer": "Quick tour: /practice is where you'll find workshops and the on-demand library. /research holds practitioner briefs and peer-reviewed papers. /gallery is the artist economy — paintings, photography, mixed media — every purchase carries a 20% Foundation patronage. /equip is the storefront, including the Founder Collection patches. /join is how you become a Founding Member.",
+      "follow_up_label": "Want a deeper tour of any one of those?"
     }
   ]
 }

@@ -69,7 +69,7 @@ export default function Messages() {
       </h1>
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B] max-w-2xl">
-        Direct messages between you and Birthright partners. To message a partner, look for the
+        Direct messages between you and birthright partners. To message a partner, look for the
         message icon on their profile or board card.
       </p>
       {loading ? (
@@ -349,7 +349,7 @@ export function MessageThread() {
               <AlertTriangle size={18} strokeWidth={1.5} className="text-[#C9A961]" /> Flag for ombudsman review
             </h3>
             <p className="text-sm text-[#5C6B6B] mt-2">
-              The Birthright ombudsman will be able to read this conversation for the purpose of review.
+              The birthright ombudsman will be able to read this conversation for the purpose of review.
               Use this for safety concerns, abuse, or boundary violations.
             </p>
             <textarea

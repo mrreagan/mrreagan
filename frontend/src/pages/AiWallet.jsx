@@ -231,7 +231,7 @@ export default function AiWallet() {
             Pricing — {data.pricing.multiplier.toFixed(2)}× passthrough
           </p>
           <p className="font-serif text-xl mt-1 leading-snug">
-            Thank you for supporting Birthright Foundation.
+            Thank you for supporting birthright Foundation.
           </p>
           <p className="text-sm text-[#5C6B6B] mt-2 leading-relaxed">
             {data.pricing.disclosure}

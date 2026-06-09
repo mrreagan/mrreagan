@@ -58,7 +58,7 @@ export default function PartnerDashboard() {
       {!loading && profiles.length === 0 && apps.length === 0 && (
         <div className="card p-10 text-center" data-testid="empty-state">
           <p className="font-serif text-xl">You haven't applied yet.</p>
-          <p className="text-sm text-[#5C6B6B] mt-2">Become a Birthright partner — facilitator, community ally, researcher, or vendor.</p>
+          <p className="text-sm text-[#5C6B6B] mt-2">Become a birthright partner — facilitator, community ally, researcher, or vendor.</p>
           <Link to="/partner/apply" className="btn-primary mt-6 inline-block">Apply now</Link>
         </div>
       )}

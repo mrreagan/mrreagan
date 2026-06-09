@@ -56,6 +56,31 @@ export default function HelpAssistant() {
     if (open) setTimeout(() => inputRef.current?.focus(), 120);
   }, [open]);
 
+  // Close on ESC key — universal-ish keyboard shortcut.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  // Swipe-down-to-close on touch devices. Threshold = 60px downward
+  // drag, with primary-direction-must-be-vertical so horizontal swipes
+  // through the message bubbles aren't hijacked.
+  const touchRef = useRef({ y0: null, x0: null });
+  const onTouchStart = (e) => {
+    const t = e.touches[0];
+    touchRef.current = { y0: t.clientY, x0: t.clientX };
+  };
+  const onTouchEnd = (e) => {
+    const t = (e.changedTouches || [])[0];
+    if (!t || touchRef.current.y0 == null) return;
+    const dy = t.clientY - touchRef.current.y0;
+    const dx = Math.abs(t.clientX - touchRef.current.x0);
+    if (dy > 60 && dx < 80) setOpen(false);
+    touchRef.current = { y0: null, x0: null };
+  };
+
   // Fetch voice once on mount.
   useEffect(() => {
     if (!voice) {
@@ -156,35 +181,60 @@ export default function HelpAssistant() {
       )}
 
       {open && (
-        <div
-          data-testid="help-panel"
-          className="fixed bottom-6 left-6 right-6 sm:right-auto sm:w-[400px] z-40 flex flex-col rounded-2xl bg-[#FAF8F5] border border-[#E5E1D8] shadow-[0_24px_80px_rgba(15,36,36,0.2)] overflow-hidden"
-          style={{ maxHeight: "min(640px, 80vh)" }}
-        >
-          {/* Header */}
-          <header className="flex items-center justify-between gap-2 px-5 py-3.5 border-b border-[#E5E1D8] bg-white">
-            <div className="flex items-center gap-2.5">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2C4E5A] text-[#FAF8F5]">
-                <Headphones size={14} strokeWidth={1.8} />
-              </span>
-              <div className="leading-tight">
-                <p className="font-serif text-sm">
-                  {voice?.agent_name || "Birthright Help"}
-                </p>
-                <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
-                  {voice?.agent_label || "AI Agent"} · Online
-                </p>
-              </div>
-            </div>
+        <>
+          {/* Tap-outside backdrop — only visible on small screens where
+              the panel goes (nearly) full-width. On wider screens the
+              backdrop stays transparent but still catches clicks. */}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            data-testid="help-backdrop"
+            aria-label="Close help chat"
+            tabIndex={-1}
+            className="fixed inset-0 z-30 bg-[#0F2424]/30 sm:bg-transparent cursor-default"
+          />
+          <div
+            data-testid="help-panel"
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+            className="fixed bottom-4 left-3 right-3 sm:left-6 sm:bottom-6 sm:right-auto sm:w-[400px] z-40 flex flex-col rounded-2xl bg-[#FAF8F5] border border-[#E5E1D8] shadow-[0_24px_80px_rgba(15,36,36,0.2)] overflow-hidden"
+            style={{ maxHeight: "min(640px, 85vh)" }}
+          >
+            {/* Swipe-down grab handle (visual cue, doubles as a tap target) */}
             <button
+              type="button"
               onClick={() => setOpen(false)}
-              data-testid="help-close-btn"
-              className="p-1.5 rounded-full text-[#5C6B6B] hover:bg-[#F4F1EA]"
-              aria-label="Close help chat"
+              data-testid="help-grab-handle"
+              aria-label="Swipe down or tap to close"
+              className="flex justify-center pt-2 pb-1 sm:pt-1.5 sm:pb-0.5 bg-white"
             >
-              <X size={16} strokeWidth={1.7} />
+              <span className="block w-10 h-1.5 rounded-full bg-[#D9D5CC]" />
             </button>
-          </header>
+
+            {/* Header */}
+            <header className="flex items-center justify-between gap-2 px-5 py-3 border-b border-[#E5E1D8] bg-white">
+              <div className="flex items-center gap-2.5">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2C4E5A] text-[#FAF8F5]">
+                  <Headphones size={14} strokeWidth={1.8} />
+                </span>
+                <div className="leading-tight">
+                  <p className="font-serif text-sm">
+                    {voice?.agent_name || "birthright Help"}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
+                    {voice?.agent_label || "AI Agent"} · Online
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                data-testid="help-close-btn"
+                className="flex items-center justify-center w-10 h-10 rounded-full text-[#1A2424] hover:bg-[#F4F1EA] active:bg-[#E5E1D8] -mr-1.5"
+                aria-label="Close help chat"
+              >
+                <X size={22} strokeWidth={2} />
+              </button>
+            </header>
 
           {/* Message list */}
           <div
@@ -232,10 +282,20 @@ export default function HelpAssistant() {
               <Send size={14} strokeWidth={1.8} />
             </button>
           </form>
-          <p className="text-[10px] text-[#9DA8A8] text-center pb-2 px-3">
-            {user ? "AI responses bill from your wallet only when the KB can't answer." : "Free to guests · Foundation absorbs the cost."}
-          </p>
-        </div>
+          <div className="flex items-center justify-between gap-3 px-3 pb-2">
+            <p className="text-[10px] text-[#9DA8A8] flex-1">
+              {user ? "AI responses bill from your wallet only when the KB can't answer." : "Free to guests · Foundation absorbs the cost."}
+            </p>
+            <button
+              onClick={() => setOpen(false)}
+              data-testid="help-close-btn-footer"
+              className="text-[11px] uppercase tracking-wider text-[#476B6B] hover:text-[#1A2424] underline-offset-2 hover:underline shrink-0"
+            >
+              Close chat
+            </button>
+          </div>
+          </div>
+        </>
       )}
     </>
   );
@@ -304,7 +364,7 @@ function HelpBubble({ m, onSuggestion, onEscalate, userLabel }) {
 
 function voice_label(m) {
   // Match the YesChef format: "YesChef Support • AI Agent • 5m"
-  return "Birthright Help · AI Agent";
+  return "birthright Help · AI Agent";
 }
 
 // Simple URL detection — auto-link http(s) URLs and email-like tokens.

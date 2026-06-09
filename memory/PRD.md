@@ -16,6 +16,17 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 42 — Founders Collection cleanup, $10 pricing, 5-patch bundle, Help close UX, brand casing pass
+- **Pricing & framework correction**: all 5 patches dropped to $10 (was $38 placeholder). Revenue framework set to **15% affiliate revenue share** from 7C's Farmstead (no Foundation patronage markup on top — that framing was inaccurate for off-site fulfillment). Stamped via existing `?via=birthright_7cs-farmstead` outbound attribution. Storefront copy now says "+ shipping at checkout".
+- **Long-form descriptions** verbatim from `/shop/patches` for all 5 patches (no shortened blurbs).
+- **Bundle SKU added**: `founder-patch-bundle-all-five` at $40 (saves $10 vs 5×$10), minimal copy with pointer to individual product pages for the full narratives.
+- **Founder rail reorder**: patches and bundle now lead the rail; patch-02 ("founder of love story") is the homepage feature (Hat Pair flag cleared).
+- **Hat image fit** on ProductDetail: aspect-square → aspect-[4/3], removed inner padding.
+- **Help close UX** — 5 close affordances: bigger X (40×40 hit target), backdrop tap-outside, ESC key, swipe-down grab handle, "Close chat" link in footer.
+- **Research artifact pollution** removed — 24 regression-test "Admin-Approve-Me" rows wiped from `research_artifacts`.
+- **Brand casing pass**: 79 mid-sentence "Birthright" → "birthright" replacements across 37 files (sentence-start instances preserved). Help agent name lowercased to "birthright Help".
+- **Help KB expanded**: 9 new entries (patch-bundle, patch-shipping, patch-revenue-share, donate, careers, sponsorship, press-media, data-privacy, gift-purchase, homepage-tour) — now 24 total entries, raising deflection rate.
+
 ### Iter 41 — Agentic Concierge removed; Founder Collection patches; lightweight Help assistant
 - **Patches in storefront**: 5 leather-engraved patches added to Founder Collection under collection=`founder_collection`, fulfilled off-site by **7C's Farmstead** (custom-order URL). Reused existing `is_off_site` + outbound-click attribution. Editorial intro paragraph added above the rail. "Founder of your love story" patch promoted to `is_homepage_feature`.
 - **Research sample fix**: broken Unsplash cover for the Co-Regulation Practices brief replaced with a stable URL.

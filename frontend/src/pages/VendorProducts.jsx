@@ -280,7 +280,7 @@ export default function VendorProducts() {
                 <ShoppingBag size={28} strokeWidth={1.25} className="mx-auto text-[#C9A961]" />
                 <p className="font-serif text-lg mt-3">Nothing here yet.</p>
                 <p className="text-sm text-[#5C6B6B] mt-1">
-                  {search || statusFilter !== "all" ? "No products match your filters." : "Publish your first product to start selling through Birthright."}
+                  {search || statusFilter !== "all" ? "No products match your filters." : "Publish your first product to start selling through birthright."}
                 </p>
               </div>
             ) : (

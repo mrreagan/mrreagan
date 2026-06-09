@@ -187,7 +187,7 @@ export default function OffSiteReport() {
             />
           </div>
           <div>
-            <label className="label">Gross revenue from Birthright-referred buyers (USD)</label>
+            <label className="label">Gross revenue from birthright-referred buyers (USD)</label>
             <input
               type="number" step="0.01" min="0" required
               value={form.gross_revenue_usd}

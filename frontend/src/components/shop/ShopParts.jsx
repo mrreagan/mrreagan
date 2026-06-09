@@ -123,7 +123,7 @@ export function ProductCard({ product }) {
                 surfaceId={product.id}
                 path={`/equip/${product.id}`}
                 title={product.name}
-                emailSubject={`From the Birthright shop: ${product.name}`}
+                emailSubject={`From the birthright shop: ${product.name}`}
                 size="sm"
               />
             )}

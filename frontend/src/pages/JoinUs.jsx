@@ -98,7 +98,7 @@ function RoleCard({ role }) {
               surfaceId={role.slug}
               path={`/join-us/${role.slug}`}
               title={role.title}
-              emailSubject={`Open role at Birthright: ${role.title}`}
+              emailSubject={`Open role at birthright: ${role.title}`}
               size="sm"
             />
             <Link

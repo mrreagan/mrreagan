@@ -25,8 +25,8 @@ export default function ProductDetail() {
         <ArrowLeft size={14} strokeWidth={1.5} /> Back to Equip
       </Link>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        <div className="card overflow-hidden aspect-square bg-[#F4F1EA] flex items-center justify-center">
-          <img src={p.image_url} alt={p.name} className="w-full h-full object-contain p-3" />
+        <div className="card overflow-hidden aspect-[4/3] bg-[#F4F1EA] flex items-center justify-center" data-testid="product-image-wrap">
+          <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
         </div>
         <div>
           {p.type === "workshop_material" && (
@@ -84,7 +84,7 @@ export default function ProductDetail() {
                 </p>
                 <p className="text-sm text-[#5C6B6B] mt-2 leading-relaxed">
                   {p.vendor_name ? `${p.vendor_name} handles the order on their own store. ` : ""}
-                  Clicking through stamps your visit so they know Birthright sent you.
+                  Clicking through stamps your visit so they know birthright sent you.
                 </p>
                 <a
                   href={`${process.env.REACT_APP_BACKEND_URL}/api/out/${p.vendor_slug}?product_id=${p.id}`}
@@ -155,7 +155,7 @@ export default function ProductDetail() {
                 surfaceId={p.id}
                 path={`/equip/${p.id}`}
                 title={p.name}
-                emailSubject={`From the Birthright shop: ${p.name}`}
+                emailSubject={`From the birthright shop: ${p.name}`}
                 showLabel
               />
             </div>

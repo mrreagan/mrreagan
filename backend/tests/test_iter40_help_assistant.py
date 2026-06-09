@@ -72,7 +72,7 @@ async def test_help_voice_endpoint():
         r = await c.get("/help/voice")
         assert r.status_code == 200
         body = r.json()
-        assert body["agent_name"] == "Birthright Help"
+        assert body["agent_name"] == "birthright Help"
         assert body["agent_label"] == "AI Agent"
         assert isinstance(body["starter_prompts"], list)
         assert len(body["starter_prompts"]) >= 3

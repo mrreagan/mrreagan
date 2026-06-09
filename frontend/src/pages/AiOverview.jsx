@@ -8,7 +8,7 @@ export default function AiOverview() {
       <span className="label">Birthright AI</span>
       <h1 className="editorial-h1 mt-2">Working alongside our partners</h1>
       <p className="text-lg text-[#5C6B6B] mt-3 max-w-2xl">
-        Three purpose-built AI tools, designed for the way Birthright partners actually work — and
+        Three purpose-built AI tools, designed for the way birthright partners actually work — and
         billed honestly: you pay only what the underlying model costs us. No subscription markup. No surprises.
       </p>
       <div className="divider-flame" />
@@ -46,7 +46,7 @@ export default function AiOverview() {
         <Pillar
           icon={Wallet}
           title="1.5× — supports the foundation"
-          body="You pay the underlying AI provider cost plus a 50% markup that funds Birthright Foundation. Disclosed at every payment point. Top up your AI Wallet in $10/$25/$50/$100 packs via Stripe."
+          body="You pay the underlying AI provider cost plus a 50% markup that funds birthright Foundation. Disclosed at every payment point. Top up your AI Wallet in $10/$25/$50/$100 packs via Stripe."
         />
         <Pillar
           icon={ShieldCheck}

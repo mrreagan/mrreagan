@@ -7,7 +7,7 @@ import MessageButton from "../components/MessageButton";
 import StudioVendorNudge from "../components/StudioVendorNudge";
 
 const TYPE_CONFIG = {
-  facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users,      color: "#476B6B", description: "Practitioners trained to lead Birthright workshops." },
+  facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users,      color: "#476B6B", description: "Practitioners trained to lead birthright workshops." },
   community:   { label: "Community",    singular: "Community",   icon: Briefcase,  color: "#C9A961", description: "Organizations and individuals who refer participants and amplify the work." },
   research:    { label: "Research",     singular: "Research",    icon: Microscope, color: "#2E5C46", description: "Academic and clinical partners advancing attachment science." },
   vendor:      { label: "Vendors",      singular: "Vendor",      icon: Store,      color: "#B86A5C", description: "Aligned vendors of complementary materials and services." },
@@ -78,7 +78,7 @@ export default function PartnersDirectory() {
       <h1 className="editorial-h1 mt-2">Partners</h1>
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B] max-w-2xl">
-        The people and organizations who carry Birthright's work into communities, classrooms, and clinics. Want to join us?{" "}
+        The people and organizations who carry birthright's work into communities, classrooms, and clinics. Want to join us?{" "}
         <Link to="/partner/apply" className="text-[#476B6B] underline" data-testid="apply-cta">Apply to partner</Link>.
       </p>
 
@@ -90,7 +90,7 @@ export default function PartnersDirectory() {
                 <Sparkles size={12} strokeWidth={1.5} /> Sample profiles
               </p>
               <p className="text-sm text-[#1A2424] mt-1">
-                These are illustrative partner personas to show prospective partners what a great Birthright profile looks like. None are real, active partners yet.
+                These are illustrative partner personas to show prospective partners what a great birthright profile looks like. None are real, active partners yet.
               </p>
             </div>
             <button onClick={toggleSamples} className="btn-outline text-sm" data-testid="exit-samples">

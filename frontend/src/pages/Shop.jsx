@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
 import { ShopFilters, ShopSourceFilters, ProductGrid } from "../components/shop/ShopParts";
@@ -49,8 +50,14 @@ export default function Shop() {
   // Founder Collection only renders on the public-merch view AND when not
   // filtered down to vendor-only items (the rail is Foundation-curated).
   const showFounderRail = (filter === "merch" || filter === "all") && source !== "vendor";
+  // Sort founder items by created_at desc so the most recently curated
+  // pieces surface first. The patches series was backdated to 2026-03-01
+  // intentionally so it leads the rail.
   const founderItems = showFounderRail
-    ? sourceFiltered.filter((p) => p.collection === "founder_collection")
+    ? sourceFiltered
+        .filter((p) => p.collection === "founder_collection")
+        .slice()
+        .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))
     : [];
   const restItems = showFounderRail
     ? sourceFiltered.filter((p) => p.collection !== "founder_collection")

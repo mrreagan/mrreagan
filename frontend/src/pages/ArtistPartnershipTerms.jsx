@@ -43,7 +43,7 @@ export default function ArtistPartnershipTerms() {
             Artist Partnership · clarity before commitment
           </p>
           <h1 className="text-3xl sm:text-5xl font-serif italic text-[#2C4E5A] leading-tight">
-            How partnering with Birthright works
+            How partnering with birthright works
           </h1>
           <p className="text-base sm:text-lg text-[#3D6373] mt-5 leading-relaxed font-serif italic">
             Everything below is on the public record. The numbers on this
@@ -81,7 +81,7 @@ export default function ArtistPartnershipTerms() {
           <div className="space-y-6 mt-4">
             <article className="border-l-2 border-[#A87A4A] pl-5">
               <h3 className="font-serif italic text-xl text-[#2C4E5A]">
-                1. Patronage on Birthright — <span className="not-italic font-medium">20% Foundation markup</span>
+                1. Patronage on birthright — <span className="not-italic font-medium">20% Foundation markup</span>
               </h3>
               <p className="text-[#3D6373] mt-2 font-serif italic leading-relaxed">
                 Buyers see your work in the gallery and choose to support
@@ -97,12 +97,12 @@ export default function ArtistPartnershipTerms() {
 
             <article className="border-l-2 border-[#A87A4A] pl-5">
               <h3 className="font-serif italic text-xl text-[#2C4E5A]">
-                2. You send buyers to Birthright — <span className="not-italic font-medium">inbound referral</span>
+                2. You send buyers to birthright — <span className="not-italic font-medium">inbound referral</span>
               </h3>
               <p className="text-[#3D6373] mt-2 font-serif italic leading-relaxed">
-                Share your Birthright referral link from any of your
+                Share your birthright referral link from any of your
                 channels. When a new visitor follows it and makes their
-                first purchase on Birthright within 30 days, you earn a
+                first purchase on birthright within 30 days, you earn a
                 percentage of that purchase. Rate depends on your tier
                 (10% at the lowest tier, declining as you flourish — see
                 below).
@@ -114,7 +114,7 @@ export default function ArtistPartnershipTerms() {
                 3. We send buyers to you — <span className="not-italic font-medium">outbound off-site referral</span>
               </h3>
               <p className="text-[#3D6373] mt-2 font-serif italic leading-relaxed">
-                Visitors who discover you on Birthright can click through
+                Visitors who discover you on birthright can click through
                 to your own website. If they buy from you there within 30
                 days, you self-report it quarterly and contribute a small
                 share to Foundation. Rate depends on your tier — and at
@@ -137,8 +137,8 @@ export default function ArtistPartnershipTerms() {
             </h2>
             <p className="text-[#3D6373] text-sm sm:text-base font-serif italic leading-relaxed mb-6">
               Your tier is determined by your <strong>trailing-12-month
-              Birthright-attributed gross revenue</strong> — the sum of
-              your gallery sales on Birthright (at list price) plus your
+              birthright-attributed gross revenue</strong> — the sum of
+              your gallery sales on birthright (at list price) plus your
               self-reported off-site sales tagged via=birthright.
               Recomputed monthly. Tier changes take effect the 1st of the
               following month.
@@ -264,8 +264,8 @@ export default function ArtistPartnershipTerms() {
           </p>
           <ul className="space-y-3">
             {[
-              "We do not reproduce, print, or remix your work without explicit, separate permission. Originals only on Birthright.",
-              "Your list price on Birthright matches your list price on your own site. We add the 20% on top; we never undercut you.",
+              "We do not reproduce, print, or remix your work without explicit, separate permission. Originals only on birthright.",
+              "Your list price on birthright matches your list price on your own site. We add the 20% on top; we never undercut you.",
               "You ship directly from your studio. We never touch the artwork. Your name on the package, your relationship with your collector.",
               "Tier changes only ever happen on the 1st of the month, never mid-cycle.",
               "Tier numbers, attribution windows, and the 20% markup are public on this page and identical to what the system computes.",

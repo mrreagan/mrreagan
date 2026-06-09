@@ -75,7 +75,7 @@ function ArtistTierCard() {
 
       <dl className="grid sm:grid-cols-3 gap-4 mt-5 text-sm">
         <div>
-          <dt className="label">12-mo Birthright revenue</dt>
+          <dt className="label">12-mo birthright revenue</dt>
           <dd className="font-serif text-lg mt-1">{fmt(tier.basis_12mo)}</dd>
         </div>
         <div>
@@ -105,7 +105,7 @@ function ArtistTierCard() {
               {fmt(payouts.summary.lifetime_total)}
             </p>
             <p className="text-xs text-[#5C6B6B] mt-1">
-              across {payouts.summary.count} {payouts.summary.count === 1 ? "sale" : "sales"} through Birthright
+              across {payouts.summary.count} {payouts.summary.count === 1 ? "sale" : "sales"} through birthright
             </p>
           </div>
           <div className="text-right">
@@ -124,7 +124,7 @@ function ArtistTierCard() {
       {/* Tier-history sparkline */}
       {series && series.length > 0 && (
         <div className="mt-5" data-testid="artist-revenue-sparkline">
-          <p className="label text-[#476B6B]">Monthly Birthright revenue · last 12 months</p>
+          <p className="label text-[#476B6B]">Monthly birthright revenue · last 12 months</p>
           <RevenueSparkline series={series} />
         </div>
       )}
@@ -314,7 +314,7 @@ function RevenueSparkline({ series }) {
         preserveAspectRatio="none"
         style={{ width: "100%", height: 110 }}
         role="img"
-        aria-label="Monthly Birthright revenue sparkline"
+        aria-label="Monthly birthright revenue sparkline"
       >
         {/* Baseline */}
         <line x1={pad} x2={W - pad} y1={H} y2={H} stroke="#E5E1D8" strokeWidth="1" />

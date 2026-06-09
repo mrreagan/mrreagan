@@ -27,7 +27,7 @@ export default function MessageButton({
   const go = (e) => {
     if (stopPropagation) e.stopPropagation();
     if (!user) {
-      toast.message("Sign in to message a partner", { description: "Direct messages are between Birthright members and partners." });
+      toast.message("Sign in to message a partner", { description: "Direct messages are between birthright members and partners." });
       navigate("/auth/login");
       return;
     }

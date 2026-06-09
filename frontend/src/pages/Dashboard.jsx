@@ -265,7 +265,7 @@ export default function Dashboard() {
             <span className="label">Partner network</span>
             <h3 className="font-serif text-xl mt-1">Carry this work forward</h3>
             <p className="text-sm text-[#5C6B6B] max-w-xl mt-1">
-              Become a Birthright partner — facilitator, community ally, research collaborator, or vendor.
+              Become a birthright partner — facilitator, community ally, research collaborator, or vendor.
               Manage applications and your public profile from your partner workspace.
             </p>
           </div>

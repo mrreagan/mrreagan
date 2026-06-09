@@ -30,11 +30,10 @@ export default function FounderCollectionRail({ products }) {
           </h2>
           <p className="text-sm text-[#FAF8F5]/80 mt-3 max-w-xl leading-relaxed">
             Quiet objects to carry the work with you. Five hand-engraved leather
-            patches — each phrase one of Birthright's load-bearing truths,
+            patches — each phrase one of birthright&apos;s load-bearing truths,
             burned into vegetable-tanned leather by{" "}
-            <span className="text-[#C9A961] italic">7C's Farmstead</span>.
-            Made to order; every sale carries a 20% Foundation patronage that
-            funds artist payouts and the broader work.
+            <span className="text-[#C9A961] italic">7C&apos;s Farmstead</span>.
+            Made to order. Buy any single phrase at $10, or the full set for $40.
           </p>
         </div>
         <p className="text-[10px] uppercase tracking-wider text-[#FAF8F5]/50 lg:text-right">
@@ -90,7 +89,7 @@ function FounderCard({ product }) {
             )}
             {isExternal && (
               <span className="block text-[10px] uppercase tracking-wider text-[#A87A4A] mt-0.5">
-                + 20% Foundation patronage
+                + shipping at checkout
               </span>
             )}
           </div>

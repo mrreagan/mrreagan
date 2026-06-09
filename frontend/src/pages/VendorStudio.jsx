@@ -132,7 +132,7 @@ export default function VendorStudio() {
         <h1 className="editorial-h1">AI Studio</h1>
         <div className="card p-6 mt-4">
           <p className="font-serif text-lg">You need an active vendor partner profile to use the Studio.</p>
-          <p className="text-sm text-[#5C6B6B] mt-2">Apply to become a Birthright vendor partner — then come back to dream products into being.</p>
+          <p className="text-sm text-[#5C6B6B] mt-2">Apply to become a birthright vendor partner — then come back to dream products into being.</p>
           <Link to="/partners/apply?type=vendor" className="btn-primary text-sm mt-4 inline-flex">Apply as a vendor →</Link>
         </div>
       </div>
@@ -152,7 +152,7 @@ export default function VendorStudio() {
       <p className="text-base text-[#5C6B6B] max-w-2xl">
         Describe what you want. Studio shows you the dollar cost upfront, generates
         hero images and copy, and submits your draft to admin for moderation before
-        it goes live. Once approved it lives on Birthright with your name as the vendor.
+        it goes live. Once approved it lives on birthright with your name as the vendor.
       </p>
 
       <div className="rounded-2xl border-2 border-[#C9A961] bg-[#FFF8E1] p-5 mt-6 max-w-3xl">
@@ -237,7 +237,7 @@ export default function VendorStudio() {
                   data-testid="vendor-studio-fulfill-external"
                 >
                   <span className="font-serif text-base">My external site</span>
-                  <p className="text-xs text-[#5C6B6B] mt-1">We send customers your way. You keep the full retail and send a small referral commission back to Birthright.</p>
+                  <p className="text-xs text-[#5C6B6B] mt-1">We send customers your way. You keep the full retail and send a small referral commission back to birthright.</p>
                 </button>
               </div>
               {isOffSite && (
@@ -255,7 +255,7 @@ export default function VendorStudio() {
                   </label>
                   <p className="text-[11px] text-[#5C6B6B] mt-2 leading-relaxed">
                     We'll stamp <code className="text-[#476B6B]">?via=birthright_{user?.id?.slice(0, 6) || "you"}</code> on
-                    the destination so you can identify Birthright-sourced traffic. Report those
+                    the destination so you can identify birthright-sourced traffic. Report those
                     confirmed sales in <Link to="/dashboard/partner/sales-reports" className="underline">Sales reports</Link> —
                     Birthright will invoice the agreed referral commission on the traffic we sent you.
                   </p>

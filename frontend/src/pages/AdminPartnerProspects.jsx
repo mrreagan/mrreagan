@@ -264,7 +264,7 @@ function CreateForm({ onClose, onCreated }) {
             </p>
             <p className="text-[11px] text-[#5C6B6B] mb-3 italic">
               The opening of every invitation — equity in mission is the real benefit; finance is just viability.
-              Two to four sentences explaining how their existing work already aligns with Birthright's mission.
+              Two to four sentences explaining how their existing work already aligns with birthright's mission.
             </p>
           </div>
           <button
@@ -282,7 +282,7 @@ function CreateForm({ onClose, onCreated }) {
           rows={4}
           className="input-field font-serif text-[15px]"
           data-testid="mission-alignment-input"
-          placeholder="On the basis of what we noticed on your site, your work already advances Birthright's mission of…"
+          placeholder="On the basis of what we noticed on your site, your work already advances birthright's mission of…"
         />
         <p className="text-[10px] text-[#5C6B6B] mt-1">{(form.mission_alignment || "").length} chars · Aim for 2-4 sentences (~80 words).</p>
       </div>

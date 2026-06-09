@@ -115,7 +115,7 @@ export default function PartnerFeatured() {
       <h1 className="editorial-h1 mt-2">Featured slot</h1>
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B] max-w-2xl">
-        Promote your work in the spotlight section of Birthright. Featured partners are pinned to the top of <a href="/partner" className="text-[#476B6B] underline">/partners</a> and carry a gold ribbon across the directory.
+        Promote your work in the spotlight section of birthright. Featured partners are pinned to the top of <a href="/partner" className="text-[#476B6B] underline">/partners</a> and carry a gold ribbon across the directory.
       </p>
 
       {profiles.length > 1 && (
@@ -147,7 +147,7 @@ export default function PartnerFeatured() {
             <div className="mt-5 space-y-4">
               <Textarea
                 label="Mission alignment"
-                placeholder="In 2–4 sentences, why does your work belong in Birthright's spotlight?"
+                placeholder="In 2–4 sentences, why does your work belong in birthright's spotlight?"
                 value={form.mission_alignment}
                 onChange={(v) => setForm({ ...form, mission_alignment: v })}
                 rows={3}

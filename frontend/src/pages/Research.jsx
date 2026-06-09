@@ -52,7 +52,7 @@ export default function Research() {
               Synthesize literature, map the research landscape, generate research questions, critique
               a draft’s methodology, summarize notes, and polish prose — backed by Claude Sonnet 4.5
               and shaped by Birthright’s attachment-and-family-systems posture. Open to any signed-in
-              member; billed at 1.5× passthrough — the extra 50% supports Birthright Foundation.
+              member; billed at 1.5× passthrough — the extra 50% supports birthright Foundation.
             </p>
           </div>
           <div className="shrink-0">

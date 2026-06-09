@@ -90,7 +90,7 @@ export default function HelpPage() {
             <Headphones size={18} strokeWidth={1.7} />
           </span>
           <div>
-            <p className="label !mt-0 text-[#A87A4A]">Birthright Help</p>
+            <p className="label !mt-0 text-[#A87A4A]">birthright Help</p>
             <h1 className="font-serif text-2xl sm:text-3xl leading-tight !text-[#1A2424]">
               Ask the AI assistant.
             </h1>
@@ -208,7 +208,7 @@ function PageBubble({ m, onSuggestion, onEscalate }) {
           Flag for a human
         </button>
       )}
-      <p className="ml-9 text-[10px] text-[#9DA8A8]">Birthright Help · AI Agent</p>
+      <p className="ml-9 text-[10px] text-[#9DA8A8]">birthright Help · AI Agent</p>
     </div>
   );
 }

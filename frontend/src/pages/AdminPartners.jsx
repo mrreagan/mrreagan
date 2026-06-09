@@ -124,7 +124,7 @@ function ApplicationRow({ app, onUpdate }) {
         <div className="mt-4 border-t border-[#E5E1D8] pt-4 space-y-2" data-testid={`app-details-${app.id}`}>
           {app.data?.bio && <DetailRow label="Bio" value={app.data.bio} />}
           {app.data?.presents_birthright_ip != null && (
-            <DetailRow label="Presents Birthright IP" value={app.data.presents_birthright_ip ? "Yes" : "No"} />
+            <DetailRow label="Presents birthright IP" value={app.data.presents_birthright_ip ? "Yes" : "No"} />
           )}
           {app.data?.credentials && <DetailRow label="Credentials" value={app.data.credentials} />}
           {app.data?.training_history && <DetailRow label="Training" value={app.data.training_history} />}

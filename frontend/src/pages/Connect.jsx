@@ -26,7 +26,7 @@ function ConnectPublicPreview() {
       <h1 className="editorial-h1 mt-2">Channels, conversations, meetings.</h1>
       <div className="divider-flame" />
       <p className="text-base text-[#5C6B6B] max-w-2xl">
-        A Teams-style space for the Birthright community. Sign in to enter the channels, chat
+        A Teams-style space for the birthright community. Sign in to enter the channels, chat
         with members, and schedule meetings together.
       </p>
 
@@ -47,7 +47,7 @@ function ConnectPublicPreview() {
       <div className="mt-10 rounded-2xl border-2 border-[#476B6B] bg-[#F4F1EA] p-6 max-w-2xl" data-testid="connect-public-cta">
         <p className="font-serif text-xl">Ready to join the conversation?</p>
         <p className="text-sm text-[#5C6B6B] mt-2 leading-relaxed">
-          Connect is available to anyone with a Birthright account — free to create.
+          Connect is available to anyone with a birthright account — free to create.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
@@ -111,7 +111,7 @@ export default function Connect() {
           <span className="label">Connect</span>
           <h1 className="editorial-h1 mt-2">Channels, conversations, meetings.</h1>
           <p className="text-sm text-[#5C6B6B] mt-2 max-w-2xl">
-            A Teams-style space for the Birthright community. Open channels are visible to all signed-in members;
+            A Teams-style space for the birthright community. Open channels are visible to all signed-in members;
             private channels are limited by role.
           </p>
         </div>

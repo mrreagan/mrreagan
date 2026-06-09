@@ -155,7 +155,7 @@ function ImpactCard({ impact }) {
   return (
     <div className="card p-7" data-testid={`impact-${impact.id}`}>
       <Sparkles size={22} strokeWidth={1.5} className="text-[#C9A961]" />
-      <p className="font-serif text-xl mt-3 leading-snug">"{impact.what_learned}"</p>
+      <p className="font-serif text-xl mt-3 leading-snug">&ldquo;{impact.what_learned}&rdquo;</p>
       <p className="text-sm text-[#5C6B6B] mt-4 line-clamp-3">{impact.benefits}</p>
       <p className="text-xs text-[#5C6B6B] mt-5 label">— {impact.user_name}</p>
     </div>
@@ -250,8 +250,9 @@ function FounderCollectionTeaser({ items }) {
               You are the founder of your own love story.
             </h2>
             <p className="text-base text-[#FAF8F5]/70 mt-4 max-w-xl leading-relaxed">
-              Gear and inspiration, just for you. A small curated collection that lets you carry the
-              practice into the world — and signals to your person that you're choosing to build with them.
+              A small curated set of quiet objects to carry the practice into the world — and signal
+              to your person that you&apos;re choosing to build with them. Five hand-engraved leather
+              phrases, plus a few other ways to hold the work close.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
@@ -266,7 +267,7 @@ function FounderCollectionTeaser({ items }) {
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#FAF8F5]/30 text-[#FAF8F5] text-sm hover:border-[#C9A961] hover:text-[#C9A961] transition"
                 data-testid="home-founder-featured-cta"
               >
-                See the hat pair — ${featured.price?.toFixed(0)} <ArrowRight size={14} strokeWidth={1.5} />
+                See this patch — ${featured.price?.toFixed(0)} <ArrowRight size={14} strokeWidth={1.5} />
               </Link>
             </div>
           </div>

@@ -160,7 +160,7 @@ export default function ShareButton({
   };
 
   const handleEmail = () => {
-    const subj = encodeURIComponent(emailSubject || title || "From the Birthright Foundation");
+    const subj = encodeURIComponent(emailSubject || title || "From the birthright Foundation");
     const body = encodeURIComponent(`${title ? title + "\n\n" : ""}${shareUrl}`);
     window.open(`mailto:?subject=${subj}&body=${body}`, "_blank");
     fireLog("email");
@@ -223,7 +223,7 @@ export default function ShareButton({
 
   const openSendToPartner = async () => {
     if (!user) {
-      toast.message("Sign in to send to a partner", { description: "Open a thread with any Birthright partner." });
+      toast.message("Sign in to send to a partner", { description: "Open a thread with any birthright partner." });
       return;
     }
     setShowSendToPartner(true);

@@ -6,7 +6,7 @@ import { Users, Briefcase, Microscope, Store, AlertCircle, Palette, MapPin } fro
 import StudioVendorNudge from "../components/StudioVendorNudge";
 
 const TYPE_OPTIONS = [
-  { value: "facilitator", label: "Facilitator", icon: Users, blurb: "Lead Birthright workshops or present your own attachment-science material." },
+  { value: "facilitator", label: "Facilitator", icon: Users, blurb: "Lead birthright workshops or present your own attachment-science material." },
   { value: "community",   label: "Community",   icon: Briefcase, blurb: "Refer participants and amplify the work through your network." },
   { value: "research",    label: "Research",    icon: Microscope, blurb: "Advance the science with empirical or clinical contributions." },
   { value: "vendor",      label: "Vendor",      icon: Store, blurb: "Offer complementary materials, services, or tools to participants." },
@@ -64,7 +64,7 @@ export default function PartnerApply() {
       <div className="container-page py-16 max-w-md text-center" data-testid="apply-signin-prompt">
         <span className="label">Partner application</span>
         <h1 className="editorial-h1 mt-2">Sign in to apply</h1>
-        <p className="text-sm text-[#5C6B6B] mt-4">Partner applications are tied to your Birthright account.</p>
+        <p className="text-sm text-[#5C6B6B] mt-4">Partner applications are tied to your birthright account.</p>
         <Link to="/login" className="btn-primary mt-6 inline-block">Sign in</Link>
       </div>
     );
@@ -77,7 +77,7 @@ export default function PartnerApply() {
     if (form.headline.trim().length < 5) { toast.error("Please add a one-line headline (5+ chars)."); return; }
     if (form.bio.trim().length < 20) { toast.error("Please write at least 20 characters of bio."); return; }
     if (form.partner_type === "facilitator" && form.presents_birthright_ip === null) {
-      toast.error("Please indicate whether you'll present Birthright IP materials.");
+      toast.error("Please indicate whether you'll present birthright IP materials.");
       return;
     }
     setSubmitting(true);
@@ -106,7 +106,7 @@ export default function PartnerApply() {
       <h1 className="editorial-h1 mt-2">Apply to partner</h1>
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B]">
-        Welcome, {user.first_name}. Tell us how you'd like to work alongside Birthright.
+        Welcome, {user.first_name}. Tell us how you'd like to work alongside birthright.
       </p>
 
       <StudioVendorNudge className="mt-6" />
@@ -177,11 +177,11 @@ export default function PartnerApply() {
             <div className="bg-[#FAF8F5] border border-[#C9A961]/40 rounded p-3 flex items-start gap-2">
               <AlertCircle size={14} strokeWidth={1.5} className="text-[#C9A961] mt-0.5 shrink-0" />
               <p className="text-xs text-[#5C6B6B]">
-                Facilitators are a special partner class. After approval you'll choose a <Link to="/partner/subscribe?type=facilitator" className="text-[#476B6B] underline">subscription plan</Link> (monthly / annual / 2-year). Subscription length sets your license window AND default revenue share — shorter terms carry a higher rev-share. Rev-share also differs for Birthright IP materials vs. your own / vendor content. <strong>Tell us which you plan to present.</strong>
+                Facilitators are a special partner class. After approval you'll choose a <Link to="/partner/subscribe?type=facilitator" className="text-[#476B6B] underline">subscription plan</Link> (monthly / annual / 2-year). Subscription length sets your license window AND default revenue share — shorter terms carry a higher rev-share. Rev-share also differs for birthright IP materials vs. your own / vendor content. <strong>Tell us which you plan to present.</strong>
               </p>
             </div>
             <div>
-              <label className="label">Do you plan to present Birthright IP materials and workshops?</label>
+              <label className="label">Do you plan to present birthright IP materials and workshops?</label>
               <div className="flex gap-2 mt-2" data-testid="apply-presents-birthright-ip">
                 {[{ v: true, label: "Yes — Birthright materials" }, { v: false, label: "No — only my own / other materials" }].map((opt) => (
                   <button

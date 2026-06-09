@@ -89,7 +89,7 @@ export default function PartnerInvite() {
         selected_options: Object.keys(selectedOptions).length ? selectedOptions : undefined,
       });
       if (r.data.session_token) setStoredToken(r.data.session_token);
-      toast.success(`Welcome — you're enrolled as a Birthright ${spec.title}.`);
+      toast.success(`Welcome — you're enrolled as a birthright ${spec.title}.`);
       navigate(r.data.next || "/dashboard/partner");
     } catch (e) {
       toast.error(e.response?.data?.detail || "Couldn't accept the invitation.");
@@ -253,7 +253,7 @@ export default function PartnerInvite() {
       {spec.options?.fulfillment_modes && (
         <section className="mt-8 max-w-2xl">
           <p className="label">Fulfillment mode</p>
-          <p className="text-xs text-[#5C6B6B] mt-1 mb-3">Pick how Birthright handles orders for your products. You can change this per-product after enrolling.</p>
+          <p className="text-xs text-[#5C6B6B] mt-1 mb-3">Pick how birthright handles orders for your products. You can change this per-product after enrolling.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {spec.options.fulfillment_modes.map((m) => (
               <button
@@ -354,7 +354,7 @@ export default function PartnerInvite() {
             <Briefcase size={16} /> One last step — set your password
           </p>
           <p className="text-xs text-[#5C6B6B] mt-1">
-            We'll create your Birthright account using <strong className="text-[#1A2424]">{inv.contact_email || "your email"}</strong>.
+            We'll create your birthright account using <strong className="text-[#1A2424]">{inv.contact_email || "your email"}</strong>.
           </p>
           <input
             type="password"
@@ -368,7 +368,7 @@ export default function PartnerInvite() {
           <label className="mt-3 flex items-start gap-2 text-sm text-[#1A2424]">
             <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1" data-testid="accept-terms-checkbox" />
             <span className="leading-relaxed">
-              I've read the above and agree to the Birthright <em>{spec.title} Partnership Agreement</em>.
+              I've read the above and agree to the birthright <em>{spec.title} Partnership Agreement</em>.
               I understand enrolling creates my partner profile.
             </span>
           </label>
