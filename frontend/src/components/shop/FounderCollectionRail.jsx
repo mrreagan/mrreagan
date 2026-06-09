@@ -1,92 +1,199 @@
-import React from "react";
+/**
+ * FounderCollectionRail — featured-3 swipeable teaser.
+ *
+ * Replaces the previous "show every item in a horizontal scroll" layout.
+ * Now functions like a magazine front-of-book:
+ *   - The window shows ONE featured item at a time
+ *   - Three featured items total (the most recently curated + the
+ *     is_homepage_feature winner pinned at front)
+ *   - Native horizontal scroll-snap on touch devices; arrow controls on
+ *     desktop. CSS-only — no swiper/embla dependency.
+ *   - Tap the "FOUNDER COLLECTION" header, the headline, or the "See all"
+ *     pill to enter the full collection view at /equip/collection/founder.
+ */
+import React, { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, ShoppingBag, ExternalLink } from "lucide-react";
+import { Sparkles, ChevronLeft, ChevronRight, ArrowRight, ExternalLink, ShoppingBag } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { toast } from "sonner";
 
-/**
- * Founder Collection — editorial featured rail at the top of /shop.
- * Renders nothing if no products in the collection are available yet.
- */
-export default function FounderCollectionRail({ products }) {
-  const items = (products || []).filter(
-    (p) => p.collection === "founder_collection" && p.moderation_status !== "unpublished"
+// Pick at most 3 featured items: the explicit `is_homepage_feature` first,
+// then most-recent additions to round out to three. Sort by created_at desc
+// so newly-added pieces surface naturally.
+function pickFeatured(products) {
+  const sorted = [...products].sort(
+    (a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")),
   );
-  if (items.length === 0) return null;
+  const hero = sorted.find((p) => p.is_homepage_feature);
+  const rest = sorted.filter((p) => p.id !== hero?.id);
+  return [hero, ...rest].filter(Boolean).slice(0, 3);
+}
 
+export default function FounderCollectionRail({ products }) {
+  const featured = useMemo(() => pickFeatured(products || []), [products]);
+  if (featured.length === 0) return null;
   return (
     <section
-      className="mt-12 -mx-4 sm:mx-0 sm:rounded-3xl bg-[#0F2424] text-[#FAF8F5] px-6 sm:px-10 py-10 sm:py-12 overflow-hidden"
+      className="rounded-2xl bg-[#0F2424] text-[#FAF8F5] my-10 overflow-hidden"
       data-testid="founder-collection-rail"
     >
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 mb-8">
-        <div>
-          <div className="inline-flex items-center gap-2 text-[#C9A961]">
-            <Sparkles size={14} strokeWidth={1.5} />
-            <span className="label !mt-0 text-[#C9A961]">Founder Collection</span>
-          </div>
-          <h2 className="font-serif text-3xl sm:text-4xl mt-2 leading-tight !text-[#FAF8F5]">
-            You are the founder of your own love story.
-          </h2>
-          <p className="text-sm text-[#FAF8F5]/80 mt-3 max-w-xl leading-relaxed">
-            Quiet objects to carry the work with you. Five hand-engraved leather
-            patches — each phrase one of birthright&apos;s load-bearing truths,
-            burned into vegetable-tanned leather by{" "}
-            <span className="text-[#C9A961] italic">7C&apos;s Farmstead</span>.
-            Made to order. Buy any single phrase at $10, or the full set for $40.
-          </p>
-        </div>
-        <p className="text-[10px] uppercase tracking-wider text-[#FAF8F5]/50 lg:text-right">
-          Limited curated pieces · Made to order
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {items.map((p) => (
-          <FounderCard key={p.id} product={p} />
-        ))}
-      </div>
+      <FeaturedCarousel featured={featured} total={products.length} />
     </section>
   );
 }
 
-function FounderCard({ product }) {
-  const { addItem, items } = useCart();
-  const cap = Number.isFinite(product.max_per_order) ? product.max_per_order : null;
-  const inCart = items.find((i) => i.product_id === product.id);
-  const atCap = cap && inCart && inCart.quantity >= cap;
-  const isExternal = !!product.is_off_site;
+function FeaturedCarousel({ featured, total }) {
+  const trackRef = useRef(null);
+  const [idx, setIdx] = useState(0);
+
+  const scrollTo = (newIdx) => {
+    const next = Math.max(0, Math.min(featured.length - 1, newIdx));
+    setIdx(next);
+    const track = trackRef.current;
+    if (track) {
+      const slide = track.children[next];
+      slide?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    }
+  };
+
+  // Update idx as the user swipes natively (scroll-snap). Throttled via
+  // requestAnimationFrame so we don't thrash setState on every scroll event.
+  const rafRef = useRef(0);
+  const onScroll = () => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      const track = trackRef.current;
+      if (!track) return;
+      const w = track.clientWidth;
+      const i = Math.round(track.scrollLeft / w);
+      if (i !== idx) setIdx(i);
+    });
+  };
 
   return (
+    <>
+      <header className="p-6 pb-4 sm:p-8 sm:pb-5 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <Link
+            to="/equip/collection/founder"
+            data-testid="founder-collection-header-link"
+            className="inline-flex items-center gap-2 text-[#C9A961] hover:text-[#D4B677] transition"
+          >
+            <Sparkles size={14} strokeWidth={1.5} />
+            <span className="label !mt-0 text-[#C9A961]">Founder Collection</span>
+          </Link>
+          <Link to="/equip/collection/founder" className="block group">
+            <h2 className="font-serif text-2xl sm:text-3xl mt-2 leading-tight !text-[#FAF8F5] group-hover:text-[#C9A961] transition">
+              You are the founder of your own love story.
+            </h2>
+          </Link>
+          <p className="text-sm text-[#FAF8F5]/70 mt-2 max-w-md">
+            A curated few. Tap any card to read; tap{" "}
+            <span className="text-[#C9A961]">See all {total}</span>{" "}
+            to enter the full collection.
+          </p>
+        </div>
+        <Link
+          to="/equip/collection/founder"
+          data-testid="founder-collection-see-all"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#FAF8F5]/30 text-[#FAF8F5] text-xs hover:border-[#C9A961] hover:text-[#C9A961] transition"
+        >
+          See all {total} <ArrowRight size={12} strokeWidth={1.8} />
+        </Link>
+      </header>
+
+      <div className="relative px-6 pb-6 sm:px-8 sm:pb-8">
+        <div
+          ref={trackRef}
+          onScroll={onScroll}
+          className="flex overflow-x-auto snap-x snap-mandatory gap-4 scroll-smooth pb-2 -mx-1 px-1"
+          style={{ scrollbarWidth: "none" }}
+          data-testid="founder-collection-track"
+        >
+          {featured.map((p) => (
+            <FeaturedCard key={p.id} product={p} />
+          ))}
+        </div>
+
+        {/* Dots + desktop arrows */}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex gap-1.5" data-testid="founder-collection-dots">
+            {featured.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => scrollTo(i)}
+                aria-label={`Go to slide ${i + 1}`}
+                className={`w-1.5 h-1.5 rounded-full transition ${i === idx ? "bg-[#C9A961] w-6" : "bg-[#FAF8F5]/30 hover:bg-[#FAF8F5]/50"}`}
+              />
+            ))}
+          </div>
+          <div className="hidden sm:flex gap-1.5">
+            <button
+              onClick={() => scrollTo(idx - 1)}
+              disabled={idx === 0}
+              aria-label="Previous"
+              data-testid="founder-collection-prev"
+              className="flex items-center justify-center w-8 h-8 rounded-full border border-[#FAF8F5]/30 text-[#FAF8F5] hover:border-[#C9A961] hover:text-[#C9A961] disabled:opacity-30 disabled:cursor-not-allowed transition"
+            >
+              <ChevronLeft size={16} strokeWidth={1.8} />
+            </button>
+            <button
+              onClick={() => scrollTo(idx + 1)}
+              disabled={idx === featured.length - 1}
+              aria-label="Next"
+              data-testid="founder-collection-next"
+              className="flex items-center justify-center w-8 h-8 rounded-full border border-[#FAF8F5]/30 text-[#FAF8F5] hover:border-[#C9A961] hover:text-[#C9A961] disabled:opacity-30 disabled:cursor-not-allowed transition"
+            >
+              <ChevronRight size={16} strokeWidth={1.8} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+
+// One full-bleed card per slide. Image left / copy right on desktop;
+// stacked on mobile. The whole image block is a Link to the product
+// detail; the buttons live inside the copy column to avoid nested links.
+function FeaturedCard({ product }) {
+  const { addItem } = useCart();
+  const isExternal = !!product.is_off_site;
+  return (
     <article
-      className="rounded-2xl bg-[#FAF8F5] text-[#1A2424] overflow-hidden flex flex-col shadow-lg"
+      className="snap-start shrink-0 w-full rounded-xl bg-[#FAF8F5] text-[#1A2424] overflow-hidden grid grid-cols-1 md:grid-cols-2"
       data-testid={`founder-collection-card-${product.id}`}
     >
-      <Link to={`/equip/${product.id}`} className="block aspect-[4/3] bg-[#F4F1EA] overflow-hidden">
+      <Link
+        to={`/equip/${product.id}`}
+        className="block aspect-[4/3] bg-[#F4F1EA] overflow-hidden"
+      >
         <img
           src={product.image_url}
           alt={product.name}
           className="w-full h-full object-contain"
         />
       </Link>
-      <div className="p-5 flex-1 flex flex-col">
-        <Link to={`/equip/${product.id}`} className="font-serif text-xl leading-tight hover:text-[#476B6B]">
+      <div className="p-5 sm:p-6 flex flex-col">
+        <Link
+          to={`/equip/${product.id}`}
+          className="font-serif text-xl sm:text-2xl leading-tight hover:text-[#476B6B]"
+        >
           {product.name}
         </Link>
-        <p className="text-xs text-[#5C6B6B] mt-2 line-clamp-3 flex-1">{product.description}</p>
+        <p className="text-sm text-[#5C6B6B] mt-3 flex-1 line-clamp-4 whitespace-pre-wrap">
+          {product.description}
+        </p>
         {isExternal && product.vendor_name && (
-          <p className="text-[10px] uppercase tracking-wider text-[#476B6B] mt-2">
+          <p className="text-[10px] uppercase tracking-wider text-[#476B6B] mt-3">
             Made to order by {product.vendor_name}
           </p>
         )}
-        <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="mt-4 flex items-center justify-between gap-3">
           <div>
-            <span className="font-medium text-lg">${product.price?.toFixed(2)}</span>
-            {cap === 1 && (
-              <span className="block text-[10px] uppercase tracking-wider text-[#C9A961] mt-0.5">
-                One set per buyer
-              </span>
-            )}
+            <span className="font-medium text-xl">${product.price?.toFixed(2)}</span>
             {isExternal && (
               <span className="block text-[10px] uppercase tracking-wider text-[#A87A4A] mt-0.5">
                 + shipping at checkout
@@ -103,23 +210,11 @@ function FounderCard({ product }) {
             </Link>
           ) : (
             <button
-              onClick={() => {
-                if (atCap) {
-                  toast.message(`Limited to ${cap} per order — already in cart.`);
-                  return;
-                }
-                addItem(product);
-                toast.success(`Added ${product.name}`);
-              }}
-              disabled={atCap}
-              className={`text-xs flex items-center gap-1.5 px-4 py-2 rounded-full transition ${
-                atCap
-                  ? "bg-[#E5E1D8] text-[#5C6B6B] cursor-not-allowed"
-                  : "bg-[#C9A961] text-[#0F2424] hover:bg-[#D4B677]"
-              }`}
+              onClick={() => { addItem(product); toast.success(`Added ${product.name}`); }}
+              className="text-xs flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#C9A961] text-[#0F2424] hover:bg-[#D4B677] transition"
               data-testid={`founder-collection-add-${product.id}`}
             >
-              <ShoppingBag size={12} strokeWidth={1.8} /> {atCap ? "In cart" : "Add to cart"}
+              <ShoppingBag size={12} strokeWidth={1.8} /> Add to cart
             </button>
           )}
         </div>
