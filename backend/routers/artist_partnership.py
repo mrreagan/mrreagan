@@ -22,7 +22,8 @@ from __future__ import annotations
 import logging
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from auth_utils import get_current_user, require_roles
@@ -32,12 +33,17 @@ from utils.artist_tier import (
     marginal_outbound_owed,
     resolve_artist_tier,
 )
+from utils.tier_share_card import (
+    render_tier_share_png,
+    render_tier_share_svg,
+)
 
 logger = logging.getLogger("birthright.artist_partnership")
 
 my_router = APIRouter(prefix="/partner/me", tags=["artist-partnership"])
 public_router = APIRouter(prefix="/partner/artist", tags=["artist-partnership-public"])
 admin_router = APIRouter(prefix="/admin/artist", tags=["artist-partnership-admin"])
+share_router = APIRouter(prefix="/share/artist", tags=["artist-partnership-share"])
 
 
 PUBLIC_TIER_MESSAGES = {
@@ -157,6 +163,11 @@ async def my_artist_tier(user: dict = Depends(get_current_user)):
     if not profile:
         raise HTTPException(403, "You need an approved Artist partner profile.")
     summary = await resolve_artist_tier(db, user["id"])
+    # Surface profile-level pieces the dashboard needs (share card URL,
+    # display name, public visibility) without an extra round-trip.
+    summary["slug"] = profile.get("slug")
+    summary["display_name"] = profile.get("display_name")
+    summary["public"] = bool(profile.get("public"))
     return summary
 
 
@@ -325,6 +336,113 @@ async def monthly_revenue(
         }
         for k in keys
     ]
+
+
+# -------- Tier history (Task P3: audit timeline + share celebration) --------
+
+@my_router.get("/tier-history")
+async def my_tier_history(user: dict = Depends(get_current_user)):
+    """All recorded tier transitions for the signed-in artist, newest
+    first. Also returns the most recent UP transition that hasn't been
+    dismissed, so the dashboard can surface a 'share your achievement'
+    banner without an extra round-trip.
+
+    Tracking starts going forward from the first time `resolve_artist_tier`
+    runs for the artist; historical pre-deployment transitions are not
+    backfilled."""
+    from database import db
+    rows = await db.artist_tier_history.find(
+        {"user_id": user["id"]}, {"_id": 0},
+    ).sort("created_at", -1).to_list(500)
+    # Pending share = most recent UP transition where share_dismissed is falsy.
+    pending = next(
+        (r for r in rows
+         if r.get("direction") == "up" and not r.get("share_dismissed")),
+        None,
+    )
+    return {
+        "rows": rows,
+        "pending_share": pending,
+    }
+
+
+@my_router.post("/tier-history/{history_id}/dismiss-share")
+async def my_dismiss_share(
+    history_id: str, user: dict = Depends(get_current_user),
+):
+    """Acknowledge the 'share your achievement' banner. Belt-and-suspenders
+    ownership check on `user_id` so one artist can't dismiss another's row."""
+    from database import db
+    r = await db.artist_tier_history.update_one(
+        {"id": history_id, "user_id": user["id"]},
+        {"$set": {"share_dismissed": True,
+                   "share_dismissed_at": now_iso()}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(404, "Tier-history row not found")
+    return {"ok": True}
+
+
+# -------- Share card (public; for OG previews + downloadable PNG) --------
+
+async def _build_share_card_payload(db, slug: str) -> dict:
+    """Look up an artist by slug + their current tier + a referral URL
+    that drops a tracking cookie before landing on their gallery."""
+    profile = await db.partner_profiles.find_one(
+        {"slug": slug, "partner_type": "artist", "status": "active",
+         "public": True},
+        {"_id": 0, "user_id": 1, "display_name": 1, "referral_code": 1},
+    )
+    if not profile:
+        raise HTTPException(404, "Artist not found")
+    tier = await resolve_artist_tier(db, profile["user_id"])
+    # Build a referral URL that funnels through /r/{code} so any sale
+    # this share converts gets attributed back to the artist as inbound.
+    code = profile.get("referral_code") or ""
+    if code:
+        share_url = (
+            f"https://birthright.live/api/r/{code}"
+            f"?dest=/partners/{slug}"
+        )
+    else:
+        share_url = f"https://birthright.live/partners/{slug}"
+    return {
+        "tier_label": tier["tier_label"],
+        "tier_icon": tier["tier_icon"],
+        "tier_key": tier["tier_key"],
+        "artist_name": profile.get("display_name", ""),
+        "referral_url": share_url,
+    }
+
+
+@share_router.get("/{slug}/tier-card.png")
+async def tier_share_card_png(slug: str):
+    """Public Open-Graph-friendly PNG (1200×630) declaring the artist's
+    current tier. Cached aggressively at the edge."""
+    from database import db
+    payload = await _build_share_card_payload(db, slug)
+    png = render_tier_share_png(**payload)
+    return Response(
+        content=png,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=900",
+            "Content-Disposition": f'inline; filename="birthright-{slug}-tier.png"',
+        },
+    )
+
+
+@share_router.get("/{slug}/tier-card.svg")
+async def tier_share_card_svg(slug: str):
+    """SVG variant for hi-res social sharing or print."""
+    from database import db
+    payload = await _build_share_card_payload(db, slug)
+    svg = render_tier_share_svg(**payload)
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=900"},
+    )
 
 
 # ============ ADMIN — patronage payouts ============

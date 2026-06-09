@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Palette, Plus, Trash2, Save, Sparkles, ArrowUpRight } from "lucide-react";
+import { Palette, Plus, Trash2, Save, Sparkles, ArrowUpRight, Download, Share2, X, History } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -11,32 +11,52 @@ const ACCENTS = ["flame", "moss", "river", "ochre", "indigo", "graphite"];
 
 
 // Tier card — fetches the current artist's tier + basis + runway, lifetime
-// patronage total, and 12-month revenue sparkline.
+// patronage total, 12-month revenue sparkline, AND tier-history timeline +
+// celebration banner for unacknowledged UP transitions.
 function ArtistTierCard() {
   const [tier, setTier] = useState(null);
   const [payouts, setPayouts] = useState(null);
   const [series, setSeries] = useState(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [tierR, payR, seriesR] = await Promise.all([
-          api.get("/partner/me/artist-tier"),
-          api.get("/partner/me/artist-payouts"),
-          api.get("/partner/me/monthly-revenue?months=12"),
-        ]);
-        if (cancelled) return;
-        setTier(tierR.data);
-        setPayouts(payR.data);
-        setSeries(seriesR.data);
-      } catch (_) { /* artist may not have a profile yet */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const [history, setHistory] = useState(null);
+  const [pendingShare, setPendingShare] = useState(null);
+  const refresh = async () => {
+    try {
+      const [tierR, payR, seriesR, histR] = await Promise.all([
+        api.get("/partner/me/artist-tier"),
+        api.get("/partner/me/artist-payouts"),
+        api.get("/partner/me/monthly-revenue?months=12"),
+        api.get("/partner/me/tier-history"),
+      ]);
+      setTier(tierR.data);
+      setPayouts(payR.data);
+      setSeries(seriesR.data);
+      setHistory(histR.data?.rows || []);
+      setPendingShare(histR.data?.pending_share || null);
+    } catch (_) { /* artist may not have a profile yet */ }
+  };
+  useEffect(() => { refresh(); }, []);
   if (!tier) return null;
   const fmt = (n) => `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+  const dismissShare = async () => {
+    if (!pendingShare) return;
+    try {
+      await api.post(`/partner/me/tier-history/${pendingShare.id}/dismiss-share`);
+      setPendingShare(null);
+    } catch (e) {
+      toast.error("Couldn't dismiss");
+    }
+  };
   return (
     <section className="card p-6 mt-6 max-w-3xl" data-testid="artist-tier-card">
+      {pendingShare && tier.slug && (
+        <TierUpCelebrationBanner
+          slug={tier.slug}
+          tier={tier}
+          history={pendingShare}
+          onDismiss={dismissShare}
+        />
+      )}
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
           <p className="label text-[#C9A961]">Your partnership tier</p>
@@ -120,9 +140,164 @@ function ArtistTierCard() {
           Tier set manually by Foundation operator: {tier.override_reason}
         </p>
       )}
+
+      {/* Tier history audit timeline (only if there's >=1 real transition) */}
+      {history && history.some(h => h.direction !== "initial") && (
+        <TierHistoryTimeline history={history} />
+      )}
     </section>
   );
 }
+
+
+// Small celebration card shown above the tier card when the artist has
+// transitioned UP a tier and hasn't dismissed it. Provides Copy-link,
+// Download (PNG + SVG), and Web-Share buttons + a quiet ✕ to dismiss.
+function TierUpCelebrationBanner({ slug, tier, history, onDismiss }) {
+  const backendBase = process.env.REACT_APP_BACKEND_URL || "";
+  const pngUrl = `${backendBase}/api/share/artist/${slug}/tier-card.png`;
+  const svgUrl = `${backendBase}/api/share/artist/${slug}/tier-card.svg`;
+  const galleryUrl = `https://birthright.live/partners/${slug}`;
+  const shareText = `${tier.tier_icon} I just reached ${tier.tier_label} on birthright.live — patronage with character.`;
+
+  const copyShare = async () => {
+    try {
+      await navigator.clipboard.writeText(`${shareText}\n${galleryUrl}`);
+      toast.success("Share text copied");
+    } catch (_) { toast.error("Couldn't copy"); }
+  };
+  const tryNativeShare = async () => {
+    const data = { title: "Birthright Artist Tier", text: shareText, url: galleryUrl };
+    if (navigator.share) {
+      try { await navigator.share(data); } catch (_) { /* user cancelled */ }
+    } else {
+      copyShare();
+    }
+  };
+  return (
+    <div
+      className="relative mb-5 rounded-md border border-[#C9A961]/40 bg-gradient-to-r from-[#F8F4EC] to-[#FBF7EC] p-4 sm:p-5"
+      data-testid="artist-tier-up-banner"
+    >
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        data-testid="tier-up-dismiss"
+        className="absolute top-2 right-2 text-[#5C6B6B] hover:text-[#1A2424]"
+      >
+        <X size={14} strokeWidth={1.8} />
+      </button>
+      <div className="flex items-start gap-4 flex-wrap">
+        <div className="flex-1 min-w-[220px]">
+          <p className="label text-[#A87A4A]">Tier achievement</p>
+          <h3 className="font-serif italic text-xl mt-1">
+            {tier.tier_icon} You just reached {tier.tier_label}.
+          </h3>
+          <p className="text-sm text-[#5C6B6B] mt-1.5">
+            Quietly proud of you. Your Foundation-attributed work crossed the
+            {" "}<strong>{tier.tier_label}</strong> threshold. Share the moment —
+            every visit your share drives is referral-attributed back to you.
+          </p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button
+              onClick={tryNativeShare}
+              className="btn-primary text-xs inline-flex items-center gap-1.5"
+              data-testid="tier-up-share-btn"
+            >
+              <Share2 size={13} strokeWidth={1.8} /> Share
+            </button>
+            <a
+              href={pngUrl}
+              download={`birthright-${slug}-${tier.tier_key}.png`}
+              className="btn-outline text-xs inline-flex items-center gap-1.5"
+              data-testid="tier-up-download-png"
+            >
+              <Download size={13} strokeWidth={1.8} /> Download PNG
+            </a>
+            <a
+              href={svgUrl}
+              download={`birthright-${slug}-${tier.tier_key}.svg`}
+              className="btn-outline text-xs inline-flex items-center gap-1.5"
+              data-testid="tier-up-download-svg"
+            >
+              <Download size={13} strokeWidth={1.8} /> SVG
+            </a>
+            <button
+              onClick={copyShare}
+              className="btn-outline text-xs inline-flex items-center gap-1.5"
+              data-testid="tier-up-copy"
+            >
+              Copy share text
+            </button>
+          </div>
+        </div>
+        <a
+          href={pngUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="block flex-shrink-0 w-[180px] sm:w-[220px]"
+          data-testid="tier-up-card-preview"
+        >
+          <img
+            src={pngUrl}
+            alt={`${tier.tier_label} share card`}
+            className="w-full h-auto rounded border border-[#E5E1D8] shadow-sm"
+          />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+
+// Vertical timeline of past tier changes — initial baseline rows are
+// skipped because the user explicitly chose to start tracking forward
+// from the deployment. Each row shows: when, direction, from → to, basis.
+function TierHistoryTimeline({ history }) {
+  const fmt = (n) => `$${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const rows = history.filter(h => h.direction !== "initial");
+  if (rows.length === 0) return null;
+  return (
+    <div className="mt-6 pt-5 border-t border-[#E5E1D8]" data-testid="artist-tier-history-timeline">
+      <p className="label text-[#476B6B] inline-flex items-center gap-1.5">
+        <History size={11} strokeWidth={1.8} /> Tier history
+      </p>
+      <ol className="mt-3 space-y-3">
+        {rows.map(r => {
+          const up = r.direction === "up";
+          return (
+            <li
+              key={r.id}
+              className="flex items-baseline gap-3 text-sm"
+              data-testid={`tier-history-row-${r.id}`}
+            >
+              <span
+                className={`inline-block w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${up ? "bg-[#2E5C46]" : "bg-[#A87A4A]"}`}
+                aria-hidden
+              />
+              <div className="flex-1">
+                <p className="font-serif">
+                  {up ? "Rose to" : "Settled to"}{" "}
+                  <strong className="capitalize">{r.to_tier_key}</strong>
+                  {r.from_tier_key && (
+                    <span className="text-[#5C6B6B] text-xs italic ml-1">
+                      from <span className="capitalize">{r.from_tier_key}</span>
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-[#5C6B6B]">
+                  {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                  {" · "}basis {fmt(r.basis_at_change)}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
 
 
 // Inline SVG sparkline — patronage (teal) and off-site (gold) stacked

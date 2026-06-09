@@ -16,6 +16,15 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 39 — Tier-history audit timeline + Shareable tier achievement
+- `db.artist_tier_history` ledger logging tier transitions going forward (initial baseline pre-dismissed, real UP/DOWN transitions tracked)
+- `utils/artist_tier.log_tier_change()` invoked from `resolve_artist_tier` — fires once per tier_key change
+- `GET /api/partner/me/tier-history` — rows + `pending_share` (unacknowledged UP transition)
+- `POST /api/partner/me/tier-history/{id}/dismiss-share` — owner-checked acknowledgement
+- `GET /api/share/artist/{slug}/tier-card.png` and `.svg` — public Open-Graph-friendly 1200×630 share card, Pillow-rendered (no external service cost), referral_url funneled through `/api/r/{code}` so any visit drives inbound attribution back to the artist
+- `ArtistStudio.jsx` — celebration banner with Share / Download PNG / Download SVG / Copy share text buttons + vertical tier-history timeline
+- 6 pytest cases passing (`tests/test_iter39_tier_history_share.py`)
+
 ### Patch Series marketing assets
 - v4 + v4-landscape + v4-multi (IG square / IG Story / Twitter)
 - `/marketing` index page + `/fb-promo` gallery (link-only, not in nav)

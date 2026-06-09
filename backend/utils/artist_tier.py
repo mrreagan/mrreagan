@@ -27,7 +27,9 @@ predictability; a row in `db.artist_tier_history` records each change.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List
+from typing import Dict, List, Optional
+
+from models import gen_id, now_iso
 
 
 # Bracket lower-edges; each tier owns revenue >= lo and <= hi.
@@ -44,6 +46,9 @@ TIERS: List[Dict] = [
     {"key": "flourishing","label": "Flourishing",  "icon": "🌟",
      "lo": 100_001, "hi": None,     "inbound_pct":  5.0, "outbound_pct": 8.0},
 ]
+
+# Cheap ordinal index for direction (up vs down) detection in tier history.
+TIER_ORDER = [t["key"] for t in TIERS]
 
 
 def tier_for_basis(basis: float) -> dict:
@@ -152,8 +157,60 @@ def runway_to_next(basis: float) -> dict:
     }
 
 
+async def log_tier_change(
+    db, artist_user_id: str, basis: float, tier_key: str,
+) -> Optional[dict]:
+    """Persist an `artist_tier_history` row when the artist's tier_key
+    changes. Tracking starts going forward from the first ever call —
+    the initial baseline is recorded with `direction='initial'` and
+    `share_dismissed=True` so it doesn't trigger a celebration banner.
+
+    Returns the newly inserted change document if a real transition
+    (up or down) was recorded, else None.
+    """
+    latest = await db.artist_tier_history.find_one(
+        {"user_id": artist_user_id},
+        {"_id": 0},
+        sort=[("created_at", -1)],
+    )
+    if latest is None:
+        await db.artist_tier_history.insert_one({
+            "id": gen_id(),
+            "user_id": artist_user_id,
+            "from_tier_key": None,
+            "to_tier_key": tier_key,
+            "direction": "initial",
+            "basis_at_change": float(basis),
+            "created_at": now_iso(),
+            "share_dismissed": True,
+        })
+        return None
+    if latest.get("to_tier_key") == tier_key:
+        return None
+    old_idx = TIER_ORDER.index(latest["to_tier_key"]) \
+        if latest.get("to_tier_key") in TIER_ORDER else 0
+    new_idx = TIER_ORDER.index(tier_key) if tier_key in TIER_ORDER else 0
+    direction = "up" if new_idx > old_idx else "down"
+    doc = {
+        "id": gen_id(),
+        "user_id": artist_user_id,
+        "from_tier_key": latest.get("to_tier_key"),
+        "to_tier_key": tier_key,
+        "direction": direction,
+        "basis_at_change": float(basis),
+        "created_at": now_iso(),
+        "share_dismissed": False,
+    }
+    await db.artist_tier_history.insert_one(dict(doc))
+    return doc
+
+
 async def resolve_artist_tier(db, artist_user_id: str) -> dict:
     """One call returns everything an artist needs to see on their dashboard.
+
+    Side-effect: records a row in `artist_tier_history` if this is the
+    first observation for the artist OR the tier_key changed since the
+    previous one.
 
     Returns:
         {
@@ -177,6 +234,7 @@ async def resolve_artist_tier(db, artist_user_id: str) -> dict:
         runway = runway_to_next(basis)
         owed = marginal_outbound_owed(basis)
         eff = round((owed / basis) * 100, 2) if basis else 0.0
+        await log_tier_change(db, artist_user_id, basis, t["key"])
         return {
             "tier_key": t["key"], "tier_label": t["label"],
             "tier_icon": t["icon"],
@@ -194,6 +252,7 @@ async def resolve_artist_tier(db, artist_user_id: str) -> dict:
     runway = runway_to_next(basis)
     owed = marginal_outbound_owed(basis)
     eff = round((owed / basis) * 100, 2) if basis else 0.0
+    await log_tier_change(db, artist_user_id, basis, t["key"])
     return {
         "tier_key": t["key"], "tier_label": t["label"],
         "tier_icon": t["icon"],
