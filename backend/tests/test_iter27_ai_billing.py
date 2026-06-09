@@ -301,53 +301,8 @@ class TestVendorAi:
         assert ("low_usd" in data) or ("rationale" in data)
 
 
-# -------------------- ASSISTANT METERING + REPLAY --------------------
-
-class TestAssistantMetering:
-    def test_anon_chat_no_balance_gate(self):
-        # anonymous (no auth) — should work without billing
-        r = requests.post(
-            f"{API}/assistant/chat",
-            json={"message": "hi there", "session_id": None},
-            timeout=60,
-        )
-        # 200 or some safe success/redirect code; not 402
-        assert r.status_code != 402, r.text
-        assert r.status_code == 200, r.text
-
-    def test_participant_chat_no_balance_gate(self):
-        token, _ = _login(*DEMO)
-        r = requests.post(
-            f"{API}/assistant/chat",
-            headers=_hdr(token),
-            json={"message": "hello", "session_id": None},
-            timeout=60,
-        )
-        assert r.status_code != 402
-        assert r.status_code == 200, r.text
-
-    def test_my_sessions_last_empty_for_brand_new_session(self):
-        # use a brand new account to ensure no history... or just check the structure
-        token, _ = _login(*DEMO)
-        r = requests.get(f"{API}/assistant/my-sessions/last", headers=_hdr(token), timeout=15)
-        assert r.status_code == 200, r.text
-        data = r.json()
-        assert "session_id" in data
-        assert "messages" in data
-        assert isinstance(data["messages"], list)
-
-    def test_my_sessions_last_after_chat(self):
-        token, _ = _login(*DEMO)
-        # send a message to ensure history exists
-        chat = requests.post(
-            f"{API}/assistant/chat",
-            headers=_hdr(token),
-            json={"message": "test message for replay", "session_id": None},
-            timeout=60,
-        )
-        assert chat.status_code == 200
-        r = requests.get(f"{API}/assistant/my-sessions/last", headers=_hdr(token), timeout=15)
-        assert r.status_code == 200
-        data = r.json()
-        assert data["session_id"] is not None
-        assert len(data["messages"]) >= 1
+# Assistant metering tests removed alongside the agentic Concierge feature
+# itself on 2026-02-09. The class previously here lives in
+# /app/archive/agentic_concierge/backend/tests/test_iter27_assistant_metering_excerpt.py
+# for reference. The Help assistant (/api/help) has its own dedicated test
+# coverage in tests/test_iter40_help_assistant.py.

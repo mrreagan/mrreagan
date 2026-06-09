@@ -115,7 +115,6 @@ from routers.artist_partnership import (
     share_router as artist_partnership_share_router,
 )
 from routers.stripe_connect_webhook import router as stripe_connect_webhook_router
-from routers.assistant import router as assistant_router
 from routers.ai_wallet import (
     my_router as ai_wallet_my_router,
     admin_router as ai_wallet_admin_router,
@@ -194,7 +193,6 @@ api_router.include_router(artist_partnership_admin_router)
 api_router.include_router(artist_partnership_share_router)
 api_router.include_router(stripe_connect_webhook_router)
 api_router.include_router(clawback_router)
-api_router.include_router(assistant_router)
 api_router.include_router(ai_wallet_my_router)
 api_router.include_router(ai_wallet_admin_router)
 api_router.include_router(research_ai_router)
@@ -209,6 +207,9 @@ api_router.include_router(lulu_router)
 api_router.include_router(gather_router)
 api_router.include_router(gather_admin_router)
 api_router.include_router(gallery_router)
+
+from routers.help_assistant import router as help_router  # noqa: E402
+api_router.include_router(help_router)
 
 
 @api_router.post("/webhook/stripe")

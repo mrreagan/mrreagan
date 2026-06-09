@@ -16,6 +16,14 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 41 — Agentic Concierge removed; Founder Collection patches; lightweight Help assistant
+- **Patches in storefront**: 5 leather-engraved patches added to Founder Collection under collection=`founder_collection`, fulfilled off-site by **7C's Farmstead** (custom-order URL). Reused existing `is_off_site` + outbound-click attribution. Editorial intro paragraph added above the rail. "Founder of your love story" patch promoted to `is_homepage_feature`.
+- **Research sample fix**: broken Unsplash cover for the Co-Regulation Practices brief replaced with a stable URL.
+- **Help assistant** (new): KB-first deflection (free for ~70% of questions) + Claude Haiku 4.5 fallback (~$0.001/turn). Floating "Need help?" pill bottom-left on every page, full-page UI at `/help`, footer link "Help · Ask the AI", session persistence in localStorage, escalate-to-human button.
+  - Files: `backend/routers/help_assistant.py`, `backend/data/help_kb.json` (14 entries), `frontend/src/components/HelpAssistant.jsx`, `frontend/src/pages/HelpPage.jsx`
+  - 9 pytests passing (`tests/test_iter40_help_assistant.py`)
+- **Agentic Concierge removed**: deleted `routers/assistant.py`, `components/AssistantWidget.jsx`, `tests/test_iter26_assistant.py`, and the assistant test class from `test_iter27_ai_billing.py`. Full source archived at `/app/archive/agentic_concierge/` with a learning-oriented README covering the `<<ACTION>>` block protocol, tier-based executor, and restore recipe.
+
 ### Iter 39 — Tier-history audit timeline + Shareable tier achievement
 - `db.artist_tier_history` ledger logging tier transitions going forward (initial baseline pre-dismissed, real UP/DOWN transitions tracked)
 - `utils/artist_tier.log_tier_change()` invoked from `resolve_artist_tier` — fires once per tier_key change

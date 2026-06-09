@@ -15,6 +15,7 @@ import Mission from "./pages/Mission";
 import Governance from "./pages/Governance";
 import Education from "./pages/Education"; // eslint-disable-line no-unused-vars -- legacy import kept for emergency restore
 import Contact from "./pages/Contact";
+import HelpPage from "./pages/HelpPage";
 import Workshops from "./pages/Workshops"; // eslint-disable-line no-unused-vars -- legacy import kept for emergency restore
 import WorkshopDetail from "./pages/WorkshopDetail";
 import Experiences from "./pages/Experiences";
@@ -153,6 +154,7 @@ function AppRoutes() {
       <Route path="/governance/proposals" element={<Navigate to="/lead/proposals" replace />} />
 
       <Route path="/contact" element={<Contact />} />
+      <Route path="/help" element={<HelpPage />} />
 
       {/* Practice — canonical path is /practice. /experiences and /workshops preserved as redirects. */}
       <Route path="/practice" element={<Experiences />} />

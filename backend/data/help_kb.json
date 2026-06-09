@@ -1,0 +1,111 @@
+{
+  "version": "2026-02-09",
+  "voice": {
+    "name": "Birthright Help",
+    "agent_label": "AI Agent",
+    "greeting": "Hi there. You're speaking with Birthright Help. I'm trained on this platform and ready to assist — you can ask for a human at any time.",
+    "human_handoff": "I'll flag this for the human team at the Foundation. They typically reply within one business day at support@birthright.live.",
+    "fallback": "I'm not sure about that one. Want me to flag it for a human at the Foundation?",
+    "tone": "warm, plainspoken, never clinical, never pushy"
+  },
+  "entries": [
+    {
+      "id": "login-magic-link",
+      "tags": ["login", "signin", "sign in", "magic link", "password", "reset", "forgot", "access"],
+      "patterns": ["how do i sign in", "how do i log in", "reset password", "forgot password", "magic link", "can't log in", "can't sign in", "cannot access"],
+      "answer": "You can sign in without a password using a Magic Link. Go to https://birthright.live, tap Sign In, enter your email and choose Magic Link — we'll email you a one-click sign-in. If you originally joined via Google, the 'Continue with Google' button works too. If the email doesn't arrive, check spam and try a different browser.",
+      "follow_up_label": "Is that what you were looking for?"
+    },
+    {
+      "id": "shared-account",
+      "tags": ["share", "partner", "spouse", "family", "two people", "couples"],
+      "patterns": ["share account", "share my login", "my partner", "my spouse", "use together", "share with wife", "share with husband"],
+      "answer": "Birthright accounts are personal — workshops, AI wallet, and partner tiers are tied to a single member. We don't have a couples plan yet, but your partner can create their own free account at birthright.live. If you'd like a 'shared household' feature, send a note and we'll add your voice to the roadmap.",
+      "follow_up_label": "Did that answer your question?"
+    },
+    {
+      "id": "patches",
+      "tags": ["patch", "patches", "leather", "engraved", "engraving", "merch", "buy patch", "founder collection", "7cs", "7c's", "farmstead"],
+      "patterns": ["where can i buy patches", "the patches", "leather patches", "engraved patches", "founder patches"],
+      "answer": "The five leather-engraved patches live in the Founder Collection at /equip. They're hand-engraved to order by 7C's Farmstead in 2–4 weeks. Each patch is $38 with a 20% Foundation patronage built in that funds artist payouts. Click any patch card and tap 'Buy on 7C's Farmstead →' to order direct from the artisan.",
+      "follow_up_label": "Want a direct link to the patches?"
+    },
+    {
+      "id": "artist-tiers",
+      "tags": ["artist", "tier", "tiers", "patronage", "inbound", "outbound", "emerging", "sustaining", "established", "thriving", "flourishing"],
+      "patterns": ["how do tiers work", "artist tier", "how do i level up", "tier system", "patronage tier"],
+      "answer": "Artists progress through five tiers — Emerging, Sustaining, Established, Thriving, Flourishing — based on rolling 12-month Birthright-attributed revenue. Each tier carries an inbound % (you earn from referred sales) and a small outbound % (you contribute back to the ecosystem). See the full breakdown at /partner/artist. Tier transitions take effect on the 1st of the following month.",
+      "follow_up_label": "Want to know what tier you're currently at?"
+    },
+    {
+      "id": "ai-wallet",
+      "tags": ["ai wallet", "wallet", "top up", "ai balance", "ai cost", "ai pricing", "tokens", "billing"],
+      "patterns": ["how does ai billing work", "what's the ai wallet", "ai cost", "top up wallet", "ai pricing"],
+      "answer": "AI features (Concierge, research collab, vendor PDM) draw from your AI wallet. We charge 1.5× the underlying provider cost — the extra 50% directly supports the Foundation. Top up from your Profile → AI Wallet at packs of $10/$25/$50/$100, or enable auto-recharge so you never get blocked mid-conversation. Anonymous use of public assistants is free; only logged-in members are billed.",
+      "follow_up_label": "Want me to take you to your AI Wallet?"
+    },
+    {
+      "id": "stripe-connect-artist-payout",
+      "tags": ["stripe", "payout", "connect", "onboarding", "bank", "transfer", "get paid"],
+      "patterns": ["how do i get paid", "stripe connect", "payout method", "set up payouts", "bank account"],
+      "answer": "Artists get paid via Stripe Connect. Go to /partner/payout-method, click 'Connect with Stripe' and complete the onboarding (bank details + ID verification — runs entirely on Stripe's side). Once connected, the Admin Bulk Pay tool can transfer pending payouts directly to your bank. You can switch between Stripe Connect and manual wire/PayPal at any time on the same page.",
+      "follow_up_label": "Did that help?"
+    },
+    {
+      "id": "research-publishing",
+      "tags": ["research", "publish", "brief", "paper", "artifact", "practitioner"],
+      "patterns": ["publish research", "publish a brief", "research artifact", "how do i submit research"],
+      "answer": "Approved Research partners can publish artifacts (practitioner briefs, peer-reviewed papers, summaries) from their Partner Studio. Drafts stay private until you set status to 'published'. Each artifact accepts a cover image, abstract, full text URL, DOI, and category tags. Apply at /partner/apply if you don't have a Research profile yet.",
+      "follow_up_label": "Want me to open the application?"
+    },
+    {
+      "id": "founding-membership",
+      "tags": ["founding", "founder membership", "join", "lifetime", "membership"],
+      "patterns": ["become a founder", "founding member", "lifetime membership", "how do i join"],
+      "answer": "Founding Membership is a one-time contribution that supports the Foundation's earliest years and unlocks the Founding Journal, the Founder Collection patches, and lifetime access to member workshops. Details and tiers are at /join. We're not running open enrollment year-round — when memberships are paused, you can still join the waitlist.",
+      "follow_up_label": "Want me to take you to /join?"
+    },
+    {
+      "id": "workshops",
+      "tags": ["workshop", "session", "register", "registration", "schedule"],
+      "patterns": ["sign up for workshop", "register workshop", "workshop schedule", "upcoming workshops"],
+      "answer": "Live and on-demand workshops are at /practice. Open ones show 'Register' on each card — your registration creates a calendar invite and adds the workshop to your Profile. If a workshop is full, you can join the waitlist; we release seats as people drop out.",
+      "follow_up_label": "Looking for a specific topic?"
+    },
+    {
+      "id": "delete-account",
+      "tags": ["delete", "remove account", "close account", "gdpr", "data"],
+      "patterns": ["delete my account", "close my account", "remove my data", "gdpr request"],
+      "answer": "We honor account deletion requests within 30 days. Email support@birthright.live from the address on your account with the subject 'Delete my account' — we'll confirm receipt, anonymize any public artifacts you authored (or leave them up with your byline removed, your choice), and erase personally identifiable data.",
+      "follow_up_label": "Want me to flag this for a human?"
+    },
+    {
+      "id": "contact-human",
+      "tags": ["human", "support", "team", "real person", "talk to someone", "contact"],
+      "patterns": ["talk to a human", "speak to a person", "real support", "contact team", "email support"],
+      "answer": "Of course — email support@birthright.live and a human at the Foundation will get back to you, usually within one business day. If you'd like, share what you're working through and I can include it in the handoff note so they have context.",
+      "follow_up_label": "Want me to draft a quick handoff note?"
+    },
+    {
+      "id": "what-is-birthright",
+      "tags": ["birthright", "foundation", "mission", "about", "what is"],
+      "patterns": ["what is birthright", "what does the foundation do", "about birthright"],
+      "answer": "Birthright Foundation exists on a single thesis: secure connection is everyone's birthright. We work with clinicians, artists, and patrons to make the science and practice of relational repair both visible and affordable. The platform is part publishing house, part artist economy, part practitioner network. Start at /practice or /research to see the work.",
+      "follow_up_label": "Want a tour?"
+    },
+    {
+      "id": "refund-policy",
+      "tags": ["refund", "money back", "cancel", "subscription"],
+      "patterns": ["can i get a refund", "refund policy", "cancel subscription", "cancel membership"],
+      "answer": "Workshop and membership refunds are case-by-case within 30 days of purchase — email support@birthright.live with your order number and a sentence on what didn't fit, and we'll make it right. Patch orders go through 7C's Farmstead directly; refunds for those are governed by their custom-order terms.",
+      "follow_up_label": "Want me to flag a refund request to a human?"
+    },
+    {
+      "id": "referral-program",
+      "tags": ["referral", "refer", "affiliate", "share link", "earn", "commission"],
+      "patterns": ["refer a friend", "referral program", "affiliate link", "how do i earn"],
+      "answer": "Every active partner has a referral code. Share your code (or your gallery URL — every visit through a /api/r/{code} link drops a 30-day attribution cookie). Sales attributed to you pay an inbound percentage based on your tier (3–5% for Artists; partner tiers vary). Your code is on your Partner Studio dashboard.",
+      "follow_up_label": "Want to see your referral code?"
+    }
+  ]
+}

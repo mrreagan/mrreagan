@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { ShoppingBag, Menu, X, User, LogOut, ChevronDown } from "lucide-react";
 import AgreementResignBanner from "./AgreementResignBanner";
-import AssistantWidget from "./AssistantWidget";
+import HelpAssistant from "./HelpAssistant";
 import GlobalSearch from "./GlobalSearch";
 
 const NAV_EXPLORE = [
@@ -282,6 +282,7 @@ const FOOTER_FOUNDATION = [
   { to: "/about", label: "About" },
   { to: "/mission", label: "Mission" },
   { to: "/contact", label: "Contact" },
+  { to: "/help", label: "Help · Ask the AI" },
 ];
 
 export function Footer() {
@@ -325,7 +326,7 @@ export default function Layout({ children }) {
         {children}
       </main>
       <Footer />
-      <AssistantWidget />
+      <HelpAssistant />
     </div>
   );
 }

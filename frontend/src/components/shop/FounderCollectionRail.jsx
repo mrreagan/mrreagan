@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, ShoppingBag } from "lucide-react";
+import { Sparkles, ShoppingBag, ExternalLink } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { toast } from "sonner";
 
@@ -28,12 +28,17 @@ export default function FounderCollectionRail({ products }) {
           <h2 className="font-serif text-3xl sm:text-4xl mt-2 leading-tight !text-[#FAF8F5]">
             You are the founder of your own love story.
           </h2>
-          <p className="text-sm text-[#FAF8F5]/70 mt-3 max-w-xl">
-            Gear and inspiration, just for you.
+          <p className="text-sm text-[#FAF8F5]/80 mt-3 max-w-xl leading-relaxed">
+            Quiet objects to carry the work with you. Five hand-engraved leather
+            patches — each phrase one of Birthright's load-bearing truths,
+            burned into vegetable-tanned leather by{" "}
+            <span className="text-[#C9A961] italic">7C's Farmstead</span>.
+            Made to order; every sale carries a 20% Foundation patronage that
+            funds artist payouts and the broader work.
           </p>
         </div>
         <p className="text-[10px] uppercase tracking-wider text-[#FAF8F5]/50 lg:text-right">
-          Limited curated pieces
+          Limited curated pieces · Made to order
         </p>
       </div>
 
@@ -51,6 +56,7 @@ function FounderCard({ product }) {
   const cap = Number.isFinite(product.max_per_order) ? product.max_per_order : null;
   const inCart = items.find((i) => i.product_id === product.id);
   const atCap = cap && inCart && inCart.quantity >= cap;
+  const isExternal = !!product.is_off_site;
 
   return (
     <article
@@ -69,6 +75,11 @@ function FounderCard({ product }) {
           {product.name}
         </Link>
         <p className="text-xs text-[#5C6B6B] mt-2 line-clamp-3 flex-1">{product.description}</p>
+        {isExternal && product.vendor_name && (
+          <p className="text-[10px] uppercase tracking-wider text-[#476B6B] mt-2">
+            Made to order by {product.vendor_name}
+          </p>
+        )}
         <div className="mt-4 flex items-center justify-between gap-2">
           <div>
             <span className="font-medium text-lg">${product.price?.toFixed(2)}</span>
@@ -77,26 +88,41 @@ function FounderCard({ product }) {
                 One set per buyer
               </span>
             )}
+            {isExternal && (
+              <span className="block text-[10px] uppercase tracking-wider text-[#A87A4A] mt-0.5">
+                + 20% Foundation patronage
+              </span>
+            )}
           </div>
-          <button
-            onClick={() => {
-              if (atCap) {
-                toast.message(`Limited to ${cap} per order — already in cart.`);
-                return;
-              }
-              addItem(product);
-              toast.success(`Added ${product.name}`);
-            }}
-            disabled={atCap}
-            className={`text-xs flex items-center gap-1.5 px-4 py-2 rounded-full transition ${
-              atCap
-                ? "bg-[#E5E1D8] text-[#5C6B6B] cursor-not-allowed"
-                : "bg-[#C9A961] text-[#0F2424] hover:bg-[#D4B677]"
-            }`}
-            data-testid={`founder-collection-add-${product.id}`}
-          >
-            <ShoppingBag size={12} strokeWidth={1.8} /> {atCap ? "In cart" : "Add to cart"}
-          </button>
+          {isExternal ? (
+            <Link
+              to={`/equip/${product.id}`}
+              className="text-xs flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2C4E5A] text-[#FAF8F5] hover:bg-[#1F3942] transition"
+              data-testid={`founder-collection-external-${product.id}`}
+            >
+              <ExternalLink size={12} strokeWidth={1.8} /> Order direct
+            </Link>
+          ) : (
+            <button
+              onClick={() => {
+                if (atCap) {
+                  toast.message(`Limited to ${cap} per order — already in cart.`);
+                  return;
+                }
+                addItem(product);
+                toast.success(`Added ${product.name}`);
+              }}
+              disabled={atCap}
+              className={`text-xs flex items-center gap-1.5 px-4 py-2 rounded-full transition ${
+                atCap
+                  ? "bg-[#E5E1D8] text-[#5C6B6B] cursor-not-allowed"
+                  : "bg-[#C9A961] text-[#0F2424] hover:bg-[#D4B677]"
+              }`}
+              data-testid={`founder-collection-add-${product.id}`}
+            >
+              <ShoppingBag size={12} strokeWidth={1.8} /> {atCap ? "In cart" : "Add to cart"}
+            </button>
+          )}
         </div>
       </div>
     </article>

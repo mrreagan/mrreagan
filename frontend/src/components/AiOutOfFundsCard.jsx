@@ -2,7 +2,6 @@
  * Shared "out of funds" / "low balance" card used by:
  *   - ResearchAIPanel
  *   - VendorPDMPanel
- *   - AssistantWidget Concierge (only renders when balance gate blocks)
  *
  * Always provides TWO escapes:
  *   1. "Top up" button → navigates to /dashboard/ai-wallet (closes panel)
