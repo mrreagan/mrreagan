@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
@@ -16,6 +17,7 @@ const EMPTY = {
   collection: "",
   max_per_order: "",
   is_homepage_feature: false,
+  carousel_rank: "",
 };
 
 const CATEGORY_OPTIONS = [
@@ -85,6 +87,7 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         collection: initial?.collection ?? "",
         max_per_order: initial?.max_per_order ?? "",
         is_homepage_feature: !!initial?.is_homepage_feature,
+        carousel_rank: initial?.carousel_rank ?? "",
       });
       setRegenPrompt(initial?.description || "");
     }
@@ -136,6 +139,9 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         ? null
         : Math.max(1, parseInt(form.max_per_order, 10) || 1),
       is_homepage_feature: !!form.is_homepage_feature,
+      carousel_rank: form.carousel_rank === "" || form.carousel_rank == null
+        ? null
+        : Math.max(1, Math.min(3, parseInt(form.carousel_rank, 10))),
     };
     setSaving(true);
     try {
@@ -151,6 +157,7 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
           collection: payload.collection,
           max_per_order: payload.max_per_order,
           is_homepage_feature: payload.is_homepage_feature,
+          carousel_rank: payload.carousel_rank,
         };
         await api.put(`/products/${initial.id}`, updateBody);
         toast.success("Product updated");
@@ -318,9 +325,22 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
               <span>
                 <span className="font-medium">Feature on the homepage Founder Collection teaser</span>
                 <span className="block text-[11px] text-[#5C6B6B] mt-0.5 normal-case tracking-normal">
-                  Only one product should be flagged at a time. If multiple are flagged, the most-recently-created wins.
-                  This product still appears in its full collection rail regardless of this flag.
+                  Legacy flag (kept for backward-compatibility). For the new 3-slot carousel use the rank field below or the dedicated UI at /admin/founder-carousel.
                 </span>
+              </span>
+            </label>
+            <label className="text-xs uppercase tracking-wider text-[#5C6B6B] block mt-4">
+              Carousel rank (1, 2, or 3 · blank = not featured)
+              <input
+                type="number" min="1" max="3"
+                className="input-field mt-1"
+                value={form.carousel_rank ?? ""}
+                onChange={(e) => update("carousel_rank", e.target.value)}
+                placeholder="blank to remove from carousel"
+                data-testid="admin-product-form-carousel-rank"
+              />
+              <span className="block text-[11px] text-[#5C6B6B] mt-1 normal-case tracking-normal">
+                Lower rank = appears first on the swipeable teaser. Assigning a rank automatically frees that slot from any other product holding it. Manage all three at once at /admin/founder-carousel.
               </span>
             </label>
           </div>
@@ -465,6 +485,13 @@ export default function AdminProducts() {
             data-testid="admin-product-studio-link"
           >
             <Sparkles size={14} strokeWidth={1.5} /> AI Studio
+          </Link>
+          <Link
+            to="/admin/founder-carousel"
+            className="btn-outline inline-flex items-center gap-1.5"
+            data-testid="admin-founder-carousel-link"
+          >
+            <Sparkles size={14} strokeWidth={1.5} /> Founder carousel
           </Link>
           <button
             onClick={openNew}

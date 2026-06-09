@@ -17,16 +17,23 @@ import { Sparkles, ChevronLeft, ChevronRight, ArrowRight, ExternalLink, Shopping
 import { useCart } from "../../contexts/CartContext";
 import { toast } from "sonner";
 
-// Pick at most 3 featured items: the explicit `is_homepage_feature` first,
-// then most-recent additions to round out to three. Sort by created_at desc
-// so newly-added pieces surface naturally.
+// Pick the carousel slides:
+//   1. Items with carousel_rank ∈ {1,2,3} take their assigned slot (admin
+//      control surface lives at /admin/founder-carousel).
+//   2. If fewer than 3 ranked items exist, backfill with `is_homepage_feature`
+//      (legacy flag) and then most-recent items so the carousel never goes
+//      empty.
 function pickFeatured(products) {
-  const sorted = [...products].sort(
-    (a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")),
-  );
-  const hero = sorted.find((p) => p.is_homepage_feature);
-  const rest = sorted.filter((p) => p.id !== hero?.id);
-  return [hero, ...rest].filter(Boolean).slice(0, 3);
+  const ranked = products
+    .filter((p) => [1, 2, 3].includes(p.carousel_rank))
+    .sort((a, b) => a.carousel_rank - b.carousel_rank);
+  const rankedIds = new Set(ranked.map((p) => p.id));
+  const sorted = [...products]
+    .filter((p) => !rankedIds.has(p.id))
+    .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+  const legacyHero = sorted.find((p) => p.is_homepage_feature);
+  const rest = sorted.filter((p) => p.id !== legacyHero?.id);
+  return [...ranked, legacyHero, ...rest].filter(Boolean).slice(0, 3);
 }
 
 export default function FounderCollectionRail({ products }) {

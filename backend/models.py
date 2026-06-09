@@ -154,9 +154,14 @@ class ProductCreate(BaseModel):
     # for unlimited. Used by the Founder Collection hat pair (one per buyer).
     max_per_order: Optional[int] = None
     # When True, this product becomes the featured item in the homepage
-    # Founder Collection teaser. Only one product should be flagged at a time;
-    # if multiple are flagged, the most-recently-created wins.
+    # Founder Collection teaser. Kept for backward-compatibility; new
+    # control surface is `carousel_rank` below.
     is_homepage_feature: bool = False
+    # Founder Collection carousel rank (1, 2, 3). Lower = appears earlier in
+    # the swipeable teaser on the Equip page. None / 0 means the product is
+    # NOT featured in the carousel (it still appears in the full /equip/
+    # collection/founder grid). Up to 3 products at a time.
+    carousel_rank: Optional[int] = None
 
 
 class Product(ProductCreate):
@@ -174,6 +179,7 @@ class ProductUpdate(BaseModel):
     collection: Optional[str] = None
     max_per_order: Optional[int] = None
     is_homepage_feature: Optional[bool] = None
+    carousel_rank: Optional[int] = None
 
 
 # ============ VENDOR CATALOG (Phase 6B.4) ============

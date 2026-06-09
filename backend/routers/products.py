@@ -132,6 +132,83 @@ async def delete_product(product_id: str, user: dict = Depends(require_roles("ad
     return {"success": True}
 
 
+# ─── Founder Collection carousel admin ──────────────────────────────────
+# Dedicated endpoint pair so the admin doesn't have to dig through the
+# product list to swap who's featured. Up to 3 ranked slots.
+
+@router.get("/founder-carousel/manage", tags=["admin"])
+async def list_founder_carousel(user: dict = Depends(require_roles("admin"))):
+    """Return every founder_collection product split into 'featured'
+    (rank 1–3, in rank order) + 'available' (everything else)."""
+    from database import db
+    rows = await db.products.find(
+        {"collection": "founder_collection"},
+        {"_id": 0},
+    ).to_list(200)
+    featured = sorted(
+        [r for r in rows if r.get("carousel_rank") in (1, 2, 3)],
+        key=lambda r: r.get("carousel_rank", 99),
+    )
+    featured_ids = {r["id"] for r in featured}
+    available = sorted(
+        [r for r in rows if r["id"] not in featured_ids],
+        key=lambda r: r.get("name", ""),
+    )
+    return {"featured": featured, "available": available}
+
+
+class CarouselAssignment(BaseModel):
+    """Body of POST /products/founder-carousel/manage — assigns one
+    product to a specific carousel slot (1, 2, or 3) and frees any
+    other product that previously held that slot."""
+    product_id: str
+    rank: int = Field(ge=1, le=3)
+
+
+@router.post("/founder-carousel/manage", tags=["admin"])
+async def assign_founder_carousel(
+    body: CarouselAssignment,
+    user: dict = Depends(require_roles("admin")),
+):
+    from database import db
+    # Free the slot first — whoever held it loses their rank.
+    await db.products.update_many(
+        {"carousel_rank": body.rank, "id": {"$ne": body.product_id}},
+        {"$set": {"carousel_rank": None}},
+    )
+    r = await db.products.update_one(
+        {"id": body.product_id, "collection": "founder_collection"},
+        {"$set": {"carousel_rank": body.rank}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(
+            404,
+            "Product not found, or it isn't in collection=founder_collection",
+        )
+    return {"ok": True}
+
+
+class CarouselUnassign(BaseModel):
+    product_id: str
+
+
+@router.delete("/founder-carousel/manage", tags=["admin"])
+async def unassign_founder_carousel(
+    body: CarouselUnassign,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Remove a product from the carousel (it stays in the full
+    collection view at /equip/collection/founder)."""
+    from database import db
+    r = await db.products.update_one(
+        {"id": body.product_id},
+        {"$set": {"carousel_rank": None}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(404, "Product not found")
+    return {"ok": True}
+
+
 @router.post("/{product_id}/regenerate-image")
 async def regenerate_image(
     product_id: str,
