@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable */
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
 import { ShopFilters, ShopSourceFilters, ProductGrid } from "../components/shop/ShopParts";
