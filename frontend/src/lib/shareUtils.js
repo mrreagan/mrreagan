@@ -1,5 +1,5 @@
 /**
- * Birthright Universal Share & Save System — v1.11.0 Step 8.5
+ * birthright Universal Share & Save System — v1.11.0 Step 8.5
  *
  * Builds share URLs with `?via=<token>` referral attribution, calls
  * `/api/shares/log` for analytics + cookie-setting, and exposes a

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Users, Heart, Microscope, ShoppingBag, Palette, MapPin } from "lucide-react";
+import { Users, Heart, Microscope, ShoppingBag, Palette, MapPin, Sparkles } from "lucide-react";
 
 const TYPES = [
   {
@@ -9,7 +9,7 @@ const TYPES = [
     one_liner: "You lead birthright workshops, retreats, or classes in your community.",
     foundation_benefit: "Trained practitioners extend the work into new geographies.",
     partner_benefit: "Workshop listing, registration, materials access, gathering tools, payouts via revenue share.",
-    financial: { rate: "Up to 65%", basis: "Birthright-IP workshop revenue", notes: "Off-site sales attributed via referral codes earn 25% by default." },
+    financial: { rate: "Up to 65%", basis: "birthright-IP workshop revenue", notes: "Off-site sales attributed via referral codes earn 25% by default." },
     mission_alignment: "Be a quiet, secure, skillful presence for participants doing the work.",
   },
   {
@@ -63,7 +63,7 @@ export default function PartnerTypes() {
   return (
     <div className="container-page py-12" data-testid="partner-types-page">
       <span className="label">Partner</span>
-      <h1 className="editorial-h1 mt-2">Ways to partner with Birthright</h1>
+      <h1 className="editorial-h1 mt-2">Ways to partner with birthright</h1>
       <div className="divider-flame" />
       <p className="text-base text-[#5C6B6B] max-w-2xl">
         Six honest ways to be in this with us. Each row below shows what you bring,
@@ -105,8 +105,8 @@ export default function PartnerTypes() {
                   </td>
                   <td className="py-4 text-[#5C6B6B] italic max-w-[260px]">{t.mission_alignment}</td>
                   <td className="py-4 pr-2">
-                    <Link to={`/partner/types/${t.slug}/try`} className="btn-secondary text-xs whitespace-nowrap" data-testid={`partner-types-try-btn-${t.slug}`}>
-                      Try the dashboard →
+                    <Link to={`/partner/types/${t.slug}/try`} className="btn-secondary text-xs whitespace-nowrap inline-flex items-center gap-1" data-testid={`partner-types-try-btn-${t.slug}`}>
+                      <Sparkles size={11} strokeWidth={1.8} /> Try the role →
                     </Link>
                   </td>
                 </tr>

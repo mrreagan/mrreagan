@@ -20,7 +20,7 @@
       "id": "shared-account",
       "tags": ["share", "partner", "spouse", "family", "two people", "couples"],
       "patterns": ["share account", "share my login", "my partner", "my spouse", "use together", "share with wife", "share with husband"],
-      "answer": "Birthright accounts are personal — workshops, AI wallet, and partner tiers are tied to a single member. We don't have a couples plan yet, but your partner can create their own free account at birthright.live. If you'd like a 'shared household' feature, send a note and we'll add your voice to the roadmap.",
+      "answer": "birthright accounts are personal — workshops, AI wallet, and partner tiers are tied to a single member. We don't have a couples plan yet, but your partner can create their own free account at birthright.live. If you'd like a 'shared household' feature, send a note and we'll add your voice to the roadmap.",
       "follow_up_label": "Did that answer your question?"
     },
     {
@@ -111,7 +111,7 @@
       "id": "what-is-birthright",
       "tags": ["birthright", "foundation", "mission", "about", "what is"],
       "patterns": ["what is birthright", "what does the foundation do", "about birthright"],
-      "answer": "Birthright Foundation exists on a single thesis: secure connection is everyone's birthright. We work with clinicians, artists, and patrons to make the science and practice of relational repair both visible and affordable. The platform is part publishing house, part artist economy, part practitioner network. Start at /practice or /research to see the work.",
+      "answer": "birthright Foundation exists on a single thesis: secure connection is everyone's birthright. We work with clinicians, artists, and patrons to make the science and practice of relational repair both visible and affordable. The platform is part publishing house, part artist economy, part practitioner network. Start at /practice or /research to see the work.",
       "follow_up_label": "Want a tour?"
     },
     {

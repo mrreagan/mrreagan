@@ -110,7 +110,7 @@ export default function Experiences() {
           <div className="divider-flame" />
           <p className="text-base text-[#1A2424] leading-relaxed">
             {content?.education_structure ||
-              "Birthright is a lifelong relational practice. Our Foundation library leads the way — original IP designed by the foundation — surrounded by complementary workshops from our facilitators and partner community."}
+              "birthright is a lifelong relational practice. Our Foundation library leads the way — original IP designed by the foundation — surrounded by complementary workshops from our facilitators and partner community."}
           </p>
           <p className="text-sm text-[#5C6B6B] leading-relaxed mt-4">
             Browse the Foundation library by tier below, or scroll to all other workshops in our community.

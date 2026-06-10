@@ -204,7 +204,7 @@ export default function FeaturedInvite() {
       {/* Statement composer */}
       <section className="mt-8 max-w-2xl">
         <p className="label">Your featured statement <span className="text-[#5C6B6B]">· up to {opts.statement?.max_length || 180} characters</span></p>
-        <p className="text-xs text-[#5C6B6B] mt-1 mb-3 italic">"Brevity is the soul of wit." — Birthright recommends 90–150 characters.</p>
+        <p className="text-xs text-[#5C6B6B] mt-1 mb-3 italic">"Brevity is the soul of wit." — birthright recommends 90–150 characters.</p>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
           {(opts.statement?.choices || []).map((c) => (
             <button

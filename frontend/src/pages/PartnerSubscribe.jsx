@@ -123,7 +123,7 @@ function RevShareInfo({ plan }) {
       <div className="mt-4 pt-4 border-t border-[#E5E1D8] space-y-2" data-testid={`plan-revshare-${plan.id}`}>
         <p className="label inline-flex items-center gap-1"><TrendingUp size={11} strokeWidth={1.5} /> Revenue share</p>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-[#5C6B6B]">Birthright IP materials</span>
+          <span className="text-[#5C6B6B]">birthright IP materials</span>
           <span className="font-medium text-[#2E5C46]">{plan.birthright_ip_pct}%</span>
         </div>
         <div className="flex items-center justify-between text-sm">

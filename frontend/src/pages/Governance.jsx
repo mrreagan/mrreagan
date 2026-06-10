@@ -97,7 +97,7 @@ export default function Governance() {
                     surfaceId={`board-${m.id}`}
                     path={`/governance#${m.id}`}
                     title={`${m.name} — ${m.title}`}
-                    emailSubject={`Birthright governance: ${m.name}`}
+                    emailSubject={`birthright governance: ${m.name}`}
                     size="sm"
                     allowBookmark={false}
                   />

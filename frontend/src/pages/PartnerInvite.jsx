@@ -236,7 +236,7 @@ export default function PartnerInvite() {
                       )}
                       {t.rev_share_birthright_ip != null && (
                         <div className="text-[10px] text-[#476B6B] mt-2">
-                          Birthright IP: {t.rev_share_birthright_ip}% · Own: {t.rev_share_other}%
+                          birthright IP: {t.rev_share_birthright_ip}% · Own: {t.rev_share_other}%
                         </div>
                       )}
                       {t.blurb && <div className="text-[10px] text-[#5C6B6B] mt-1 leading-relaxed">{t.blurb}</div>}

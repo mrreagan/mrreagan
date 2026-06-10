@@ -227,8 +227,8 @@ export default function VendorStudio() {
                   className={`text-left rounded-lg border p-3 transition ${!isOffSite ? "border-[#476B6B] bg-[#F4F1EA]" : "border-[#E5E1D8] bg-white hover:border-[#5C6B6B]"}`}
                   data-testid="vendor-studio-fulfill-birthright"
                 >
-                  <span className="font-serif text-base">Birthright store</span>
-                  <p className="text-xs text-[#5C6B6B] mt-1">We handle checkout. You earn your revenue share per your subscription tier — Birthright keeps the rest.</p>
+                  <span className="font-serif text-base">birthright store</span>
+                  <p className="text-xs text-[#5C6B6B] mt-1">We handle checkout. You earn your revenue share per your subscription tier — birthright keeps the rest.</p>
                 </button>
                 <button
                   type="button"
@@ -311,8 +311,8 @@ export default function VendorStudio() {
               <li>· Admin reviews your draft within 1–2 days.</li>
               <li>· They may request changes (a note will appear here).</li>
               <li>· On approval, admin sets the retail price and publishes.</li>
-              <li>· <strong>Birthright store</strong>: you earn revenue share per your tier on every sale.</li>
-              <li>· <strong>External site</strong>: you keep the retail; Birthright invoices a referral commission on the traffic we sent.</li>
+              <li>· <strong>birthright store</strong>: you earn revenue share per your tier on every sale.</li>
+              <li>· <strong>External site</strong>: you keep the retail; birthright invoices a referral commission on the traffic we sent.</li>
             </ul>
           </div>
         </aside>

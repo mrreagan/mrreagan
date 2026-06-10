@@ -151,7 +151,7 @@ export default function ShareButton({
     if (!shareUrl) return;
     if (navigator.share) {
       try {
-        await navigator.share({ title: title || "Birthright", url: shareUrl });
+        await navigator.share({ title: title || "birthright", url: shareUrl });
         fireLog("native_share");
       } catch { /* user cancelled */ }
     } else {

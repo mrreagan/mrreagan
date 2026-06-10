@@ -53,7 +53,7 @@ function FacilitatorCard({ f }) {
             surfaceId={slug}
             path={`/facilitators/${slug}`}
             title={`${f.first_name} ${f.last_name}`}
-            emailSubject={`Birthright facilitator: ${f.first_name} ${f.last_name}`}
+            emailSubject={`birthright facilitator: ${f.first_name} ${f.last_name}`}
             size="sm"
             stopPropagation
           />

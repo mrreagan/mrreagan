@@ -167,7 +167,7 @@ function TierUpCelebrationBanner({ slug, tier, history, onDismiss }) {
     } catch (_) { toast.error("Couldn't copy"); }
   };
   const tryNativeShare = async () => {
-    const data = { title: "Birthright Artist Tier", text: shareText, url: galleryUrl };
+    const data = { title: "birthright Artist Tier", text: shareText, url: galleryUrl };
     if (navigator.share) {
       try { await navigator.share(data); } catch (_) { /* user cancelled */ }
     } else {
@@ -585,7 +585,7 @@ function NewWorkForm({ onClose, onCreated }) {
       <input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} placeholder="Image URL" required className="input-field" data-testid="new-work-image" />
       <label className="flex items-start gap-2 text-xs">
         <input type="checkbox" checked={f.list_price_matches_own_gallery} onChange={(e) => setF({ ...f, list_price_matches_own_gallery: e.target.checked })} data-testid="new-work-attest" />
-        <span>I attest this list price matches the price on my own gallery / website. (Birthright adds a 20% foundation markup on top at checkout.)</span>
+        <span>I attest this list price matches the price on my own gallery / website. (birthright adds a 20% foundation markup on top at checkout.)</span>
       </label>
       <div className="flex gap-2">
         <button disabled={busy} className="btn-primary text-sm" data-testid="new-work-submit">{busy ? "Publishing…" : "Publish"}</button>

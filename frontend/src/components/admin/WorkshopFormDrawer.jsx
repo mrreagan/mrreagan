@@ -8,7 +8,7 @@ const EMPTY = {
   short_description: "",
   full_description: "",
   facilitator_id: "",
-  location_name: "Birthright Community Hall",
+  location_name: "birthright Community Hall",
   location_address: "2148 W Earll Dr, Phoenix, AZ 85015",
   map_url: "https://maps.google.com/?q=2148+W+Earll+Dr+Phoenix+AZ+85015",
   directions_notes: "",

@@ -5,7 +5,7 @@ import { Sparkles, Telescope, ShoppingBag, MessageSquare, ArrowRight, Wallet, Sh
 export default function AiOverview() {
   return (
     <div className="container-page py-16" data-testid="ai-overview-page">
-      <span className="label">Birthright AI</span>
+      <span className="label">birthright AI</span>
       <h1 className="editorial-h1 mt-2">Working alongside our partners</h1>
       <p className="text-lg text-[#5C6B6B] mt-3 max-w-2xl">
         Three purpose-built AI tools, designed for the way birthright partners actually work — and
@@ -16,7 +16,7 @@ export default function AiOverview() {
       <div className="grid md:grid-cols-3 gap-5 mt-8">
         <ToolCard
           icon={MessageSquare}
-          title="Birthright Concierge"
+          title="birthright Concierge"
           eyebrow="For everyone — free"
           body="A site-wide guide that can answer questions, navigate you to pages, fill forms, and take actions on your behalf (with confirmation). Open it via the floating button on any page or press /."
           to="/"

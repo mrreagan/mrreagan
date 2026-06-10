@@ -1,4 +1,4 @@
-"""Birthright Help — lightweight support assistant.
+"""birthright Help — lightweight support assistant.
 
 Design goals: minimal token spend. Every turn flows through:
 

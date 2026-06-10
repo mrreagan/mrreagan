@@ -90,7 +90,7 @@ export default function PartnerProfilePage() {
               surfaceId={profile.slug}
               path={`/partner/${profile.slug}`}
               title={profile.display_name}
-              emailSubject={`Birthright partner: ${profile.display_name}`}
+              emailSubject={`birthright partner: ${profile.display_name}`}
               size="sm"
             />
           </div>

@@ -11,7 +11,7 @@ const EMPTY = {
   what_youll_do: "",
   what_you_bring: "",
   time_commitment: "",
-  compensation_summary: "Equity in mission — Birthright is a not-for-profit and does not currently provide monetary compensation.",
+  compensation_summary: "Equity in mission — birthright is a not-for-profit and does not currently provide monetary compensation.",
   order: 0,
   open: true,
 };

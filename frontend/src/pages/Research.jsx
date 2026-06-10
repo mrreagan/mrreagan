@@ -28,7 +28,7 @@ export default function Research() {
   return (
     <div className="container-page py-12" data-testid="research-page">
       <span className="label">Research</span>
-      <h1 className="editorial-h1 mt-2">Birthright Research Library</h1>
+      <h1 className="editorial-h1 mt-2">birthright Research Library</h1>
       <div className="divider-flame" />
       <p className="text-base text-[#5C6B6B] max-w-2xl">
         Peer-reviewed papers, practitioner briefs, and field reports from our research partners on attachment, relational repair, and family systems.
@@ -51,7 +51,7 @@ export default function Research() {
             <p className="text-sm text-[#FAF8F5]/70 mt-3 leading-relaxed">
               Synthesize literature, map the research landscape, generate research questions, critique
               a draft’s methodology, summarize notes, and polish prose — backed by Claude Sonnet 4.5
-              and shaped by Birthright’s attachment-and-family-systems posture. Open to any signed-in
+              and shaped by birthright’s attachment-and-family-systems posture. Open to any signed-in
               member; billed at 1.5× passthrough — the extra 50% supports birthright Foundation.
             </p>
           </div>
@@ -168,7 +168,7 @@ function ArtifactCard({ artifact, highlight }) {
             surfaceId={artifact.id}
             path={`/research#${artifact.id}`}
             title={artifact.title}
-            emailSubject={`Birthright research: ${artifact.title}`}
+            emailSubject={`birthright research: ${artifact.title}`}
             size="sm"
           />
           <a

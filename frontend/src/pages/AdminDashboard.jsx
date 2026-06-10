@@ -149,7 +149,7 @@ function PodMarginTile() {
           <p className="text-xs text-[#5C6B6B] mt-3">
             {data.order_count} paid order{data.order_count === 1 ? "" : "s"} in window.
             Margin = retail revenue − POD wholesale cost. Foundation revenue
-            (Birthright-fulfilled merch, workshops, subscriptions) is tracked
+            (birthright-fulfilled merch, workshops, subscriptions) is tracked
             separately under{" "}
             <Link to="/admin/reports" className="underline">Foundation reports</Link>.
           </p>

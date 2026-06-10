@@ -15,7 +15,7 @@ import { Sparkles, ArrowRight, FlaskConical } from "lucide-react";
 const COPY = {
   headline: "See the cost before you spend it.",
   sub:
-    "Birthright is the only non-developer creative AI studio that shows you the exact dollar cost — and what supports the foundation — before you generate. Use it to dream concepts in minutes; the +50% on every call funds the work.",
+    "birthright is the only non-developer creative AI studio that shows you the exact dollar cost — and what supports the foundation — before you generate. Use it to dream concepts in minutes; the +50% on every call funds the work.",
   vendor_hook:
     "Two ways to use it as a partner: list products for birthright checkout and earn revenue share per your tier — or list them as referrals to your own store, keep the retail, and send a small referral commission back to the foundation.",
   cta: "Become a partner",

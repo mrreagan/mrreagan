@@ -72,7 +72,7 @@ export default function PartnerTypeTry() {
                   <p className="text-xs text-[#476B6B] mt-1">Rev share: {t.rev_share}%</p>
                 )}
                 {t.rev_share_birthright_ip != null && (
-                  <p className="text-xs text-[#476B6B] mt-1">Birthright IP: {t.rev_share_birthright_ip}% · Own: {t.rev_share_other}%</p>
+                  <p className="text-xs text-[#476B6B] mt-1">birthright IP: {t.rev_share_birthright_ip}% · Own: {t.rev_share_other}%</p>
                 )}
                 {t.blurb && <p className="text-xs text-[#5C6B6B] mt-1 leading-relaxed">{t.blurb}</p>}
               </div>

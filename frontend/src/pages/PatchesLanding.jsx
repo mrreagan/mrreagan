@@ -97,7 +97,7 @@ export default function PatchesLanding() {
           </h1>
           <p className="text-base sm:text-lg text-[#3D6373] mt-5 leading-relaxed font-serif italic max-w-xl mx-auto">
             Hand-engraved leather patches carrying the attachment-theory
-            statements at the heart of Birthright&apos;s work. Crafted in
+            statements at the heart of birthright&apos;s work. Crafted in
             small batches by an artisan partner. Every order supports
             Foundation patronage and the artist&apos;s livelihood — no
             mass production, no middleman markup.
@@ -190,7 +190,7 @@ export default function PatchesLanding() {
                 {FULFILLMENT_NAME}
               </h3>
               <p className="text-[#3D6373] text-sm mt-2 font-serif italic leading-relaxed max-w-2xl">
-                Birthright Foundation does not produce these patches.
+                birthright Foundation does not produce these patches.
                 Fulfilment is handled by {FULFILLMENT_NAME}, the artisan
                 who crafted the original sample series. Ordering through
                 them keeps the work in the hands of the maker.

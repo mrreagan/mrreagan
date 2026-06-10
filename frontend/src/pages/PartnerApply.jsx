@@ -183,7 +183,7 @@ export default function PartnerApply() {
             <div>
               <label className="label">Do you plan to present birthright IP materials and workshops?</label>
               <div className="flex gap-2 mt-2" data-testid="apply-presents-birthright-ip">
-                {[{ v: true, label: "Yes — Birthright materials" }, { v: false, label: "No — only my own / other materials" }].map((opt) => (
+                {[{ v: true, label: "Yes — birthright materials" }, { v: false, label: "No — only my own / other materials" }].map((opt) => (
                   <button
                     type="button"
                     key={String(opt.v)}
@@ -285,7 +285,7 @@ export default function PartnerApply() {
               <input type="checkbox" checked={!!form.accepts_commissions} onChange={(e) => update("accepts_commissions", e.target.checked)} data-testid="apply-accepts-commissions" />
               I accept commission inquiries
             </label>
-            <p className="text-[10px] text-[#5C6B6B] italic">Birthright lists your work at YOUR list price and adds a 20% gift to the foundation at checkout. The buyer sees the math; you keep your full price.</p>
+            <p className="text-[10px] text-[#5C6B6B] italic">birthright lists your work at YOUR list price and adds a 20% gift to the foundation at checkout. The buyer sees the math; you keep your full price.</p>
           </fieldset>
         )}
 

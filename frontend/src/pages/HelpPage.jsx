@@ -101,7 +101,7 @@ export default function HelpPage() {
           </div>
         </div>
         <p className="text-sm text-[#5C6B6B] max-w-2xl">
-          Trained on Birthright&rsquo;s platform and policies. Most answers come from
+          Trained on birthright&rsquo;s platform and policies. Most answers come from
           our built-in knowledge base (free). When the question is novel, a small
           AI call is used —{" "}
           {user
@@ -117,7 +117,7 @@ export default function HelpPage() {
             ))}
             {busy && (
               <div className="flex items-center gap-2 text-xs text-[#5C6B6B] italic">
-                <Loader2 size={12} className="animate-spin" /> Birthright Help is typing…
+                <Loader2 size={12} className="animate-spin" /> birthright Help is typing…
               </div>
             )}
           </div>

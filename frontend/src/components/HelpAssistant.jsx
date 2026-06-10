@@ -253,7 +253,7 @@ export default function HelpAssistant() {
             ))}
             {busy && (
               <div className="flex items-center gap-2 text-xs text-[#5C6B6B] italic px-1" data-testid="help-typing">
-                <Loader2 size={12} className="animate-spin" /> Birthright Help is typing…
+                <Loader2 size={12} className="animate-spin" /> birthright Help is typing…
               </div>
             )}
           </div>

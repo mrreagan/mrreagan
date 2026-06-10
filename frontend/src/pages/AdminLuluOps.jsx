@@ -192,7 +192,7 @@ export default function AdminLuluOps() {
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-serif text-xl inline-flex items-center gap-2">
             <Webhook size={18} strokeWidth={1.5} className="text-[#476B6B]" />
-            Lulu → Birthright webhooks
+            Lulu → birthright webhooks
           </h2>
           <button onClick={refreshHooks} disabled={loadingHooks} className="btn-outline text-sm inline-flex items-center gap-2" data-testid="lulu-webhooks-refresh">
             <RefreshCw size={14} strokeWidth={1.6} className={loadingHooks ? "animate-spin" : ""} />
