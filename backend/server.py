@@ -269,10 +269,27 @@ async def startup_event() -> None:
         from utils.data_migrations import apply_pending
         log = await apply_pending(db)
         applied = sum(1 for r in log if r["status"] == "applied")
+        errors = [r for r in log if r["status"] == "error"]
         if applied:
             logger.info(f"Data migrations: applied {applied} new migration(s).")
+        if errors:
+            # Loud, durable record so admins can see what blew up via the
+            # /admin/system migrations panel even if log retention is short.
+            logger.error(
+                f"Data migrations stopped on error in {errors[0]['id']}: "
+                f"{errors[0].get('error')}"
+            )
+            try:
+                from datetime import datetime, timezone
+                await db.system_migration_errors.insert_one({
+                    "migration_id": errors[0]["id"],
+                    "error": errors[0].get("error"),
+                    "at": datetime.now(timezone.utc).isoformat(),
+                })
+            except Exception:
+                pass
     except Exception as e:
-        logger.error(f"Data migrations error: {e}")
+        logger.exception(f"Data migrations runner crashed: {e}")
     try:
         from utils.scheduler import start_scheduler
         start_scheduler()

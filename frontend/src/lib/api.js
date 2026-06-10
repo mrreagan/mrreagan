@@ -31,16 +31,26 @@ api.interceptors.request.use((config) => {
 });
 
 // Clear stored token on any 401 so the next page load redirects to login
-// instead of looping with a stale token.
+// instead of looping with a stale token. For admin pages we also push the
+// browser to /login so the user gets an obvious recovery path.
 api.interceptors.response.use(
   (r) => r,
   (error) => {
     if (error?.response?.status === 401) {
       const url = error.config?.url || "";
+      const onAdminPage = typeof window !== "undefined" &&
+        window.location.pathname.startsWith("/admin");
       // Don't clear if this was just /auth/me probing — that endpoint
       // is supposed to return 401 for guests.
       if (!url.includes("/auth/me")) {
-        // leave it — caller decides what to do
+        if (onAdminPage) {
+          // Token is dead AND the user is trying to use an admin surface.
+          // Wipe stored token and bounce to login so they aren't stuck
+          // staring at "Couldn't load" errors with no recourse.
+          setStoredToken(null);
+          const next = encodeURIComponent(window.location.pathname);
+          window.location.assign(`/login?next=${next}&reason=expired`);
+        }
       }
     }
     return Promise.reject(error);

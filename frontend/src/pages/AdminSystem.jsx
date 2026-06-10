@@ -52,7 +52,15 @@ function SupportEmailsCard() {
         hello_email: r.data.hello_email || "",
       });
     } catch (e) {
-      toast.error("Couldn't load settings");
+      const status = e.response?.status;
+      const detail = e.response?.data?.detail || e.message;
+      if (status === 401) {
+        toast.error("Session expired — please log in again");
+      } else if (status === 403) {
+        toast.error("Admin access required");
+      } else {
+        toast.error(`Couldn't load settings (${status || "network"}): ${detail}`);
+      }
     }
   };
   useEffect(() => { load(); }, []);
@@ -128,8 +136,19 @@ function MigrationsCard() {
     try {
       const r = await api.get("/admin/system/migrations");
       setData(r.data);
-    } catch {
-      toast.error("Couldn't load migrations");
+    } catch (e) {
+      const status = e.response?.status;
+      const detail = e.response?.data?.detail || e.message;
+      if (status === 401) {
+        toast.error("Session expired — please log in again");
+        setData({ migrations: [], pending_count: 0, _err: "auth" });
+      } else if (status === 403) {
+        toast.error("Admin access required");
+        setData({ migrations: [], pending_count: 0, _err: "perm" });
+      } else {
+        toast.error(`Couldn't load migrations (${status || "network"}): ${detail}`);
+        setData({ migrations: [], pending_count: 0, _err: detail });
+      }
     }
   };
   useEffect(() => { load(); }, []);
@@ -169,6 +188,29 @@ function MigrationsCard() {
       {data === null && <p className="text-sm italic text-[#5C6B6B]">Loading…</p>}
       {data && (
         <>
+          {data.recent_errors && data.recent_errors.length > 0 && (
+            <div
+              className="mb-4 rounded-md border border-[#A87A4A] bg-[#FBF2E5] p-3 text-xs"
+              data-testid="migrations-recent-errors"
+            >
+              <p className="font-medium text-[#A87A4A] mb-1">
+                Recent startup errors ({data.recent_errors.length})
+              </p>
+              <ul className="space-y-1">
+                {data.recent_errors.slice(0, 3).map((e, i) => (
+                  <li key={i} className="font-mono text-[11px] text-[#1A2424]">
+                    <span className="text-[#5C6B6B]">
+                      {new Date(e.at).toLocaleString()} ·
+                    </span>{" "}
+                    <strong>{e.migration_id}</strong>
+                    <div className="text-[#5C6B6B] pl-2 break-words">
+                      {e.error}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <ul className="space-y-2 mb-5" data-testid="migrations-list">
             {data.migrations.map((m) => (
               <li

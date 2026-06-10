@@ -74,7 +74,10 @@ async def public_settings():
 async def list_migrations(user: dict = Depends(require_roles("admin"))):
     """Show which data migrations have been applied to THIS environment's
     database, and which are pending. Pending means: the code knows about
-    them but the DB has not yet been written to."""
+    them but the DB has not yet been written to.
+
+    Also surfaces the last N startup errors so an admin can see what blew
+    up during auto-migration without needing log access."""
     from database import db
     seen = await applied_ids(db)
     rows = []
@@ -88,8 +91,14 @@ async def list_migrations(user: dict = Depends(require_roles("admin"))):
             "applied_at": (meta or {}).get("applied_at"),
             "result": (meta or {}).get("result"),
         })
-    return {"migrations": rows,
-             "pending_count": sum(1 for r in rows if not r["applied"])}
+    errors = await db.system_migration_errors.find(
+        {}, {"_id": 0},
+    ).sort("at", -1).limit(20).to_list(20)
+    return {
+        "migrations": rows,
+        "pending_count": sum(1 for r in rows if not r["applied"]),
+        "recent_errors": errors,
+    }
 
 
 class RunMigrationsBody(BaseModel):
