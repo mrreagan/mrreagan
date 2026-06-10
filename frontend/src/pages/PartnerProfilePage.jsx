@@ -5,6 +5,7 @@ import { Globe, MapPin, ArrowLeft, Sparkles } from "lucide-react";
 import ShareButton from "../components/ShareButton";
 import MessageButton from "../components/MessageButton";
 import FileDisputeModal from "../components/FileDisputeModal";
+import PartnerOfferings from "../components/PartnerOfferings";
 
 const TYPE_LABEL = {
   facilitator: "Facilitator",
@@ -100,6 +101,9 @@ export default function PartnerProfilePage() {
       <article className="prose prose-sm max-w-none mt-6 whitespace-pre-wrap font-sans text-sm" data-testid="partner-bio">
         {profile.bio}
       </article>
+
+      <PartnerOfferings slug={profile.slug} partnerName={profile.display_name} />
+
       {!profile.is_sample && profile.user_id && (
         <div className="mt-8 pt-4 border-t border-[#E5E1D8]">
           <button

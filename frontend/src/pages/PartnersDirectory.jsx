@@ -284,16 +284,27 @@ function PartnerCard({ profile, sampleMode }) {
       <p className="font-medium text-sm mt-3 line-clamp-2">{profile.headline}</p>
       <p className="text-xs text-[#5C6B6B] mt-2 line-clamp-3">{profile.bio}</p>
       {profile.location && <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B] mt-3">📍 {profile.location}</p>}
+      {profile.offering_count > 0 && (
+        <Link
+          to={`/partner/${profile.slug}#offerings`}
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 mt-3 text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-[#2E5C46]/10 text-[#2E5C46] hover:bg-[#2E5C46]/20 transition"
+          data-testid={`offering-pill-${profile.slug}`}
+          title={`${profile.offering_count} listing${profile.offering_count === 1 ? "" : "s"} available on birthright`}
+        >
+          ★ {profile.offering_count} on birthright
+        </Link>
+      )}
       {(profile.partner_type === "vendor" || profile.partner_type === "community") && profile.website_url && (
         <a
           href={`${process.env.REACT_APP_BACKEND_URL || ""}/api/out/${profile.slug}`}
           target="_blank"
           rel="noreferrer noopener"
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider mt-3 text-[#476B6B] hover:underline"
+          className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider mt-2 ml-2 text-[#5C6B6B] hover:underline opacity-80"
           data-testid={`outbound-link-${profile.slug}`}
         >
-          Visit external site →
+          {profile.offering_count > 0 ? "or visit external site" : "Visit external site →"}
         </a>
       )}
       {!isSample && (

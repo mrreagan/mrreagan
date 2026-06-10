@@ -284,7 +284,18 @@ async def list_public_partners(
         else:
             rest.append(p)
     featured.sort(key=lambda p: p.get("featured_until") or "", reverse=True)
-    return featured + rest
+    ordered = featured + rest
+    # Enrich with offering_count so cards can show "N offerings" pill without N+1.
+    slugs = [p["slug"] for p in ordered if p.get("slug")]
+    if slugs:
+        pipeline = [
+            {"$match": {"vendor_slug": {"$in": slugs}, "moderation_status": "active"}},
+            {"$group": {"_id": "$vendor_slug", "n": {"$sum": 1}}},
+        ]
+        counts = {row["_id"]: row["n"] async for row in db.products.aggregate(pipeline)}
+        for p in ordered:
+            p["offering_count"] = counts.get(p.get("slug"), 0)
+    return ordered
 
 
 @router.get("/{slug}")
@@ -295,7 +306,80 @@ async def get_public_partner(slug: str):
     )
     if not profile:
         raise HTTPException(status_code=404, detail="Partner not found")
+    profile["offering_count"] = await _count_partner_offerings(db, slug)
     return profile
+
+
+# ============ ON-SITE OFFERINGS (revenue retention) ============
+#
+# Strategy: keep visitors on birthright as long as possible. When a partner
+# has on-birthright product/material listings (even ones that ultimately
+# fulfill off-site via /api/out attribution), surface those listings on the
+# partner profile FIRST so a click stays in our funnel where:
+#   1. We capture analytics + attribution.
+#   2. We get partnership revenue share on every conversion.
+#   3. The visitor sees the editorial framing alongside the product.
+#
+# A partner has "offerings" when products exist with `vendor_slug == slug`
+# AND `moderation_status == 'active'`. Off-site flag is preserved per item so
+# the UI can label them appropriately, but they still count and they still
+# link through the on-birthright product detail page (`/equip/<product-slug>`)
+# rather than directly bouncing off-site.
+
+async def _count_partner_offerings(db, slug: str) -> int:
+    """Cheap count used by directory + profile header."""
+    return await db.products.count_documents({
+        "vendor_slug": slug,
+        "moderation_status": "active",
+    })
+
+
+@router.get("/{slug}/offerings")
+async def list_partner_offerings(slug: str):
+    """Public list of a partner's on-birthright product offerings.
+
+    Ordering is intentional:
+      1. On-site fulfilled products first (highest retention + revenue).
+      2. Off-site attributed products next (partner-fulfilled, we earn share).
+      3. Inside each group, homepage features > carousel_rank > name.
+    """
+    from database import db
+    profile = await db.partner_profiles.find_one(
+        {"slug": slug, "status": "active", "public": True},
+        {"_id": 0, "slug": 1, "display_name": 1, "partner_type": 1},
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Partner not found")
+
+    cursor = db.products.find(
+        {"vendor_slug": slug, "moderation_status": "active"},
+        {
+            "_id": 0, "slug": 1, "name": 1, "price": 1, "type": 1, "category": 1,
+            "image_url": 1, "is_off_site": 1, "external_url": 1, "collection": 1,
+            "is_homepage_feature": 1, "carousel_rank": 1, "short_description": 1,
+        },
+    )
+    items = await cursor.to_list(200)
+
+    def sort_key(p: dict):
+        # is_off_site=True sorts AFTER False (on-site first)
+        off_site_bucket = 1 if p.get("is_off_site") else 0
+        homepage_bucket = 0 if p.get("is_homepage_feature") else 1
+        rank = p.get("carousel_rank") if isinstance(p.get("carousel_rank"), int) else 9999
+        return (off_site_bucket, homepage_bucket, rank, (p.get("name") or "").lower())
+
+    items.sort(key=sort_key)
+    on_site = [p for p in items if not p.get("is_off_site")]
+    off_site = [p for p in items if p.get("is_off_site")]
+    return {
+        "partner_slug": profile["slug"],
+        "partner_name": profile["display_name"],
+        "partner_type": profile["partner_type"],
+        "count": len(items),
+        "on_site_count": len(on_site),
+        "off_site_count": len(off_site),
+        "items": items,
+    }
 
 
 # ============ ADMIN ROUTES ============

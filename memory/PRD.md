@@ -16,6 +16,12 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 45 — Resend live + Partner offerings on-site rail
+- **Resend live email VERIFIED end-to-end.** DKIM TXT was being blocked by a legacy NameBright NS delegation (`_domainkey.birthright.live` and `_dmarc.birthright.live` were pointing away from Cloudflare to namebrightdns). Removed those NS records → DKIM resolved → Resend domain status flipped to verified → live test email sent successfully to `admin@birthright.org` (Resend send id `eed6a6f6-89e0-4589-af99-0e75d907c8f5`).
+- **Partner offerings rail (on-site revenue retention)** — new endpoint `GET /api/partners/{slug}/offerings` lists every product whose `vendor_slug` matches the partner, on-site fulfilled products ranked above partner-fulfilled. `PartnerOfferings.jsx` renders an image grid on `/partner/<slug>` showing all the partner's birthright listings as tiles linking to `/equip/<product-slug>`. Per the core principle "first and foremost for us," visitors are kept on birthright (where the foundation captures attribution + partnership share) before any external link is offered.
+- **Directory cards** now show a green `★ N on birthright` pill linking into the profile's offerings anchor, with the legacy "Visit external site" link demoted to small secondary text ("or visit external site"). 7C's Farmstead pill shows `★ 6 ON BIRTHRIGHT`.
+- **`GET /api/partners` enriched** with `offering_count` per profile via a single aggregation pipeline — no N+1.
+
 ### Iter 44 — Resend live email key wired; Stripe activation guide
 - **Resend API key applied** (`RESEND_API_KEY=re_9As...`) and `EMAIL_DRY_RUN=false` set in `/app/backend/.env`. Backend restarted.
 - API key proven healthy via SDK sanity check (sending from `onboarding@resend.dev` to the account owner address succeeds).
