@@ -1,15 +1,29 @@
 /* eslint-disable */
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import { ShopFilters, ShopSourceFilters, ProductGrid } from "../components/shop/ShopParts";
 import FounderCollectionRail from "../components/shop/FounderCollectionRail";
+import FilteredShareButton from "../components/FilteredShareButton";
 
 export default function Shop() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
-  const [filter, setFilter] = useState("merch");
-  const [source, setSource] = useState("any");          // any | foundation | vendor
-  const [vendor, setVendor] = useState("all");           // slug | name | "all"
+  const [filter, setFilter] = useState(() => searchParams.get("type") || "merch");
+  const [source, setSource] = useState(() => searchParams.get("source") || "any");
+  const [vendor, setVendor] = useState(() => searchParams.get("vendor") || "all");
   const [loading, setLoading] = useState(true);
+
+  // Sync filter state back into the URL so the link can be shared
+  // verbatim with another person. Default values are stripped from the
+  // querystring to keep the URL clean.
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (filter !== "merch") next.set("type", filter);
+    if (source !== "any") next.set("source", source);
+    if (vendor !== "all") next.set("vendor", vendor);
+    setSearchParams(next, { replace: true });
+  }, [filter, source, vendor]);
 
   useEffect(() => {
     setLoading(true);
@@ -86,6 +100,15 @@ export default function Shop() {
         onVendorChange={setVendor}
         vendors={vendors}
       />
+      {/* Share the currently-filtered view. Mirrors active filters via
+          URL search params so the recipient lands on the same set. */}
+      <div className="mt-3 flex justify-end">
+        <FilteredShareButton
+          title="birthright · shop"
+          label="Share this filtered view"
+          testId="shop-share-btn"
+        />
+      </div>
       {loading ? (
         <p className="text-sm text-[#5C6B6B] mt-12">Loading...</p>
       ) : (

@@ -6,6 +6,7 @@ import { Users, Briefcase, Microscope, Store, Search, Sparkles, Palette, Compass
 import ShareButton from "../components/ShareButton";
 import MessageButton from "../components/MessageButton";
 import StudioVendorNudge from "../components/StudioVendorNudge";
+import FilteredShareButton from "../components/FilteredShareButton";
 
 const TYPE_CONFIG = {
   facilitator: { label: "Facilitators", singular: "Facilitator", icon: Users,      color: "#476B6B", description: "Practitioners trained to lead birthright workshops." },
@@ -168,15 +169,22 @@ export default function PartnersDirectory() {
             <Sparkles size={11} strokeWidth={1.5} /> View sample profiles
           </button>
         )}
-        <div className="ml-auto relative">
-          <Search size={14} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5C6B6B]" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search name, location, focus..."
-            className="input-field pl-9 text-sm w-72 max-w-full"
-            data-testid="partner-search"
+        <div className="ml-auto flex items-center gap-2">
+          <FilteredShareButton
+            title="birthright · partners"
+            label="Share this filtered view"
+            testId="partners-share-btn"
           />
+          <div className="relative">
+            <Search size={14} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5C6B6B]" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search name, location, focus..."
+              className="input-field pl-9 text-sm w-72 max-w-full"
+              data-testid="partner-search"
+            />
+          </div>
         </div>
       </div>
 
