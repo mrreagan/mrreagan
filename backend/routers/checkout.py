@@ -570,20 +570,83 @@ async def _process_paid_transaction(txn: dict):
 
 # Webhook endpoint registered separately on root /api
 async def stripe_webhook(request: Request):
+    """Direct Stripe webhook handler.
+
+    We bypass `emergentintegrations.StripeCheckout.handle_webhook` because that
+    helper crashes with `AttributeError: get` whenever a `webhook_secret` is
+    configured — `stripe.Webhook.construct_event` returns a `stripe.Event`
+    object whose `__getattr__` resolves `.get` as a dict key lookup. The
+    safer (and signature-verifying) path is to do construct_event ourselves
+    and use bracket access throughout.
+    """
+    import stripe as _stripe
     from database import db
-    stripe_checkout = get_stripe(request)
+
     body = await request.body()
     signature = request.headers.get("Stripe-Signature", "")
+    secret = STRIPE_WEBHOOK_SECRET
+    api_key = STRIPE_API_KEY
+
+    if not secret:
+        # Defensive: never accept unsigned events in live mode.
+        raise HTTPException(status_code=500, detail="STRIPE_WEBHOOK_SECRET not configured")
+    if not signature:
+        raise HTTPException(status_code=400, detail="Missing Stripe-Signature header")
+
+    _stripe.api_key = api_key
     try:
-        evt = await stripe_checkout.handle_webhook(body, signature)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Webhook error: {e}")
-    if evt.payment_status == "paid":
-        txn = await db.payment_transactions.find_one({"session_id": evt.session_id})
-        if txn and txn["payment_status"] != "paid":
+        _stripe.Webhook.construct_event(body, signature, secret)
+    except (_stripe.SignatureVerificationError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"Webhook signature verification failed: {e}")
+
+    # Signature verified — parse the same raw body as a plain dict so we
+    # avoid the `stripe.StripeObject.__getattr__` quirk that traps `.get`/etc.
+    import json as _json
+    event = _json.loads(body)
+
+    event_type = event["type"]
+    data_object = event["data"]["object"]
+    logger.info(f"stripe webhook received: type={event_type} id={event.get('id')}")
+
+    # Resolve session_id + payment_status across the event types we care about.
+    session_id = None
+    payment_status = None
+    if event_type in ("checkout.session.completed",
+                      "checkout.session.async_payment_succeeded"):
+        session_id = data_object.get("id")
+        payment_status = data_object.get("payment_status")
+    elif event_type == "checkout.session.async_payment_failed":
+        session_id = data_object.get("id")
+        payment_status = "failed"
+    elif event_type == "payment_intent.succeeded":
+        meta = data_object.get("metadata") or {}
+        session_id = meta.get("checkout_session_id")
+        payment_status = "paid"
+    elif event_type == "payment_intent.payment_failed":
+        meta = data_object.get("metadata") or {}
+        session_id = meta.get("checkout_session_id")
+        payment_status = "failed"
+    elif event_type == "charge.refunded":
+        # Reconcile refund — already handled by routers/refunds.py for app-initiated
+        # refunds; for dashboard-initiated refunds we still want to mark the txn.
+        pi = data_object.get("payment_intent")
+        if pi:
             await db.payment_transactions.update_one(
-                {"session_id": evt.session_id},
+                {"payment_intent_id": pi},
+                {"$set": {"status": "refunded", "refunded_at": now_iso()}},
+            )
+        return {"received": True}
+    else:
+        # Acknowledge but don't process unknown event types.
+        return {"received": True, "ignored": event_type}
+
+    if session_id and payment_status == "paid":
+        txn = await db.payment_transactions.find_one({"session_id": session_id})
+        if txn and txn.get("payment_status") != "paid":
+            await db.payment_transactions.update_one(
+                {"session_id": session_id},
                 {"$set": {"payment_status": "paid", "status": "complete"}},
             )
             await _process_paid_transaction({**txn, "payment_status": "paid"})
+
     return {"received": True}
