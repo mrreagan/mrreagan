@@ -71,9 +71,9 @@ export default function PartnerTypes() {
         Most partners are one type. Some hold two.
       </p>
 
-      <div className="overflow-x-auto mt-8" data-testid="partner-types-table">
+      <div className="mt-8" data-testid="partner-types-table">
         <table className="min-w-full text-sm border-collapse">
-          <thead>
+          <thead className="sticky top-[72px] bg-[#FAF8F5] z-10 shadow-[0_2px_0_#E5E1D8]">
             <tr className="border-b-2 border-[#0F2424] text-left">
               <th className="py-2 pr-4 font-serif text-base">Type</th>
               <th className="py-2 pr-4 font-serif text-base">What you do</th>
@@ -118,7 +118,7 @@ export default function PartnerTypes() {
 
       <div className="mt-8 max-w-2xl space-y-3">
         <p className="text-sm text-[#5C6B6B]">
-          Ready to apply? Pick the type that fits — and don't worry if you fit more than one.
+          Ready to apply? Pick the type that fits — and don&apos;t worry if you fit more than one.
           Each application is reviewed by a board member.
         </p>
         <div className="flex flex-wrap gap-2">
