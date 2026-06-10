@@ -16,6 +16,18 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 46 — Stripe LIVE money flow verified end-to-end
+- **Live key applied** (`STRIPE_API_KEY=rk_live_51TgpjzQ...NESHDZ`, restricted key). Permissions probed: checkout/customers/refunds/subscriptions/products/prices all green; Stripe Connect scopes intentionally deferred (artist payouts unlock when first artist is ready).
+- **Live webhook secret applied** (`STRIPE_WEBHOOK_SECRET=whsec_Lre6z8...t7FE`).
+- **Webhook handler rewritten** in `routers/checkout.py` to bypass a latent bug in `emergentintegrations.StripeCheckout.handle_webhook` — when `webhook_secret` is provided, the lib's `stripe.Event` return type has a `__getattr__` that traps `.get`/`.to_dict_recursive` as key lookups, causing `AttributeError`. New handler verifies the signature with `stripe.Webhook.construct_event`, then re-parses the raw body as plain JSON for safe access. Handles `checkout.session.completed`, `async_payment_succeeded/failed`, `payment_intent.succeeded/failed`, `charge.refunded`, gracefully ignores unknown event types.
+- Same fix applied to `routers/subscriptions.py`.
+- **End-to-end live verification (real $1 charge):**
+  - Session `cs_live_a12YQsDTINGsBmZGes1S8g8d0vKdaKiHB8oj2iycupo4SpBRI6NBqdMb7y` created via live API.
+  - User paid with Visa ····2187. Stripe charge `ch_3TguOkQzY4Y8maAP0Yo4kZk4` succeeded.
+  - Preview DB txn marked `paid`, `_process_paid_transaction` dispatched, donation record `398e8a7e...` persisted to `donations` collection.
+  - Webhook signature enforcement verified with synthetic signed events on preview (200 on valid, 400 on tampered/missing).
+- **Pending after next deploy:** verify production webhook endpoint responds correctly to a tampered-signature probe (confirms env vars + new code are live on prod).
+
 ### Iter 45 — Resend live + Partner offerings on-site rail
 - **Resend live email VERIFIED end-to-end.** DKIM TXT was being blocked by a legacy NameBright NS delegation (`_domainkey.birthright.live` and `_dmarc.birthright.live` were pointing away from Cloudflare to namebrightdns). Removed those NS records → DKIM resolved → Resend domain status flipped to verified → live test email sent successfully to `admin@birthright.org` (Resend send id `eed6a6f6-89e0-4589-af99-0e75d907c8f5`).
 - **Partner offerings rail (on-site revenue retention)** — new endpoint `GET /api/partners/{slug}/offerings` lists every product whose `vendor_slug` matches the partner, on-site fulfilled products ranked above partner-fulfilled. `PartnerOfferings.jsx` renders an image grid on `/partner/<slug>` showing all the partner's birthright listings as tiles linking to `/equip/<product-slug>`. Per the core principle "first and foremost for us," visitors are kept on birthright (where the foundation captures attribution + partnership share) before any external link is offered.
