@@ -27,6 +27,7 @@ logger = logging.getLogger("birthright.checkout")
 router = APIRouter(prefix="/checkout", tags=["checkout"])
 
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET") or None
 
 # Fixed sponsorship tiers - amounts defined server-side only
 SPONSORSHIP_TIERS = {
@@ -41,7 +42,11 @@ SPONSORSHIP_TIERS = {
 def get_stripe(request: Request) -> StripeCheckout:
     host_url = str(request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
-    return StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    return StripeCheckout(
+        api_key=STRIPE_API_KEY,
+        webhook_url=webhook_url,
+        webhook_secret=STRIPE_WEBHOOK_SECRET,
+    )
 
 
 def _extract_referral_code(request: Request) -> Optional[str]:

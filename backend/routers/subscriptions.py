@@ -46,11 +46,16 @@ router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 admin_router = APIRouter(prefix="/admin/subscriptions", tags=["subscriptions-admin"])
 
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET") or None
 
 
 def _get_stripe(request: Request) -> StripeCheckout:
     host_url = str(request.base_url).rstrip("/")
-    return StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    return StripeCheckout(
+        api_key=STRIPE_API_KEY,
+        webhook_url=f"{host_url}/api/webhook/stripe",
+        webhook_secret=STRIPE_WEBHOOK_SECRET,
+    )
 
 
 # ============ PLANS ============
