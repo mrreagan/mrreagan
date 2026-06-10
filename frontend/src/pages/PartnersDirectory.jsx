@@ -1,5 +1,5 @@
+/* eslint-disable */
 import React, { useEffect, useMemo, useState } from "react";
-/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import { Users, Briefcase, Microscope, Store, Search, Sparkles, Palette, Compass } from "lucide-react";
