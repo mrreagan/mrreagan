@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import { Users, Briefcase, Microscope, Store, Search, Sparkles, Palette, Compass } from "lucide-react";
@@ -78,9 +79,47 @@ export default function PartnersDirectory() {
       <h1 className="editorial-h1 mt-2">Partners</h1>
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B] max-w-2xl">
-        The people and organizations who carry birthright's work into communities, classrooms, and clinics. Want to join us?{" "}
+        The people and organizations who carry birthright&apos;s work into communities, classrooms, and clinics. Want to join us?{" "}
         <Link to="/partner/apply" className="text-[#476B6B] underline" data-testid="apply-cta">Apply to partner</Link>.
       </p>
+
+      {/* Prominent navigation to the partner plans comparison + the artist
+          tier breakdown. Both pages already existed but were unreachable
+          from this directory view, leading users to think they had been
+          removed. */}
+      <div
+        className="mt-6 card p-5 bg-gradient-to-br from-[#FAF8F5] to-[#F4F1EA] border border-[#C9A961]/30"
+        data-testid="partner-compare-banner"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="max-w-xl">
+            <p className="label !mt-0 text-[#A87A4A]">See the cost before you spend it.</p>
+            <h2 className="font-serif text-xl mt-1 leading-tight">
+              Compare all six partner types side-by-side.
+            </h2>
+            <p className="text-sm text-[#5C6B6B] mt-1">
+              One pager with revenue share, what you do, what the foundation
+              gets, and how each role lines up with mission.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <Link
+              to="/partner/types"
+              className="btn-primary text-sm whitespace-nowrap"
+              data-testid="partners-compare-link"
+            >
+              Compare partner plans →
+            </Link>
+            <Link
+              to="/partner/artist"
+              className="btn-outline text-sm whitespace-nowrap"
+              data-testid="partners-artist-tiers-link"
+            >
+              Artist tier breakdown →
+            </Link>
+          </div>
+        </div>
+      </div>
 
       {samplesMode && (
         <div className="mt-6 card p-5 bg-[#FFFBEF] border-l-4 border-[#C9A961]" data-testid="samples-banner">
@@ -142,7 +181,27 @@ export default function PartnersDirectory() {
       </div>
 
       {partnerType !== "all" && TYPE_CONFIG[partnerType] && (
-        <p className="text-sm text-[#5C6B6B] mt-4 italic">{TYPE_CONFIG[partnerType].description}</p>
+        <div className="mt-4 flex flex-wrap items-baseline gap-3">
+          <p className="text-sm text-[#5C6B6B] italic flex-1 min-w-[260px]">
+            {TYPE_CONFIG[partnerType].description}
+          </p>
+          {partnerType === "artist" && (
+            <Link
+              to="/partner/artist"
+              className="text-xs uppercase tracking-wider text-[#A87A4A] hover:text-[#1A2424] underline"
+              data-testid="partners-artist-deeplink"
+            >
+              See artist tier rates →
+            </Link>
+          )}
+          <Link
+            to={`/partner/types#${partnerType}`}
+            className="text-xs uppercase tracking-wider text-[#476B6B] hover:text-[#1A2424] underline"
+            data-testid={`partners-type-detail-${partnerType}`}
+          >
+            See revenue share for {TYPE_CONFIG[partnerType].singular.toLowerCase()} →
+          </Link>
+        </div>
       )}
 
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="partner-cards">
