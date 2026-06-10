@@ -18,6 +18,7 @@ import Contact from "./pages/Contact";
 import HelpPage from "./pages/HelpPage";
 import FounderCollectionPage from "./pages/FounderCollectionPage";
 import AdminFounderCarousel from "./pages/AdminFounderCarousel";
+import AdminSystem from "./pages/AdminSystem";
 import Workshops from "./pages/Workshops"; // eslint-disable-line no-unused-vars -- legacy import kept for emergency restore
 import WorkshopDetail from "./pages/WorkshopDetail";
 import Experiences from "./pages/Experiences";
@@ -159,6 +160,7 @@ function AppRoutes() {
       <Route path="/help" element={<HelpPage />} />
       <Route path="/equip/collection/founder" element={<FounderCollectionPage />} />
       <Route path="/admin/founder-carousel" element={<AdminFounderCarousel />} />
+      <Route path="/admin/system" element={<AdminSystem />} />
 
       {/* Practice — canonical path is /practice. /experiences and /workshops preserved as redirects. */}
       <Route path="/practice" element={<Experiences />} />

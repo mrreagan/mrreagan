@@ -16,6 +16,15 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 43 — Data migration framework + admin system console
+- **`utils/data_migrations.py`** — append-only registry of idempotent data migrations. Each migration has a stable string ID, runs at most once per environment, and records its application in `db.system_migrations`.
+- **Auto-runs on backend startup** via the existing `@app.on_event("startup")` hook. New environments catch up automatically; existing environments only get net-new migrations.
+- **Admin console at `/admin/system`** (linked from Admin home):
+  - **Support email addresses** panel: site-wide editable `support_email` + `hello_email`, surfaced via `GET /api/system/settings/public` so frontend reads dynamically.
+  - **Data migrations** panel: shows applied vs. pending list with timestamps, "Run pending now" button, "Force re-run all" escape hatch.
+- **Five migrations seeded** to lock in the founder collection state (vendor profile, patches, bundle, carousel default ranks, research-pollution cleanup, system_settings defaults).
+- **HelpPage now reads `support_email` from settings** so changing the address in admin propagates everywhere without a code deploy.
+
 ### Iter 42 — Founders Collection cleanup, $10 pricing, 5-patch bundle, Help close UX, brand casing pass
 - **Pricing & framework correction**: all 5 patches dropped to $10 (was $38 placeholder). Revenue framework set to **15% affiliate revenue share** from 7C's Farmstead (no Foundation patronage markup on top — that framing was inaccurate for off-site fulfillment). Stamped via existing `?via=birthright_7cs-farmstead` outbound attribution. Storefront copy now says "+ shipping at checkout".
 - **Long-form descriptions** verbatim from `/shop/patches` for all 5 patches (no shortened blurbs).

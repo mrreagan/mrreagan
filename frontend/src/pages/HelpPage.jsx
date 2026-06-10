@@ -14,6 +14,7 @@ const SESSION_KEY = "bright_help_session_id";
 export default function HelpPage() {
   const { user } = useAuth();
   const [voice, setVoice] = useState(null);
+  const [supportEmail, setSupportEmail] = useState("support@birthright.live");
   const [sessionId, setSessionId] = useState(() => {
     try { return localStorage.getItem(SESSION_KEY) || null; } catch { return null; }
   });
@@ -24,6 +25,9 @@ export default function HelpPage() {
 
   useEffect(() => {
     api.get("/help/voice").then((r) => setVoice(r.data)).catch(() => {});
+    api.get("/system/settings/public").then((r) => {
+      if (r.data?.support_email) setSupportEmail(r.data.support_email);
+    }).catch(() => {});
   }, []);
 
   // Derive the rendered list (greeting until the user has typed something)
@@ -144,7 +148,7 @@ export default function HelpPage() {
           <div className="rounded-lg border border-[#E5E1D8] bg-white p-4">
             <p className="label text-[#476B6B] flex items-center gap-1.5"><LifeBuoy size={11} /> Prefer a human?</p>
             <p className="mt-2 text-[#5C6B6B]">
-              Email <a href="mailto:support@birthright.live" className="text-[#2C4E5A] underline">support@birthright.live</a> — typically within one business day.
+              Email <a href={`mailto:${supportEmail}`} className="text-[#2C4E5A] underline">{supportEmail}</a> — typically within one business day.
             </p>
           </div>
           <div className="rounded-lg border border-[#E5E1D8] bg-white p-4">

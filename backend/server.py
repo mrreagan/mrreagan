@@ -211,6 +211,13 @@ api_router.include_router(gallery_router)
 from routers.help_assistant import router as help_router  # noqa: E402
 api_router.include_router(help_router)
 
+from routers.system_admin import (  # noqa: E402
+    admin_router as system_admin_router,
+    public_router as system_public_router,
+)
+api_router.include_router(system_admin_router)
+api_router.include_router(system_public_router)
+
 
 @api_router.post("/webhook/stripe")
 async def stripe_webhook_endpoint(request: Request) -> Any:
@@ -258,6 +265,14 @@ async def startup_event() -> None:
         logger.info(f"Gather hierarchy: inserted {result['inserted']} (total {result['total_now']}).")
     except Exception as e:
         logger.error(f"Gather seed error: {e}")
+    try:
+        from utils.data_migrations import apply_pending
+        log = await apply_pending(db)
+        applied = sum(1 for r in log if r["status"] == "applied")
+        if applied:
+            logger.info(f"Data migrations: applied {applied} new migration(s).")
+    except Exception as e:
+        logger.error(f"Data migrations error: {e}")
     try:
         from utils.scheduler import start_scheduler
         start_scheduler()
