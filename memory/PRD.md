@@ -16,6 +16,12 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 44 — Resend live email key wired; Stripe activation guide
+- **Resend API key applied** (`RESEND_API_KEY=re_9As...`) and `EMAIL_DRY_RUN=false` set in `/app/backend/.env`. Backend restarted.
+- API key proven healthy via SDK sanity check (sending from `onboarding@resend.dev` to the account owner address succeeds).
+- **Domain `birthright.live` status: `failed`** on Resend — SPF (MX + TXT on `send.birthright.live`) is verified ✅; **DKIM TXT on `resend._domainkey.birthright.live` is missing from DNS**. User needs to add the single DKIM TXT record in Cloudflare; once propagated, live transactional sends will start automatically without further code changes.
+- **Stripe activation guide** written to `/app/memory/STRIPE_ACTIVATION_GUIDE.md` — covers live key, checkout webhook, Connect platform, Connect webhook, and a live $1 verification flow. Awaiting three secrets from user: `STRIPE_API_KEY` (live), `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`.
+
 ### Iter 43 — Data migration framework + admin system console
 - **`utils/data_migrations.py`** — append-only registry of idempotent data migrations. Each migration has a stable string ID, runs at most once per environment, and records its application in `db.system_migrations`.
 - **Auto-runs on backend startup** via the existing `@app.on_event("startup")` hook. New environments catch up automatically; existing environments only get net-new migrations.
