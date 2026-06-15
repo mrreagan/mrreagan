@@ -75,19 +75,43 @@ def _redact_method(method: Optional[dict]) -> Optional[dict]:
 
 @my_router.get("")
 async def my_ledger(user: dict = Depends(get_current_user)):
-    """Combined earnings ledger across all the partner's profiles."""
+    """Combined earnings ledger across all the partner's profiles.
+
+    Source of truth for on-site referrals is `db.referrals` — the richer
+    collection where the live attribution + mark-paid flow writes.
+    (`referral_payouts` is a deprecated projection kept for backward-compat;
+    it stays unused in this path but is read elsewhere for legacy data.)
+    """
     from database import db
-    referrals = await db.referral_payouts.find(
+    referrals = await db.referrals.find(
         {"partner_user_id": user["id"]}, {"_id": 0}
     ).sort("earned_at", -1).to_list(1000)
     off_site = await db.partner_off_site_credits.find(
         {"partner_user_id": user["id"]}, {"_id": 0}
     ).sort("earned_at", -1).to_list(1000)
 
-    def _to_entry(r: dict, source: str) -> dict:
+    def _entry_from_referral(r: dict) -> dict:
         return {
             "id": r["id"],
-            "source": source,
+            "source": "on_site_referral",
+            "amount_usd": float(r.get("payout_amount", 0)),
+            "status": r.get("status", "earned"),
+            "earned_at": r.get("earned_at"),
+            "paid_at": r.get("paid_at"),
+            "rev_share_pct": r.get("rev_share_pct"),
+            "gross_revenue_usd": r.get("order_total"),
+            "source_type": r.get("subject_type"),
+            "source_id": r.get("subject_id"),
+            "source_label": r.get("subject_label"),
+            "payout_method": r.get("payout_method"),
+            "payout_reference": r.get("payout_reference"),
+            "payout_note": r.get("payout_note"),
+        }
+
+    def _entry_from_off_site(r: dict) -> dict:
+        return {
+            "id": r["id"],
+            "source": "off_site_credit",
             "amount_usd": float(r.get("amount_usd", 0)),
             "status": r.get("status", "earned"),
             "earned_at": r.get("earned_at"),
@@ -96,9 +120,12 @@ async def my_ledger(user: dict = Depends(get_current_user)):
             "gross_revenue_usd": r.get("gross_revenue_usd"),
             "source_type": r.get("source_type"),
             "source_id": r.get("source_id"),
+            "payout_method": r.get("payout_method"),
+            "payout_reference": r.get("payout_reference"),
+            "payout_note": r.get("payout_note"),
         }
 
-    entries = [_to_entry(r, "on_site_referral") for r in referrals] + [_to_entry(r, "off_site_credit") for r in off_site]
+    entries = [_entry_from_referral(r) for r in referrals] + [_entry_from_off_site(r) for r in off_site]
     entries.sort(key=lambda e: e.get("earned_at") or "", reverse=True)
 
     earned = sum(e["amount_usd"] for e in entries if e["status"] == "earned")

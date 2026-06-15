@@ -24,6 +24,7 @@ from fastapi.responses import RedirectResponse
 from auth_utils import get_current_user, require_roles
 from models import PayoutMarkPaid, gen_id, now_iso
 from utils.audit import log_action
+from utils.mailer import send_email
 from utils.rev_share import resolve_rev_share
 
 logger = logging.getLogger("birthright.referrals")
@@ -329,5 +330,32 @@ async def mark_referral_paid(
         target_type="referral", target_id=referral_id,
         metadata={"amount": r["payout_amount"], "partner_user_id": r["partner_user_id"]},
     )
+
+    # Fire partner disbursement notification (best-effort — never blocks the
+    # admin action). Mirrors the off-site credits path so partners receive a
+    # consistent email regardless of which ledger the credit lived in.
+    try:
+        import os as _os
+        from utils.email_templates import disbursement_notification
+        partner = await db.users.find_one({"id": r["partner_user_id"]}, {"_id": 0})
+        if partner:
+            app_url = _os.environ.get("PUBLIC_APP_URL", "https://birthright.live")
+            subj, html, text = disbursement_notification(
+                first_name=partner.get("first_name", "there"),
+                amount=float(r.get("payout_amount") or 0),
+                method=data.method or "manual",
+                reference=(data.reference or "").strip(),
+                note=(data.note or "").strip(),
+                source="on_site_referral",
+                app_url=app_url,
+            )
+            await send_email(
+                to=partner["email"], subject=subj, html=html, text=text,
+                template_name="disbursement_notification",
+                metadata={"referral_id": referral_id, "source": "on_site_referral"},
+            )
+    except Exception as e:
+        logger.warning(f"referral disbursement email failed: {e}")
+
     updated = await db.referrals.find_one({"id": referral_id}, {"_id": 0})
     return updated

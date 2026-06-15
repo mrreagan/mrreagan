@@ -16,6 +16,13 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 47 — Manual payout flow polished + latent partner-ledger bug fixed
+- **Disbursement email now fires from BOTH mark-paid endpoints** — `/admin/referrals/{id}/mark-paid` was previously silent (only `/admin/payouts/credits/{id}/mark-paid?source=off_site_credit` notified). Both now send the same `disbursement_notification` Resend email so partners always learn about a payout the moment an admin marks it paid.
+- **Fixed latent partner-ledger bug** — `GET /api/me/payouts` was reading from `db.referral_payouts` (a legacy projection collection with 1 stale doc) while the live attribution flow writes to `db.referrals` (richer schema). Partners would have seen zero earned credits even after real referrals landed. Switched the ledger to read from `db.referrals`, mapping `payout_amount → amount_usd` for frontend compatibility.
+- **Partner ledger now exposes** `payout_method`, `payout_reference`, `payout_note` per entry — previously the API stripped them.
+- **`PartnerPayouts.jsx`** redesigned the paid row to show inline pill badges (`VIA ZELLE`, `ref ZELLE-TXN-7842-91`) plus an italic foundation note — partners can match the reference against their bank statement at a glance.
+- **End-to-end verified on preview:** synthetic $15 earned → admin POST mark-paid (method=zelle, ref=ZELLE-TXN-7842-91, note) → totals shift $125→$110 unpaid / $100→$115 paid → live Resend email sent to demo@birthright.org (resend_id `966a6da3-...`) → partner UI renders the new pill design correctly. Decouples the platform from Stripe Connect for the first artist cohort.
+
 ### Iter 46 — Stripe LIVE money flow verified end-to-end
 - **Live key applied** (`STRIPE_API_KEY=rk_live_51TgpjzQ...NESHDZ`, restricted key). Permissions probed: checkout/customers/refunds/subscriptions/products/prices all green; Stripe Connect scopes intentionally deferred (artist payouts unlock when first artist is ready).
 - **Live webhook secret applied** (`STRIPE_WEBHOOK_SECRET=whsec_Lre6z8...t7FE`).

@@ -98,7 +98,7 @@ function Ledger({ ledger }) {
             </div>
             {!isReady && (
               <p className="text-xs text-[#8B7128] max-w-xs" data-testid="payout-not-ready">
-                You're not yet ready for payout. {!ledger.w9_on_file && "W9 needed. "}{!ledger.method_on_file && "Payout method needed."}
+                You&apos;re not yet ready for payout. {!ledger.w9_on_file && "W9 needed. "}{!ledger.method_on_file && "Payout method needed."}
               </p>
             )}
             {isReady && (
@@ -119,15 +119,34 @@ function Ledger({ ledger }) {
           <div className="card p-8 text-center text-sm text-[#5C6B6B]">No earnings yet.</div>
         )}
         {ledger.entries.map((e) => (
-          <div key={`${e.source}-${e.id}`} className="card p-4 flex items-center justify-between" data-testid={`ledger-entry-${e.id}`}>
-            <div>
+          <div key={`${e.source}-${e.id}`} className="card p-4 flex items-start justify-between gap-3" data-testid={`ledger-entry-${e.id}`}>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">${e.amount_usd.toFixed(2)}{e.rev_share_pct ? ` · ${e.rev_share_pct}%` : ""}</p>
               <p className="text-xs text-[#5C6B6B]">
                 {e.source === "on_site_referral" ? "On-site referral" : "Off-site sales credit"} · earned {new Date(e.earned_at).toLocaleDateString()}
                 {e.paid_at && ` · paid ${new Date(e.paid_at).toLocaleDateString()}`}
               </p>
+              {e.status === "paid" && (e.payout_method || e.payout_reference) && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wider" data-testid={`paid-detail-${e.id}`}>
+                  {e.payout_method && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-[#F2EFE8] text-[#2E5C46] border border-[#D7CFB8]">
+                      via {e.payout_method}
+                    </span>
+                  )}
+                  {e.payout_reference && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-white text-[#1A2424] border border-[#E5E1D8] font-mono normal-case tracking-normal">
+                      ref&nbsp;{e.payout_reference}
+                    </span>
+                  )}
+                </div>
+              )}
+              {e.status === "paid" && e.payout_note && (
+                <p className="text-[11px] text-[#5C6B6B] italic mt-1.5 leading-snug" data-testid={`paid-note-${e.id}`}>
+                  {e.payout_note}
+                </p>
+              )}
             </div>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium ${e.status === "paid" ? "bg-[#2E5C46] text-white" : "bg-[#C9A961] text-[#1A2424]"}`}>{e.status}</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium shrink-0 ${e.status === "paid" ? "bg-[#2E5C46] text-white" : "bg-[#C9A961] text-[#1A2424]"}`}>{e.status}</span>
           </div>
         ))}
       </div>
