@@ -26,7 +26,7 @@
     {
       "id": "patches",
       "tags": ["patch", "patches", "leather", "engraved", "engraving", "merch", "buy patch", "founder collection", "7cs", "7c's", "farmstead"],
-      "patterns": ["where can i buy patches", "the patches", "leather patches", "engraved patches", "founder patches"],
+      "patterns": ["where can i buy patches", "the patches", "leather patches", "engraved patches", "founder patches", "founder collection patches", "founder collection", "where are the patches", "find the patches", "what do the patches cost", "patch prices", "patches price"],
       "answer": "The five leather-engraved patches live in the Founder Collection at /equip. They're hand-engraved to order by 7C's Farmstead in 2–4 weeks. Each patch is $10 plus shipping. You can also buy the full set of five as a bundle for $40 (saves $10 versus buying each individually). Click any patch card and tap 'Buy on 7C's Farmstead →' to order direct from the artisan.",
       "follow_up_label": "Want a direct link to the patches?"
     },
@@ -176,6 +176,41 @@
       "patterns": ["give me a tour", "where do i start", "first time here", "show me around", "what should i look at"],
       "answer": "Quick tour: /practice is where you'll find workshops and the on-demand library. /research holds practitioner briefs and peer-reviewed papers. /gallery is the artist economy — paintings, photography, mixed media — every purchase carries a 20% Foundation patronage. /equip is the storefront, including the Founder Collection patches. /join is how you become a Founding Member.",
       "follow_up_label": "Want a deeper tour of any one of those?"
+    },
+    {
+      "id": "leadership-executive-director",
+      "tags": ["executive director", "ed", "director", "james", "reagan", "founder", "lead", "leads", "leader", "who runs", "who runs this", "who leads", "in charge"],
+      "patterns": ["who is the executive director", "who's the executive director", "who runs birthright", "who leads birthright", "who's in charge", "who is james", "who is james reagan", "executive director of birthright", "tell me about james"],
+      "answer": "James Reagan is the executive director of the Birthright Foundation — he leads operations and partnerships and is a long-time advocate of attachment-informed community work. You can read his bio alongside the rest of the governing team at /lead.",
+      "follow_up_label": "Want me to take you to the leadership page?"
+    },
+    {
+      "id": "leadership-team",
+      "tags": ["leadership", "team", "governing", "board", "who", "members", "directors", "board chair", "advisors"],
+      "patterns": ["who is on the team", "who's on the team", "leadership team", "governing members", "board members", "who runs the foundation", "who is the board chair", "tell me about the leadership"],
+      "answer": "The Foundation is led by four governing members: Dr. Aurelia Mendez (Board Chair & Co-Founder), James Reagan (Executive Director), Reverend Tomas Ifeanyi (Director of Community Stewardship), and Dr. Hannah Lin (Research Advisor). Full bios live at /lead.",
+      "follow_up_label": "Want me to point you at any one of their bios?"
+    },
+    {
+      "id": "what-is-birthright",
+      "tags": ["what is birthright", "what's birthright", "about", "mission", "purpose", "explain", "describe", "foundation"],
+      "patterns": ["what is birthright", "what's birthright", "what does birthright do", "what is the foundation", "tell me about birthright", "what's the mission", "what is your mission", "explain birthright"],
+      "answer": "birthright is an educational foundation built on one conviction: secure bonds are everyone's birthright. We publish practitioner research, run small in-person and online workshops on attachment-informed relating, support an artist economy of partners producing aligned goods and creative work, and host a community of facilitators, researchers, vendors, and stewards. The full mission and education structure live at /about.",
+      "follow_up_label": "Want a tour of any specific part?"
+    },
+    {
+      "id": "partner-apply",
+      "tags": ["apply", "application", "become a partner", "join birthright", "partner signup", "applying"],
+      "patterns": ["how do i apply", "apply to be a partner", "become a partner", "partner application", "how do i become a partner", "want to be a partner", "vendor application", "facilitator application", "join as a partner"],
+      "answer": "Anyone can apply to become a birthright partner — we have six tracks: Vendor, Community, Research, Facilitator, Artist, and Steward. Start at /partner/apply, tell us which track fits your work, and a steward will follow up within a few days. You can see live examples of each track at /partner and the type comparison + tier structure at /partner/types.",
+      "follow_up_label": "Want me to open the application?"
+    },
+    {
+      "id": "partner-types",
+      "tags": ["partner tracks", "kinds of partners", "different partner tracks", "categories"],
+      "patterns": ["what kinds of partners are there", "what are the partner tracks", "different tracks of partners", "compare partner tracks", "partner type comparison"],
+      "answer": "There are six partner tracks at birthright: Vendor (makers, goods, services), Community (groups, congregations, podcasts amplifying the work), Research (briefs and longitudinal studies), Facilitator (workshop-leading practitioners), Artist (visual and creative work), and Steward (mentors and witnesses in established circles). Full comparison + tier structure lives at /partner/types.",
+      "follow_up_label": "Want me to take you to the comparison page?"
     }
   ]
 }

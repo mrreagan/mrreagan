@@ -38,6 +38,7 @@ from pydantic import BaseModel, Field
 from auth_utils import get_current_user_optional
 from models import gen_id, now_iso
 from utils.ai_billing import record_usage
+from utils.help_context import get_platform_context
 
 load_dotenv()
 logger = logging.getLogger("birthright.help")
@@ -86,6 +87,15 @@ _STOP = {
     "my", "your", "our", "their", "this", "that", "these", "those", "but",
     "if", "then", "so", "what", "how", "why", "where", "when", "who",
     "can", "could", "should", "would", "will", "may", "might",
+    # Question-prefix / filler words — high frequency but topic-empty.
+    # Without these, "tell me about <X>" generically lights up any KB
+    # entry whose pattern happens to start with "tell me about …".
+    "tell", "me", "about", "please", "show", "give", "find", "know",
+    "want", "wanna", "need", "looking", "look", "let", "us", "really",
+    "just", "also", "thanks", "thank", "hi", "hey", "hello", "ok",
+    "okay", "sure", "anyone", "someone", "any", "some", "more", "less",
+    "really", "actually", "from", "by", "into", "out", "over",
+    "info", "information", "more",
 }
 
 
@@ -113,11 +123,18 @@ def _score_entry(qtoks: set[str], entry: dict, q_lower: str) -> float:
         if len(pat.split()) >= 2 and pat in q_lower:
             return 0.95
 
+    # Token-overlap scoring against tags + patterns ONLY (NOT the answer
+    # text). Answer text introduces too many incidental tokens — e.g. the
+    # partner-apply answer happens to contain "research" and "work", which
+    # would falsely light up for "which research partner does longitudinal
+    # work?" even though the entry has nothing to say about that. Keeping
+    # the corpus to authored signals (tags + patterns) yields a much more
+    # predictable matcher; uncovered questions fall through to LLM where
+    # PLATFORM CONTEXT can answer specifically.
     blob = " ".join([
         " ".join(entry.get("tags", [])),
         " ".join(entry.get("patterns", [])),
         " ".join(entry.get("patterns", [])),         # patterns weighted ×2
-        entry.get("answer", "")[:300],
     ])
     et = _tokens(blob)
     if not et:
@@ -248,19 +265,39 @@ async def chat(body: ChatIn,
     snippet_block = "\n".join(
         f"[{i+1}] {e['id']}: {e['answer']}" for i, e in enumerate(snippets)
     ) or "(none)"
+    platform_context = await get_platform_context(db)
     sys_prompt = (
-        "You are birthright Help — a warm, plainspoken AI support agent for "
-        "birthright.live, a Foundation that publishes practitioner research, "
-        "runs workshops, and supports an artist economy.\n\n"
-        f"VOICE: {voice.get('tone', 'warm, plainspoken')}\n"
+        "You are birthright Help — a knowledgeable, warm, plainspoken AI agent "
+        "for birthright.live, a Foundation that publishes practitioner research, "
+        "runs workshops, supports an artist economy, and operates a member "
+        "platform.\n\n"
+        f"VOICE: {voice.get('tone', 'warm, plainspoken')}\n\n"
+        "PRIMARY DIRECTIVE: Answer with confidence using the PLATFORM CONTEXT "
+        "and KB SNIPPETS below. Almost every question about the foundation, "
+        "its people, its programs, its products, its research, or its "
+        "site structure can be answered directly from this context. Do not "
+        "defer to a human for questions whose answer is in the context.\n\n"
+        "WHEN TO ESCALATE TO HUMANS: Only suggest contacting the team "
+        "(support@birthright.live) when the question is about the user's "
+        "specific account — a billing dispute, a refund request on their "
+        "order, a stuck payout, or a request to delete their data. For "
+        "everything else (who runs birthright, what is birthright, where do "
+        "I find X, how much is Y, who is the executive director, what "
+        "research has been published, etc.) answer directly.\n\n"
         "RULES:\n"
-        "- Answer in 2–4 short sentences. No fluff.\n"
-        "- If the answer lives in the KB snippets below, use that wording.\n"
-        "- If you don't know, say so and offer to flag a human "
-        "(support@birthright.live).\n"
-        "- End with one short follow-up question like 'Did that answer your question?'\n"
-        "- Never make up URLs, prices, or policies.\n\n"
-        f"KB SNIPPETS:\n{snippet_block}"
+        "- Answer in 2–5 short sentences. Plain prose, no markdown headers.\n"
+        "- When referring to a partner, product, or page, ALWAYS use the "
+        "EXACT path as it appears in PLATFORM CONTEXT (e.g. /partner/sample-rosa-mendieta, "
+        "not /partner/rosa-mendieta). Slugs are literal — never edit or shorten them.\n"
+        "- Use the exact names, prices, and titles from PLATFORM CONTEXT — "
+        "never paraphrase a price or change a person's title.\n"
+        "- If a question is genuinely outside the context AND outside obvious "
+        "platform topics (e.g., a philosophical or medical question), say so "
+        "briefly and offer to flag a human.\n"
+        "- End with one short follow-up like 'Want me to point you there?' "
+        "ONLY if it adds value — not on every turn.\n\n"
+        f"PLATFORM CONTEXT (live from the database):\n{platform_context}\n\n"
+        f"KB SNIPPETS (highest-rank matches for this question):\n{snippet_block}"
     )
 
     # Pull short conversation history for context.
