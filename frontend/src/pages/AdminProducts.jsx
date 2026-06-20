@@ -9,6 +9,7 @@ const EMPTY = {
   name: "",
   description: "",
   price: "",
+  wholesale_price: "",
   type: "merch",
   workshop_id: "",
   image_url: "",
@@ -83,6 +84,7 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         ...EMPTY,
         ...(initial || {}),
         price: initial?.price ?? "",
+        wholesale_price: initial?.wholesale_price ?? "",
         workshop_id: initial?.workshop_id ?? "",
         collection: initial?.collection ?? "",
         max_per_order: initial?.max_per_order ?? "",
@@ -129,6 +131,9 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
       name: form.name.trim(),
       description: form.description.trim(),
       price: parseFloat(form.price),
+      wholesale_price: form.wholesale_price === "" || form.wholesale_price == null
+        ? null
+        : parseFloat(form.wholesale_price),
       type: form.type,
       workshop_id: form.type === "workshop_material" ? form.workshop_id || null : null,
       image_url: form.image_url.trim(),
@@ -143,6 +148,10 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         ? null
         : Math.max(1, Math.min(3, parseInt(form.carousel_rank, 10))),
     };
+    if (payload.wholesale_price !== null && payload.wholesale_price > payload.price) {
+      toast.error("Wholesale price cannot exceed retail price");
+      return;
+    }
     setSaving(true);
     try {
       if (isEdit) {
@@ -151,6 +160,7 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
           name: payload.name,
           description: payload.description,
           price: payload.price,
+          wholesale_price: payload.wholesale_price,
           image_url: payload.image_url,
           inventory: payload.inventory,
           category: payload.category,
@@ -225,6 +235,19 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
             />
           </label>
           <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">
+            Wholesale price <span className="normal-case text-[10px] text-[#5C6B6B]">(foundation members — optional)</span>
+            <input
+              type="number" step="0.01" min="0"
+              className="input-field mt-1"
+              value={form.wholesale_price}
+              onChange={(e) => update("wholesale_price", e.target.value)}
+              data-testid="admin-product-form-wholesale-price"
+              placeholder="leave blank = retail"
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">
             Inventory
             <input
               type="number" min="0"
@@ -234,9 +257,6 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
               data-testid="admin-product-form-inventory"
             />
           </label>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
           <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">
             Type
             <select
@@ -250,6 +270,9 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
               <option value="workshop_material">Workshop material</option>
             </select>
           </label>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">
             Category
             <select

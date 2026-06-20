@@ -162,6 +162,10 @@ class ProductCreate(BaseModel):
     # NOT featured in the carousel (it still appears in the full /equip/
     # collection/founder grid). Up to 3 products at a time.
     carousel_rank: Optional[int] = None
+    # Foundation-member wholesale price (board members, paid staff, etc. —
+    # anyone with user.is_foundation = True). When None, foundation members
+    # see the retail `price` like everyone else. Always strictly ≤ retail.
+    wholesale_price: Optional[float] = None
 
 
 class Product(ProductCreate):
@@ -180,6 +184,7 @@ class ProductUpdate(BaseModel):
     max_per_order: Optional[int] = None
     is_homepage_feature: Optional[bool] = None
     carousel_rank: Optional[int] = None
+    wholesale_price: Optional[float] = None
 
 
 # ============ VENDOR CATALOG (Phase 6B.4) ============

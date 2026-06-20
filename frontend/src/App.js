@@ -37,6 +37,8 @@ import Facilitators from "./pages/Facilitators";
 import FacilitatorProfile from "./pages/FacilitatorProfile";
 import FacilitatorDashboard from "./pages/FacilitatorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminHub from "./pages/AdminHub";
+import AdminUsers from "./pages/AdminUsers";
 import AdminProducts from "./pages/AdminProducts";
 import AdminStudio from "./pages/AdminStudio";
 import AdminStudioQueue from "./pages/AdminStudioQueue";
@@ -282,7 +284,23 @@ function AppRoutes() {
         path="/admin"
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminHub />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/stats"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminUsers />
           </ProtectedRoute>
         }
       />

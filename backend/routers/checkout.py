@@ -169,18 +169,32 @@ async def _validate_cart_and_total(db, items, user) -> tuple[float, list, bool]:
             needs_shipping = True
         await _enforce_material_gating(db, p, user)
         qty = max(1, int(item.quantity))
-        line_total = float(p["price"]) * qty
-        markup = gallery_markup_for(p) * qty
+        # Foundation-member wholesale pricing — applies to users with
+        # `is_foundation = True` (board members, paid staff). Only honored when
+        # the product has an explicit `wholesale_price` set in admin; otherwise
+        # foundation members pay retail like everyone else.
+        is_foundation = bool(user and user.get("is_foundation"))
+        wholesale = p.get("wholesale_price")
+        if is_foundation and isinstance(wholesale, (int, float)) and wholesale > 0 and wholesale <= p["price"]:
+            unit_price = float(wholesale)
+        else:
+            unit_price = float(p["price"])
+        line_total = unit_price * qty
+        # Gallery foundation markup is a separate concept (patronage on top
+        # of the artist's price). Foundation members don't pay that either.
+        markup = (gallery_markup_for(p) * qty) if not is_foundation else 0.0
         total += line_total + markup
         line_items.append({
             "product_id": p["id"],
             "name": p["name"],
-            "price": p["price"],
+            "price": unit_price,
+            "retail_price": float(p["price"]),
+            "wholesale_applied": unit_price < float(p["price"]),
             "quantity": qty,
             "is_gallery_artwork": bool(p.get("is_gallery_artwork")),
             "gallery_artist_user_id": p.get("gallery_artist_user_id"),
             "gallery_artist_name": p.get("gallery_artist_name"),
-            "foundation_markup_per_unit": round(gallery_markup_for(p), 2),
+            "foundation_markup_per_unit": round(markup / max(1, qty), 2),
         })
     return round(total, 2), line_items, needs_shipping
 

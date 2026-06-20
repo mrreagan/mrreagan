@@ -56,7 +56,7 @@ LOW_BALANCE_WARN_USD = float(os.environ.get("AI_LOW_BALANCE_WARN", "1.00"))
 TOPUP_PACKS_USD = [10, 25, 50, 100]
 
 
-def compute_cost(model: str, *, tokens_in: int = 0, tokens_out: int = 0, images: int = 0) -> float:
+def compute_cost(model: str, *, tokens_in: int = 0, tokens_out: int = 0, images: int = 0, multiplier: Optional[float] = None) -> float:
     p = PRICE_TABLE.get(model)
     if not p:
         # Unknown model: bill nothing, but log so we know to add it.
@@ -68,7 +68,7 @@ def compute_cost(model: str, *, tokens_in: int = 0, tokens_out: int = 0, images:
         cost += (tokens_out / 1_000_000.0) * p["output_per_mtok"]
     if "per_image" in p:
         cost += images * p["per_image"]
-    cost *= PRICE_MULTIPLIER
+    cost *= (multiplier if multiplier is not None else PRICE_MULTIPLIER)
     return round(cost, 6)
 
 
@@ -131,8 +131,15 @@ async def record_usage(
     images: int = 0,
     meta: Optional[dict] = None,
 ) -> dict:
-    """Compute cost, debit wallet, write a usage event. Returns the event dict."""
-    cost_usd = compute_cost(model, tokens_in=tokens_in, tokens_out=tokens_out, images=images)
+    """Compute cost, debit wallet, write a usage event. Returns the event dict.
+
+    Foundation members (user.is_foundation = True) are billed at 1:1 passthrough
+    (no Foundation markup) — the AI work IS the Foundation, so charging itself
+    a markup would be silly.
+    """
+    is_foundation = bool(user and user.get("is_foundation"))
+    multiplier = 1.0 if is_foundation else PRICE_MULTIPLIER
+    cost_usd = compute_cost(model, tokens_in=tokens_in, tokens_out=tokens_out, images=images, multiplier=multiplier)
     event = {
         "id": gen_id(),
         "user_id": user["id"] if user else None,

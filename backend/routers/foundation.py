@@ -312,6 +312,31 @@ async def list_users(user: dict = Depends(require_roles("admin"))):
     return users
 
 
+@router.patch("/admin/users/{user_id}/foundation-status")
+async def set_user_foundation_status(
+    user_id: str,
+    payload: dict,
+    admin: dict = Depends(require_roles("admin")),
+):
+    """Toggle the `is_foundation` flag on a user record.
+
+    Foundation members (board, paid staff, governing officers) get:
+      - Wholesale pricing on equip products that have a `wholesale_price` set
+      - 1:1 passthrough on AI wallet usage (no Foundation markup)
+      - No patronage markup added on gallery purchases
+    """
+    from database import db
+    is_foundation = bool(payload.get("is_foundation"))
+    target = await db.users.find_one({"id": user_id}, {"_id": 0, "email": 1, "first_name": 1, "is_foundation": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="user not found")
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"is_foundation": is_foundation, "updated_at": now_iso()}},
+    )
+    return {"user_id": user_id, "email": target.get("email"), "is_foundation": is_foundation}
+
+
 @router.get("/admin/email-log")
 async def email_log(user: dict = Depends(require_roles("admin")), limit: int = 100):
     """Combined view of dry-run-queued + actually-sent emails for inspection."""
