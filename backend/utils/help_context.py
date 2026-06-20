@@ -63,12 +63,25 @@ async def _collect(db) -> str:
     # ─── Leadership / governing members ────────────────────────────────
     members = await db.governing_members.find({}, {"_id": 0}).sort("order", 1).to_list(20)
     if members:
-        sections.append("LEADERSHIP (governing members — see /lead):")
-        for m in members:
+        real = [m for m in members if not m.get("is_sample")]
+        samples = [m for m in members if m.get("is_sample")]
+        sections.append("LEADERSHIP — actual current officers (see /lead):")
+        for m in real:
             line = f"  - {m.get('name')} — {m.get('title','')}"
             if m.get("bio"):
                 line += f". {_truncate(m['bio'], 220)}"
             sections.append(line)
+        if samples:
+            sections.append("")
+            sections.append(
+                "LEADERSHIP — placeholder/sample bios (NOT real officers; "
+                "shown on /lead as illustrations of roles the foundation is "
+                "building toward — never present these as actual people):"
+            )
+            for m in samples:
+                sections.append(
+                    f"  - [SAMPLE] {m.get('name')} — {m.get('title','')}"
+                )
         sections.append("")
 
     # ─── Active partner network ────────────────────────────────────────

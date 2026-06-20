@@ -36,9 +36,9 @@ export default function Governance() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="label text-[#8B7128]">{openRoles.length} open {openRoles.length === 1 ? "seat" : "seats"}</p>
-              <p className="font-serif text-xl mt-1">We're seeking founding leadership for the foundation.</p>
+              <p className="font-serif text-xl mt-1">We&apos;re seeking founding leadership for the foundation.</p>
               <p className="text-sm text-[#5C6B6B] mt-2">
-                The cards below marked <em>"Sample — role we're seeking to fill"</em> are currently open positions.
+                The cards below marked <em>&ldquo;Sample — role we&apos;re seeking to fill&rdquo;</em> are currently open positions.
               </p>
             </div>
             <Link to="/join" className="btn-primary inline-flex items-center gap-2" data-testid="banner-view-roles">
@@ -52,23 +52,26 @@ export default function Governance() {
         {members.map((m) => {
           const role = memberRoleMap[m.id];
           const isOpen = Boolean(role);
+          const isSample = Boolean(m.is_sample);
+          const showRibbon = isOpen || isSample;
+          const dimImage = isOpen || isSample;
           return (
             <div
               key={m.id}
               className={`card overflow-hidden flex flex-col sm:flex-row relative ${isOpen ? "ring-2 ring-[#C9A961]/40" : ""}`}
               data-testid={`member-${m.id}`}
             >
-              {isOpen && (
+              {showRibbon && (
                 <span
                   className="absolute top-3 left-3 z-10 inline-flex items-center px-3 py-1 rounded-full text-[9px] uppercase tracking-wider font-semibold bg-[#C9A961] text-[#1A2424] shadow-sm"
                   data-testid={`sample-ribbon-${m.id}`}
                 >
-                  Sample — role we're seeking to fill
+                  {isOpen ? "Sample — role we're seeking to fill" : "Sample bio — role not yet filled"}
                 </span>
               )}
               {m.image_url && (
                 <div className="sm:w-48 shrink-0 bg-[#E5E1D8]">
-                  <img src={m.image_url} alt={m.name} className={`w-full h-full object-cover aspect-square ${isOpen ? "opacity-70" : ""}`} />
+                  <img src={m.image_url} alt={m.name} className={`w-full h-full object-cover aspect-square ${dimImage ? "opacity-70" : ""}`} />
                 </div>
               )}
               <div className="p-6 flex-1">
@@ -77,7 +80,7 @@ export default function Governance() {
                 {isOpen ? (
                   <>
                     <p className="text-sm text-[#5C6B6B] mt-3 leading-relaxed italic">
-                      We're looking for someone like this: {m.bio}
+                      We&apos;re looking for someone like this: {m.bio}
                     </p>
                     <Link
                       to={`/join/${role.slug}`}
@@ -87,6 +90,11 @@ export default function Governance() {
                       Apply for this role <ArrowRight size={12} strokeWidth={1.5} />
                     </Link>
                   </>
+                ) : isSample ? (
+                  <p className="text-sm text-[#5C6B6B] mt-3 leading-relaxed italic">
+                    Illustrative bio. This seat isn&apos;t filled yet — the foundation
+                    is actively building toward it.
+                  </p>
                 ) : (
                   <p className="text-sm text-[#5C6B6B] mt-3 leading-relaxed">{m.bio}</p>
                 )}

@@ -181,15 +181,15 @@
       "id": "leadership-executive-director",
       "tags": ["executive director", "ed", "director", "james", "reagan", "founder", "lead", "leads", "leader", "who runs", "who runs this", "who leads", "in charge"],
       "patterns": ["who is the executive director", "who's the executive director", "who runs birthright", "who leads birthright", "who's in charge", "who is james", "who is james reagan", "executive director of birthright", "tell me about james"],
-      "answer": "James Reagan is the executive director of the Birthright Foundation — he leads operations and partnerships and is a long-time advocate of attachment-informed community work. You can read his bio alongside the rest of the governing team at /lead.",
+      "answer": "James Reagan is the executive director of the Birthright Foundation — he leads operations and partnerships and is a long-time advocate of attachment-informed community work. He's currently the foundation's only standing officer; the /lead page also shows three placeholder bios illustrating the seats the foundation is actively building toward.",
       "follow_up_label": "Want me to take you to the leadership page?"
     },
     {
       "id": "leadership-team",
-      "tags": ["leadership", "team", "governing", "board", "who", "members", "directors", "board chair", "advisors"],
-      "patterns": ["who is on the team", "who's on the team", "leadership team", "governing members", "board members", "who runs the foundation", "who is the board chair", "tell me about the leadership"],
-      "answer": "The Foundation is led by four governing members: Dr. Aurelia Mendez (Board Chair & Co-Founder), James Reagan (Executive Director), Reverend Tomas Ifeanyi (Director of Community Stewardship), and Dr. Hannah Lin (Research Advisor). Full bios live at /lead.",
-      "follow_up_label": "Want me to point you at any one of their bios?"
+      "tags": ["leadership", "team", "governing", "board", "who", "members", "directors", "board chair", "advisors", "officers"],
+      "patterns": ["who is on the team", "who's on the team", "leadership team", "governing members", "board members", "who runs the foundation", "who is the board chair", "tell me about the leadership", "who are the officers"],
+      "answer": "James Reagan is the current executive director and the foundation's standing officer. The /lead page also shows three placeholder bios (Board Chair, Director of Community Stewardship, Research Advisor) that illustrate the seats the foundation is actively building toward — those positions aren't filled yet. As the board fills out, real bios replace the placeholders.",
+      "follow_up_label": "Want me to take you to the leadership page?"
     },
     {
       "id": "what-is-birthright",
