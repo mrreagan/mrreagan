@@ -179,8 +179,8 @@ function FeaturedCard({ product }) {
       >
         <img
           src={product.image_url}
-          alt={product.name}
-          className="w-full h-full object-contain"
+          alt={product.image_caption || product.name}
+          className="w-full h-full object-cover"
         />
       </Link>
       <div className="p-5 sm:p-6 flex flex-col">

@@ -13,6 +13,7 @@ const EMPTY = {
   type: "merch",
   workshop_id: "",
   image_url: "",
+  additional_images_text: "",
   inventory: 50,
   category: "general",
   collection: "",
@@ -90,6 +91,9 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         max_per_order: initial?.max_per_order ?? "",
         is_homepage_feature: !!initial?.is_homepage_feature,
         carousel_rank: initial?.carousel_rank ?? "",
+        additional_images_text: Array.isArray(initial?.additional_images)
+          ? initial.additional_images.join("\n")
+          : "",
       });
       setRegenPrompt(initial?.description || "");
     }
@@ -137,6 +141,10 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
       type: form.type,
       workshop_id: form.type === "workshop_material" ? form.workshop_id || null : null,
       image_url: form.image_url.trim(),
+      additional_images: (form.additional_images_text || "")
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean),
       inventory: parseInt(form.inventory, 10) || 0,
       category: form.category || "general",
       collection: form.collection?.trim() || null,
@@ -162,6 +170,7 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
           price: payload.price,
           wholesale_price: payload.wholesale_price,
           image_url: payload.image_url,
+          additional_images: payload.additional_images,
           inventory: payload.inventory,
           category: payload.category,
           collection: payload.collection,
@@ -382,6 +391,37 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         {form.image_url && (
           <div className="w-full aspect-square max-w-[200px] bg-[#FAF8F5] rounded overflow-hidden border border-[#E5E1D8]">
             <img src={form.image_url} alt="preview" className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">
+          Additional image URLs
+          <span className="block text-[11px] text-[#5C6B6B] mt-1 normal-case tracking-normal">
+            One URL per line. These appear as thumbnails on the product detail page so buyers can see angles the hero shot can't — e.g., the flame stamped inside a mug.
+          </span>
+          <textarea
+            className="input-field mt-2 min-h-[80px] text-sm font-mono"
+            value={form.additional_images_text}
+            onChange={(e) => update("additional_images_text", e.target.value)}
+            placeholder={"https://...image-2.jpg\nhttps://...image-3.jpg"}
+            data-testid="admin-product-form-additional-images"
+          />
+        </label>
+        {form.additional_images_text && (
+          <div className="flex gap-2 flex-wrap">
+            {form.additional_images_text
+              .split(/\r?\n/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((url, i) => (
+                <div
+                  key={`${url}-${i}`}
+                  className="w-16 h-16 bg-[#FAF8F5] rounded overflow-hidden border border-[#E5E1D8]"
+                  data-testid={`admin-product-form-additional-preview-${i}`}
+                >
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                </div>
+              ))}
           </div>
         )}
 

@@ -88,7 +88,7 @@ export function ProductCard({ product }) {
   return (
     <div className="card card-hover overflow-hidden flex flex-col" data-testid={`product-card-${product.id}`}>
       <Link to={`/equip/${product.id}`} className="block aspect-square bg-[#F4F1EA] overflow-hidden">
-        <img src={product.image_url} alt={product.name} className="w-full h-full object-contain p-2" />
+        <img src={product.image_url} alt={product.image_caption || product.name} className="w-full h-full object-cover" />
       </Link>
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-2">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { useCart } from "../contexts/CartContext";
@@ -11,13 +11,25 @@ export default function ProductDetail() {
   const { id } = useParams();
   const [p, setP] = useState(null);
   const [qty, setQty] = useState(1);
+  const [activeIdx, setActiveIdx] = useState(0);
   const { addItem } = useCart();
 
   useEffect(() => {
-    api.get(`/products/${id}`).then((r) => setP(r.data)).catch(() => {});
+    api.get(`/products/${id}`).then((r) => { setP(r.data); setActiveIdx(0); }).catch(() => {});
   }, [id]);
 
+  // Combined gallery: hero image first, then any additional angles. We dedupe
+  // empty strings so partially-filled admin entries don't create blank tiles.
+  const gallery = useMemo(() => {
+    if (!p) return [];
+    const extras = Array.isArray(p.additional_images) ? p.additional_images : [];
+    return [p.image_url, ...extras].filter((u) => typeof u === "string" && u.trim().length > 0);
+  }, [p]);
+
   if (!p) return <div className="container-page py-20" data-testid="product-loading">Loading...</div>;
+
+  const heroSrc = gallery[activeIdx] || p.image_url;
+  const heroAlt = p.image_caption || p.name;
 
   return (
     <div className="container-page py-12" data-testid="product-detail-page">
@@ -25,8 +37,33 @@ export default function ProductDetail() {
         <ArrowLeft size={14} strokeWidth={1.5} /> Back to Equip
       </Link>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        <div className="card overflow-hidden aspect-[4/3] bg-[#F4F1EA] flex items-center justify-center" data-testid="product-image-wrap">
-          <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
+        <div data-testid="product-image-wrap">
+          <div className="card overflow-hidden aspect-square bg-[#F4F1EA]">
+            <img
+              src={heroSrc}
+              alt={heroAlt}
+              className="w-full h-full object-cover"
+              data-testid="product-hero-image"
+            />
+          </div>
+          {gallery.length > 1 && (
+            <div className="mt-3 flex gap-2 flex-wrap" data-testid="product-gallery-thumbs">
+              {gallery.map((src, i) => (
+                <button
+                  key={`${src}-${i}`}
+                  type="button"
+                  onClick={() => setActiveIdx(i)}
+                  className={`w-16 h-16 rounded-md overflow-hidden border-2 transition ${
+                    i === activeIdx ? "border-[#476B6B]" : "border-transparent hover:border-[#C9A961]"
+                  }`}
+                  data-testid={`product-gallery-thumb-${i}`}
+                  aria-label={`View image ${i + 1} of ${gallery.length}`}
+                >
+                  <img src={src} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div>
           {p.type === "workshop_material" && (

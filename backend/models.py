@@ -137,6 +137,11 @@ class ProductCreate(BaseModel):
     type: Literal["merch", "workshop_material"]
     workshop_id: Optional[str] = None
     image_url: Optional[str] = ""
+    # Extra angles / detail shots for the product detail gallery. The first
+    # image_url is always the hero; these render as clickable thumbnails so
+    # buyers can see details mentioned in the description that the hero shot
+    # can't show (e.g., a flame stamped inside a mug).
+    additional_images: List[str] = Field(default_factory=list)
     inventory: int = 100
     category: Optional[str] = "general"
     # Vendor catalog (Phase 6B.4)
@@ -178,6 +183,7 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     image_url: Optional[str] = None
+    additional_images: Optional[List[str]] = None
     inventory: Optional[int] = None
     category: Optional[str] = None
     collection: Optional[str] = None

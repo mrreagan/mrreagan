@@ -15,6 +15,19 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 52 — Full-frame product images + multi-image gallery (Feb 2026)
+- **Problem**: Equip grid + product detail were rendering `object-contain` with white letterbox bars on top/bottom/sides; descriptions referenced details (e.g., "flame stamped on the base") that the single hero shot couldn't show.
+- **Fix**:
+  - `ProductCard` (Equip grid) → `object-cover`, removed `p-2` padding. Cards now full-bleed.
+  - `ProductDetail` hero → square aspect, `object-cover`. No bars.
+  - `FounderCollectionRail` `FeaturedCard` → `object-cover`.
+  - Backend: `additional_images: List[str]` added to `ProductCreate` + `ProductUpdate`.
+  - `ProductDetail` shows main image with clickable thumbnail strip when extras exist (testids: `product-hero-image`, `product-gallery-thumbs`, `product-gallery-thumb-{i}`).
+  - `AdminProducts` drawer gains an "Additional image URLs" textarea (one URL per line) + preview row (testid: `admin-product-form-additional-images`).
+  - `alt` attribute now uses `image_caption` (AI vision) with name fallback for SEO/a11y.
+- Verified end-to-end: PUT `additional_images` on `Secure Bonds Mug` → 3 thumbnails rendered → clicking swapped hero. Reset to `[]` after test.
+
+
 
 ### Iter 51 — Auto-recaption on image swap (Option 2)
 - New `schedule_caption_if_image_changed(db, collection, id, old, new)` helper in `utils/image_caption_agent.py`. Fire-and-forget — caller returns instantly; vision call runs in the background; help-context cache invalidates the moment the new caption lands.
