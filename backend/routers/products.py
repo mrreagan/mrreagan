@@ -242,46 +242,22 @@ async def regenerate_image(
     if not api_key:
         raise HTTPException(status_code=500, detail="EMERGENT_LLM_KEY not configured")
 
-    try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image library unavailable: {e}")
-
     slug = product.get("slug") or _slugify(product["name"])
     # Append a short stable suffix from product.id so two products with the same
     # name-derived slug don't overwrite each other's PNGs on disk.
     file_stem = f"{slug}-{product['id'][:8]}" if not product.get("slug") else slug
-    full_prompt = (
-        data.prompt.strip()
-        + " Brand palette: muted teal #476B6B, gold #C9A961, cream #FAF8F5. "
-        "Square 1:1. Editorial product photography on warm cream linen, soft natural light. "
-        "No printed brand name, no logo text, no human faces, no watermark."
-    )
 
     try:
-        chat = (
-            LlmChat(
-                api_key=api_key,
-                session_id=f"regen-{product_id}",
-                system_message="You generate clean editorial e-commerce product mockup photography.",
-            )
-            .with_model("gemini", "gemini-3.1-flash-image-preview")
-            .with_params(modalities=["image", "text"])
+        from utils.image_generator import generate_product_image
+        new_url = await generate_product_image(
+            prompt=data.prompt,
+            file_stem=file_stem,
+            session_id=f"regen-{product_id}",
         )
-        _, images = await chat.send_message_multimodal_response(UserMessage(text=full_prompt))
-        if not images:
-            raise HTTPException(status_code=502, detail="No image returned from generator")
-        static_dir = Path(__file__).resolve().parent.parent / "static" / "products"
-        static_dir.mkdir(parents=True, exist_ok=True)
-        out = static_dir / f"{file_stem}.png"
-        out.write_bytes(base64.b64decode(images[0]["data"]))
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"image regen failed for {product_id}: {e}")
         raise HTTPException(status_code=502, detail=f"Image generation failed: {e}")
 
-    new_url = f"/api/static/products/{file_stem}.png"
     await db.products.update_one(
         {"id": product_id},
         {"$set": {"image_url": new_url, "slug": slug}},

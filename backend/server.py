@@ -220,6 +220,8 @@ api_router.include_router(system_public_router)
 
 from routers.image_captions import router as image_captions_router  # noqa: E402
 api_router.include_router(image_captions_router)
+from routers.image_queue import router as image_queue_router  # noqa: E402
+api_router.include_router(image_queue_router)
 
 
 @api_router.post("/webhook/stripe")

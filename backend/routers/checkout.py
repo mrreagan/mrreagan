@@ -160,6 +160,19 @@ async def _validate_cart_and_total(db, items, user) -> tuple[float, list, bool]:
                 status_code=400,
                 detail=f"'{p.get('name')}' is sold on the vendor's own site and can't be checked out through Birthright.",
             )
+        # Sample / concept products have no fulfillment path. The UI gates
+        # add-to-cart, but block here as defense in depth (e.g., a cart
+        # held over from before fulfillment routing was applied).
+        if (
+            not p.get("fulfillable_via")
+            and not p.get("is_off_site")
+            and not p.get("is_gallery_artwork")
+            and p.get("type") != "workshop_material"
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=f"'{p.get('name')}' is a sample concept and isn't yet available for purchase.",
+            )
         if p.get("is_gallery_artwork") and p.get("availability") not in (None, "available"):
             raise HTTPException(
                 status_code=400,

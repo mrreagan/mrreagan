@@ -80,11 +80,16 @@ async def _search_products(db, q: str, limit: int) -> list[dict]:
                 {"name": rx},
                 {"description": rx},
                 {"category": rx},
+                # AI vision caption — matches visual details that aren't in
+                # the marketing copy (e.g., "orange tabby cat", "leather patch",
+                # "flame stamp on the base").
+                {"image_caption": rx},
             ],
         },
         {
             "_id": 0, "id": 1, "name": 1, "description": 1, "image_url": 1,
             "price": 1, "type": 1, "category": 1, "collection": 1,
+            "image_caption": 1,
         },
     ).limit(limit)
     out = []
@@ -115,6 +120,8 @@ async def _search_partners(db, q: str, limit: int) -> list[dict]:
                 {"headline": rx},
                 {"bio": rx},
                 {"location": rx},
+                # AI vision caption on the partner photo (e.g., "potter at wheel").
+                {"image_caption": rx},
             ],
             "status": "active",
             "public": True,
@@ -191,6 +198,7 @@ async def _search_gallery(db, q: str, limit: int) -> list[dict]:
                 {"headline": rx},
                 {"bio": rx},
                 {"medium": rx},
+                {"image_caption": rx},
             ],
             "partner_type": "artist",
             "status": "active",

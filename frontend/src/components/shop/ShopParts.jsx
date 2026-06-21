@@ -5,6 +5,7 @@ import { useCart } from "../../contexts/CartContext";
 import { toast } from "sonner";
 import { AggregateRatingBadge } from "../ReviewSection";
 import ShareButton from "../ShareButton";
+import FulfillmentBadge, { isPurchasable } from "../FulfillmentBadge";
 
 const FILTERS = [
   { id: "merch", label: "Public merch" },
@@ -81,14 +82,18 @@ export function ProductCard({ product }) {
   const isMaterial = product.type === "workshop_material";
   const isVendor = product.is_vendor_product;
   const isOffSite = product.is_off_site && product.vendor_slug;
+  const canBuy = isPurchasable(product);
   const outboundUrl = isOffSite
     ? `${process.env.REACT_APP_BACKEND_URL}/api/out/${product.vendor_slug}?product_id=${product.id}`
     : null;
 
   return (
     <div className="card card-hover overflow-hidden flex flex-col" data-testid={`product-card-${product.id}`}>
-      <Link to={`/equip/${product.id}`} className="block aspect-square bg-[#F4F1EA] overflow-hidden">
+      <Link to={`/equip/${product.id}`} className="block aspect-square bg-[#F4F1EA] overflow-hidden relative">
         <img src={product.image_url} alt={product.image_caption || product.name} className="w-full h-full object-cover" />
+        <div className="absolute top-2 left-2">
+          <FulfillmentBadge product={product} />
+        </div>
       </Link>
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-2">
@@ -142,6 +147,15 @@ export function ProductCard({ product }) {
               >
                 <ExternalLink size={12} strokeWidth={1.5} /> Buy on {product.vendor_name?.split(" ")[0] || "vendor"}
               </a>
+            ) : !canBuy ? (
+              <Link
+                to={`/equip/${product.id}`}
+                className="text-xs text-[#7C5316] font-medium hover:underline"
+                data-testid={`product-sample-link-${product.id}`}
+                title="Concept image — no fulfillment path yet"
+              >
+                Preview only
+              </Link>
             ) : (
               <button
                 onClick={() => {

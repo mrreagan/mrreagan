@@ -16,6 +16,7 @@ import { Link } from "react-router-dom";
 import { Sparkles, ChevronLeft, ChevronRight, ArrowRight, ExternalLink, ShoppingBag } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { toast } from "sonner";
+import FulfillmentBadge, { isPurchasable } from "../FulfillmentBadge";
 
 // Pick the carousel slides:
 //   1. Items with carousel_rank ∈ {1,2,3} take their assigned slot (admin
@@ -168,6 +169,7 @@ function FeaturedCarousel({ featured, total }) {
 function FeaturedCard({ product }) {
   const { addItem } = useCart();
   const isExternal = !!product.is_off_site;
+  const canBuy = isPurchasable(product);
   return (
     <article
       className="snap-start shrink-0 w-full rounded-xl bg-[#FAF8F5] text-[#1A2424] overflow-hidden grid grid-cols-1 md:grid-cols-2"
@@ -175,13 +177,16 @@ function FeaturedCard({ product }) {
     >
       <Link
         to={`/equip/${product.id}`}
-        className="block aspect-[4/3] bg-[#F4F1EA] overflow-hidden"
+        className="block aspect-[4/3] bg-[#F4F1EA] overflow-hidden relative"
       >
         <img
           src={product.image_url}
           alt={product.image_caption || product.name}
           className="w-full h-full object-cover"
         />
+        <div className="absolute top-3 left-3">
+          <FulfillmentBadge product={product} />
+        </div>
       </Link>
       <div className="p-5 sm:p-6 flex flex-col">
         <Link
@@ -214,6 +219,14 @@ function FeaturedCard({ product }) {
               data-testid={`founder-collection-external-${product.id}`}
             >
               <ExternalLink size={12} strokeWidth={1.8} /> Order direct
+            </Link>
+          ) : !canBuy ? (
+            <Link
+              to={`/equip/${product.id}`}
+              className="text-xs flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#7C5316]/15 text-[#7C5316] hover:bg-[#7C5316]/25 transition"
+              data-testid={`founder-collection-sample-${product.id}`}
+            >
+              Preview only
             </Link>
           ) : (
             <button

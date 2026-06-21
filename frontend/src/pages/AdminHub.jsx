@@ -19,6 +19,7 @@ const SECTIONS = [
     title: "Content & Catalog",
     items: [
       { to: "/admin/products", icon: ShoppingBag, label: "Products (Equip)", desc: "Retail catalog: prices, inventory, images, wholesale prices, founder-collection rank." },
+      { to: "/admin/image-queue", icon: ImageIcon, label: "Additional images queue", desc: "AI scans product descriptions for details missing from the hero photo and queues a second shot for review." },
       { to: "/admin/vendor-products", icon: Store, label: "Vendor products", desc: "Partner-fulfilled goods routed through birthright; moderation + attribution." },
       { to: "/admin/featured", icon: Sparkles, label: "Featured items", desc: "Pin partners + products to the homepage and directory front." },
       { to: "/admin/founder-carousel", icon: Sparkles, label: "Founder Collection carousel", desc: "Reorder the 3-slot swipeable teaser at the top of /equip." },

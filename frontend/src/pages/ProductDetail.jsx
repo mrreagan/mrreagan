@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ShoppingBag, Lock, ArrowLeft, ExternalLink, Palette } from "lucide-react";
 import ReviewSection, { AggregateRatingBadge } from "../components/ReviewSection";
 import ShareButton from "../components/ShareButton";
+import FulfillmentBadge, { isPurchasable } from "../components/FulfillmentBadge";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -70,6 +71,9 @@ export default function ProductDetail() {
             <span className="label text-[#C9A961] inline-flex items-center gap-2"><Lock size={12} strokeWidth={1.5} /> Workshop material</span>
           )}
           <h1 className="editorial-h1 mt-3" data-testid="product-name">{p.name}</h1>
+          <div className="mt-3">
+            <FulfillmentBadge product={p} size="lg" />
+          </div>
           {p.is_vendor_product && p.vendor_name && (
             <p className="text-xs uppercase tracking-wider text-[#C9A961] mt-2" data-testid="product-vendor-badge">
               By{" "}
@@ -132,6 +136,18 @@ export default function ProductDetail() {
                 >
                   <ExternalLink size={14} strokeWidth={1.5} /> Buy on {p.vendor_name || "vendor site"} →
                 </a>
+              </div>
+            </div>
+          ) : !isPurchasable(p) ? (
+            <div className="mt-8" data-testid="product-sample-block">
+              <div className="card p-5 bg-[#FBF1DC] border-2 border-[#7C5316]/30">
+                <p className="label !mt-0 !text-[#7C5316]">Sample · not yet for sale</p>
+                <p className="text-sm text-[#5C6B6B] mt-2 leading-relaxed">
+                  This is a concept image generated to show what the product could look like.
+                  We don&apos;t have a fulfillment path for this item yet, so it isn&apos;t
+                  available for purchase. If you&apos;d like to make this real, reach out via
+                  the Need help bubble — we can connect you with a maker.
+                </p>
               </div>
             </div>
           ) : (
