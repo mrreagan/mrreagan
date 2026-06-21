@@ -16,6 +16,16 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 50 — AI image-caption agent (assistant sees every image)
+- **Problem yesterday's demo exposed**: the help assistant has no eyes — visitor asked "what's in James Reagan's lap?" → assistant deferred to humans because the photo wasn't text.
+- **Approach the user steered toward**: don't burden the admin with typing captions. Have the AI describe each image itself, cache the description in the DB, and let the text-only help assistant read those cached descriptions.
+- **New `utils/image_caption_agent.py`** uses Claude Sonnet 4.5 (vision via emergentintegrations) to caption any visitor-facing record (governing_members, partner_profiles, products, research_artifacts) that has an `image_url` but no `image_caption`. ~$0.003 per image; one-time pass on ~14 captionable images cost <$0.05.
+- Captions stored on the same record as `image_caption` + `image_caption_source_url` (the latter so we know to re-caption when an image is swapped).
+- **`POST /api/admin/image-captions/auto-caption?limit=N&force=bool`** triggers a fresh pass. Admin can also manually override a specific caption via `PUT /api/admin/image-captions/{collection}/{id}` if the AI's description is off.
+- **`utils/help_context.py`** now injects `[Photo: …]` / `[Image: …]` annotations alongside leadership/partners/products entries. Updated system prompt teaches the assistant it CAN answer "what does X look like" questions when a caption is present, only declining when there's truly no caption available.
+- **AdminHub tile** added for "AI image captions" under AI/Email/Ops.
+- **Verified end-to-end:** "What does James Reagan have in his lap?" → assistant answers "an orange tabby cat resting on a cream-colored knit blanket"; identical clarity on the Founding Journal, Founder Collection patches, and Flame Meditation Stool product photos. Sample-leadership images (Hannah Lin etc.) caption correctly with the "this is an illustrative bio" caveat.
+
 ### Iter 49 — Wholesale pricing for foundation members + Admin Hub
 - **Foundation-member pricing model.** Per-product `wholesale_price` field added to the Product model + AdminProducts UI (next to retail price, with retail-cap validation). When a user with `is_foundation = True` checks out, every line item with a non-null wholesale_price is billed at the wholesale value; products without wholesale stay at retail. Patronage / gallery markup is also zeroed out for foundation users.
 - **AI billing at 1:1 passthrough.** `compute_cost()` accepts a `multiplier` override; `record_usage()` passes `1.0` when `user.is_foundation`, dropping the 50% Foundation markup. Verified math: retail $0.090 → foundation $0.060 (exact 1.5×).

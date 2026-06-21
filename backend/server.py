@@ -218,6 +218,9 @@ from routers.system_admin import (  # noqa: E402
 api_router.include_router(system_admin_router)
 api_router.include_router(system_public_router)
 
+from routers.image_captions import router as image_captions_router  # noqa: E402
+api_router.include_router(image_captions_router)
+
 
 @api_router.post("/webhook/stripe")
 async def stripe_webhook_endpoint(request: Request) -> Any:

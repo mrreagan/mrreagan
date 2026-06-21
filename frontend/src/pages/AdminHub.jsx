@@ -53,6 +53,7 @@ const SECTIONS = [
     title: "AI, Email & Ops",
     items: [
       { to: "/admin/ai-usage", icon: Bot, label: "AI usage & wallets", desc: "Per-user AI wallet balances, top-ups, debits, and feature breakdown. Foundation users bill at 1:1 passthrough." },
+      { to: "/admin/image-captions", icon: ImageIcon, label: "AI image captions", desc: "Auto-generated descriptions of every visitor-facing image, used by the help assistant to answer questions about photos. Run a fresh pass anytime." },
       { to: "/admin/email-ops", icon: Mail, label: "Email operations", desc: "Outbound log (Resend), bounce reports, send-status diagnostics." },
       { to: "/admin/studio", icon: Sparkles, label: "Studio (image gen)", desc: "Bulk image generation jobs for products and content." },
       { to: "/admin/studio/queue", icon: Sparkles, label: "Studio queue", desc: "Pending and completed image-gen tasks." },

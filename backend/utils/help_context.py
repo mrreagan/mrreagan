@@ -70,18 +70,24 @@ async def _collect(db) -> str:
             line = f"  - {m.get('name')} — {m.get('title','')}"
             if m.get("bio"):
                 line += f". {_truncate(m['bio'], 220)}"
+            if m.get("image_caption"):
+                line += f" [Photo description: {_truncate(m['image_caption'], 260)}]"
             sections.append(line)
         if samples:
             sections.append("")
             sections.append(
                 "LEADERSHIP — placeholder/sample bios (NOT real officers; "
                 "shown on /lead as illustrations of roles the foundation is "
-                "building toward — never present these as actual people):"
+                "building toward — never present these as actual people. "
+                "Image descriptions ARE available so you can answer 'what "
+                "does the photo look like?' questions; just remind the visitor "
+                "the person is illustrative):"
             )
             for m in samples:
-                sections.append(
-                    f"  - [SAMPLE] {m.get('name')} — {m.get('title','')}"
-                )
+                line = f"  - [SAMPLE] {m.get('name')} — {m.get('title','')}"
+                if m.get("image_caption"):
+                    line += f" [Photo: {_truncate(m['image_caption'], 240)}]"
+                sections.append(line)
         sections.append("")
 
     # ─── Active partner network ────────────────────────────────────────
@@ -91,7 +97,7 @@ async def _collect(db) -> str:
     partners = await db.partner_profiles.find(
         {"status": "active", "public": True},
         {"_id": 0, "slug": 1, "display_name": 1, "partner_type": 1,
-         "headline": 1, "bio": 1, "location": 1, "website_url": 1},
+         "headline": 1, "bio": 1, "location": 1, "website_url": 1, "image_caption": 1},
     ).to_list(60)
     # Filter out obvious test fixtures whose names start with "test-" /
     # "oof-" — those are pytest scaffolding, not real visitor-facing content.
@@ -111,6 +117,8 @@ async def _collect(db) -> str:
                 line += f": {_truncate(p['headline'], 220)}"
             elif p.get("bio"):
                 line += f": {_truncate(p['bio'], 220)}"
+            if p.get("image_caption"):
+                line += f" [Photo: {_truncate(p['image_caption'], 200)}]"
             sections.append(line)
         sections.append("")
 
@@ -119,7 +127,7 @@ async def _collect(db) -> str:
         {"moderation_status": "active"},
         {"_id": 0, "slug": 1, "name": 1, "price": 1, "type": 1, "category": 1,
          "vendor_slug": 1, "short_description": 1, "collection": 1, "is_off_site": 1,
-         "is_homepage_feature": 1, "carousel_rank": 1},
+         "is_homepage_feature": 1, "carousel_rank": 1, "image_caption": 1},
     ).to_list(200)
     if products:
         # Sort: homepage features → carousel rank → name. Limit to 30 most
@@ -147,6 +155,8 @@ async def _collect(db) -> str:
             line += ")"
             if p.get("short_description"):
                 line += f": {_truncate(p['short_description'], 100)}"
+            if p.get("image_caption"):
+                line += f" [Image: {_truncate(p['image_caption'], 160)}]"
             sections.append(line)
         sections.append("")
 
