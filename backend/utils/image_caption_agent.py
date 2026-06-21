@@ -132,6 +132,73 @@ async def _describe_image(image_bytes: bytes, subject: str, context_hint: str) -
         return None
 
 
+async def caption_single_record(db, collection: str, record_id: str) -> Optional[str]:
+    """Caption (or re-caption) one specific record by id. Used when an admin
+    swaps an image to keep the cache fresh without waiting for the next bulk
+    pass. Returns the new caption, or None if no image / fetch fails / vision
+    fails. Always safe as a fire-and-forget background task."""
+    cfg = COLLECTIONS.get(collection)
+    if not cfg:
+        logger.warning("caption_single_record: unknown collection %r", collection)
+        return None
+    try:
+        projection = {
+            "_id": 0, "id": 1,
+            cfg["name_field"]: 1,
+            cfg["image_field"]: 1,
+            cfg["context_field"]: 1,
+        }
+        doc = await db[collection].find_one({"id": record_id}, projection)
+        if not doc:
+            return None
+        image_url = doc.get(cfg["image_field"])
+        if not image_url:
+            return None
+        subject = doc.get(cfg["name_field"]) or "(untitled)"
+        context_hint = doc.get(cfg["context_field"]) or ""
+        img_bytes = await _fetch_image_bytes(image_url)
+        if not img_bytes:
+            return None
+        caption = await _describe_image(img_bytes, subject, context_hint)
+        if not caption:
+            return None
+        await db[collection].update_one(
+            {"id": record_id},
+            {"$set": {"image_caption": caption, "image_caption_source_url": image_url}},
+        )
+        try:
+            from utils.help_context import invalidate_cache
+            invalidate_cache()
+        except Exception:
+            pass
+        logger.info("caption_single_record: %s/%s captioned (%s)", collection, record_id, subject)
+        return caption
+    except Exception as exc:
+        logger.warning("caption_single_record failed for %s/%s: %s", collection, record_id, exc)
+        return None
+
+
+def schedule_caption_if_image_changed(
+    db,
+    collection: str,
+    record_id: str,
+    *,
+    old_image_url: Optional[str],
+    new_image_url: Optional[str],
+) -> None:
+    """Fire-and-forget caption refresh when an image URL is added or swapped.
+
+    Caller's request returns immediately; the vision call runs in the
+    background and the new caption appears in the help assistant's next
+    answer (we invalidate the context cache as soon as the caption lands)."""
+    if not new_image_url or old_image_url == new_image_url:
+        return
+    try:
+        asyncio.create_task(caption_single_record(db, collection, record_id))
+    except RuntimeError:
+        logger.debug("schedule_caption_if_image_changed: no running loop, skipping")
+
+
 async def auto_caption_pending(db, *, limit: int = 25, force: bool = False) -> dict:
     """Caption up to `limit` records that lack captions across all collections.
 

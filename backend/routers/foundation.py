@@ -69,8 +69,16 @@ async def create_member(data: GoverningMemberCreate, user: dict = Depends(requir
 @router.put("/foundation/governing-members/{member_id}")
 async def update_member(member_id: str, data: GoverningMemberCreate, user: dict = Depends(require_roles("admin"))):
     from database import db
+    prev = await db.governing_members.find_one({"id": member_id}, {"_id": 0, "image_url": 1})
     await db.governing_members.update_one({"id": member_id}, {"$set": data.model_dump()})
     m = await db.governing_members.find_one({"id": member_id}, {"_id": 0})
+    if m:
+        from utils.image_caption_agent import schedule_caption_if_image_changed
+        schedule_caption_if_image_changed(
+            db, "governing_members", member_id,
+            old_image_url=(prev or {}).get("image_url"),
+            new_image_url=m.get("image_url"),
+        )
     return m
 
 

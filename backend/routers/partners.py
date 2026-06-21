@@ -233,6 +233,15 @@ async def update_my_profile(
         target_type="partner_profile", target_id=profile["id"],
         metadata={"fields": list(updates.keys()), "partner_type": partner_type},
     )
+    # If the partner uploaded/changed their avatar, re-caption so the help
+    # assistant can describe their photo when asked.
+    if "avatar_url" in updates:
+        from utils.image_caption_agent import schedule_caption_if_image_changed
+        schedule_caption_if_image_changed(
+            db, "partner_profiles", profile["id"],
+            old_image_url=profile.get("avatar_url"),
+            new_image_url=updates.get("avatar_url"),
+        )
     out = await db.partner_profiles.find_one({"id": profile["id"]}, {"_id": 0})
     return out
 

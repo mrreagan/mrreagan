@@ -16,6 +16,16 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 
 ## What's Been Implemented (recent — Feb 2026)
 
+### Iter 51 — Auto-recaption on image swap (Option 2)
+- New `schedule_caption_if_image_changed(db, collection, id, old, new)` helper in `utils/image_caption_agent.py`. Fire-and-forget — caller returns instantly; vision call runs in the background; help-context cache invalidates the moment the new caption lands.
+- Wired into every admin path that can change an image:
+  - `POST /api/products` (create with image)
+  - `PUT /api/products/{id}` (image_url edit)
+  - `POST /api/products/{id}/regenerate-image` (AI mockup)
+  - `PUT /api/foundation/governing-members/{id}` (board photo swap)
+  - `PUT /api/partners/my-profiles/{type}` (partner self-edit on avatar)
+- Verified end-to-end: swapped a product's image_url → waited 12s → fresh accurate caption present in DB with `image_caption_source_url` matching the new URL. No manual button press needed.
+
 ### Iter 50 — AI image-caption agent (assistant sees every image)
 - **Problem yesterday's demo exposed**: the help assistant has no eyes — visitor asked "what's in James Reagan's lap?" → assistant deferred to humans because the photo wasn't text.
 - **Approach the user steered toward**: don't burden the admin with typing captions. Have the AI describe each image itself, cache the description in the DB, and let the text-only help assistant read those cached descriptions.

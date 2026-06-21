@@ -112,6 +112,12 @@ async def create_product(data: ProductCreate, user: dict = Depends(require_roles
     product = {**data.model_dump(), "id": gen_id(), "created_at": now_iso()}
     await db.products.insert_one(product)
     product.pop("_id", None)
+    if product.get("image_url"):
+        from utils.image_caption_agent import schedule_caption_if_image_changed
+        schedule_caption_if_image_changed(
+            db, "products", product["id"],
+            old_image_url=None, new_image_url=product["image_url"],
+        )
     return product
 
 
@@ -119,9 +125,19 @@ async def create_product(data: ProductCreate, user: dict = Depends(require_roles
 async def update_product(product_id: str, updates: ProductUpdate, user: dict = Depends(require_roles("admin"))):
     from database import db
     update_data = updates.model_dump(exclude_none=True)
+    # Snapshot the previous image URL so we can detect a swap and trigger
+    # the AI caption agent for just this one record.
+    prev = await db.products.find_one({"id": product_id}, {"_id": 0, "image_url": 1})
     if update_data:
         await db.products.update_one({"id": product_id}, {"$set": update_data})
     p = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if p and "image_url" in update_data:
+        from utils.image_caption_agent import schedule_caption_if_image_changed
+        schedule_caption_if_image_changed(
+            db, "products", product_id,
+            old_image_url=(prev or {}).get("image_url"),
+            new_image_url=p.get("image_url"),
+        )
     return p
 
 
@@ -271,4 +287,12 @@ async def regenerate_image(
         {"$set": {"image_url": new_url, "slug": slug}},
     )
     updated = await db.products.find_one({"id": product_id}, {"_id": 0})
+    # Auto-caption the freshly generated image so the help assistant can
+    # describe it without waiting for a manual /admin/image-captions pass.
+    from utils.image_caption_agent import schedule_caption_if_image_changed
+    schedule_caption_if_image_changed(
+        db, "products", product_id,
+        old_image_url=product.get("image_url"),
+        new_image_url=new_url,
+    )
     return updated
