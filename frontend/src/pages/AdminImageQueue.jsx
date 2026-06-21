@@ -116,8 +116,8 @@ export default function AdminImageQueue() {
           <span className="label">Image Studio</span>
           <h1 className="editorial-h1 mt-3">Additional product images</h1>
           <p className="text-sm text-[#5C6B6B] mt-3 max-w-xl">
-            We audit each product's description against its current AI vision caption.
-            When a description references a detail the hero photo doesn't show (a flame
+            We audit each product&apos;s description against its current AI vision caption.
+            When a description references a detail the hero photo doesn&apos;t show (a flame
             stamped inside the mug, a label sewn into the inseam) we queue a focused
             prompt for a second shot. You review every generated image before it goes live.
           </p>

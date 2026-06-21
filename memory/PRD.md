@@ -15,6 +15,18 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 53 — Fulfillment pills, sample cart gate, AI search captions, AI image queue (Feb 2026)
+- **Phase B — fulfillment routing**: `scripts/route_fulfillment.py` mapped 61 unflagged products → 31 Printful / 13 Lulu / 21 sample.
+- **Phase A — pills + cart gate**: new `FulfillmentBadge.jsx` (foundation/partner/artist/sample). Wired into `ProductCard`, `ProductDetail`, `FeaturedCard`. Sample products show "Preview only" and the cart entry-points are hidden. Server-side guard added in `routers/checkout.py` (`_validate_cart_and_total`) so direct API calls also reject sample IDs.
+- **Phase C — captions in search**: `routers/search.py` now matches `image_caption` for products and partner profiles.
+- **Phase D — AI additional-image queue**:
+  - `utils/image_generator.py` — reusable Nano Banana generator (also refactored `regenerate-image` onto it).
+  - `routers/image_queue.py` — endpoints `POST scan / GET / POST queue / POST {id}/generate / POST {id}/publish / POST {id}/discard`. Uses Claude Sonnet to compare description vs vision caption and propose a focused second-shot prompt.
+  - New collection: `pending_additional_images { id, product_id, product_name, prompt, status: queued|generating|ready|published|failed, image_url, error, created_at, generated_at }`.
+  - Frontend: `/admin/image-queue` (`AdminImageQueue.jsx`) — review, generate, publish, discard per row. Linked from AdminHub.
+- **Bulk run**: 24 additional images generated and now in `ready` status awaiting Mike's review.
+
+
 ### Iter 52 — Full-frame product images + multi-image gallery (Feb 2026)
 - **Problem**: Equip grid + product detail were rendering `object-contain` with white letterbox bars on top/bottom/sides; descriptions referenced details (e.g., "flame stamped on the base") that the single hero shot couldn't show.
 - **Fix**:
