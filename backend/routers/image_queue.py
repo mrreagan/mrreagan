@@ -51,6 +51,7 @@ def _slugify(text: str) -> str:
 class QueueEntryCreate(BaseModel):
     product_id: str
     prompt: str = Field(min_length=10, max_length=2000)
+    kind: str = Field(default="additional", pattern="^(additional|hero)$")
 
 
 class ScanResult(BaseModel):
@@ -121,6 +122,66 @@ async def _llm_detect_missing_detail(
         return None
 
 
+async def _llm_propose_hero_replacement(
+    product_name: str,
+    description: str,
+    current_caption: Optional[str],
+    extra_image_hints: list[str],
+) -> Optional[str]:
+    """Detect when the current hero image contradicts the description or the
+    other images attached to the product. Returns a full hero image prompt
+    that resolves the conflict, or None when the hero is already coherent."""
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        return None
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+    except Exception as exc:
+        logger.warning("LLM library unavailable: %s", exc)
+        return None
+
+    hints_block = "\n".join(f"- {h}" for h in extra_image_hints) or "(none)"
+    system = (
+        "You audit the HERO photo of an e-commerce product against the "
+        "marketing description and any additional images. Flag visual "
+        "contradictions: wrong color, wrong shape, wrong material, missing "
+        "branded detail, missing key element. If the hero photo contradicts "
+        "ANY part of the description or the additional shots, generate a new "
+        "hero prompt that resolves the conflict.\n\n"
+        "Respond in this exact format:\n"
+        "NEEDS_REPLACEMENT: yes\nPROMPT: <80-180 word hero photography prompt "
+        "that matches the description verbatim and stays consistent with the "
+        "other shots. Lead with the object, color, shape, branded detail, "
+        "then angle, lighting, surface. Editorial e-commerce hero.>\n"
+        "OR\n"
+        "NEEDS_REPLACEMENT: no\nPROMPT:\n"
+        "Be precise: only flag actual contradictions. Vague style differences "
+        "are not contradictions."
+    )
+    user_msg = (
+        f"PRODUCT NAME: {product_name}\n\n"
+        f"MARKETING DESCRIPTION:\n{description}\n\n"
+        f"CURRENT HERO PHOTO CAPTION:\n{current_caption or '(no caption)'}\n\n"
+        f"OTHER IMAGES (published or queued for this product):\n{hints_block}\n"
+    )
+    try:
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"hero-audit-{product_name[:30]}",
+            system_message=system,
+        ).with_model(ANALYSIS_PROVIDER, ANALYSIS_MODEL)
+        resp = await chat.send_message(UserMessage(text=user_msg))
+        text = (resp or "").strip()
+        if re.search(r"NEEDS_REPLACEMENT:\s*no", text, flags=re.IGNORECASE):
+            return None
+        m = re.search(r"PROMPT:\s*(.+)$", text, flags=re.DOTALL | re.IGNORECASE)
+        prompt = (m.group(1).strip() if m else "")
+        return prompt[:1800] if len(prompt) >= 30 else None
+    except Exception as exc:
+        logger.warning("hero audit failed for %r: %s", product_name, exc)
+        return None
+
+
 @router.post("/scan")
 async def scan_for_missing_details(user: dict = Depends(require_roles("admin"))) -> ScanResult:
     """Walk active products and queue an additional image for each one whose
@@ -171,6 +232,78 @@ async def scan_for_missing_details(user: dict = Depends(require_roles("admin")))
                 "id": gen_id(),
                 "product_id": p["id"],
                 "product_name": p.get("name"),
+                "kind": "additional",
+                "prompt": prompt,
+                "status": "queued",
+                "image_url": None,
+                "error": None,
+                "created_at": now_iso(),
+                "generated_at": None,
+            }
+        )
+        queued += 1
+    return ScanResult(scanned=scanned, queued=queued, skipped=skipped, errors=errors)
+
+
+@router.post("/scan-hero")
+async def scan_hero_mismatches(user: dict = Depends(require_roles("admin"))) -> ScanResult:
+    """Flag products whose hero image contradicts their description or the
+    additional shots that exist. Queues a new hero prompt for review."""
+    from database import db
+    cursor = db.products.find(
+        {"is_off_site": {"$ne": True}},
+        {"_id": 0, "id": 1, "name": 1, "description": 1, "image_caption": 1,
+         "additional_images": 1},
+    )
+    products = await cursor.to_list(2000)
+    scanned = queued = skipped = errors = 0
+    for p in products:
+        scanned += 1
+        existing = await db.pending_additional_images.find_one(
+            {
+                "product_id": p["id"],
+                "kind": "hero",
+                "status": {"$in": ["queued", "generating", "ready"]},
+            }
+        )
+        if existing:
+            skipped += 1
+            continue
+        # Pull hints from published additional images (captions) and any
+        # ready/published pending entries (prompts) so the audit considers
+        # the full picture even if Mike hasn't published the new shots yet.
+        hints: list[str] = []
+        pending_cur = db.pending_additional_images.find(
+            {
+                "product_id": p["id"],
+                "kind": {"$in": ["additional", None]},
+                "status": {"$in": ["ready", "published"]},
+            },
+            {"_id": 0, "prompt": 1},
+        )
+        async for pe in pending_cur:
+            if pe.get("prompt"):
+                hints.append(pe["prompt"][:400])
+        try:
+            prompt = await _llm_propose_hero_replacement(
+                p.get("name", ""),
+                p.get("description", ""),
+                p.get("image_caption"),
+                hints,
+            )
+        except Exception as exc:
+            logger.warning("scan-hero failed for %s: %s", p.get("name"), exc)
+            errors += 1
+            continue
+        if not prompt:
+            skipped += 1
+            continue
+        await db.pending_additional_images.insert_one(
+            {
+                "id": gen_id(),
+                "product_id": p["id"],
+                "product_name": p.get("name"),
+                "kind": "hero",
                 "prompt": prompt,
                 "status": "queued",
                 "image_url": None,
@@ -210,6 +343,7 @@ async def queue_manual(
         "id": gen_id(),
         "product_id": product["id"],
         "product_name": product.get("name"),
+        "kind": data.kind,
         "prompt": data.prompt.strip(),
         "status": "queued",
         "image_url": None,
@@ -242,7 +376,8 @@ async def generate_entry(entry_id: str, user: dict = Depends(require_roles("admi
         # Stable filename per entry so re-runs overwrite cleanly.
         product = await db.products.find_one({"id": entry["product_id"]}, {"_id": 0, "slug": 1, "name": 1})
         slug = (product or {}).get("slug") or _slugify((product or {}).get("name") or "extra")
-        file_stem = f"{slug}-extra-{entry_id[:8]}"
+        suffix = "hero" if entry.get("kind") == "hero" else "extra"
+        file_stem = f"{slug}-{suffix}-{entry_id[:8]}"
         image_url = await generate_product_image(
             prompt=entry["prompt"],
             file_stem=file_stem,
@@ -270,8 +405,12 @@ async def generate_entry(entry_id: str, user: dict = Depends(require_roles("admi
 
 @router.post("/{entry_id}/publish")
 async def publish_entry(entry_id: str, user: dict = Depends(require_roles("admin"))):
-    """Append the generated image to the product's `additional_images` and
-    mark the entry published. Idempotent against duplicate URLs."""
+    """Apply the generated image to the product.
+
+    - kind = "additional"  → append URL to `additional_images`
+    - kind = "hero"        → replace `image_url` (and clear stale caption so
+                              the caption agent re-captions the new shot).
+    Idempotent for duplicates."""
     from database import db
     entry = await db.pending_additional_images.find_one({"id": entry_id}, {"_id": 0})
     if not entry:
@@ -279,21 +418,46 @@ async def publish_entry(entry_id: str, user: dict = Depends(require_roles("admin
     if entry["status"] != "ready":
         raise HTTPException(status_code=400, detail="Entry is not ready to publish")
     image_url = entry["image_url"]
-    product = await db.products.find_one({"id": entry["product_id"]}, {"_id": 0, "additional_images": 1})
+    product = await db.products.find_one(
+        {"id": entry["product_id"]},
+        {"_id": 0, "additional_images": 1, "image_url": 1},
+    )
     if not product:
         raise HTTPException(status_code=404, detail="Product no longer exists")
-    existing = product.get("additional_images") or []
-    if image_url not in existing:
-        existing.append(image_url)
+
+    kind = entry.get("kind", "additional")
+    if kind == "hero":
+        # Drop the old hero into additional_images so it isn't lost — admin can
+        # later discard it from the product edit drawer if they prefer.
+        existing = product.get("additional_images") or []
+        old_hero = product.get("image_url")
+        if old_hero and old_hero not in existing and old_hero != image_url:
+            existing.append(old_hero)
         await db.products.update_one(
             {"id": entry["product_id"]},
-            {"$set": {"additional_images": existing}},
+            {"$set": {
+                "image_url": image_url,
+                "additional_images": existing,
+                # Clear the caption so the auto-captioner re-runs against the
+                # new hero (it watches image_url changes).
+                "image_caption": None,
+                "image_caption_source_url": None,
+            }},
         )
+    else:
+        existing = product.get("additional_images") or []
+        if image_url not in existing:
+            existing.append(image_url)
+            await db.products.update_one(
+                {"id": entry["product_id"]},
+                {"$set": {"additional_images": existing}},
+            )
+
     await db.pending_additional_images.update_one(
         {"id": entry_id},
         {"$set": {"status": "published"}},
     )
-    return {"ok": True, "additional_images": existing}
+    return {"ok": True, "kind": kind, "additional_images": existing}
 
 
 @router.post("/{entry_id}/discard")

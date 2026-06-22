@@ -15,6 +15,14 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 54 — Hero replacement queue + fulfillment badge in admin (Feb 2026)
+- **Hero mismatch scan**: new `_llm_propose_hero_replacement` in `routers/image_queue.py` compares description + current hero caption + captions/prompts of additional images. Surfaces only true contradictions (wrong color/shape/material/missing branded detail).
+- **Queue model extended**: added `kind: "hero" | "additional"` (default "additional"). Publishing kind=hero replaces `image_url`, demotes the old hero to `additional_images`, and clears the cached caption so the auto-captioner re-runs on the new shot.
+- **Two scan buttons** on `/admin/image-queue`: "Scan for missing detail shots" (additional kind) and "Scan for hero mismatches" (hero kind).
+- **FulfillmentBadge** now also renders inline on every Admin Products row and every Admin Image Queue row so Mike can see at a glance whether a product is wired for fulfillment or display-only.
+- **Bulk run**: hero scan flagged 32/66 products. Generation hit Emergent LLM budget cap mid-run — 25 succeeded (status=ready), 7 marked failed (one-click retry from the row after Mike recharges).
+
+
 ### Iter 53 — Fulfillment pills, sample cart gate, AI search captions, AI image queue (Feb 2026)
 - **Phase B — fulfillment routing**: `scripts/route_fulfillment.py` mapped 61 unflagged products → 31 Printful / 13 Lulu / 21 sample.
 - **Phase A — pills + cart gate**: new `FulfillmentBadge.jsx` (foundation/partner/artist/sample). Wired into `ProductCard`, `ProductDetail`, `FeaturedCard`. Sample products show "Preview only" and the cart entry-points are hidden. Server-side guard added in `routers/checkout.py` (`_validate_cart_and_total`) so direct API calls also reject sample IDs.

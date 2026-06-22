@@ -11,9 +11,10 @@
  */
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, RefreshCcw, Sparkles, Check, Trash2, ImagePlus } from "lucide-react";
+import { ArrowLeft, RefreshCcw, Sparkles, Check, Trash2, ImagePlus, Replace } from "lucide-react";
 import api from "../lib/api";
 import { toast } from "sonner";
+import FulfillmentBadge from "../components/FulfillmentBadge";
 
 const STATUS_PILLS = {
   queued:     "bg-[#FBF1DC] text-[#7C5316]",
@@ -25,15 +26,27 @@ const STATUS_PILLS = {
 
 export default function AdminImageQueue() {
   const [items, setItems] = useState([]);
+  const [products, setProducts] = useState({});  // id → product summary for badges
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [scanningHero, setScanningHero] = useState(false);
   const [busyIds, setBusyIds] = useState(new Set());
 
   const load = async () => {
     setLoading(true);
     try {
       const r = await api.get("/admin/products/image-queue");
-      setItems(r.data || []);
+      const list = r.data || [];
+      setItems(list);
+      // Fetch product summaries we don't already have, so each row can
+      // render the right fulfillment badge.
+      const need = [...new Set(list.map((i) => i.product_id))].filter((id) => !products[id]);
+      if (need.length) {
+        const pairs = await Promise.all(need.map((id) =>
+          api.get(`/products/${id}`).then((r) => [id, r.data]).catch(() => [id, null])
+        ));
+        setProducts((prev) => ({ ...prev, ...Object.fromEntries(pairs.filter(([, v]) => v)) }));
+      }
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Failed to load queue");
     } finally {
@@ -41,7 +54,7 @@ export default function AdminImageQueue() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const markBusy = (id, on) => {
     setBusyIds((prev) => {
@@ -56,12 +69,26 @@ export default function AdminImageQueue() {
     try {
       const r = await api.post("/admin/products/image-queue/scan");
       const { scanned, queued, skipped, errors } = r.data;
-      toast.success(`Scanned ${scanned} · queued ${queued} · skipped ${skipped}${errors ? ` · ${errors} errors` : ""}`);
+      toast.success(`Additional shots scan — scanned ${scanned} · queued ${queued} · skipped ${skipped}${errors ? ` · ${errors} errors` : ""}`);
       await load();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Scan failed");
     } finally {
       setScanning(false);
+    }
+  };
+
+  const runHeroScan = async () => {
+    setScanningHero(true);
+    try {
+      const r = await api.post("/admin/products/image-queue/scan-hero");
+      const { scanned, queued, skipped, errors } = r.data;
+      toast.success(`Hero mismatch scan — scanned ${scanned} · queued ${queued} · skipped ${skipped}${errors ? ` · ${errors} errors` : ""}`);
+      await load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Hero scan failed");
+    } finally {
+      setScanningHero(false);
     }
   };
 
@@ -122,7 +149,7 @@ export default function AdminImageQueue() {
             prompt for a second shot. You review every generated image before it goes live.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={load}
             disabled={loading}
@@ -134,11 +161,22 @@ export default function AdminImageQueue() {
           <button
             onClick={runScan}
             disabled={scanning}
-            className="btn-primary text-sm inline-flex items-center gap-2"
+            className="btn-outline text-sm inline-flex items-center gap-2"
             data-testid="image-queue-scan"
+            title="Find products whose description mentions a detail the hero shot doesn't show"
           >
             <Sparkles size={14} strokeWidth={1.5} />
-            {scanning ? "Scanning... (1-2 min)" : "Scan products"}
+            {scanning ? "Scanning..." : "Scan for missing detail shots"}
+          </button>
+          <button
+            onClick={runHeroScan}
+            disabled={scanningHero}
+            className="btn-primary text-sm inline-flex items-center gap-2"
+            data-testid="image-queue-scan-hero"
+            title="Find products whose hero photo contradicts the description or the additional shots"
+          >
+            <Replace size={14} strokeWidth={1.5} />
+            {scanningHero ? "Scanning..." : "Scan for hero mismatches"}
           </button>
         </div>
       </div>
@@ -161,6 +199,8 @@ export default function AdminImageQueue() {
           {pending.map((entry) => {
             const busy = busyIds.has(entry.id);
             const pill = STATUS_PILLS[entry.status] || STATUS_PILLS.queued;
+            const kind = entry.kind || "additional";
+            const product = products[entry.product_id];
             return (
               <article
                 key={entry.id}
@@ -183,9 +223,23 @@ export default function AdminImageQueue() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-serif text-lg">{entry.product_name}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium ${pill}`} data-testid={`image-queue-status-${entry.id}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium ${
+                        kind === "hero"
+                          ? "bg-[#FDE5D4] text-[#7C3A16]"
+                          : "bg-[#E6EEF4] text-[#1F3942]"
+                      }`}
+                      data-testid={`image-queue-kind-${entry.id}`}
+                    >
+                      {kind === "hero" ? "Hero replacement" : "Additional shot"}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium ${pill}`}
+                      data-testid={`image-queue-status-${entry.id}`}
+                    >
                       {entry.status}
                     </span>
+                    {product && <FulfillmentBadge product={product} />}
                   </div>
                   <p className="text-xs text-[#5C6B6B] mt-1">
                     Product ID: {entry.product_id} · Queued {entry.created_at?.slice(0, 16)?.replace("T", " ")}

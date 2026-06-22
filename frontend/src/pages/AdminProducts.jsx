@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, Trash2, Lock, ShoppingBag, Search, Sparkles } from "lucide-react";
+import FulfillmentBadge from "../components/FulfillmentBadge";
 
 const EMPTY = {
   name: "",
@@ -39,9 +40,10 @@ function ProductRow({ product, onEdit, onDelete }) {
         </div>
       </td>
       <td className="p-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm">{product.name}</span>
           {isMaterial && <Lock size={12} strokeWidth={1.5} className="text-[#C9A961]" />}
+          <FulfillmentBadge product={product} />
         </div>
         <p className="text-xs text-[#5C6B6B] line-clamp-1 max-w-md">{product.description}</p>
       </td>
