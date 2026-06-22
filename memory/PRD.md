@@ -15,6 +15,14 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 55 — Bulk publish + retry (Feb 2026)
+- Topped-up credits → retried the 7 failed hero generations: all 7 succeeded.
+- Created `scripts/bulk_publish_ready.py` to flip every `ready` queue entry to `published` in one pass:
+  - **31 heroes** replaced (old hero demoted into `additional_images`).
+  - **24 additional shots** appended to their products.
+- Mug verified: hero now shows the hand-glazed teal ceramic mug matching the description; the inside-flame shot and old hero remain available as thumbnails.
+
+
 ### Iter 54 — Hero replacement queue + fulfillment badge in admin (Feb 2026)
 - **Hero mismatch scan**: new `_llm_propose_hero_replacement` in `routers/image_queue.py` compares description + current hero caption + captions/prompts of additional images. Surfaces only true contradictions (wrong color/shape/material/missing branded detail).
 - **Queue model extended**: added `kind: "hero" | "additional"` (default "additional"). Publishing kind=hero replaces `image_url`, demotes the old hero to `additional_images`, and clears the cached caption so the auto-captioner re-runs on the new shot.
