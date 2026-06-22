@@ -180,7 +180,7 @@ export default function GalleryArtist() {
                 return (
                   <div key={w.id} className="card overflow-hidden" data-testid={`gallery-work-${w.id}`}>
                     <div className="aspect-square bg-[#F4F1EA] overflow-hidden">
-                      <img src={w.image_url} alt={w.name} className="w-full h-full object-contain" />
+                      <img src={w.image_url} alt={w.image_caption || w.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="p-3">
                       <p className="font-serif text-base leading-tight">{w.name}</p>

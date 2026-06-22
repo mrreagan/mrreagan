@@ -15,6 +15,13 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 56 — Landing-page object-fit bug + gallery cleanup (Feb 2026)
+- **Bug**: `Home.jsx:283` (Founder Collection teaser image) was still using `object-contain` → cream bars top/bottom on the landing page. Also `FounderCollectionPage.jsx:79` and `GalleryArtist.jsx:183`. All flipped to `object-cover` and the AI vision `image_caption` is used as alt.
+- **Bug**: when a `kind=hero` queue entry was published, the publish flow demoted the OLD hero into `additional_images`. Buyers ended up with stale photos (e.g., the old white convex mug appearing as a thumbnail next to the new teal mug). Fixed in `routers/image_queue.py` — heroes now replace outright; nothing is demoted.
+- **Cleanup**: `scripts/cleanup_demoted_heroes.py` walked every product and removed any `additional_images` URL that wasn't a `published` queue entry of kind=additional. 32 products cleaned.
+- **Refund request**: routed to support per system prompt — user must email support@emergent.sh.
+
+
 ### Iter 55 — Bulk publish + retry (Feb 2026)
 - Topped-up credits → retried the 7 failed hero generations: all 7 succeeded.
 - Created `scripts/bulk_publish_ready.py` to flip every `ready` queue entry to `published` in one pass:

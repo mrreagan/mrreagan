@@ -279,8 +279,8 @@ function FounderCollectionTeaser({ items }) {
             >
               <img
                 src={featured.image_url}
-                alt={featured.name}
-                className="w-full aspect-[4/3] object-contain hover:scale-[1.02] transition-transform duration-500"
+                alt={featured.image_caption || featured.name}
+                className="w-full aspect-[4/3] object-cover hover:scale-[1.02] transition-transform duration-500"
               />
             </Link>
           </div>

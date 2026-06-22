@@ -427,23 +427,20 @@ async def publish_entry(entry_id: str, user: dict = Depends(require_roles("admin
 
     kind = entry.get("kind", "additional")
     if kind == "hero":
-        # Drop the old hero into additional_images so it isn't lost — admin can
-        # later discard it from the product edit drawer if they prefer.
-        existing = product.get("additional_images") or []
-        old_hero = product.get("image_url")
-        if old_hero and old_hero not in existing and old_hero != image_url:
-            existing.append(old_hero)
+        # Replace the hero outright. The old hero is dropped (not demoted into
+        # `additional_images`) — the admin can always re-add it from the
+        # product drawer if they want it as an alt angle.
         await db.products.update_one(
             {"id": entry["product_id"]},
             {"$set": {
                 "image_url": image_url,
-                "additional_images": existing,
                 # Clear the caption so the auto-captioner re-runs against the
                 # new hero (it watches image_url changes).
                 "image_caption": None,
                 "image_caption_source_url": None,
             }},
         )
+        existing = product.get("additional_images") or []
     else:
         existing = product.get("additional_images") or []
         if image_url not in existing:

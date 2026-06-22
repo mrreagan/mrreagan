@@ -75,8 +75,8 @@ function FullCard({ product, onAdd }) {
       <Link to={`/equip/${product.id}`} className="block aspect-[4/3] bg-[#F4F1EA] overflow-hidden">
         <img
           src={product.image_url}
-          alt={product.name}
-          className="w-full h-full object-contain"
+          alt={product.image_caption || product.name}
+          className="w-full h-full object-cover"
         />
       </Link>
       <div className="p-5 flex-1 flex flex-col">
