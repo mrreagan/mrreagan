@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { useCart } from "../contexts/CartContext";
 import { toast } from "sonner";
-import { ShoppingBag, Lock, ArrowLeft, ExternalLink, Palette } from "lucide-react";
+import { ShoppingBag, Lock, ArrowLeft, ExternalLink, Palette, Upload, X, FileText } from "lucide-react";
 import ReviewSection, { AggregateRatingBadge } from "../components/ReviewSection";
 import ShareButton from "../components/ShareButton";
 import FulfillmentBadge, { isPurchasable } from "../components/FulfillmentBadge";
@@ -13,6 +13,9 @@ export default function ProductDetail() {
   const [p, setP] = useState(null);
   const [qty, setQty] = useState(1);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [attachments, setAttachments] = useState([]);  // {attachment_id, original_name, size}
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
   const { addItem } = useCart();
 
   useEffect(() => {
@@ -152,6 +155,76 @@ export default function ProductDetail() {
             </div>
           ) : (
             <div className="mt-8 space-y-4">
+              {p.fulfillable_via === "vendor_custom_form" && (
+                <div className="card p-5 bg-[#F4F1EA] border border-[#476B6B]/30" data-testid="vendor-attachment-block">
+                  <p className="label !mt-0 !text-[#476B6B]">Upload your artwork</p>
+                  <p className="text-sm text-[#5C6B6B] mt-2 leading-relaxed">
+                    {p.vendor_name || "The maker"} hand-engraves each piece from your file.
+                    Upload a PDF, PNG, JPG, or SVG (max 15 MB). We&apos;ll pass everything on to
+                    them the moment you check out — you don&apos;t have to fill anything out on
+                    their site.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.svg,.ai,.eps,.psd,image/*,application/pdf"
+                    className="hidden"
+                    data-testid="vendor-attachment-input"
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (!files.length) return;
+                      setUploading(true);
+                      try {
+                        for (const file of files) {
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          const r = await api.post(`/products/${p.id}/attachment`, fd, {
+                            headers: { "Content-Type": "multipart/form-data" },
+                          });
+                          setAttachments((prev) => [...prev, r.data]);
+                        }
+                        toast.success(`Uploaded ${files.length} file${files.length === 1 ? "" : "s"}`);
+                      } catch (err) {
+                        toast.error(err?.response?.data?.detail || "Upload failed");
+                      } finally {
+                        setUploading(false);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="btn-outline text-sm mt-4 inline-flex items-center gap-2"
+                    data-testid="vendor-attachment-upload-btn"
+                  >
+                    <Upload size={14} strokeWidth={1.5} />
+                    {uploading ? "Uploading..." : "Choose file"}
+                  </button>
+                  {attachments.length > 0 && (
+                    <ul className="mt-3 space-y-1" data-testid="vendor-attachment-list">
+                      {attachments.map((a) => (
+                        <li key={a.attachment_id} className="flex items-center gap-2 text-sm text-[#1A2424]">
+                          <FileText size={13} strokeWidth={1.5} className="text-[#476B6B]" />
+                          <span className="truncate max-w-[280px]">{a.original_name}</span>
+                          <span className="text-xs text-[#5C6B6B]">
+                            ({Math.round(a.size / 1024)} KB)
+                          </span>
+                          <button
+                            onClick={() => setAttachments((prev) => prev.filter((x) => x.attachment_id !== a.attachment_id))}
+                            className="text-[#7C1F1F] hover:opacity-70"
+                            data-testid={`vendor-attachment-remove-${a.attachment_id}`}
+                            aria-label={`Remove ${a.original_name}`}
+                          >
+                            <X size={13} strokeWidth={1.8} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center gap-4">
                 <div className="flex items-center border border-[#E5E1D8] rounded-full overflow-hidden">
                   <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-4 py-2 hover:bg-[#FAF8F5]" data-testid="product-qty-minus">−</button>
@@ -160,10 +233,16 @@ export default function ProductDetail() {
                 </div>
                 <button
                   onClick={() => {
-                    addItem(p, qty);
+                    if (p.fulfillable_via === "vendor_custom_form" && attachments.length === 0) {
+                      toast.error("Please upload your artwork first.");
+                      return;
+                    }
+                    const attachment_ids = attachments.map((a) => a.attachment_id);
+                    addItem(p, qty, { attachment_ids });
                     toast.success(`Added ${qty} × ${p.name}`);
                   }}
-                  className="btn-primary"
+                  disabled={p.fulfillable_via === "vendor_custom_form" && attachments.length === 0}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   data-testid="product-add-to-cart"
                 >
                   <ShoppingBag size={16} strokeWidth={1.5} />

@@ -41,7 +41,7 @@ export function CartProvider({ children }) {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  const addItem = useCallback((product, quantity = 1) => {
+  const addItem = useCallback((product, quantity = 1, extras = {}) => {
     let toastReason = null;
     setItems((prev) => {
       const existing = prev.find((p) => p.product_id === product.id);
@@ -55,7 +55,17 @@ export function CartProvider({ children }) {
       }
       if (existing) {
         return prev.map((p) =>
-          p.product_id === product.id ? { ...p, quantity: newQty } : p
+          p.product_id === product.id
+            ? {
+                ...p,
+                quantity: newQty,
+                // Merge new attachment ids without duplicating.
+                attachment_ids: Array.from(new Set([
+                  ...(p.attachment_ids || []),
+                  ...(extras.attachment_ids || []),
+                ])),
+              }
+            : p
         );
       }
       return [
@@ -68,6 +78,7 @@ export function CartProvider({ children }) {
           quantity: newQty,
           max_per_order: cap,
           fulfillable_via: product.fulfillable_via || null,
+          attachment_ids: extras.attachment_ids || [],
         },
       ];
     });

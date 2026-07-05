@@ -15,6 +15,7 @@ export function fulfillmentStatus(p) {
   if (!p) return "sample";
   const via = (p.fulfillable_via || "").toLowerCase();
   if (via === "printful" || via === "lulu") return "foundation";
+  if (via === "vendor_custom_form") return "custom_vendor";
   if (p.is_off_site && p.vendor_slug) return "partner";
   if (p.is_gallery_artwork) return "artist";
   return "sample";
@@ -27,6 +28,10 @@ export function isPurchasable(p) {
 const STYLES = {
   foundation: {
     label: "Ships from birthright",
+    cls: "bg-[#E8F0E8] text-[#2F5D32] border-[#2F5D32]/30",
+  },
+  custom_vendor: {
+    label: "Handcrafted by partner",
     cls: "bg-[#E8F0E8] text-[#2F5D32] border-[#2F5D32]/30",
   },
   partner: {
@@ -48,7 +53,9 @@ export default function FulfillmentBadge({ product, size = "sm", labelOverride }
   const s = STYLES[status];
   const padding = size === "lg" ? "px-3 py-1.5 text-[11px]" : "px-2 py-0.5 text-[10px]";
   let label = labelOverride || s.label;
-  if (status === "partner" && product.vendor_name) {
+  if (status === "custom_vendor" && product.vendor_name) {
+    label = `Handcrafted by ${product.vendor_name}`;
+  } else if (status === "partner" && product.vendor_name) {
     label = `Direct from ${product.vendor_name}`;
   }
   return (

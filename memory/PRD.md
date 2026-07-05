@@ -15,6 +15,17 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 57 — Middleman flow for 7C's Farmstead patches (Feb 2026)
+- **New fulfillment mode**: `fulfillable_via = "vendor_custom_form"` (in addition to printful / lulu). Buyer pays birthright via Stripe, vendor is emailed a fully-prefilled Formester URL + file attachments. Wholesale reconciled out-of-band.
+- **Products migrated**: 6 patches flipped from `is_off_site` referral → in-cart middleman at $10 retail / $5 wholesale.
+- **Prefilled URL builder**: `utils/vendor_dispatch.build_prefilled_url` composes every 7C form field from the buyer's Stripe checkout data. File filenames are listed inside the Message field (URLs can't prefill file inputs).
+- **Attachment uploads**: `POST /api/products/{id}/attachment` accepts PDFs / PNGs / JPGs / SVGs up to 15 MB, stores under `backend/static/attachments/`. Guest-friendly (no auth). Only accepts uploads for products with `fulfillable_via = vendor_custom_form`.
+- **CartItem model**: added optional `attachment_ids: List[str]`. `CartContext.addItem(product, qty, { attachment_ids })` merges dedupes across cart interactions.
+- **Product detail UI**: purchasable vendor products show an "Upload your artwork" block. Add-to-cart is disabled until at least one file is uploaded.
+- **Order dispatch**: extended `utils/order_dispatch.dispatch_order` to route `vendor_custom_form` items through `dispatch_vendor_item` — logs a `vendor_orders` row + emails 7C's via Resend with attachments + prefilled URL. Optional `VENDOR_ORDER_BCC` env var CCs the admin.
+- **FulfillmentBadge**: new "Handcrafted by {vendor_name}" green pill for `vendor_custom_form` products.
+
+
 ### Iter 56 — Landing-page object-fit bug + gallery cleanup (Feb 2026)
 - **Bug**: `Home.jsx:283` (Founder Collection teaser image) was still using `object-contain` → cream bars top/bottom on the landing page. Also `FounderCollectionPage.jsx:79` and `GalleryArtist.jsx:183`. All flipped to `object-cover` and the AI vision `image_caption` is used as alt.
 - **Bug**: when a `kind=hero` queue entry was published, the publish flow demoted the OLD hero into `additional_images`. Buyers ended up with stale photos (e.g., the old white convex mug appearing as a thumbnail next to the new teal mug). Fixed in `routers/image_queue.py` — heroes now replace outright; nothing is demoted.

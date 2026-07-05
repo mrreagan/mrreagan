@@ -162,6 +162,12 @@ async def dispatch_order(db, order: Dict[str, Any]) -> List[Dict[str, Any]]:
                     contact_email=contact_email,
                     external_id=external_id,
                 )
+            elif provider == "vendor_custom_form":
+                from utils.vendor_dispatch import dispatch_vendor_item
+                result = await dispatch_vendor_item(
+                    db=db, product=product, quantity=qty, order=order,
+                    item_attachment_ids=(item.get("attachment_ids") or []),
+                )
             else:
                 record["status"] = f"unknown_provider:{provider}"
                 fulfillments.append(record)

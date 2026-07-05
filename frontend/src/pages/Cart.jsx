@@ -143,7 +143,11 @@ export default function Cart() {
     setLoading(true);
     try {
       const payload = {
-        items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+        items: items.map((i) => ({
+          product_id: i.product_id,
+          quantity: i.quantity,
+          attachment_ids: i.attachment_ids || [],
+        })),
         origin_url: window.location.origin,
       };
       if (needsShipping) payload.shipping_address = address;

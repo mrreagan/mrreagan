@@ -221,6 +221,10 @@ class VendorModerationAction(BaseModel):
 class CartItem(BaseModel):
     product_id: str
     quantity: int = 1
+    # Optional list of `order_attachments` ids that the buyer uploaded on the
+    # product detail page (e.g., artwork for a vendor-custom leather patch).
+    # Kept only for `fulfillable_via = "vendor_custom_form"` items.
+    attachment_ids: Optional[List[str]] = None
 
 
 class CheckoutRequest(BaseModel):
