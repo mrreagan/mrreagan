@@ -11,6 +11,7 @@ const EMPTY = {
   description: "",
   price: "",
   wholesale_price: "",
+  shipping_cost: "",
   type: "merch",
   workshop_id: "",
   image_url: "",
@@ -88,6 +89,7 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
         ...(initial || {}),
         price: initial?.price ?? "",
         wholesale_price: initial?.wholesale_price ?? "",
+        shipping_cost: initial?.shipping_cost ?? "",
         workshop_id: initial?.workshop_id ?? "",
         collection: initial?.collection ?? "",
         max_per_order: initial?.max_per_order ?? "",
@@ -140,6 +142,9 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
       wholesale_price: form.wholesale_price === "" || form.wholesale_price == null
         ? null
         : parseFloat(form.wholesale_price),
+      shipping_cost: form.shipping_cost === "" || form.shipping_cost == null
+        ? 0
+        : parseFloat(form.shipping_cost),
       type: form.type,
       workshop_id: form.type === "workshop_material" ? form.workshop_id || null : null,
       image_url: form.image_url.trim(),
@@ -171,6 +176,7 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
           description: payload.description,
           price: payload.price,
           wholesale_price: payload.wholesale_price,
+          shipping_cost: payload.shipping_cost,
           image_url: payload.image_url,
           additional_images: payload.additional_images,
           inventory: payload.inventory,
@@ -254,6 +260,19 @@ function ProductFormDrawer({ open, initial, workshops, onClose, onSaved }) {
               onChange={(e) => update("wholesale_price", e.target.value)}
               data-testid="admin-product-form-wholesale-price"
               placeholder="leave blank = retail"
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="text-xs uppercase tracking-wider text-[#5C6B6B]">
+            Shipping cost per unit <span className="normal-case text-[10px] text-[#5C6B6B]">(added to buyer total)</span>
+            <input
+              type="number" step="0.01" min="0"
+              className="input-field mt-1"
+              value={form.shipping_cost}
+              onChange={(e) => update("shipping_cost", e.target.value)}
+              data-testid="admin-product-form-shipping-cost"
+              placeholder="0.00 · e.g. 4.50 for 7C's patches"
             />
           </label>
         </div>

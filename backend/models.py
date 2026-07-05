@@ -142,6 +142,11 @@ class ProductCreate(BaseModel):
     # buyers can see details mentioned in the description that the hero shot
     # can't show (e.g., a flame stamped inside a mug).
     additional_images: List[str] = Field(default_factory=list)
+    # Per-item shipping surcharge added to the cart total. Used for
+    # `fulfillable_via = "vendor_custom_form"` products where each partner has
+    # negotiated a specific rate (e.g. 7C's charges birthright a set amount
+    # per patch to ship direct to the customer). Set in admin, per product.
+    shipping_cost: Optional[float] = 0.0
     inventory: int = 100
     category: Optional[str] = "general"
     # Vendor catalog (Phase 6B.4)
@@ -184,6 +189,7 @@ class ProductUpdate(BaseModel):
     price: Optional[float] = None
     image_url: Optional[str] = None
     additional_images: Optional[List[str]] = None
+    shipping_cost: Optional[float] = None
     inventory: Optional[int] = None
     category: Optional[str] = None
     collection: Optional[str] = None

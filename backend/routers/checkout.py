@@ -196,7 +196,12 @@ async def _validate_cart_and_total(db, items, user) -> tuple[float, list, bool]:
         # Gallery foundation markup is a separate concept (patronage on top
         # of the artist's price). Foundation members don't pay that either.
         markup = (gallery_markup_for(p) * qty) if not is_foundation else 0.0
-        total += line_total + markup
+        # Vendor-negotiated shipping surcharge — per unit, added to the total
+        # so the buyer covers the actual cost of shipping directly from the
+        # partner (e.g. 7C's Farmstead ships each patch to the customer).
+        ship_each = float(p.get("shipping_cost") or 0)
+        ship_line = ship_each * qty
+        total += line_total + markup + ship_line
         line_items.append({
             "product_id": p["id"],
             "name": p["name"],
@@ -208,6 +213,7 @@ async def _validate_cart_and_total(db, items, user) -> tuple[float, list, bool]:
             "gallery_artist_user_id": p.get("gallery_artist_user_id"),
             "gallery_artist_name": p.get("gallery_artist_name"),
             "foundation_markup_per_unit": round(markup / max(1, qty), 2),
+            "shipping_cost_per_unit": ship_each,
             "attachment_ids": item.attachment_ids or [],
         })
     return round(total, 2), line_items, needs_shipping

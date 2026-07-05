@@ -49,30 +49,22 @@ def build_prefilled_url(
     order_id: str,
     shipping: Dict[str, Any],
     contact_email: Optional[str],
-    attachment_filenames: List[str],
+    attachment_filenames: Optional[List[str]] = None,
 ) -> str:
     """Return the vendor's custom-order form URL with every field prefilled
-    that we know how to fill. File uploads can't be prefilled via URL — their
-    filenames are listed inside the Message field so the vendor sees them,
-    and the actual files are attached to the email we send."""
+    that we know how to fill. `attachment_filenames` is optional and kept
+    only for future vendors that require per-order artwork (7C's does not —
+    they already have the files for every SKU we sell)."""
     base = product.get("vendor_form_url")
     if not base:
         return ""
     query: Dict[str, str] = dict(product.get("vendor_form_query_base") or {})
     field_map: Dict[str, str] = product.get("vendor_form_field_map") or {}
 
-    file_line = ""
-    if attachment_filenames:
-        file_line = "\n\nAttached files (sent to you by email): " + ", ".join(attachment_filenames)
-
     quantity_summary = f"{quantity} × {product.get('name', 'birthright patch')}"
-    message = (
-        f"Custom order via birthright.live · order #{order_id[:8]}\n"
-        f"Product: {product.get('name')}\n"
-        f"Quantity: {quantity}\n"
-        f"Buyer already paid birthright (${product.get('price', 10)} × {quantity})."
-        f"{file_line}"
-    )
+    # Keep the Message minimal — every patch is an existing SKU that 7C's
+    # already has files for. No customization is allowed on these orders.
+    message = f"{product.get('name', 'birthright leather patch')}, quantity: {quantity}"
 
     sources = _shipping_to_source(shipping, contact_email)
     sources.update({
@@ -157,14 +149,18 @@ async def dispatch_vendor_item(
         or "orders@7csfarmstead.com"
     admin_bcc = os.environ.get("VENDOR_ORDER_BCC")
 
-    subject = f"[birthright.live] New custom order · {product.get('name')} × {quantity}"
+    subject = f"[birthright.live] Reorder · {product.get('name')} × {quantity}"
     body_lines = [
         f"Hi {product.get('vendor_name') or 'partner'},",
         "",
-        "A birthright customer just paid us for one of your items. Please fulfill the order below —",
-        f"we'll pay you the wholesale ${product.get('wholesale_price', 0):.2f} × {quantity} out-of-band per our arrangement.",
+        "Please fulfill another reorder of this existing SKU — no customization,",
+        "use the file already on record for this patch. Ship directly to the buyer",
+        "at the address below. Wholesale ${:.2f} × {} + shipping will be settled per".format(
+            (product.get("wholesale_price") or 0), quantity
+        ),
+        "our standing arrangement (buyer already paid birthright retail + shipping).",
         "",
-        "One-click submit — all fields prefilled on your custom-order form:",
+        "One-click submit — every field is prefilled on your custom-order form:",
         prefill_url,
         "",
         "Order details:",
@@ -175,14 +171,8 @@ async def dispatch_vendor_item(
         f"  Email:        {contact_email}",
         f"  Ship to:      {shipping.get('address1', '')}, {shipping.get('city', '')}, {shipping.get('state_code') or shipping.get('state', '')} {shipping.get('postcode') or shipping.get('zip', '')}",
         "",
+        "— birthright.live",
     ]
-    if attachments_meta:
-        body_lines.append("Files (attached to this email):")
-        for a in attachments_meta:
-            body_lines.append(f"  - {a['original_name']}")
-    else:
-        body_lines.append("Files: none uploaded.")
-    body_lines += ["", "— birthright.live"]
     text = "\n".join(body_lines)
     html = "<br>".join(body_lines).replace(prefill_url, f'<a href="{prefill_url}">{prefill_url}</a>')
 

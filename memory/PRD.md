@@ -15,6 +15,13 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 58 — Reorder-only vendor flow + pass-through shipping (Feb 2026)
+- **No customization / no file upload**: 7C's patches are existing SKUs with files already on record. Removed the file-upload block from `ProductDetail.jsx`; add-to-cart no longer requires an attachment.
+- **Message field simplified**: `build_prefilled_url` sends just `"{product name}, quantity: {n}"` per user example. Vendor email subject also updated to "Reorder · …".
+- **Shipping surcharge**: new `shipping_cost` field on `Product` model. Included per unit in `_validate_cart_and_total` line total. Displayed on the product detail page under the vendor note. Editable in AdminProducts drawer (`admin-product-form-shipping-cost`). Set to $4.50 across all 6 patches as a starting placeholder — update after negotiating with 7C's.
+- **Prefilled URL** still delivers first/last name, email, phone, full shipping address, product choice ("Other"), quantity, message, referral source. Verified E2E: message reads verbatim "Leather-engraved patch · The bond is the cure, quantity: 3".
+
+
 ### Iter 57 — Middleman flow for 7C's Farmstead patches (Feb 2026)
 - **New fulfillment mode**: `fulfillable_via = "vendor_custom_form"` (in addition to printful / lulu). Buyer pays birthright via Stripe, vendor is emailed a fully-prefilled Formester URL + file attachments. Wholesale reconciled out-of-band.
 - **Products migrated**: 6 patches flipped from `is_off_site` referral → in-cart middleman at $10 retail / $5 wholesale.
