@@ -65,6 +65,7 @@ const SECTIONS = [
     title: "Governance & System",
     items: [
       { to: "/admin/governance", icon: Scale, label: "Governance proposals", desc: "Manage proposals, votes, and member roster shown on /lead." },
+      { to: "/admin/legal-docs", icon: FileText, label: "Legal document downloads", desc: "Private static docs (counsel briefing, etc.) admin-only download." },
       { to: "/admin/system", icon: Server, label: "System status", desc: "Data migrations, deployment state, sanity diagnostics." },
       { to: "/admin/users", icon: Shield, label: "Users & members", desc: "All registered users. Toggle the Foundation-member flag here for wholesale equip pricing + 1:1 AI billing." },
       { to: "/admin/stats", icon: BarChart3, label: "Stats dashboard", desc: "Headline KPI counters and POD-margin tiles (the page formerly at /admin)." },

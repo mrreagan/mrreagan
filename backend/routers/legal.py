@@ -8,9 +8,11 @@ specific version, so we have evidence of WHAT each user signed.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse
 
 from auth_utils import get_current_user, require_roles
 from models import IndemnificationCreate, gen_id, now_iso
@@ -18,6 +20,17 @@ from utils.audit import log_action
 
 logger = logging.getLogger("birthright.legal")
 router = APIRouter(prefix="/legal", tags=["legal"])
+
+# Static legal documents shipped alongside the backend. Add new files here
+# (Markdown or PDF) and expose them via /api/legal/docs/{key} below.
+LEGAL_DOC_DIR = Path(__file__).resolve().parent.parent / "legal_docs"
+LEGAL_DOC_INDEX = {
+    "counsel-briefing": {
+        "filename": "LEGAL_BRIEFING_FOR_COUNSEL.md",
+        "display_name": "Legal Briefing for Counsel (birthright.live).md",
+        "content_type": "text/markdown; charset=utf-8",
+    },
+}
 
 
 DEFAULT_INDEMNIFICATION_BODY = """# Universal Indemnification & Hold-Harmless Agreement
@@ -324,3 +337,43 @@ async def list_signatures(
         s["user_email"] = emails.get(s.get("user_id"))
         s["ip_address"] = s.get("ip")  # alias for the older field name
     return sigs
+
+
+
+# ============ COUNSEL-FACING STATIC LEGAL DOCS ============
+
+@router.get("/docs")
+async def list_legal_docs(user: dict = Depends(require_roles("admin"))):
+    """List the static legal documents an admin can download.
+
+    Kept admin-only because these docs (currently the counsel briefing) can
+    contain internal notes not meant for public consumption.
+    """
+    out = []
+    for key, meta in LEGAL_DOC_INDEX.items():
+        fp = LEGAL_DOC_DIR / meta["filename"]
+        if not fp.exists():
+            continue
+        out.append({
+            "key": key,
+            "display_name": meta["display_name"],
+            "size_bytes": fp.stat().st_size,
+            "download_url": f"/api/legal/docs/{key}",
+        })
+    return out
+
+
+@router.get("/docs/{key}")
+async def download_legal_doc(key: str, user: dict = Depends(require_roles("admin"))):
+    """Stream the requested legal document as a download. Admin-only."""
+    meta = LEGAL_DOC_INDEX.get(key)
+    if not meta:
+        raise HTTPException(status_code=404, detail="Unknown legal document")
+    fp = LEGAL_DOC_DIR / meta["filename"]
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Document file missing on server")
+    return FileResponse(
+        path=str(fp),
+        media_type=meta["content_type"],
+        filename=meta["display_name"],
+    )

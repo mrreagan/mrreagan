@@ -41,6 +41,7 @@ import AdminHub from "./pages/AdminHub";
 import AdminUsers from "./pages/AdminUsers";
 import AdminProducts from "./pages/AdminProducts";
 import AdminImageQueue from "./pages/AdminImageQueue";
+import AdminLegalDocs from "./pages/AdminLegalDocs";
 import AdminStudio from "./pages/AdminStudio";
 import AdminStudioQueue from "./pages/AdminStudioQueue";
 import AdminLuluOps from "./pages/AdminLuluOps";
@@ -318,6 +319,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminImageQueue />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/legal-docs"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminLegalDocs />
           </ProtectedRoute>
         }
       />
