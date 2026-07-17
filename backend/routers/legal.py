@@ -412,3 +412,31 @@ async def download_legal_doc(key: str, user: dict = Depends(require_roles("admin
         media_type=meta["content_type"],
         filename=meta["display_name"],
     )
+
+
+@router.get("/drafts/{slug}")
+async def public_draft(slug: str):
+    """PUBLIC download of a first-draft legal document (no auth required).
+
+    These drafts are AI-generated first drafts explicitly labelled "not legal
+    advice" and are intended to be shareable with outside counsel without
+    creating an admin account. Only serves files whose slug is registered in
+    the manifest — no arbitrary file access.
+    """
+    try:
+        import sys
+        sys.path.insert(0, str(LEGAL_DOC_DIR))
+        from _manifest import DRAFT_LEGAL_DOCS  # type: ignore
+    except Exception:
+        DRAFT_LEGAL_DOCS = []
+    entry = next((d for d in DRAFT_LEGAL_DOCS if d["slug"] == slug), None)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Unknown draft")
+    fp = LEGAL_DOC_DIR / f"{slug}.docx"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Draft file missing on server")
+    return FileResponse(
+        path=str(fp),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename=f"{entry['display_name']}.docx",
+    )

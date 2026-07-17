@@ -150,56 +150,85 @@ def md_to_docx(md_path: Path, docx_path: Path, doc_title: str = None):
 
     text = md_path.read_text()
     lines = text.splitlines()
-    for line in lines:
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         strip = line.strip()
+
+        # Blank line / horizontal rule
         if strip == "" or strip == "---":
-            if strip == "---": doc.add_paragraph()
+            if strip == "---":
+                doc.add_paragraph()
+            i += 1
             continue
+
+        # Blockquote
         if strip.startswith("> "):
             p = doc.add_paragraph()
             p.paragraph_format.left_indent = Inches(0.2)
-            r = p.add_run(strip[2:]); r.italic = True; r.font.color.rgb = RGBColor(0x7C, 0x53, 0x16)
+            r = p.add_run(strip[2:])
+            r.italic = True
+            r.font.color.rgb = RGBColor(0x7C, 0x53, 0x16)
+            i += 1
             continue
+
+        # Headings
         if strip.startswith("### "):
-            doc.add_heading(strip[4:], level=3); continue
+            doc.add_heading(strip[4:], level=3); i += 1; continue
         if strip.startswith("## "):
-            doc.add_heading(strip[3:], level=2); continue
+            doc.add_heading(strip[3:], level=2); i += 1; continue
         if strip.startswith("# "):
-            h = doc.add_heading(strip[2:], level=1); continue
+            doc.add_heading(strip[2:], level=1); i += 1; continue
+
+        # Table — grab the whole block right here and render in place
         if strip.startswith("|"):
-            # inline table row — collect this and subsequent | lines
-            # (handled below in a small loop by re-reading)
-            pass
+            tblock = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                tblock.append(lines[i].strip())
+                i += 1
+            rows = []
+            for r_ in tblock:
+                cells = [c.strip() for c in r_.strip("|").split("|")]
+                if all(re.fullmatch(r":?-+:?", c or "") for c in cells):
+                    continue  # separator row
+                rows.append(cells)
+            if not rows:
+                continue
+            w = max(len(r) for r in rows)
+            t = doc.add_table(rows=len(rows), cols=w)
+            t.style = "Light Grid Accent 1"
+            for ri, row in enumerate(rows):
+                for ci in range(w):
+                    cell = t.rows[ri].cells[ci]
+                    cell.text = ""
+                    p = cell.paragraphs[0]
+                    if ci < len(row):
+                        _inline(p, row[ci])
+                    if ri == 0:
+                        for run in p.runs:
+                            run.bold = True
+            doc.add_paragraph()
+            continue
+
+        # Bullet
         if strip.startswith("- "):
-            p = doc.add_paragraph(style="List Bullet"); _inline(p, strip[2:]); continue
+            p = doc.add_paragraph(style="List Bullet")
+            _inline(p, strip[2:])
+            i += 1
+            continue
+
+        # Numbered
         m = re.match(r"^(\d+)\.\s+(.*)$", strip)
         if m:
-            p = doc.add_paragraph(style="List Number"); _inline(p, m.group(2)); continue
-        p = doc.add_paragraph(); _inline(p, strip)
+            p = doc.add_paragraph(style="List Number")
+            _inline(p, m.group(2))
+            i += 1
+            continue
 
-    # Simple table pass — collect any consecutive lines starting with |
-    # and materialize them as tables at the end. (Kept simple; drafts use
-    # tables sparingly.)
-    tblock, in_tbl = [], False
-    for line in lines:
-        s = line.strip()
-        if s.startswith("|"):
-            in_tbl = True; tblock.append(s)
-        else:
-            if in_tbl and tblock:
-                rows = [r for r in tblock if not re.fullmatch(r"\|(\s*:?-+:?\s*\|)+", r)]
-                if rows:
-                    parsed = [[c.strip() for c in r.strip("|").split("|")] for r in rows]
-                    w = max(len(r) for r in parsed)
-                    t = doc.add_table(rows=len(parsed), cols=w); t.style = "Light Grid Accent 1"
-                    for ri, row in enumerate(parsed):
-                        for ci in range(w):
-                            cell = t.rows[ri].cells[ci]; cell.text = ""
-                            _inline(cell.paragraphs[0], row[ci] if ci < len(row) else "")
-                            if ri == 0:
-                                for r_ in cell.paragraphs[0].runs: r_.bold = True
-                    doc.add_paragraph()
-                tblock, in_tbl = [], False
+        # Plain paragraph
+        p = doc.add_paragraph()
+        _inline(p, strip)
+        i += 1
 
     docx_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(docx_path))
@@ -268,11 +297,13 @@ downloadable via the doc-shelf at `/admin/legal-docs`. Direct links:
 
 def _briefing_direct_link_block():
     from _manifest import DRAFT_LEGAL_DOCS  # type: ignore  # local import
-    out = ["| # | Draft | Category | Download |", "|---|---|---|---|"]
+    # Use the PUBLIC drafts endpoint so counsel can click without an admin
+    # login. The endpoint is safe to expose because every draft is labelled
+    # "AI-generated first draft — not legal advice" both top and bottom.
+    out = ["| # | Draft | Category | Public download |", "|---|---|---|---|"]
     for i, d in enumerate(DRAFT_LEGAL_DOCS, 1):
         slug = d["slug"]
-        key = f"draft-{slug}"
-        url = f"{DRAFT_DL_BASE}/{key}"
+        url = f"{PROD_BASE}/api/legal/drafts/{slug}"
         out.append(f"| {i} | **{d['display_name']}** | {d['category']} | {url} |")
     return "\n".join(out)
 
@@ -281,19 +312,34 @@ def rebuild_briefing():
     src = LEGAL_DIR / "LEGAL_BRIEFING_FOR_COUNSEL.md"
     docx = LEGAL_DIR / "LEGAL_BRIEFING_FOR_COUNSEL.docx"
     text = src.read_text()
+
+    # Insert / refresh the EU block right after §4 (Data & Privacy)
     if "EU / UK Compliance Considerations" not in text:
-        # Insert the EU block right after §4 (Data & Privacy)
         insertion_point = text.find("## 5. Third-Party Integrations")
         if insertion_point > 0:
             text = text[:insertion_point] + EU_BLOCK_IN_BRIEFING + "\n" + text[insertion_point:]
 
-    # Append the draft table if not already present
-    if "8b. Draft documents — direct download links" not in text:
-        # need the manifest — import it via sys.path shim
-        import sys
-        sys.path.insert(0, str(LEGAL_DIR))
-        table = _briefing_direct_link_block()
-        text += "\n\n" + table + "\n"
+    # Strip any stale §8b table then re-append a fresh one with public links.
+    text = re.sub(
+        r"\n\n\| # \| Draft \| Category \|.*?(?=\n##|\Z)",
+        "",
+        text,
+        flags=re.DOTALL,
+    )
+    import sys
+    sys.path.insert(0, str(LEGAL_DIR))
+    table = _briefing_direct_link_block()
+    # Prefix with a small heading so it renders as its own section, not raw pipes.
+    section = "\n\n## 8b. Draft documents — public download links\n\n" + table + "\n"
+    if "## 8b. Draft documents" not in text:
+        text += section
+    else:
+        text = re.sub(
+            r"## 8b\. Draft documents.*?(?=\n##|\Z)",
+            section.lstrip("\n"),
+            text,
+            flags=re.DOTALL,
+        )
 
     src.write_text(text)
     md_to_docx(src, docx)
