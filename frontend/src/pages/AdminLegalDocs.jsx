@@ -98,7 +98,7 @@ export default function AdminLegalDocs() {
                 <div className="min-w-0">
                   <p className="font-serif text-lg">{d.display_name}</p>
                   <p className="text-xs text-[#5C6B6B] mt-0.5">
-                    {(d.size_bytes / 1024).toFixed(1)} KB · Markdown
+                    {(d.size_bytes / 1024).toFixed(1)} KB · {d.display_name?.toLowerCase().endsWith(".docx") ? "Word document" : "Markdown"}
                   </p>
                 </div>
               </div>

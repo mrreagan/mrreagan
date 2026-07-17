@@ -30,6 +30,11 @@ LEGAL_DOC_INDEX = {
         "display_name": "Legal Briefing for Counsel (birthright.live).md",
         "content_type": "text/markdown; charset=utf-8",
     },
+    "counsel-briefing-docx": {
+        "filename": "LEGAL_BRIEFING_FOR_COUNSEL.docx",
+        "display_name": "Legal Briefing for Counsel (birthright.live).docx",
+        "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    },
 }
 
 
