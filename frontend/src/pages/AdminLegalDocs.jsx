@@ -85,36 +85,53 @@ export default function AdminLegalDocs() {
           <p className="font-serif text-xl mt-4">No documents available.</p>
         </div>
       )}
-      {!loading && docs.length > 0 && (
-        <div className="space-y-3" data-testid="legal-docs-list">
-          {docs.map((d) => (
-            <article
-              key={d.key}
-              className="card p-5 flex items-center justify-between gap-4"
-              data-testid={`legal-doc-${d.key}`}
-            >
-              <div className="flex items-start gap-3 min-w-0">
-                <FileText size={20} strokeWidth={1.5} className="text-[#C9A961] shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="font-serif text-lg">{d.display_name}</p>
-                  <p className="text-xs text-[#5C6B6B] mt-0.5">
-                    {(d.size_bytes / 1024).toFixed(1)} KB · {d.display_name?.toLowerCase().endsWith(".docx") ? "Word document" : "Markdown"}
-                  </p>
+      {!loading && docs.length > 0 && (() => {
+        // Group by category so the 21 drafts + briefing are readable.
+        const groups = docs.reduce((acc, d) => {
+          const c = d.category || "Draft";
+          (acc[c] = acc[c] || []).push(d);
+          return acc;
+        }, {});
+        const order = ["Briefing", "Public-facing", "Partner agreements", "Governance", "Internal / Compliance", "Internal / IP", "Draft"];
+        const sortedKeys = Object.keys(groups).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        return (
+          <div className="space-y-8" data-testid="legal-docs-list">
+            {sortedKeys.map((cat) => (
+              <section key={cat}>
+                <h2 className="editorial-h3 mb-3">{cat}</h2>
+                <div className="space-y-3">
+                  {groups[cat].map((d) => (
+                    <article
+                      key={d.key}
+                      className="card p-5 flex items-center justify-between gap-4"
+                      data-testid={`legal-doc-${d.key}`}
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <FileText size={20} strokeWidth={1.5} className="text-[#C9A961] shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <p className="font-serif text-lg">{d.display_name}</p>
+                          <p className="text-xs text-[#5C6B6B] mt-0.5">
+                            {(d.size_bytes / 1024).toFixed(1)} KB · {d.display_name?.toLowerCase().endsWith(".docx") ? "Word document" : "Markdown"}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => download(d)}
+                        disabled={busyKey === d.key}
+                        className="btn-primary text-sm inline-flex items-center gap-2 shrink-0"
+                        data-testid={`legal-doc-download-${d.key}`}
+                      >
+                        <Download size={14} strokeWidth={1.5} />
+                        {busyKey === d.key ? "Downloading..." : "Download"}
+                      </button>
+                    </article>
+                  ))}
                 </div>
-              </div>
-              <button
-                onClick={() => download(d)}
-                disabled={busyKey === d.key}
-                className="btn-primary text-sm inline-flex items-center gap-2 shrink-0"
-                data-testid={`legal-doc-download-${d.key}`}
-              >
-                <Download size={14} strokeWidth={1.5} />
-                {busyKey === d.key ? "Downloading..." : "Download"}
-              </button>
-            </article>
-          ))}
-        </div>
-      )}
+              </section>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }

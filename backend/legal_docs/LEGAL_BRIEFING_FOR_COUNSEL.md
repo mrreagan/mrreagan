@@ -106,6 +106,51 @@ MongoDB stores ~90 collections. High-sensitivity data includes:
 
 ---
 
+
+---
+
+## 4a. EU / UK Compliance Considerations (added Feb 2026)
+
+All draft agreements have been generated with EU/UK alignment in mind and
+carry an EU/UK Compliance Addendum. The concrete implications for the
+platform:
+
+- **GDPR/UK-GDPR** apply to any EEA/UK data subject. Lawful bases mapped:
+  contract necessity, legitimate interests (with opt-out), consent
+  (marketing / non-essential cookies), legal obligation.
+- **Cookie consent (ePrivacy)** — a consent banner is required before
+  non-essential cookies fire. Currently: banner not implemented; only
+  strictly-necessary cookies are set (Cloudflare, Stripe at checkout).
+- **14-day right of withdrawal (Consumer Rights Directive 2011/83/EU)**
+  needs to appear in the Refund & Returns Policy for EU consumers and
+  the workshop registration flow.
+- **Digital Services Act (Reg. 2022/2065)** — community features are in
+  scope. Designate a single point of contact `eu-contact@birthright.live`
+  and publish a transparency report annually if traffic thresholds are
+  crossed.
+- **EU AI Act (Reg. 2024/1689)** — AI Help Assistant and AI image
+  generation are labeled as AI-assisted. Not used for automated
+  decisions with legal effect. Transparency notice is already present in
+  the Terms of Service draft §9.
+- **International data transfers** rely on the 2021 SCCs + UK IDTA.
+  Every sub-processor DPA (§5) must incorporate these where applicable.
+- **DPO** — designate `dpo@birthright.live` when the threshold criteria
+  in GDPR Art. 37 are met (systematic large-scale monitoring or large-
+  scale processing of special-category data).
+- **EU VAT** — evaluate One-Stop-Shop registration for cross-border B2C
+  sales of digital services (workshops, subscriptions) and physical
+  goods.
+- **Supervisory authority** — publish the right of EU/UK residents to
+  lodge complaints with local supervisory authorities.
+
+---
+
+## 8b. Draft documents — direct download links (added Feb 2026)
+
+The 21 instruments listed in §8 now have first-draft representative
+documents available for counsel to review. Every draft is admin-only and
+downloadable via the doc-shelf at `/admin/legal-docs`. Direct links:
+
 ## 5. Third-Party Integrations (Sub-processors)
 
 | Vendor | Purpose | Data shared | Contract / DPA in place? |

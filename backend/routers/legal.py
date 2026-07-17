@@ -24,18 +24,47 @@ router = APIRouter(prefix="/legal", tags=["legal"])
 # Static legal documents shipped alongside the backend. Add new files here
 # (Markdown or PDF) and expose them via /api/legal/docs/{key} below.
 LEGAL_DOC_DIR = Path(__file__).resolve().parent.parent / "legal_docs"
-LEGAL_DOC_INDEX = {
-    "counsel-briefing": {
-        "filename": "LEGAL_BRIEFING_FOR_COUNSEL.md",
-        "display_name": "Legal Briefing for Counsel (birthright.live).md",
-        "content_type": "text/markdown; charset=utf-8",
-    },
-    "counsel-briefing-docx": {
-        "filename": "LEGAL_BRIEFING_FOR_COUNSEL.docx",
-        "display_name": "Legal Briefing for Counsel (birthright.live).docx",
-        "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    },
-}
+
+
+def _build_index():
+    """Assemble the download index — the counsel briefing + every generated
+    draft `.docx` in /app/backend/legal_docs/. .docx is the standard output
+    format for this project."""
+    idx = {
+        "counsel-briefing-docx": {
+            "filename": "LEGAL_BRIEFING_FOR_COUNSEL.docx",
+            "display_name": "Legal Briefing for Counsel (birthright.live).docx",
+            "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "category": "Briefing",
+        },
+        "counsel-briefing-md": {
+            "filename": "LEGAL_BRIEFING_FOR_COUNSEL.md",
+            "display_name": "Legal Briefing for Counsel (source).md",
+            "content_type": "text/markdown; charset=utf-8",
+            "category": "Briefing",
+        },
+    }
+    # Auto-discover drafts by manifest slug — .docx preferred, .md fallback.
+    try:
+        import sys
+        sys.path.insert(0, str(LEGAL_DOC_DIR))
+        from _manifest import DRAFT_LEGAL_DOCS  # type: ignore
+    except Exception:
+        DRAFT_LEGAL_DOCS = []
+    for d in DRAFT_LEGAL_DOCS:
+        slug = d["slug"]
+        docx_file = f"{slug}.docx"
+        if (LEGAL_DOC_DIR / docx_file).exists():
+            idx[f"draft-{slug}"] = {
+                "filename": docx_file,
+                "display_name": f"{d['display_name']}.docx",
+                "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "category": d.get("category", "Draft"),
+            }
+    return idx
+
+
+LEGAL_DOC_INDEX = _build_index()
 
 
 DEFAULT_INDEMNIFICATION_BODY = """# Universal Indemnification & Hold-Harmless Agreement
@@ -362,6 +391,7 @@ async def list_legal_docs(user: dict = Depends(require_roles("admin"))):
         out.append({
             "key": key,
             "display_name": meta["display_name"],
+            "category": meta.get("category", "Draft"),
             "size_bytes": fp.stat().st_size,
             "download_url": f"/api/legal/docs/{key}",
         })
