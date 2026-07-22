@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { ArrowRight, Calendar, Users, Flame, Sparkles, Heart, ShoppingBag } from "lucide-react";
 import { NewsletterSignup } from "../components/Newsletter";
-import { TaxStatusPill } from "../components/campaigns/CampaignParts";
+import { TaxStatusPill, FeaturedCampaignCard } from "../components/campaigns/CampaignParts";
 
 const HERO_BG = "https://static.prod-images.emergentagent.com/jobs/c61b4345-eef4-4783-a5af-85e8af10eaf3/images/10154eafef8a2623b8b4e86a0d0a8065334110989eba28a8c99077e78f19d1fa.png";
 const COMMUNITY_IMG_1 = "https://images.unsplash.com/photo-1634155938686-24a26c55d71a?w=1200";
@@ -210,52 +210,11 @@ function SponsorCampaignTeaser({ campaign }) {
   if (!campaign) return null;
   return (
     <section className="container-page py-16" data-testid="home-sponsor-campaign-teaser">
-      <div className="card p-8 lg:p-10 bg-gradient-to-br from-[#FBF3E4] to-[#F4F1EA] border-[#E5D7B3]">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-8">
-            <div className="inline-flex items-center gap-2">
-              <span className="label text-[#8B4513]">Sponsor campaign</span>
-              <TaxStatusPill />
-            </div>
-            <h2 className="editorial-h2 mt-3 text-[#0F2424]">{campaign.title}</h2>
-            <p className="text-sm text-[#5C6B6B] mt-3 leading-relaxed max-w-xl">
-              {campaign.tagline}
-            </p>
-            <div className="mt-5 flex items-baseline gap-3">
-              <span className="font-serif text-2xl text-[#0F2424]">
-                ${Number(campaign.total_pledged || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </span>
-              <span className="text-xs text-[#5C6B6B]">
-                of ${Number(campaign.goal_amount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} · {campaign.sponsor_count || 0} sponsors
-              </span>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                to={`/campaigns/${campaign.slug}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#C9A961] text-[#0F2424] font-semibold text-sm hover:bg-[#D4B677] transition"
-                data-testid="home-campaign-cta"
-              >
-                <Heart size={14} strokeWidth={1.8} /> {campaign.pill_label || "Sponsor this campaign"}
-              </Link>
-              <Link to="/campaigns" className="btn-outline text-sm">
-                All campaigns
-              </Link>
-            </div>
-          </div>
-          <div className="lg:col-span-4">
-            <div className="h-2 rounded-full bg-[#E5D7B3] overflow-hidden">
-              <div className="h-full bg-[#C9A961]" style={{ width: `${Math.min(campaign.progress_pct || 0, 100)}%` }} />
-            </div>
-            <p className="text-[11px] text-[#5C6B6B] mt-2 text-right">
-              {campaign.progress_pct}% pledged
-            </p>
-            {campaign.contingency_note && (
-              <p className="text-[11px] text-[#8B4513] mt-4 italic leading-relaxed">
-                Contingent: {campaign.contingency_note}
-              </p>
-            )}
-          </div>
-        </div>
+      <FeaturedCampaignCard campaign={campaign} testId="home-featured-campaign" />
+      <div className="mt-4 text-right">
+        <Link to="/campaigns" className="text-xs text-[#476B6B] hover:text-[#0F2424] inline-flex items-center gap-1">
+          All campaigns <ArrowRight size={12} strokeWidth={1.5} />
+        </Link>
       </div>
     </section>
   );
