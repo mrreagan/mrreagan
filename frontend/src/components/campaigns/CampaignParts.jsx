@@ -11,7 +11,7 @@ export function SponsorPill({ label = "Sponsor this campaign", to = "/campaigns"
   return (
     <Link
       to={to}
-      title="Sponsorships are NOT tax-deductible — 501(c)(3) status not yet granted."
+      title="Sponsorships are not currently tax-deductible — 501(c)(3) status not yet granted."
       className={
         "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold " +
         "bg-[#C9A961] text-[#0F2424] hover:bg-[#D4B677] transition " +
@@ -23,6 +23,27 @@ export function SponsorPill({ label = "Sponsor this campaign", to = "/campaigns"
       {label}
       <ArrowRight size={12} strokeWidth={2} />
     </Link>
+  );
+}
+
+/**
+ * Small inline status pill for quick disclosure.
+ * Use next to headings ("Sponsor Campaign · [pill]") to signal legal status
+ * without a full paragraph. Pair with `<NonDeductibleNotice />` on the same page.
+ */
+export function TaxStatusPill({ className = "" }) {
+  return (
+    <span
+      title="Birthright is not yet a 501(c)(3). Sponsorships are not currently tax-deductible."
+      className={
+        "inline-flex items-center text-[10px] uppercase tracking-widest " +
+        "text-[#8B4513] bg-[#E5D7B3] px-2 py-0.5 rounded-full font-semibold " +
+        className
+      }
+      data-testid="tax-status-pill"
+    >
+      Not Currently Tax-Deductible
+    </span>
   );
 }
 
@@ -40,10 +61,10 @@ export function NonDeductibleNotice({ notice, className = "" }) {
       }
       data-testid="non-deductible-notice"
     >
-      <strong className="font-bold">Not tax-deductible.</strong>{" "}
+      <strong className="font-bold">Not currently tax-deductible.</strong>{" "}
       <span className="normal-case tracking-normal text-[#5C6B6B]">
         {notice ||
-          "Birthright Foundation has not yet submitted or received IRS 501(c)(3) determination. Sponsorships are NOT tax-deductible as charitable donations at this time."}
+          "Birthright Foundation has not yet submitted or received IRS 501(c)(3) determination. Sponsorships are not currently tax-deductible as charitable donations. Sponsors receive a business receipt only. No representation is made about future tax status."}
       </span>
     </div>
   );

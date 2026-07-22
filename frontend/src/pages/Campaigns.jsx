@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { ArrowRight, Info } from "lucide-react";
-import { SponsorPill, NonDeductibleNotice, CampaignProgress } from "../components/campaigns/CampaignParts";
+import { SponsorPill, NonDeductibleNotice, CampaignProgress, TaxStatusPill } from "../components/campaigns/CampaignParts";
 
 function CampaignCard({ c }) {
   return (
@@ -64,6 +64,7 @@ export default function Campaigns() {
     <div className="container-page py-16" data-testid="campaigns-page">
       <div className="max-w-2xl">
         <span className="label">Sponsor a campaign</span>
+        <TaxStatusPill className="ml-2" />
         <h1 className="editorial-h1 mt-3">Fund specific projects. Named recognition.</h1>
         <div className="divider-flame" />
         <p className="text-base text-[#5C6B6B] leading-relaxed">

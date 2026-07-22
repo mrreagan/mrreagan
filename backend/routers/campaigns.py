@@ -33,9 +33,9 @@ admin_router = APIRouter(prefix="/admin/campaigns", tags=["campaigns-admin"])
 
 NON_DEDUCTIBLE_NOTICE = (
     "Birthright Foundation has not yet submitted or received IRS 501(c)(3) "
-    "tax-exempt determination. Sponsorships and contributions are NOT "
-    "tax-deductible as charitable donations at this time. Sponsors will "
-    "receive a business receipt only."
+    "determination. Sponsorships and contributions are not currently "
+    "tax-deductible as charitable donations. Sponsors receive a business "
+    "receipt only. No representation is made about future tax status."
 )
 
 
@@ -201,6 +201,12 @@ async def create_pledge(slug: str, data: PledgeCreate):
         "updated_at": now_iso(),
     }
     await db.sponsor_pledges.insert_one(pledge)
+    # Fire-and-forget notifications (dry-run safe).
+    try:
+        from utils.campaign_notify import send_pledge_confirmation
+        await send_pledge_confirmation(pledge, c)
+    except Exception as ex:
+        logger.warning("Pledge notification dispatch failed: %s", ex)
     return {
         "ok": True,
         "pledge_id": pledge["id"],
@@ -308,22 +314,58 @@ async def admin_update_pledge_status(
     valid = {"pending", "approved", "invoiced", "paid", "declined", "withdrawn"}
     if data.status not in valid:
         raise HTTPException(status_code=400, detail=f"Invalid status. Use one of: {sorted(valid)}")
+    existing = await db.sponsor_pledges.find_one({"id": pledge_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Pledge not found")
+    prev_status = existing.get("status")
     update = {
         "status": data.status,
         "updated_at": now_iso(),
     }
     if data.admin_note is not None:
         update["admin_note"] = data.admin_note
-    result = await db.sponsor_pledges.update_one({"id": pledge_id}, {"$set": update})
-    if not result.matched_count:
-        raise HTTPException(status_code=404, detail="Pledge not found")
+    await db.sponsor_pledges.update_one({"id": pledge_id}, {"$set": update})
     await log_action(
         db, user, "campaign.pledge.status",
         target_type="pledge", target_id=pledge_id,
-        metadata={"status": data.status},
+        metadata={"status": data.status, "prev_status": prev_status},
     )
     p = await db.sponsor_pledges.find_one({"id": pledge_id})
+    # Trigger sponsor emails on meaningful state transitions.
+    try:
+        if data.status != prev_status:
+            campaign = await db.sponsor_campaigns.find_one({"id": p["campaign_id"]})
+            if campaign:
+                from utils.campaign_notify import send_invoice, send_receipt
+                if data.status == "invoiced":
+                    await send_invoice(p, campaign, admin_note=data.admin_note)
+                elif data.status == "paid":
+                    await send_receipt(p, campaign)
+    except Exception as ex:
+        logger.warning("Pledge status email dispatch failed: %s", ex)
     return _clean(p)
+
+
+@admin_router.post("/pledges/{pledge_id}/resend-invoice")
+async def admin_resend_invoice(
+    pledge_id: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Manually re-send the invoice email (e.g. after updating payment env vars)."""
+    from database import db
+    p = await db.sponsor_pledges.find_one({"id": pledge_id})
+    if not p:
+        raise HTTPException(status_code=404, detail="Pledge not found")
+    campaign = await db.sponsor_campaigns.find_one({"id": p["campaign_id"]})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    from utils.campaign_notify import send_invoice
+    await send_invoice(p, campaign, admin_note=p.get("admin_note"))
+    await log_action(
+        db, user, "campaign.pledge.invoice_resend",
+        target_type="pledge", target_id=pledge_id,
+    )
+    return {"ok": True}
 
 
 # ============ Seed helper (called at startup) ============

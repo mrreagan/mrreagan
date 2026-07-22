@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { toast } from "sonner";
 import { TierCard, DonationWidget } from "../components/sponsorship/SponsorshipParts";
-import { NonDeductibleNotice } from "../components/campaigns/CampaignParts";
+import { NonDeductibleNotice, TaxStatusPill } from "../components/campaigns/CampaignParts";
 import { ArrowRight } from "lucide-react";
 
 export default function Sponsorship() {
@@ -32,6 +32,7 @@ export default function Sponsorship() {
     <div className="container-page py-16" data-testid="sponsorship-page">
       <div className="max-w-2xl">
         <span className="label">Sponsorship</span>
+        <TaxStatusPill className="ml-2" />
         <h1 className="editorial-h1 mt-3">Help someone claim their birthright.</h1>
         <div className="divider-flame" />
         <p className="text-base text-[#5C6B6B] leading-relaxed">

@@ -20,17 +20,35 @@ const STATUS_ORDER = ["pending", "approved", "invoiced", "paid", "declined", "wi
 function PledgeRow({ p, onUpdated }) {
   const [status, setStatus] = useState(p.status);
   const [saving, setSaving] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const save = async () => {
     setSaving(true);
     try {
       await api.put(`/admin/campaigns/pledges/${p.id}/status`, { status });
-      toast.success("Pledge updated");
+      const stateNote = status === "invoiced"
+        ? "Pledge updated. Invoice email sent to sponsor."
+        : status === "paid"
+        ? "Pledge marked paid. Business receipt sent to sponsor."
+        : "Pledge updated.";
+      toast.success(stateNote);
       onUpdated();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Update failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const resend = async () => {
+    setResending(true);
+    try {
+      await api.post(`/admin/campaigns/pledges/${p.id}/resend-invoice`);
+      toast.success("Invoice re-sent.");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Resend failed");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -61,14 +79,26 @@ function PledgeRow({ p, onUpdated }) {
         </select>
       </td>
       <td className="p-3">
-        <button
-          onClick={save}
-          disabled={saving || status === p.status}
-          className="btn-outline text-xs py-1 px-3"
-          data-testid={`pledge-save-${p.id}`}
-        >
-          {saving ? "…" : "Save"}
-        </button>
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={save}
+            disabled={saving || status === p.status}
+            className="btn-outline text-xs py-1 px-3"
+            data-testid={`pledge-save-${p.id}`}
+          >
+            {saving ? "…" : "Save"}
+          </button>
+          {(p.status === "invoiced" || p.status === "approved") && (
+            <button
+              onClick={resend}
+              disabled={resending}
+              className="text-[10px] text-[#476B6B] hover:underline"
+              data-testid={`pledge-resend-${p.id}`}
+            >
+              {resending ? "…" : "Resend invoice"}
+            </button>
+          )}
+        </div>
       </td>
     </tr>
   );

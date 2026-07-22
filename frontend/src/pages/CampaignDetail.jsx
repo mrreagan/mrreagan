@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Gem, Info } from "lucide-react";
-import { NonDeductibleNotice, CampaignProgress } from "../components/campaigns/CampaignParts";
+import { NonDeductibleNotice, CampaignProgress, TaxStatusPill } from "../components/campaigns/CampaignParts";
 
 const TIER_COLORS = {
   bronze: "from-[#8B4513] to-[#A66832]",
@@ -257,6 +257,7 @@ export default function CampaignDetail() {
             </div>
           ) : null}
           <span className="label">Sponsor campaign</span>
+          <TaxStatusPill className="ml-2" />
           <h1 className="editorial-h1 mt-3" data-testid="campaign-title">{c.title}</h1>
           <p className="text-lg text-[#5C6B6B] mt-3 leading-relaxed">{c.tagline}</p>
           <NonDeductibleNotice notice={c.non_deductible_notice} className="mt-5" />
