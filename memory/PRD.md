@@ -15,6 +15,16 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 59 — Sponsor Pill + Campaigns system (Feb 2026)
+- **New backend router**: `routers/campaigns.py` with public list/detail/pledge endpoints (`GET /api/campaigns`, `GET /api/campaigns/{slug}`, `POST /api/campaigns/{slug}/pledge`) and admin CRUD + pledge status management. Every API response embeds a `non_deductible_notice` string so the frontend cannot forget to display it.
+- **New DB collections**: `sponsor_campaigns` (title, slug, tagline, story markdown, goal_amount, tiers[], status, contingency_note) and `sponsor_pledges` (sponsor_name, email, org, amount, tier_id, message, display_publicly opt-in, status: pending → approved → invoiced → paid). Pledge-only flow — no payment processing until 501(c)(3) is granted.
+- **Auto-seeded first campaign**: "Inside Success TV Feature — Birthright Story" with $25k goal, 4 tiers (Bronze $500 / Silver $2.5k / Gold $5k / Presenting $10k), contingency note about ISTV contract redlines, and story markdown explaining the ROI framing.
+- **New frontend pages**: `/campaigns` (list) and `/campaigns/:slug` (detail with tier selector + pledge form). Admin CRUD at `/admin/campaigns` with pledge status controls.
+- **`SponsorPill` component + `NonDeductibleNotice` block** (`components/campaigns/CampaignParts.jsx`) — reused on campaign cards, detail hero, pledge form, and homepage teaser. Amber-highlighted disclosure is legally required and shown everywhere sponsor money is discussed.
+- **Homepage teaser section**: gold-tinted card between Featured Workshops and Impact Statements showing progress bar, sponsor count, and gold CTA button. Auto-hides if no active campaigns.
+- **Sponsorship page updated**: added `NonDeductibleNotice` to the existing `/sponsor` tier page + a cross-link to `/campaigns` so users can find both flows.
+- Verified E2E: pledge submission → admin approval → progress + public sponsor list updates on the campaign page.
+
 ### Iter 58 — Reorder-only vendor flow + pass-through shipping (Feb 2026)
 - **No customization / no file upload**: 7C's patches are existing SKUs with files already on record. Removed the file-upload block from `ProductDetail.jsx`; add-to-cart no longer requires an attachment.
 - **Message field simplified**: `build_prefilled_url` sends just `"{product name}, quantity: {n}"` per user example. Vendor email subject also updated to "Reorder · …".

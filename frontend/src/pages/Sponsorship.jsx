@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { toast } from "sonner";
 import { TierCard, DonationWidget } from "../components/sponsorship/SponsorshipParts";
+import { NonDeductibleNotice } from "../components/campaigns/CampaignParts";
+import { ArrowRight } from "lucide-react";
 
 export default function Sponsorship() {
   const [tiers, setTiers] = useState([]);
@@ -33,6 +36,13 @@ export default function Sponsorship() {
         <div className="divider-flame" />
         <p className="text-base text-[#5C6B6B] leading-relaxed">
           Your sponsorship underwrites scholarships, facilitator training, and the slow work of building a foundation that doesn't gate-keep its tools. Choose a tier, or give what feels right.
+        </p>
+        <NonDeductibleNotice className="mt-6" />
+        <p className="text-xs text-[#5C6B6B] mt-4">
+          Looking to fund a specific project?{" "}
+          <Link to="/campaigns" className="underline hover:text-[#C9A961]">
+            See active sponsor campaigns <ArrowRight size={12} strokeWidth={1.5} className="inline" />
+          </Link>
         </p>
       </div>
 

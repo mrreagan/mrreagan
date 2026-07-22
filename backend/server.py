@@ -224,6 +224,12 @@ from routers.image_queue import router as image_queue_router  # noqa: E402
 api_router.include_router(image_queue_router)
 from routers.order_attachments import router as order_attachments_router  # noqa: E402
 api_router.include_router(order_attachments_router)
+from routers.campaigns import (  # noqa: E402
+    public_router as campaigns_public_router,
+    admin_router as campaigns_admin_router,
+)
+api_router.include_router(campaigns_public_router)
+api_router.include_router(campaigns_admin_router)
 
 
 @api_router.post("/webhook/stripe")
@@ -266,6 +272,11 @@ async def startup_event() -> None:
         await ensure_agreement_v2_published(db)
     except Exception as e:
         logger.error(f"Runtime seed/repair error: {e}")
+    try:
+        from routers.campaigns import ensure_istv_campaign_seeded
+        await ensure_istv_campaign_seeded(db)
+    except Exception as e:
+        logger.error(f"ISTV campaign seed error: {e}")
     try:
         from utils.gather_seed import seed_geographic_tree
         result = await seed_geographic_tree(db)

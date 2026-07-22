@@ -42,6 +42,9 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminProducts from "./pages/AdminProducts";
 import AdminImageQueue from "./pages/AdminImageQueue";
 import AdminLegalDocs from "./pages/AdminLegalDocs";
+import AdminCampaigns from "./pages/AdminCampaigns";
+import Campaigns from "./pages/Campaigns";
+import CampaignDetail from "./pages/CampaignDetail";
 import AdminStudio from "./pages/AdminStudio";
 import AdminStudioQueue from "./pages/AdminStudioQueue";
 import AdminLuluOps from "./pages/AdminLuluOps";
@@ -187,6 +190,10 @@ function AppRoutes() {
       <Route path="/sponsor" element={<Sponsorship />} />
       <Route path="/sponsorship" element={<Navigate to="/sponsor" replace />} />
 
+      {/* Sponsor campaigns — targeted drives (pledge-only, not tax-deductible) */}
+      <Route path="/campaigns" element={<Campaigns />} />
+      <Route path="/campaigns/:slug" element={<CampaignDetail />} />
+
       <Route path="/facilitators" element={<Facilitators />} />
       <Route path="/facilitators/:slug" element={<FacilitatorProfile />} />
       <Route path="/login" element={<Login />} />
@@ -327,6 +334,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminLegalDocs />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/campaigns"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminCampaigns />
           </ProtectedRoute>
         }
       />

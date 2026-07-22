@@ -47,6 +47,7 @@ const SECTIONS = [
       { to: "/admin/partner-sales-reports", icon: BarChart3, label: "Partner sales reports", desc: "Monthly earnings, conversion, top performers, exportable CSVs." },
       { to: "/admin/refunds", icon: RotateCcw, label: "Refunds", desc: "Customer refund queue with Stripe cascade + partner debit handling." },
       { to: "/admin/subscriptions", icon: Wallet, label: "Subscriptions", desc: "Sponsorship recurring billing, member tiers, churn." },
+      { to: "/admin/campaigns", icon: DollarSign, label: "Sponsor campaigns", desc: "Target-specific sponsorship drives + pledge review. Pledge-only until 501(c)(3) status is granted." },
       { to: "/admin/reports", icon: BarChart3, label: "Financial reports", desc: "Revenue, POD margin, top categories, donor cohorts." },
     ],
   },
