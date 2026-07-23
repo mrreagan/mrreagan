@@ -24,4 +24,5 @@ DRAFT_LEGAL_DOCS = [
     {"slug": "19-data-processing-agreement-template", "display_name": "Data Processing Agreement Template (Draft)", "category": "Governance"},
     {"slug": "20-nonprofit-governance-bundle", "display_name": "Nonprofit Governance Bundle (Draft — Articles, Bylaws, COI, Whistleblower, Retention)", "category": "Governance"},
     {"slug": "21-charitable-solicitation-plan", "display_name": "State Charitable Solicitation Registration Plan (Draft)", "category": "Internal / Compliance"},
+    {"slug": "22-istv-contract-analysis-memo", "display_name": "ISTV Contract — Full Text Review & Business Value Memo", "category": "Advisory memos"},
 ]
