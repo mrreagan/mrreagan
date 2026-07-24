@@ -57,27 +57,64 @@ export default function PartnerTypeTry() {
         />
       </div>
 
-      {/* Subscription tiers */}
+      {/* Subscription tiers — costs, revenue split, and what's included */}
       {tiers.length > 0 && (
         <section className="mt-10 max-w-3xl">
-          <p className="label">Subscription tiers</p>
+          <p className="label">Subscription tiers &amp; costs</p>
+          <p className="text-xs text-[#5C6B6B] mt-1 max-w-2xl">
+            What you pay, what you keep, what the foundation keeps. Every number below is the actual current rate — no hidden fees, no upsell tiers behind these.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
             {tiers.map((t) => (
-              <div key={t.key} className="card p-4 relative" data-testid={`try-tier-${t.key}`}>
+              <div key={t.key} className="card p-4 relative flex flex-col" data-testid={`try-tier-${t.key}`}>
                 {t.ribbon && (
                   <span className="absolute -top-2 right-2 bg-[#C9A961] text-white text-[9px] uppercase tracking-wider px-2 py-0.5 rounded">{t.ribbon}</span>
                 )}
                 <p className="font-serif text-base text-[#1A2424]">{t.label}</p>
-                {t.rev_share != null && (
-                  <p className="text-xs text-[#476B6B] mt-1">Rev share: {t.rev_share}%</p>
+
+                {/* Cost */}
+                {t.price_display && (
+                  <p className="font-serif text-lg text-[#0F2424] mt-1" data-testid={`try-tier-price-${t.key}`}>
+                    {t.price_display}
+                  </p>
                 )}
-                {t.rev_share_birthright_ip != null && (
-                  <p className="text-xs text-[#476B6B] mt-1">birthright IP: {t.rev_share_birthright_ip}% · Own: {t.rev_share_other}%</p>
+                {t.monthly_equivalent && t.monthly_equivalent !== t.price_display && (
+                  <p className="text-[11px] text-[#5C6B6B] mt-0.5 italic">{t.monthly_equivalent}</p>
                 )}
-                {t.blurb && <p className="text-xs text-[#5C6B6B] mt-1 leading-relaxed">{t.blurb}</p>}
+
+                {/* Revenue share — three possible schemas across partner types */}
+                {(t.rev_share != null || t.rev_share_birthright_ip != null) && (
+                  <div className="mt-2 pt-2 border-t border-[#E5E1D8] text-xs text-[#476B6B] space-y-0.5">
+                    {t.rev_share != null && (
+                      <p><strong className="text-[#0F2424]">Your revenue share:</strong> {t.rev_share}%</p>
+                    )}
+                    {t.rev_share_birthright_ip != null && (
+                      <>
+                        <p><strong className="text-[#0F2424]">Birthright IP workshops:</strong> you keep {t.rev_share_birthright_ip}%</p>
+                        <p><strong className="text-[#0F2424]">Your own materials:</strong> you keep {t.rev_share_other}%</p>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Plain-language summary of what this tier means */}
+                {(t.summary || t.blurb) && (
+                  <p className="text-xs text-[#5C6B6B] mt-2 leading-relaxed">{t.summary || t.blurb}</p>
+                )}
               </div>
             ))}
           </div>
+
+          {/* Rolled-up foundation-share callout so it's visible before the reader scrolls to "What enrolling means" */}
+          {wam.foundation_share && (
+            <div
+              className="mt-4 card p-4 bg-[#F4F1EA] border border-[#C9A961]/40"
+              data-testid="try-foundation-share-callout"
+            >
+              <p className="label text-[#8B7128]">Foundation share (how the money flows)</p>
+              <p className="text-sm text-[#1A2424] mt-1 leading-relaxed">{wam.foundation_share}</p>
+            </div>
+          )}
         </section>
       )}
 
