@@ -559,7 +559,7 @@ PARTNER_STATUS = ("pending", "approved", "rejected", "revoked")
 
 class PartnerApplyData(BaseModel):
     """Per-type application payload. Self-apply uses `partner_type` to pick fields."""
-    partner_type: Literal["facilitator", "community", "research", "vendor", "artist", "steward"]
+    partner_type: Literal["facilitator", "community", "research", "vendor", "artist", "steward", "sponsor"]
     headline: str = Field(min_length=5, max_length=160)
     bio: str = Field(min_length=20, max_length=4000)
     website_url: Optional[str] = None
@@ -596,7 +596,7 @@ class PartnerApplyData(BaseModel):
 
 class PartnerInviteCreate(BaseModel):
     email: str = Field(min_length=3, max_length=200)
-    partner_type: Literal["facilitator", "community", "research", "vendor", "artist", "steward"]
+    partner_type: Literal["facilitator", "community", "research", "vendor", "artist", "steward", "sponsor"]
     admin_note: Optional[str] = Field(default="", max_length=1000)
 
 

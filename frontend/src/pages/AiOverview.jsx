@@ -20,7 +20,7 @@ export default function AiOverview() {
           eyebrow="For everyone — free"
           body="A site-wide guide that can answer questions, navigate you to pages, fill forms, and take actions on your behalf (with confirmation). Open it via the floating button on any page or press /."
           to="/"
-          ctaLabel="Try it on any page"
+          ctaLabel="Explore it on any page"
         />
         <ToolCard
           icon={Telescope}

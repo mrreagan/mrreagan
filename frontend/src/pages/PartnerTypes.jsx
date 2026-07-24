@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Users, Heart, Microscope, ShoppingBag, Palette, MapPin, Sparkles } from "lucide-react";
+import { Users, Heart, Microscope, ShoppingBag, Palette, MapPin, Sparkles, HandCoins } from "lucide-react";
 
 const TYPES = [
   {
@@ -57,6 +57,15 @@ const TYPES = [
     financial: { rate: "0%", basis: "Service role — equity in mission", notes: "If revenue transacts in your community (workshop signups, artist sales), the foundation takes a standard cut; you're recognized but not paid out." },
     mission_alignment: "Tend the room. Welcome people in. Hold the standard quietly.",
   },
+  {
+    slug: "sponsor", icon: HandCoins, color: "text-[#C9A961]",
+    label: "Sponsor",
+    one_liner: "You underwrite the mission — either a specific campaign, or general sponsorship of the whole work.",
+    foundation_benefit: "Financial oxygen. Sponsors fund the projects that operating capital can't reach.",
+    partner_benefit: "Named recognition on campaign pages + sponsor partner directory, optional logo + link, Wall of Supporters listing, receipts for business records.",
+    financial: { rate: "N/A — inbound", basis: "You give; we receipt.", notes: "Not currently tax-deductible — 501(c)(3) status not yet granted." },
+    mission_alignment: "Support the mission because it's right — no expectation of return beyond the work itself.",
+  },
 ];
 
 export default function PartnerTypes() {
@@ -66,7 +75,7 @@ export default function PartnerTypes() {
       <h1 className="editorial-h1 mt-2">Ways to partner with birthright</h1>
       <div className="divider-flame" />
       <p className="text-base text-[#5C6B6B] max-w-2xl">
-        Six honest ways to be in this with us. Each row below shows what you bring,
+        Seven honest ways to be in this with us. Each row below shows what you bring,
         what we give, what the money looks like (if any), and how it lines up with mission.
         Most partners are one type. Some hold two.
       </p>
@@ -81,7 +90,7 @@ export default function PartnerTypes() {
               <th className="py-2 pr-4 font-serif text-base">You get</th>
               <th className="py-2 pr-4 font-serif text-base">Money</th>
               <th className="py-2 pr-4 font-serif text-base">Mission alignment</th>
-              <th className="py-2 font-serif text-base">Try it</th>
+              <th className="py-2 font-serif text-base">Explore it</th>
             </tr>
           </thead>
           <tbody>
@@ -106,7 +115,7 @@ export default function PartnerTypes() {
                   <td className="py-4 text-[#5C6B6B] italic max-w-[260px]">{t.mission_alignment}</td>
                   <td className="py-4 pr-2">
                     <Link to={`/partner/types/${t.slug}/try`} className="btn-secondary text-xs whitespace-nowrap inline-flex items-center gap-1" data-testid={`partner-types-try-btn-${t.slug}`}>
-                      <Sparkles size={11} strokeWidth={1.8} /> Try the role →
+                      <Sparkles size={11} strokeWidth={1.8} /> Explore the role →
                     </Link>
                   </td>
                 </tr>

@@ -1,4 +1,4 @@
-/* "Try the dashboard" sandbox preview — public, no auth.
+/* "Explore the role" preview — public, no auth.
  *
  *   /partner/types/:type/try
  *
@@ -41,7 +41,7 @@ export default function PartnerTypeTry() {
 
   return (
     <div className="container-page py-10" data-testid={`partner-try-${type}`}>
-      <span className="label text-[#476B6B]">Try the role</span>
+      <span className="label text-[#476B6B]">Explore the role</span>
       <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
         <Sparkles size={26} strokeWidth={1.2} className="text-[#C9A961]" /> {spec.title}
       </h1>
@@ -52,7 +52,7 @@ export default function PartnerTypeTry() {
       <div className="mt-6 max-w-2xl">
         <PreviewModeBanner
           variant="sandbox"
-          label="Sandbox preview"
+          label="Explore mode"
           message="This is a public read-only walkthrough of the role. Nothing here applies until you apply or accept an invitation."
         />
       </div>

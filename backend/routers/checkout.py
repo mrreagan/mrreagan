@@ -539,6 +539,46 @@ async def _create_sponsor_from_txn(db, txn: dict) -> None:
         "public_display": True,
         "created_at": now_iso(),
     })
+    # Sponsor Partner auto-elevation — one-time Stripe sponsorship checkouts.
+    try:
+        from utils.sponsor_partner import maybe_elevate_sponsor_partner
+        # Resolve email from linked user, or fall back to txn metadata.
+        email = None
+        name = None
+        if txn.get("user_id"):
+            u = await db.users.find_one({"id": txn["user_id"]}, {"_id": 0, "email": 1, "first_name": 1, "last_name": 1})
+            if u:
+                email = u.get("email")
+                name = f"{u.get('first_name','')} {u.get('last_name','')}".strip() or None
+        meta = txn.get("metadata") or {}
+        email = email or meta.get("customer_email") or meta.get("email")
+        name = name or meta.get("customer_name") or "Sponsor"
+        # Log a "paid" pseudo-pledge so totals aggregate correctly across flows.
+        await db.sponsor_pledges.insert_one({
+            "id": gen_id(),
+            "campaign_id": None,
+            "campaign_slug": "general-sponsorship",
+            "sponsor_name": name,
+            "sponsor_email": email or "",
+            "organization": None,
+            "amount": float(txn["amount"]),
+            "tier_id": txn.get("tier_id"),
+            "tier_snapshot": None,
+            "message": None,
+            "display_publicly": True,
+            "status": "paid",
+            "source": "stripe_sponsorship_txn",
+            "payment_session_id": txn["session_id"],
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+        })
+        if email:
+            await maybe_elevate_sponsor_partner(
+                db, sponsor_email=email, sponsor_name=name or "Sponsor",
+                organization=None, display_publicly=True,
+            )
+    except Exception as ex:
+        logger.warning("Sponsor Partner elevation from Stripe sponsorship failed: %s", ex)
 
 
 async def _create_donation_from_txn(db, txn: dict) -> None:

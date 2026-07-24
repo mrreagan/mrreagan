@@ -70,6 +70,17 @@ async def _send_workshop_reminders() -> None:
         logger.info(f"workshop reminders sent: {sent}")
 
 
+async def _degrade_stale_sponsors():
+    from database import db
+    try:
+        from utils.sponsor_partner import degrade_stale_sponsors
+        count = await degrade_stale_sponsors(db)
+        if count:
+            logger.info(f"sponsor_partner_maintenance: degraded {count}")
+    except Exception as e:
+        logger.error(f"sponsor_partner_maintenance error: {e}")
+
+
 def start_scheduler() -> None:
     """Idempotent scheduler start. Safe to call from FastAPI startup."""
     global _scheduler
@@ -77,8 +88,9 @@ def start_scheduler() -> None:
         return
     _scheduler = AsyncIOScheduler(timezone="UTC")
     _scheduler.add_job(_send_workshop_reminders, "interval", minutes=30, id="workshop_reminders", coalesce=True, max_instances=1)
+    _scheduler.add_job(_degrade_stale_sponsors, "interval", hours=24, id="sponsor_partner_maintenance", coalesce=True, max_instances=1)
     _scheduler.start()
-    logger.info("scheduler started (workshop_reminders every 30m)")
+    logger.info("scheduler started (workshop_reminders every 30m; sponsor_partner_maintenance every 24h)")
 
 
 def stop_scheduler() -> None:

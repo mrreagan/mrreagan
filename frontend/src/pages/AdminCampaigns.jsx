@@ -222,22 +222,35 @@ function CampaignEditor({ initial, onSaved, onDeleted }) {
 export default function AdminCampaigns() {
   const [campaigns, setCampaigns] = useState([]);
   const [pledges, setPledges] = useState([]);
+  const [sponsorPartners, setSponsorPartners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [cRes, pRes] = await Promise.all([
+      const [cRes, pRes, spRes] = await Promise.all([
         api.get("/admin/campaigns"),
         api.get("/admin/campaigns/pledges/all"),
+        api.get("/admin/campaigns/sponsor-partners"),
       ]);
       setCampaigns(cRes.data || []);
       setPledges(pRes.data || []);
+      setSponsorPartners(spRes.data || []);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Load failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runMaintenance = async () => {
+    try {
+      const { data } = await api.post("/admin/campaigns/sponsor-partners/run-maintenance");
+      toast.success(`Maintenance complete — ${data.degraded} sponsor(s) degraded to Alumni.`);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Maintenance failed");
     }
   };
 
@@ -302,6 +315,84 @@ export default function AdminCampaigns() {
                   {pledges.map((p) => <PledgeRow key={p.id} p={p} onUpdated={load} />)}
                   {pledges.length === 0 && (
                     <tr><td colSpan={5} className="p-6 text-sm text-[#5C6B6B] text-center">No pledges yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="mt-12">
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="font-serif text-2xl text-[#0F2424]">Sponsor Partners</h2>
+              <button
+                onClick={runMaintenance}
+                className="text-xs text-[#476B6B] hover:underline"
+                data-testid="run-sponsor-maintenance"
+              >
+                Run 18-month degrade sweep
+              </button>
+            </div>
+            <p className="text-xs text-[#5C6B6B] mb-3">
+              Auto-elevated sponsors (contribution ≥ threshold). Renewal window opens at 12 months;
+              graceful auto-degrade to Alumni Contributor at 18 months of no renewed contribution.
+            </p>
+            <div className="card overflow-hidden">
+              <table className="w-full text-left">
+                <thead className="bg-[#F4F1EA] text-xs uppercase tracking-wide text-[#5C6B6B]">
+                  <tr>
+                    <th className="p-3">Sponsor</th>
+                    <th className="p-3">Level</th>
+                    <th className="p-3">Cumulative</th>
+                    <th className="p-3">Recurring</th>
+                    <th className="p-3">Last paid</th>
+                    <th className="p-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sponsorPartners.map((sp) => {
+                    const riskColor = {
+                      healthy: "bg-[#E5F0E8] text-[#01784E]",
+                      check_in: "bg-[#F4F1EA] text-[#8B7128]",
+                      at_risk_renewal_overdue: "bg-[#FBF3E4] text-[#8B4513]",
+                      at_risk_degrade_imminent: "bg-[#F9E5E1] text-[#8B0000]",
+                      alumni: "bg-[#F4F1EA] text-[#5C6B6B]",
+                    }[sp.risk] || "bg-[#F4F1EA] text-[#5C6B6B]";
+                    const riskLabel = {
+                      healthy: "Healthy",
+                      check_in: "Check-in (6mo+)",
+                      at_risk_renewal_overdue: "Renewal overdue (12mo+)",
+                      at_risk_degrade_imminent: "Degrade imminent (18mo+)",
+                      alumni: "Alumni",
+                    }[sp.risk] || sp.risk;
+                    return (
+                      <tr key={sp.id} className="border-b border-[#E8E4DC]" data-testid={`sponsor-partner-${sp.id}`}>
+                        <td className="p-3 text-sm">
+                          <div className="font-semibold text-[#0F2424]">{sp.sponsor_name || "Anonymous"}</div>
+                          <div className="text-xs text-[#5C6B6B]">{sp.email}</div>
+                          {sp.organization && <div className="text-xs text-[#5C6B6B]">{sp.organization}</div>}
+                        </td>
+                        <td className="p-3 text-xs uppercase tracking-wide font-semibold text-[#476B6B]">
+                          {sp.level?.replace(/_/g, " ")}
+                        </td>
+                        <td className="p-3 text-sm">${Number(sp.cumulative_one_time_usd || 0).toLocaleString()}</td>
+                        <td className="p-3 text-sm">
+                          {sp.current_monthly_usd
+                            ? `$${Number(sp.current_monthly_usd).toLocaleString()}/mo × ${sp.monthly_months_active || 0}mo`
+                            : "—"}
+                        </td>
+                        <td className="p-3 text-xs text-[#5C6B6B]">
+                          {sp.days_since_last_paid != null ? `${sp.days_since_last_paid} days ago` : "—"}
+                        </td>
+                        <td className="p-3">
+                          <span className={`inline-flex text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${riskColor}`}>
+                            {riskLabel}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {sponsorPartners.length === 0 && (
+                    <tr><td colSpan={6} className="p-6 text-sm text-[#5C6B6B] text-center">No sponsor partners yet.</td></tr>
                   )}
                 </tbody>
               </table>

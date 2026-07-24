@@ -345,6 +345,90 @@ PREVIEW_SPECS: dict[str, dict] = {
             "foundation_share": "Not a monetary role. The foundation supports stewards through training, ombudsman backing, and recognition (your stewardship history travels with you).",
         },
     },
+
+    "sponsor": {
+        "title": "Sponsor Partner",
+        "blurb": (
+            "Underwrite the mission. Sponsors fund what operating capital can't — "
+            "specific campaigns (like a media placement or scholarship cohort), or "
+            "the general work of building Birthright. Sponsors are named on campaign "
+            "pages and the partner directory, with your permission."
+        ),
+        "default_headline": "Sponsor partner",
+        "default_bio_hint": "A sentence about why this work matters to you or your organization.",
+        "options": {
+            "subscription_tiers": [
+                {
+                    "key": "contributor",
+                    "label": "Contributor",
+                    "price_display": "Any amount",
+                    "monthly_equivalent": "One-time or recurring",
+                    "summary": (
+                        "Thank-you email + optional named listing on the Wall of Supporters. "
+                        "No partner profile at this level — Sponsor Partner status starts at $100+ one-time or $25/mo × 3+ months."
+                    ),
+                },
+                {
+                    "key": "sponsor_partner",
+                    "label": "Sponsor Partner",
+                    "price_display": "$100+ one-time / $25+ per month × 3",
+                    "monthly_equivalent": "$25 / mo min",
+                    "ribbon": "Most chosen",
+                    "summary": (
+                        "Full partner profile in the directory. Logo/link. Named on campaign pages "
+                        "you underwrite. Auto-elevates once threshold is met and payment is confirmed."
+                    ),
+                },
+                {
+                    "key": "presenting",
+                    "label": "Presenting Sponsor",
+                    "price_display": "$5k+ one-time / $250+ per month",
+                    "monthly_equivalent": "$250 / mo min",
+                    "summary": (
+                        "Top-of-directory placement + homepage recognition + 'Presented by' "
+                        "credit on any campaign you underwrite."
+                    ),
+                },
+            ],
+            "media": [
+                "Sponsor partner profile (photo/logo, bio, link)",
+                "Named recognition on campaigns you underwrite (opt-in)",
+                "Business receipts for every contribution",
+                "Optional Wall of Supporters listing",
+                "Annual sponsor recognition report",
+            ],
+            "policies": [
+                "Set whether your name/logo is displayed publicly or kept anonymous",
+                "Choose which campaigns your contribution supports",
+                "Update your business receipt details at any time",
+            ],
+        },
+        "what_acceptance_means": {
+            "summary": (
+                "Sponsor Partner status is earned by contribution, not applied for. Any pledge that "
+                "reaches $100+ one-time (or a $25/mo recurring for 3 months) automatically elevates "
+                "your account to Sponsor Partner once the payment is confirmed. Sponsor Partner status "
+                "renews annually; if no renewed contribution is made for 18 months, status gracefully "
+                "converts to Alumni Contributor (you remain listed as a past supporter)."
+            ),
+            "obligations": [
+                "Accept that contributions are not currently tax-deductible (Birthright has not yet received IRS 501(c)(3) determination).",
+                "Confirm whether your name/logo may be displayed publicly (opt-in).",
+                "Update Birthright if your contact or business receipt details change.",
+            ],
+            "you_keep": [
+                "The right to withdraw a pledge before payment is confirmed.",
+                "Full control over whether your name is listed publicly.",
+                "A business receipt for every confirmed contribution.",
+                "Your Alumni Contributor listing after status ends (unless you request removal).",
+            ],
+            "foundation_share": (
+                "Not a monetary partnership — you give, we receipt. No revenue share is paid to sponsors. "
+                "Not currently tax-deductible: Birthright Foundation has not yet submitted or received "
+                "IRS 501(c)(3) determination. No representation is made about future tax status."
+            ),
+        },
+    },
 }
 
 
@@ -359,7 +443,7 @@ def get_preview_spec(partner_type: str) -> dict:
 # ============ Models ============
 
 class ProspectCreate(BaseModel):
-    partner_type: Literal["facilitator", "community", "research", "vendor", "artist", "steward"]
+    partner_type: Literal["facilitator", "community", "research", "vendor", "artist", "steward", "sponsor"]
     display_name: str = Field(min_length=2, max_length=200)
     contact_email: Optional[str] = Field(default=None, max_length=200)
     contact_phone: Optional[str] = Field(default=None, max_length=80)
@@ -786,7 +870,7 @@ async def add_interaction(prospect_id: str, data: ProspectInteraction,
 
 class MissionSuggestRequest(BaseModel):
     # Optional override fields — if not provided, we read them from the prospect.
-    partner_type: Optional[Literal["facilitator", "community", "research", "vendor", "artist", "steward"]] = None
+    partner_type: Optional[Literal["facilitator", "community", "research", "vendor", "artist", "steward", "sponsor"]] = None
     highlight_url: Optional[str] = Field(default=None, max_length=600)
     highlight_label: Optional[str] = Field(default=None, max_length=40)
     highlight_excerpt: Optional[str] = Field(default=None, max_length=4000)

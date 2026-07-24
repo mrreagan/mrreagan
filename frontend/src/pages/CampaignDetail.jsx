@@ -203,6 +203,20 @@ function PledgeForm({ campaign, selectedTierId, onSubmitted }) {
           may be displayed. Uncheck to remain anonymous.
         </span>
       </label>
+      {parseFloat(form.amount) >= 100 && (
+        <div
+          className="mt-4 text-xs text-[#476B6B] bg-[#F4F1EA] border border-[#E5E1D8] rounded-md px-3 py-2 leading-relaxed"
+          data-testid="pledge-sponsor-partner-note"
+        >
+          <strong className="text-[#0F2424]">You&apos;ll be recognized as a Sponsor Partner.</strong>{" "}
+          Once this pledge is paid, your account is automatically elevated to Sponsor Partner status — a
+          full partner profile in our directory, named recognition on this campaign, and (if you opt in
+          above) your name displayed publicly.{" "}
+          <a href="/partner/types/sponsor/try" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0F2424]">
+            Preview the role →
+          </a>
+        </div>
+      )}
       <div className="mt-5">
         <NonDeductibleNotice />
       </div>

@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
-import { Users, Briefcase, Microscope, Store, Search, Sparkles, Palette, Compass } from "lucide-react";
+import { Users, Briefcase, Microscope, Store, Search, Sparkles, Palette, Compass, HandCoins } from "lucide-react";
 import ShareButton from "../components/ShareButton";
 import MessageButton from "../components/MessageButton";
 import StudioVendorNudge from "../components/StudioVendorNudge";
@@ -15,6 +15,7 @@ const TYPE_CONFIG = {
   vendor:      { label: "Vendors",      singular: "Vendor",      icon: Store,      color: "#B86A5C", description: "Aligned vendors of complementary materials and services." },
   artist:      { label: "Artists",      singular: "Artist",      icon: Palette,    color: "#8B5E3C", description: "Featured artists whose work threads attachment, repair, and presence into the world." },
   steward:     { label: "Stewards",     singular: "Steward",     icon: Compass,    color: "#5C6B6B", description: "Community elders and mentors who hold long-term presence for others." },
+  sponsor:     { label: "Sponsors",     singular: "Sponsor",     icon: HandCoins,  color: "#C9A961", description: "Individuals and organizations underwriting specific campaigns or the general mission." },
 };
 
 export default function PartnersDirectory() {
@@ -23,7 +24,7 @@ export default function PartnersDirectory() {
 
   // Initialize filters from URL so the AI Concierge (and any deep link) can
   // land users directly on a filtered view, e.g. /partners?partner_type=vendor.
-  const validTypes = ["all", "facilitator", "vendor", "community", "research", "artist", "steward"];
+  const validTypes = ["all", "facilitator", "vendor", "community", "research", "artist", "steward", "sponsor"];
   const initialType = (() => {
     const t = searchParams.get("partner_type");
     return validTypes.includes(t) ? t : "all";
@@ -96,7 +97,7 @@ export default function PartnersDirectory() {
           <div className="max-w-xl">
             <p className="label !mt-0 text-[#A87A4A]">See the cost before you spend it.</p>
             <h2 className="font-serif text-xl mt-1 leading-tight">
-              Compare all six partner types side-by-side.
+              Compare all seven partner types side-by-side.
             </h2>
             <p className="text-sm text-[#5C6B6B] mt-1">
               One pager with revenue share, what you do, what the foundation
@@ -117,6 +118,35 @@ export default function PartnersDirectory() {
               data-testid="partners-artist-tiers-link"
             >
               Artist tier breakdown →
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Cross-link to sponsor flows. Sponsor is a partner type whose
+          enrollment is triggered by contribution rather than application. */}
+      <div
+        className="mt-4 card p-5 bg-[#FBF3E4] border border-[#E5D7B3]"
+        data-testid="partner-sponsor-cta"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="max-w-xl">
+            <p className="label !mt-0 text-[#8B4513]">Become a Sponsor Partner</p>
+            <h2 className="font-serif text-xl mt-1 leading-tight text-[#0F2424]">
+              Fund a specific project — or the whole mission.
+            </h2>
+            <p className="text-sm text-[#5C6B6B] mt-1">
+              Sponsors underwrite bounded campaigns (like the ISTV feature) or general operations.
+              Contributions above the Sponsor Partner threshold auto-elevate to a partner profile.
+              Not currently tax-deductible — 501(c)(3) status not yet granted.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <Link to="/campaigns" className="btn-primary text-sm whitespace-nowrap" data-testid="partners-campaigns-link">
+              View campaigns →
+            </Link>
+            <Link to="/partner/types/sponsor/try" className="btn-outline text-sm whitespace-nowrap" data-testid="partners-sponsor-explore-link">
+              Explore the role →
             </Link>
           </div>
         </div>

@@ -341,6 +341,18 @@ async def admin_update_pledge_status(
                     await send_invoice(p, campaign, admin_note=data.admin_note)
                 elif data.status == "paid":
                     await send_receipt(p, campaign)
+                    # Sponsor Partner auto-elevation: only fires on transition to paid.
+                    try:
+                        from utils.sponsor_partner import maybe_elevate_sponsor_partner
+                        await maybe_elevate_sponsor_partner(
+                            db,
+                            sponsor_email=p.get("sponsor_email", ""),
+                            sponsor_name=p.get("sponsor_name", ""),
+                            organization=p.get("organization"),
+                            display_publicly=bool(p.get("display_publicly")),
+                        )
+                    except Exception as ex2:
+                        logger.warning("Sponsor Partner elevation failed: %s", ex2)
     except Exception as ex:
         logger.warning("Pledge status email dispatch failed: %s", ex)
     return _clean(p)
@@ -366,6 +378,55 @@ async def admin_resend_invoice(
         target_type="pledge", target_id=pledge_id,
     )
     return {"ok": True}
+
+
+@admin_router.get("/sponsor-partners")
+async def admin_list_sponsor_partners(
+    user: dict = Depends(require_roles("admin")),
+):
+    """Sponsor Partner directory + lapsed/at-risk view.
+
+    Returns each sponsor's current level, totals, and days since last payment
+    so admins can proactively reach out to at-risk sponsors before they degrade.
+    """
+    from database import db
+    now = datetime.now(timezone.utc)
+    out: list[dict] = []
+    async for r in db.sponsor_partner_records.find({}).sort("last_paid_at", -1):
+        r.pop("_id", None)
+        last_paid = r.get("last_paid_at")
+        days_since = None
+        if last_paid:
+            try:
+                lp = datetime.fromisoformat(str(last_paid).replace("Z", "+00:00"))
+                days_since = int((now - lp).days)
+            except Exception:
+                pass
+        risk = "healthy"
+        if r.get("level") == "alumni_contributor":
+            risk = "alumni"
+        elif days_since is not None:
+            if days_since > 540:
+                risk = "at_risk_degrade_imminent"  # >18 months, degrades next run
+            elif days_since > 365:
+                risk = "at_risk_renewal_overdue"  # renewal window (>12 months)
+            elif days_since > 180:
+                risk = "check_in"
+        r["days_since_last_paid"] = days_since
+        r["risk"] = risk
+        out.append(r)
+    return out
+
+
+@admin_router.post("/sponsor-partners/run-maintenance")
+async def admin_run_sponsor_maintenance(
+    user: dict = Depends(require_roles("admin")),
+):
+    """Manually trigger the 18-month degrade sweep (usually runs nightly)."""
+    from database import db
+    from utils.sponsor_partner import degrade_stale_sponsors
+    count = await degrade_stale_sponsors(db)
+    return {"degraded": count}
 
 
 # ============ Seed helper (called at startup) ============
