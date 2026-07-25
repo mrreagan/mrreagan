@@ -43,6 +43,7 @@ import AdminProducts from "./pages/AdminProducts";
 import AdminImageQueue from "./pages/AdminImageQueue";
 import AdminLegalDocs from "./pages/AdminLegalDocs";
 import AdminCampaigns from "./pages/AdminCampaigns";
+import AdminRoadmap from "./pages/AdminRoadmap";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import AdminStudio from "./pages/AdminStudio";
@@ -342,6 +343,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminCampaigns />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/roadmap"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminRoadmap />
           </ProtectedRoute>
         }
       />
