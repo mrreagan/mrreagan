@@ -46,6 +46,7 @@ import AdminProducts from "./pages/AdminProducts";
 import AdminImageQueue from "./pages/AdminImageQueue";
 import AdminLegalDocs from "./pages/AdminLegalDocs";
 import AdminLegalRatifications from "./pages/AdminLegalRatifications";
+import CounselConsole from "./pages/CounselConsole";
 import AdminCounselSettings from "./pages/AdminCounselSettings";
 import CounselSetPasswordPage from "./pages/CounselSetPasswordPage";
 import AdminCampaigns from "./pages/AdminCampaigns";
@@ -365,6 +366,14 @@ function AppRoutes() {
         }
       />
       <Route path="/counsel/set-password" element={<CounselSetPasswordPage />} />
+      <Route
+        path="/counsel"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <CounselConsole />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/admin/settings/counsel"
         element={

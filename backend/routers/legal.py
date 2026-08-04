@@ -699,16 +699,18 @@ async def upload_full_replacement(
     """Upload a full replacement for `<source_slug>.md`.
 
     Accepts multipart form-data with one file:
-      - `.md`   → written verbatim as the new source
+      - `.md`   → written verbatim as the working-draft source
       - `.docx` → text is extracted paragraph-by-paragraph, headings are
                   detected via style name (`Heading 1..6`) and converted to
-                  `#`..`######`, then written as the new source
+                  `#`..`######`, then written as the working-draft source
 
-    Behaviour:
-      - Overwrites `/app/backend/legal_docs/<source_slug>.md`
-      - Records an audit entry (`legal.doc.upload_replacement`)
-      - Auto-rebuilds the .docx bundle
-      - Returns the new byte-count, body-hash, and rebuild status
+    Behaviour (as of the working-draft workflow):
+      - The public source .md is NOT touched. Instead, the content lands
+        in `legal_doc_working_drafts` as a WORKING VERSION. The public site
+        keeps rendering the released .md until admin promotes the working
+        draft via `POST /legal/working-drafts/{slug}/release`.
+      - Records an audit entry (`legal.doc.working.upload`)
+      - Returns the new byte-count, body-hash, working-draft id, and state.
     """
     from database import db
     fp = LEGAL_DOC_DIR / f"{source_slug}.md"
@@ -724,6 +726,8 @@ async def upload_full_replacement(
     blob = await upload.read()
     if not blob:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(blob) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File exceeds 2 MB cap.")
 
     if filename.endswith(".md") or filename.endswith(".markdown") or filename.endswith(".txt"):
         try:
@@ -739,24 +743,25 @@ async def upload_full_replacement(
         )
 
     if not new_md.strip():
-        raise HTTPException(status_code=400, detail="Converted content is empty; refusing to overwrite source.")
+        raise HTTPException(status_code=400, detail="Converted content is empty; refusing to save.")
 
-    # Write source. Rebuild .docx bundle. Log audit.
-    fp.write_text(new_md, encoding="utf-8")
-    cleaned_md, _ = _strip_draft_disclaimer(new_md)
-    body_hash = _md_body_hash(cleaned_md)
-
-    rebuild_ok = await _run_docx_rebuild(user=user)
+    wd = await _upsert_working_draft(
+        source_slug=source_slug,
+        content_md=new_md,
+        user=user,
+        action="upload_full",
+        note=f"Uploaded {upload.filename} ({len(blob)} bytes)",
+    )
 
     await log_action(
-        db, user, "legal.doc.upload_replacement",
+        db, user, "legal.doc.working.upload",
         target_type="legal_doc", target_id=source_slug,
         metadata={
             "filename": upload.filename,
             "bytes": len(blob),
             "converted_bytes": len(new_md.encode("utf-8")),
-            "body_hash": body_hash,
-            "rebuilt": rebuild_ok,
+            "working_draft_id": wd["id"],
+            "state": wd["state"],
             "uploaded_by_role": user.get("role"),
         },
     )
@@ -764,11 +769,12 @@ async def upload_full_replacement(
         "source_slug": source_slug,
         "filename": upload.filename,
         "bytes_written": len(new_md.encode("utf-8")),
-        "body_hash": body_hash,
-        "rebuilt_docx": rebuild_ok,
+        "working_draft_id": wd["id"],
+        "state": wd["state"],
         "message": (
-            "Source replaced. Any existing ratification no longer matches — "
-            "mark a new ratification once counsel has signed off on this text."
+            "Working draft updated. The public site still shows the released "
+            "version. An admin must click Release to publish this working "
+            "version."
         ),
     }
 
@@ -835,6 +841,388 @@ def _docx_to_markdown(blob: bytes) -> str:
             "These were not converted; please review the original file. -->\n"
         )
     return md
+
+
+# ============ WORKING-DRAFT STAGING AREA ============
+# A parallel table `legal_doc_working_drafts` where every counsel/admin
+# edit lands as a WORKING VERSION. The public source .md is only touched
+# when an admin explicitly RELEASES the working draft. This keeps the
+# public site stable while counsel iterates.
+#
+# States: draft → awaiting_admin → released | discarded
+
+_WD_STATE_DRAFT = "draft"
+_WD_STATE_READY = "awaiting_admin"
+_WD_STATE_RELEASED = "released"
+_WD_STATE_DISCARDED = "discarded"
+
+
+def _released_md(source_slug: str) -> str:
+    fp = LEGAL_DOC_DIR / f"{source_slug}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Unknown source doc")
+    return fp.read_text(encoding="utf-8")
+
+
+async def _active_working_draft(source_slug: str) -> Optional[dict]:
+    """Return the current OPEN working draft for this slug (state ∈
+    {draft, awaiting_admin}), or None."""
+    from database import db
+    return await db.legal_doc_working_drafts.find_one(
+        {"source_slug": source_slug,
+         "state": {"$in": [_WD_STATE_DRAFT, _WD_STATE_READY]}},
+        {"_id": 0},
+    )
+
+
+async def _upsert_working_draft(
+    source_slug: str,
+    content_md: str,
+    user: dict,
+    action: str,
+    note: str = "",
+) -> dict:
+    """Create or update the open working draft for this slug.
+
+    Every write appends to `change_log` so we have an audit trail of who
+    touched what. If a working draft was previously marked
+    `awaiting_admin`, a new edit knocks it back to `draft` so admin can't
+    accidentally release stale content.
+    """
+    from database import db
+
+    now = now_iso()
+    cleaned, _ = _strip_draft_disclaimer(content_md)
+    body_hash = _md_body_hash(cleaned)
+    entry = {
+        "at": now,
+        "by_user_id": user["id"],
+        "by_email": user.get("email"),
+        "by_role": user.get("role"),
+        "action": action,
+        "note": note,
+        "bytes": len(content_md.encode("utf-8")),
+    }
+
+    existing = await _active_working_draft(source_slug)
+    if existing:
+        change_log = list(existing.get("change_log") or [])
+        change_log.append(entry)
+        updates = {
+            "content_md": content_md,
+            "body_hash": body_hash,
+            "last_edited_at": now,
+            "last_edited_by_user_id": user["id"],
+            "last_edited_by_email": user.get("email"),
+            "last_edited_by_role": user.get("role"),
+            "state": _WD_STATE_DRAFT,   # editing knocks it back from awaiting_admin
+            "change_log": change_log,
+        }
+        await db.legal_doc_working_drafts.update_one(
+            {"id": existing["id"]}, {"$set": updates},
+        )
+        return {**existing, **updates}
+
+    # No open draft — create fresh. Snapshot the released body_hash so we
+    # can detect if the underlying .md changed while the draft was open.
+    released_hash = _md_body_hash(_strip_draft_disclaimer(_released_md(source_slug))[0])
+    doc = {
+        "id": gen_id(),
+        "source_slug": source_slug,
+        "content_md": content_md,
+        "body_hash": body_hash,
+        "base_released_hash": released_hash,
+        "state": _WD_STATE_DRAFT,
+        "created_at": now,
+        "created_by_user_id": user["id"],
+        "created_by_email": user.get("email"),
+        "created_by_role": user.get("role"),
+        "last_edited_at": now,
+        "last_edited_by_user_id": user["id"],
+        "last_edited_by_email": user.get("email"),
+        "last_edited_by_role": user.get("role"),
+        "change_log": [entry],
+    }
+    await db.legal_doc_working_drafts.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+def _bump_minor(version: str) -> str:
+    """1.2 → 1.3 · 2 → 2.1 · '' → 1.0 · unparseable → append .1"""
+    if not version:
+        return "1.0"
+    parts = str(version).split(".")
+    try:
+        if len(parts) == 1:
+            return f"{int(parts[0])}.1"
+        parts[-1] = str(int(parts[-1]) + 1)
+        return ".".join(parts)
+    except ValueError:
+        return f"{version}.1"
+
+
+async def _next_version(source_slug: str) -> str:
+    from database import db
+    latest = await db.legal_doc_ratifications.find_one(
+        {"source_slug": source_slug}, {"_id": 0, "version": 1},
+        sort=[("ratified_at", -1)],
+    )
+    return _bump_minor(latest.get("version", "") if latest else "")
+
+
+@router.get("/working-drafts")
+async def list_working_drafts(user: dict = Depends(require_roles("admin"))):
+    """List every OPEN working draft (state ∈ {draft, awaiting_admin}).
+
+    Counsel (`readonly_admin`) can also read this via the shared
+    `require_roles('admin')` allow-list — the counsel console renders
+    from this endpoint.
+    """
+    from database import db
+    rows = await db.legal_doc_working_drafts.find(
+        {"state": {"$in": [_WD_STATE_DRAFT, _WD_STATE_READY]}},
+        {"_id": 0, "content_md": 0},   # skip body for list view
+    ).sort("last_edited_at", -1).to_list(200)
+    return rows
+
+
+@router.get("/working-drafts/{source_slug}")
+async def get_working_draft(
+    source_slug: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Detail view: released body + working body + change log + stale flag.
+
+    Returns 404 if no open working draft exists for this slug.
+    """
+    wd = await _active_working_draft(source_slug)
+    if not wd:
+        raise HTTPException(status_code=404, detail="No open working draft for this slug.")
+    released_md = _released_md(source_slug)
+    released_hash = _md_body_hash(_strip_draft_disclaimer(released_md)[0])
+    return {
+        **wd,
+        "released_md": released_md,
+        "released_body_hash": released_hash,
+        "is_stale": wd.get("base_released_hash") != released_hash,
+    }
+
+
+@router.get("/working-drafts/{source_slug}/download")
+async def download_working_draft(
+    source_slug: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Download the open working draft as a .docx so counsel can edit
+    offline. Uses the same DOCX builder the rest of the pipeline uses so
+    round-tripping stays byte-identical shape-wise.
+    """
+    wd = await _active_working_draft(source_slug)
+    if not wd:
+        raise HTTPException(status_code=404, detail="No open working draft for this slug.")
+
+    # Build the .docx in-memory from the working-draft markdown.
+    from io import BytesIO
+    from docx import Document
+    from starlette.responses import StreamingResponse
+
+    doc = Document()
+    for line in (wd["content_md"] or "").splitlines():
+        stripped = line.rstrip()
+        if not stripped:
+            doc.add_paragraph("")
+            continue
+        # Heading detection
+        if stripped.startswith("#"):
+            level = 0
+            while level < len(stripped) and stripped[level] == "#":
+                level += 1
+            text = stripped[level:].strip()
+            doc.add_heading(text, level=min(level, 6))
+            continue
+        if stripped.startswith("- ") or stripped.startswith("* "):
+            doc.add_paragraph(stripped[2:], style="List Bullet")
+            continue
+        doc.add_paragraph(stripped)
+
+    buf = BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    filename = f"{source_slug}.working-draft.docx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/working-drafts/{source_slug}/mark-ready")
+async def mark_ready(
+    source_slug: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Counsel signals the working draft is ready for admin review."""
+    from database import db
+    wd = await _active_working_draft(source_slug)
+    if not wd:
+        raise HTTPException(status_code=404, detail="No open working draft.")
+    now = now_iso()
+    change_log = list(wd.get("change_log") or [])
+    change_log.append({
+        "at": now,
+        "by_user_id": user["id"],
+        "by_email": user.get("email"),
+        "by_role": user.get("role"),
+        "action": "mark_ready",
+        "note": "Marked ready for admin review",
+        "bytes": len((wd.get("content_md") or "").encode("utf-8")),
+    })
+    await db.legal_doc_working_drafts.update_one(
+        {"id": wd["id"]},
+        {"$set": {"state": _WD_STATE_READY,
+                  "last_edited_at": now,
+                  "change_log": change_log}},
+    )
+    await log_action(
+        db, user, "legal.doc.working.mark_ready",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={"working_draft_id": wd["id"]},
+    )
+    return {"state": _WD_STATE_READY, "working_draft_id": wd["id"]}
+
+
+@router.post("/working-drafts/{source_slug}/release")
+async def release_working_draft(
+    source_slug: str,
+    payload: dict,
+    user: dict = Depends(require_roles("admin")),
+):
+    """ADMIN — promote the working draft to the released `.md`.
+
+    Steps:
+      1. Write working draft content_md → /legal_docs/<slug>.md
+      2. Auto-rebuild the .docx bundle (best-effort)
+      3. Create a ratification record with auto-bumped minor version
+         (payload.version overrides if provided)
+      4. Mark the working draft state=released
+    """
+    from database import db
+    # Counsel MUST NOT be able to release. require_roles('admin') accepts
+    # readonly_admin globally, so we defend in depth here.
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can release a working draft.")
+
+    wd = await _active_working_draft(source_slug)
+    if not wd:
+        raise HTTPException(status_code=404, detail="No open working draft to release.")
+
+    fp = LEGAL_DOC_DIR / f"{source_slug}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Unknown source doc")
+
+    new_md = wd["content_md"] or ""
+    fp.write_text(new_md, encoding="utf-8")
+    cleaned, _ = _strip_draft_disclaimer(new_md)
+    body_hash = _md_body_hash(cleaned)
+
+    rebuild_ok = await _run_docx_rebuild(user=user)
+
+    version = (payload.get("version") or "").strip() or await _next_version(source_slug)
+    ratified_by = (payload.get("ratified_by") or "").strip() or user.get("email") or "admin"
+    notes = (payload.get("notes") or "").strip() or f"Released working draft {wd['id']}"
+    rat = {
+        "id": gen_id(),
+        "source_slug": source_slug,
+        "version": version,
+        "body_hash": body_hash,
+        "notes": notes,
+        "ratified_by": ratified_by,
+        "ratified_at": now_iso(),
+        "ratified_by_user_id": user["id"],
+        "ratified_by_user_email": user.get("email"),
+        "released_from_working_draft_id": wd["id"],
+    }
+    await db.legal_doc_ratifications.insert_one(dict(rat))
+
+    now = now_iso()
+    change_log = list(wd.get("change_log") or [])
+    change_log.append({
+        "at": now,
+        "by_user_id": user["id"],
+        "by_email": user.get("email"),
+        "by_role": "admin",
+        "action": "release",
+        "note": f"Released as v{version}",
+        "bytes": len(new_md.encode("utf-8")),
+    })
+    await db.legal_doc_working_drafts.update_one(
+        {"id": wd["id"]},
+        {"$set": {
+            "state": _WD_STATE_RELEASED,
+            "released_at": now,
+            "released_by_email": user.get("email"),
+            "released_as_version": version,
+            "change_log": change_log,
+        }},
+    )
+
+    await log_action(
+        db, user, "legal.doc.working.release",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={"working_draft_id": wd["id"], "version": version,
+                  "rebuilt": rebuild_ok, "body_hash": body_hash},
+    )
+    return {
+        "released_as_version": version,
+        "ratification_id": rat["id"],
+        "rebuilt_docx": rebuild_ok,
+        "working_draft_id": wd["id"],
+        "state": _WD_STATE_RELEASED,
+    }
+
+
+@router.post("/working-drafts/{source_slug}/discard")
+async def discard_working_draft(
+    source_slug: str,
+    payload: dict,
+    user: dict = Depends(require_roles("admin")),
+):
+    """ADMIN — throw away the working draft. Released .md is untouched."""
+    from database import db
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can discard a working draft.")
+    wd = await _active_working_draft(source_slug)
+    if not wd:
+        raise HTTPException(status_code=404, detail="No open working draft to discard.")
+    reason = (payload.get("reason") or "").strip() or "no reason given"
+    now = now_iso()
+    change_log = list(wd.get("change_log") or [])
+    change_log.append({
+        "at": now,
+        "by_user_id": user["id"],
+        "by_email": user.get("email"),
+        "by_role": "admin",
+        "action": "discard",
+        "note": reason,
+        "bytes": len((wd.get("content_md") or "").encode("utf-8")),
+    })
+    await db.legal_doc_working_drafts.update_one(
+        {"id": wd["id"]},
+        {"$set": {
+            "state": _WD_STATE_DISCARDED,
+            "discarded_at": now,
+            "discarded_by_email": user.get("email"),
+            "discard_reason": reason,
+            "change_log": change_log,
+        }},
+    )
+    await log_action(
+        db, user, "legal.doc.working.discard",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={"working_draft_id": wd["id"], "reason": reason},
+    )
+    return {"state": _WD_STATE_DISCARDED, "working_draft_id": wd["id"]}
 
 
 # ============ INLINE REDLINES / COUNSEL COMMENTS ============
@@ -1379,7 +1767,11 @@ async def apply_roundtrip(
     fp = LEGAL_DOC_DIR / f"{source_slug}.md"
     if not fp.exists():
         raise HTTPException(status_code=404, detail="Unknown source doc")
-    raw = fp.read_text(encoding="utf-8")
+    # Read from the open working draft if one exists, else from the
+    # released .md. Writes always go to the working draft so the public
+    # site stays stable until admin releases.
+    open_wd = await _active_working_draft(source_slug)
+    raw = (open_wd["content_md"] if open_wd else fp.read_text(encoding="utf-8"))
 
     applied = 0
     rejected = 0
@@ -1430,7 +1822,16 @@ async def apply_roundtrip(
                 }},
             )
 
-    fp.write_text(raw, encoding="utf-8")
+    # Persist the working draft with the modified body. The released .md
+    # is intentionally untouched — admin promotes via
+    # POST /legal/working-drafts/{slug}/release.
+    wd = await _upsert_working_draft(
+        source_slug=source_slug,
+        content_md=raw,
+        user=user,
+        action="apply_roundtrip",
+        note=f"Roundtrip applied · +{applied} -{rejected} skipped {skipped}",
+    )
 
     # Persist a per-doc roundtrip record so counsel can see the audit
     # trail of how their work landed (visible on /admin/legal/ratifications
@@ -1441,6 +1842,7 @@ async def apply_roundtrip(
         "applied_at": now_iso(),
         "applied_by_user_id": user["id"],
         "applied_by_user_email": user.get("email"),
+        "working_draft_id": wd["id"],
         "counts": {
             "applied": applied,
             "rejected": rejected,
@@ -1456,18 +1858,17 @@ async def apply_roundtrip(
         db, user, "legal.doc.redlines.roundtrip.apply",
         target_type="legal_doc", target_id=source_slug,
         metadata={"applied": applied, "rejected": rejected, "skipped": skipped,
-                  "misses": len(misses)},
+                  "misses": len(misses), "working_draft_id": wd["id"]},
     )
 
-    # Auto-rebuild the .docx bundle and email the applier + counsel a
-    # short summary. Both are best-effort — a failure here does not
-    # undo the roundtrip. Errors are logged, never raised.
-    rebuild_ok = await _run_docx_rebuild(user=user)
+    # Best-effort email — the .docx bundle is NOT rebuilt here because
+    # the released .md hasn't changed; the bundle refresh happens at
+    # release time instead.
     email_id = await _email_roundtrip_summary(
         source_slug=source_slug,
         applier=user,
         counts=roundtrip_rec["counts"],
-        rebuild_ok=rebuild_ok,
+        rebuild_ok=False,  # no rebuild at roundtrip time under working-draft model
     )
 
     return {
@@ -1476,7 +1877,8 @@ async def apply_roundtrip(
         "skipped": skipped,
         "unmatched_comment_ids": misses,
         "roundtrip_id": roundtrip_rec["id"],
-        "rebuilt_docx": rebuild_ok,
+        "working_draft_id": wd["id"],
+        "state": wd["state"],
         "email_id": email_id,
     }
 

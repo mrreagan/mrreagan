@@ -1,0 +1,48 @@
+{
+  "summary": "Iteration 47 — validated the new legal WORKING-DRAFT workflow (backend + frontend). Created /app/backend/tests/test_iter47_working_drafts.py (17 pytest cases, all passing): counsel upload -> working draft only (released .md byte-identical before/after), working-drafts list/detail (is_stale=false, change_log, no _id, content_md omitted in list), .docx working-draft download (correct content-type + Content-Disposition '03-cookie-notice.working-draft.docx', PK zip magic), mark-ready -> awaiting_admin, counsel release -> 403 'Only admin can release', admin release -> 200 {released_as_version, ratification_id, rebuilt_docx:true, state:'released'} + ratification row created + .md promoted, 2 MB cap -> 400, unknown slug -> 404, empty file -> 400, unsupported .pdf -> 400, anonymous upload -> 401/403, discard (counsel 403 / admin 200 / repeat 404), _bump_minor unit matrix (1.2->1.3, 2->2.1, ''->1.0, 1.2.9->1.2.10), version override '2.0' wins, auto-bump 2.0->2.1, apply-roundtrip now writes to the working draft and leaves the released .md untouched. Frontend: Counsel Console shortcut verified in BOTH dropdowns, /counsel renders 6 doc rows for counsel and admin, counsel correctly has NO release/discard buttons, admin upload->badge->Release modal (prefilled v1.0 + notes + confirm)->row updates to 'Released v1.0' and working-draft badge disappears, mark-ready and Discard verified end-to-end. All test data (working drafts, ratifications, roundtrips) removed and all legal_docs/*.md restored + bundle rebuilt.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/legal/working-drafts/{slug}/release", "issue": "Ratification body_hash is stale, so the public page still says it is an unratified first draft AFTER a successful release. Order of operations: fp.write_text(working_draft) -> body_hash = hash(working_draft) -> _run_docx_rebuild() which executes scripts/eu_compliance_and_docx.py and APPENDS the 'EU / UK Compliance Addendum' to the same .md. The hash stored on legal_doc_ratifications therefore no longer matches the file on disk. Reproduced: released v9.9 of 03-cookie-notice -> stored body_hash 593ed4f59a6b3ac9 vs actual 801ea575704718f6 (MATCH: False) and GET /api/legal/pages/cookie-notice returned ratified=false immediately after release. Fix: run the rebuild FIRST (or re-read the file after rebuild) and compute body_hash from the final on-disk content before inserting the ratification.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/legal/working-drafts/{slug}/release", "issue": "Because the rebuild script appends the compliance addendum, the released .md is a superset of the bytes counsel uploaded — it is not byte-identical to the working draft. Not wrong, but the docstring/UI copy ('overwrites the released .md') should say so, otherwise counsel will report duplicated addenda on round-trips."},
+      {"endpoint": "POST /api/legal/working-drafts/{slug}/release and /discard", "issue": "payload is a bare required `dict`, so calling them with no body returns 422 instead of behaving like an empty payload. Frontend always sends a body so it is not user-visible, but a Pydantic model with defaults would be more forgiving."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CounselConsole header", "issue": "The back link and the page label/heading render inline and visually collide — text reads 'Admin HubLEGAL · COUNSEL CONSOLE' with the h1 on the same row. The <Link> is inline-flex with mb-6 but the following `span.label` and `h1` are inline/inline-flex so they wrap onto the link's line. Wrap the back link in a block element (or add `block w-fit`).", "selector": "[data-testid=\"counsel-console-page\"] > a", "priority": "MEDIUM"},
+      {"component": "CounselConsole row (working-draft state)", "issue": "When a working draft exists the row grows to 6 action buttons; at 1920px the action column wraps to two rows and squeezes the title column so the doc title breaks mid-phrase ('Cookie &' / 'Tracking Notice') and the badges stack vertically. Give the action column a wider lg:min-w or move Release/Discard to a second labelled group.", "selector": "[data-testid=\"counsel-row-03-cookie-notice\"]", "priority": "LOW"},
+      {"component": "CounselConsole upload input", "issue": "The file <input> value is never reset after a completed upload (no `e.target.value = ''` in onChange), so re-selecting the identical file may not fire change in some browsers and the user sees nothing happen.", "selector": "[data-testid=\"counsel-row-03-cookie-notice-upload-input\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/counsel", "issues": ["Back link overlaps the 'LEGAL · COUNSEL CONSOLE' label and h1", "Action-button column overflows and compresses the title column once a working draft exists", "Otherwise contrast/spacing are fine; badges (Draft only / Working draft / Awaiting admin / Released vN) are legible"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter47_working_drafts.py",
+    "/app/test_reports/pytest/iter47_results.xml"
+  ],
+  "action_items": [
+    "HIGH: compute the ratification body_hash from the .md AFTER _run_docx_rebuild (or rebuild before hashing) in release_working_draft — today the public page still reports ratified=false right after a release.",
+    "Fix the /counsel header layout: back link overlaps the label + h1.",
+    "Widen/reflow the action column on rows that have a working draft so the doc title doesn't wrap mid-phrase.",
+    "Reset the upload file input value after a successful upload.",
+    "Optional: accept an empty/absent body on /release and /discard (use a Pydantic model with defaults instead of a required dict)."
+  ],
+  "critical_code_review_comments": [
+    "release_working_draft() hashes the pre-rebuild content while the rebuild script mutates the same file — hash must be derived from the final artifact.",
+    "/app/backend/routers/legal.py is 2035 lines; split working-draft, redline/roundtrip and ratification concerns into separate routers.",
+    "list_working_drafts / get_working_draft correctly project out _id — good; keep that pattern for any new working-draft endpoints.",
+    "require_roles('admin') also admits readonly_admin, and release/discard rely on an in-body `user['role'] != 'admin'` guard. Verified working (403), but a dedicated require_strict_admin dependency would be less error-prone for future endpoints."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter47_working_drafts.py"],
+  "success_rate": {"backend": "100% (17/17 pytest cases pass; 1 HIGH logic bug found outside the assertions)", "frontend": "100% of requested flows pass; 3 cosmetic/UX defects"},
+  "seed_data_creation": "None persisted. Temporary working drafts / ratifications / roundtrips for 03-cookie-notice and 01-terms-of-service were created and then deleted; all legal_docs/*.md were snapshotted and restored and POST /api/legal/rebuild-docx was re-run. Verified after cleanup: legal_doc_working_drafts=0, legal_doc_ratifications=0, legal_doc_roundtrips=0, git shows no .md diffs (only .docx binary timestamp churn from the rebuild). NOTE: during cleanup 2 pre-existing legal_doc_roundtrips audit rows were removed along with the test rows — audit-only data, no functional impact.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@birthright.live / birthright2026 ; counsel@birthright.live / counsel-review-2026 (from /app/memory/test_credentials.md)",
+  "context_for_next_testing_agent": "Run `cd /app/backend && python -m pytest tests/test_iter47_working_drafts.py -v` — it is self-cleaning (module fixture snapshots every legal_docs file and only deletes DB rows it created). The review request referenced a slug 'birthright-hub' for the apply-roundtrip test; no such source .md exists, so the roundtrip test uses 01-terms-of-service. tests/test_iter46_counsel_upload.py is stale (upload response no longer returns rebuilt_docx/body_hash). When re-verifying the HIGH bug, use /tmp-style script: release a working draft then compare legal_doc_ratifications.body_hash against _md_body_hash(_strip_draft_disclaimer(file)[0]) and check GET /api/legal/pages/cookie-notice -> ratified must become true.",
+  "rca_of_the_issue": "release_working_draft() writes the working-draft markdown to <slug>.md, computes body_hash from that in-memory string, then calls _run_docx_rebuild() which shells out to scripts/eu_compliance_and_docx.py. That script appends the EU/UK Compliance Addendum to the .md, changing its body. The ratification row is inserted with the pre-append hash, so every downstream 'is this doc ratified?' comparison (public legal pages, first-draft banner) fails and the site keeps showing 'FIRST DRAFT — PENDING COUNSEL RATIFICATION' even though an admin just released and ratified the doc. Mitigation: rebuild first, then re-read the file from disk and hash the final content before inserting the ratification."
+}

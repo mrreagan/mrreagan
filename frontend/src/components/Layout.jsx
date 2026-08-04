@@ -127,6 +127,16 @@ function UserMenu({ user, onLogout }) {
               Admin Dashboard
             </Link>
           )}
+          {(user.role === "admin" || user.role === "readonly_admin") && (
+            <Link
+              to="/counsel"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-3 text-sm hover:bg-[#FAF8F5] text-[#476B6B] font-medium"
+              data-testid="menu-counsel-console"
+            >
+              Counsel Console
+            </Link>
+          )}
           <Link to="/profile" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5] border-t border-[#E5E1D8]" data-testid="menu-profile">
             Edit Profile
           </Link>

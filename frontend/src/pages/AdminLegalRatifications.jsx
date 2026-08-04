@@ -233,7 +233,7 @@ export default function AdminLegalRatifications() {
       const fd = new FormData();
       fd.append("file", file);
       const r = await api.post(`/legal/docs/${sourceSlug}/upload`, fd);
-      toast.success(`Uploaded · ${r.data.bytes_written} bytes · docx ${r.data.rebuilt_docx ? "refreshed" : "refresh failed"}`);
+      toast.success(`Working draft updated · ${r.data.bytes_written} bytes · state ${r.data.state}. An admin must release it from the Counsel Console.`);
       // Refresh the doc metadata so ratification badge + banner update.
       await openDoc(openSlug);
     } catch (e) {
@@ -284,6 +284,14 @@ export default function AdminLegalRatifications() {
         Each public doc shows its current ratification status. Click a
         doc to see counsel redlines, add your own, or mark it ratified.
       </p>
+
+      <Link
+        to="/counsel"
+        className="mt-3 inline-flex items-center gap-2 text-xs uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] font-semibold"
+        data-testid="legal-ratify-counsel-console-link"
+      >
+        Open Counsel Console (working drafts + release) →
+      </Link>
 
       {isAdmin && (
         <button
