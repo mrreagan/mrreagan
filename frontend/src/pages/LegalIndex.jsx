@@ -70,11 +70,17 @@ export default function LegalIndex() {
         </ul>
       )}
 
-      <div className="mt-10 pt-6 border-t border-[#E5E1D8] text-xs text-[#5C6B6B]">
-        Questions about any of these documents?{" "}
-        <a href="mailto:legal@birthright.live" className="underline text-[#476B6B]">
-          legal@birthright.live
-        </a>
+      <div className="mt-10 pt-6 border-t border-[#E5E1D8] text-xs text-[#5C6B6B] flex flex-wrap items-center gap-3">
+        <Link to="/legal/history" className="underline text-[#476B6B] hover:text-[#0F2424]" data-testid="legal-index-history-link">
+          Ratification history →
+        </Link>
+        <span>·</span>
+        <span>
+          Questions?{" "}
+          <a href="mailto:legal@birthright.live" className="underline text-[#476B6B]">
+            legal@birthright.live
+          </a>
+        </span>
       </div>
     </div>
   );

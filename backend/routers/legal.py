@@ -761,3 +761,206 @@ async def resolve_comment(
     )
     return {"resolved": True}
 
+
+# ============ PUBLIC RATIFICATION HISTORY ============
+# Runs at /api/legal/history so /legal/history on the frontend can render
+# a public change-log of every ratification (which policy, which version,
+# ratifying firm, date). Kept intentionally sparse — no internal notes.
+
+# Reverse-lookup from source_slug (manifest) → public slug (URL).
+_SOURCE_TO_PUBLIC = {
+    "01-terms-of-service": ("terms", "Terms of Service"),
+    "02-privacy-policy": ("privacy", "Privacy Policy"),
+    "03-cookie-notice": ("cookie-notice", "Cookie & Tracking Notice"),
+    "10-sliding-scale-scholarship-terms": ("scholarships", "Sliding-Scale & Scholarship Terms"),
+    "14-community-standards": ("community-standards", "Community Standards"),
+    "15-refund-returns-policy": ("refunds", "Refund & Returns Policy"),
+}
+
+
+@router.get("/history")
+async def public_ratification_history():
+    """Public — newest-first list of every ratification of a public doc.
+
+    Returns only public docs (Terms/Privacy/Cookie/Refunds/Scholarships/
+    Community Standards). Internal notes are stripped so the change-log
+    stays user-facing.
+    """
+    from database import db
+    rows = await db.legal_doc_ratifications.find(
+        {"source_slug": {"$in": list(_SOURCE_TO_PUBLIC.keys())}},
+        {"_id": 0, "source_slug": 1, "version": 1, "ratified_at": 1, "ratified_by": 1},
+    ).sort("ratified_at", -1).to_list(500)
+    out = []
+    for r in rows:
+        public_slug, title = _SOURCE_TO_PUBLIC.get(r["source_slug"], (r["source_slug"], r["source_slug"]))
+        out.append({
+            "slug": public_slug,
+            "title": title,
+            "version": r["version"],
+            "ratified_at": r["ratified_at"],
+            "ratified_by": r.get("ratified_by"),
+        })
+    return out
+
+
+# ============ REDLINE EXPORT (Word track-changes .docx) ============
+# Emits a Word document with real w:ins / w:del revision markup so counsel
+# can open it in Word/LibreOffice and accept/reject each proposed change
+# offline. Only unresolved redlines are exported (comments-only entries
+# are skipped — they're advisory, not track-change markup).
+
+def _build_redline_docx(source_slug: str, doc_title: str, redlines: list[dict]) -> bytes:
+    """Emit a Word .docx that renders as tracked changes on open.
+
+    Real Word revisions require w:ins and w:del elements with monotonic
+    ids, author, and date. We wrap python-docx paragraphs with raw OXML
+    so the resulting file opens in Word 2016+ with track changes visible.
+    """
+    from io import BytesIO
+    from docx import Document
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+    from datetime import datetime, timezone
+
+    doc = Document()
+    doc.core_properties.title = f"Counsel Redlines — {doc_title}"
+    doc.core_properties.comments = (
+        "Open in Word to review as tracked changes. Accept or reject each "
+        "revision; save; return to Birthright."
+    )
+
+    h = doc.add_heading(f"Counsel Redlines — {doc_title}", level=1)
+    doc.add_paragraph(
+        f"Source: {source_slug}.md · Generated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · "
+        f"{len(redlines)} unresolved redline(s)."
+    )
+    doc.add_paragraph(
+        "Each numbered item below is a proposed change. Deleted text is "
+        "shown struck through; inserted text is underlined. Open in Word "
+        "or LibreOffice to accept or reject each revision using the Review "
+        "toolbar."
+    )
+
+    now_iso_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+    for i, r in enumerate(redlines, start=1):
+        section = r.get("section") or "(no section)"
+        author = r.get("author_email") or "counsel"
+        p_h = doc.add_paragraph()
+        run = p_h.add_run(f"{i}. {section}")
+        run.bold = True
+
+        rationale = r.get("body") or ""
+        if rationale:
+            doc.add_paragraph(rationale, style="Intense Quote")
+
+        quoted = r.get("quoted_text") or ""
+        replacement = r.get("suggested_replacement") or ""
+
+        # Only render revision markup if there's something to strike or insert.
+        if quoted or replacement:
+            p = doc.add_paragraph()
+            if quoted:
+                _append_revision_run(p, quoted, kind="del", author=author,
+                                     date=now_iso_utc, rev_id=i * 2 - 1)
+            if replacement:
+                _append_revision_run(p, replacement, kind="ins", author=author,
+                                     date=now_iso_utc, rev_id=i * 2)
+
+        doc.add_paragraph()  # spacer
+
+    buf = BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def _append_revision_run(paragraph, text: str, kind: str, author: str, date: str, rev_id: int):
+    """Attach a w:ins or w:del run to `paragraph` with proper revision markup.
+
+    `kind` is either "ins" (insertion) or "del" (deletion). Word / LibreOffice
+    read this as a tracked change owned by `author` at `date`.
+    """
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    revision = OxmlElement(f"w:{kind}")
+    revision.set(qn("w:id"), str(rev_id))
+    revision.set(qn("w:author"), author)
+    revision.set(qn("w:date"), date)
+
+    r = OxmlElement("w:r")
+    rpr = OxmlElement("w:rPr")
+    if kind == "del":
+        strike = OxmlElement("w:strike")
+        strike.set(qn("w:val"), "true")
+        rpr.append(strike)
+        color = OxmlElement("w:color")
+        color.set(qn("w:val"), "C00000")
+        rpr.append(color)
+        r.append(rpr)
+        # w:delText carries deleted text
+        t = OxmlElement("w:delText")
+        t.set(qn("xml:space"), "preserve")
+        t.text = text
+        r.append(t)
+    else:
+        u = OxmlElement("w:u")
+        u.set(qn("w:val"), "single")
+        rpr.append(u)
+        color = OxmlElement("w:color")
+        color.set(qn("w:val"), "2E5C46")
+        rpr.append(color)
+        r.append(rpr)
+        t = OxmlElement("w:t")
+        t.set(qn("xml:space"), "preserve")
+        t.text = text
+        r.append(t)
+
+    revision.append(r)
+    paragraph._p.append(revision)
+
+
+@router.get("/comments/{source_slug}/export")
+async def export_unresolved_redlines(
+    source_slug: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Download every UNRESOLVED redline for a doc as a Word file that
+    renders as tracked changes. Comment-only entries are excluded.
+
+    Counsel (readonly_admin) is allow-listed via require_roles so their
+    firm can open the file, mark up changes, and return offline.
+    """
+    from database import db
+    from fastapi.responses import Response
+
+    # Look up the public title for the header.
+    public_slug, title = _SOURCE_TO_PUBLIC.get(source_slug, (source_slug, source_slug))
+    fp = LEGAL_DOC_DIR / f"{source_slug}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Unknown source doc")
+
+    redlines = await db.legal_doc_comments.find(
+        {"source_slug": source_slug, "resolved": False, "kind": "redline"},
+        {"_id": 0},
+    ).sort("created_at", 1).to_list(500)
+
+    if not redlines:
+        raise HTTPException(status_code=404, detail="No unresolved redlines to export")
+
+    blob = _build_redline_docx(source_slug, title, redlines)
+
+    await log_action(
+        db, user, "legal.doc.redlines.export",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={"count": len(redlines)},
+    )
+
+    filename = f"redlines-{public_slug}.docx"
+    return Response(
+        content=blob,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+

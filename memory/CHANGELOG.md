@@ -3,6 +3,24 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — Ratification change-log + Redline .docx export
+- New public endpoint `GET /api/legal/history` returns every ratification
+  of a public doc, newest first (public slug + title + version + date +
+  ratifying firm). Internal notes are stripped.
+- New frontend route `/legal/history` (`LegalHistoryPage.jsx`) — a public
+  change-log grouped by year, each row linking to the current live copy
+  of that policy. Registered BEFORE `/legal/:slug` so React Router
+  matches it exactly.
+- `/legal` hub gains a "Ratification history →" link at the footer.
+- New authed endpoint `GET /api/legal/comments/{source_slug}/export`
+  emits a Word `.docx` with real `w:ins` / `w:del` OXML revision markup
+  for every unresolved redline. Opens in Word / LibreOffice as tracked
+  changes so counsel can accept / reject offline. Comment-only entries
+  (no proposed replacement) are excluded.
+- Admin ratifications page now shows "Export unresolved redlines (.docx)"
+  when there's at least one open redline on the selected doc. Auth is
+  Bearer token via axios blob download.
+
 ## 2026-02-04 — IC designations · Legal hub · Versioned ratification · Redlines
 - **IC classification broadcast**: `partner_prospects.py` now exposes
   `is_independent_contractor`, `worker_classification`, and

@@ -30,6 +30,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LegalDocPage from "./pages/LegalDocPage";
 import LegalIndex from "./pages/LegalIndex";
+import LegalHistoryPage from "./pages/LegalHistoryPage";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
@@ -209,6 +210,10 @@ function AppRoutes() {
       <Route path="/legal/indemnification" element={<IndemnificationPage />} />
       {/* Legal hub — index of every public policy. */}
       <Route path="/legal" element={<LegalIndex />} />
+      {/* Change-log of counsel ratifications — must be registered
+          BEFORE /legal/:slug so react-router does not treat "history"
+          as a slug. */}
+      <Route path="/legal/history" element={<LegalHistoryPage />} />
       {/* Public HTML renderer for Terms, Privacy, Cookie Notice, etc.
           Backend guards the slug against an allowlist. */}
       <Route path="/legal/:slug" element={<LegalDocPage />} />

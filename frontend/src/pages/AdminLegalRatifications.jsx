@@ -23,6 +23,7 @@ import {
   Trash2,
   Check,
   BadgeCheck,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
@@ -140,6 +141,23 @@ export default function AdminLegalRatifications() {
       setComments((old) => ({ ...old, [sourceSlug]: c.data || [] }));
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Resolve failed");
+    }
+  };
+
+  const exportRedlines = async () => {
+    if (!sourceSlug) return;
+    try {
+      const r = await api.get(`/legal/comments/${sourceSlug}/export`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([r.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `redlines-${openSlug}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Export failed");
     }
   };
 
@@ -262,9 +280,21 @@ export default function AdminLegalRatifications() {
 
               {/* Redlines / comments */}
               <div className="card p-5">
-                <p className="text-xs uppercase tracking-wider text-[#476B6B] font-semibold mb-3 inline-flex items-center gap-1">
-                  <MessageSquare size={12} /> Counsel redlines &amp; comments
-                </p>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <p className="text-xs uppercase tracking-wider text-[#476B6B] font-semibold inline-flex items-center gap-1">
+                    <MessageSquare size={12} /> Counsel redlines &amp; comments
+                  </p>
+                  {openComments.some((c) => !c.resolved && c.kind === "redline") && (
+                    <button
+                      onClick={exportRedlines}
+                      className="btn-outline text-xs inline-flex items-center gap-1"
+                      data-testid="legal-comment-export-redlines"
+                      title="Download unresolved redlines as a Word file with track-changes markup for offline counsel review."
+                    >
+                      <Download size={12} /> Export unresolved redlines (.docx)
+                    </button>
+                  )}
+                </div>
 
                 <div className="space-y-3">
                   <input
