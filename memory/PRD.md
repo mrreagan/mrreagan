@@ -15,6 +15,12 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 61 — Public Legal Renderer (Feb 04 2026)
+- New backend routes `GET /api/legal/pages` (list) and `GET /api/legal/pages/{slug}` (render). Slugs are allowlisted to `terms`, `privacy`, `cookie-notice`, `refunds`, `scholarships`, `community-standards`.
+- Markdown is rendered server-side with `markdown==3.10.3` (extra, tables, sane_lists, toc). The leading AI-first-draft blockquote is stripped and re-surfaced as an amber "Draft — pending counsel review" banner in the UI, keeping the actual body clean.
+- New frontend route `/legal/:slug` → `LegalDocPage.jsx` with editorial `.legal-prose` typography, last-updated stamp, .docx download link, and unknown-slug redirect to `/`.
+- `CookieConsentBanner` now links to `/legal/cookie-notice` (was `/legal/cookies`).
+
 ### Iter 60 — Checkout consent + AI-caption alt-tag wiring (Feb 04 2026)
 - **Cart consent gate**: `Cart.jsx` now shows a "Before you check out" block with two mandatory tick-boxes (Terms of Service + Privacy Policy), each linking to `/legal/terms` and `/legal/privacy`. Checkout button stays disabled until both are checked. Matches the `/register` gate for consistency.
 - **AI-caption alt tags**: `<img>` tags across the storefront now prefer `image_caption` (the AI vision output) for accessibility and SEO — `Cart` items, `ProductDetail` hero, `PartnerProfilePage` avatar, `PartnersDirectory` cards, `Research` covers, `PartnerOfferings` tiles, `GlobalSearch` result thumbs.

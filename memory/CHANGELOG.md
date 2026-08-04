@@ -3,6 +3,20 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — Public Legal Renderer
+- `GET /api/legal/pages` lists every public-facing legal doc (slug + title).
+- `GET /api/legal/pages/{slug}` renders the Markdown source (`backend/legal_docs/*.md`)
+  to sanitized HTML server-side using `markdown==3.10.3`, strips the leading
+  `> ⚠️ AI-GENERATED FIRST DRAFT` blockquote and returns it as a
+  `has_draft_disclaimer` flag so the frontend can surface it as a banner.
+- Slugs are allowlisted (`terms`, `privacy`, `cookie-notice`, `refunds`,
+  `scholarships`, `community-standards`); unknown slugs 404.
+- New frontend route `/legal/:slug` → `LegalDocPage.jsx` renders the HTML
+  with editorial `.legal-prose` typography, an amber "draft — pending
+  counsel review" banner when applicable, a last-updated stamp, and a
+  `.docx` download link. Unknown slugs bounce to `/`.
+- `CookieConsentBanner` updated to link `/legal/cookie-notice`.
+
 ## 2026-02-04 — Checkout consent + AI-caption alt tags
 - Cart / checkout now requires two mandatory tick-boxes (Terms of Service +
   Privacy Policy) before the "Proceed to checkout" button becomes enabled.

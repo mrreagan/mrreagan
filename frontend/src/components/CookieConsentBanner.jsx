@@ -56,7 +56,7 @@ export default function CookieConsentBanner() {
               We use strictly-necessary cookies to keep you signed in and to keep the site secure.
               With your consent, we also use analytics cookies to understand how the site is used
               so we can improve it. See our{" "}
-              <Link to="/legal/cookies" className="underline hover:text-white" target="_blank">
+              <Link to="/legal/cookie-notice" className="underline hover:text-white" target="_blank">
                 Cookie Notice
               </Link>{" "}
               and{" "}

@@ -451,3 +451,106 @@ async def public_draft(slug: str):
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         filename=f"{entry['display_name']}.docx",
     )
+
+
+# ============ PUBLIC LEGAL RENDERER ============
+# Live HTML rendering of the public-facing Markdown drafts so users don't
+# have to download a .docx to read the Terms / Privacy / Cookie Notice.
+# Only slugs mapped in PUBLIC_LEGAL_PAGES are served publicly.
+
+# User-friendly slug → manifest slug. Anything not in this dict returns 404.
+PUBLIC_LEGAL_PAGES: dict[str, dict] = {
+    "terms": {
+        "source_slug": "01-terms-of-service",
+        "title": "Terms of Service",
+    },
+    "privacy": {
+        "source_slug": "02-privacy-policy",
+        "title": "Privacy Policy",
+    },
+    "cookie-notice": {
+        "source_slug": "03-cookie-notice",
+        "title": "Cookie & Tracking Notice",
+    },
+    "refunds": {
+        "source_slug": "15-refund-returns-policy",
+        "title": "Refund & Returns Policy",
+    },
+    "scholarships": {
+        "source_slug": "10-sliding-scale-scholarship-terms",
+        "title": "Sliding-Scale & Scholarship Terms",
+    },
+    "community-standards": {
+        "source_slug": "14-community-standards",
+        "title": "Community Standards",
+    },
+}
+
+
+def _strip_draft_disclaimer(md: str) -> tuple[str, bool]:
+    """Peel off the leading `> ⚠️ AI-GENERATED FIRST DRAFT` blockquote so the
+    rendered page can surface it as a distinct banner instead of a wall of
+    quoted text. Returns (cleaned_markdown, had_disclaimer).
+    """
+    lines = md.splitlines()
+    if not lines or not lines[0].startswith(">"):
+        return md, False
+    i = 0
+    while i < len(lines) and (lines[i].startswith(">") or lines[i].strip() == ""):
+        # Stop when we hit content that isn't a blockquote and isn't blank
+        if lines[i].strip() == "" and i + 1 < len(lines) and not lines[i + 1].startswith(">"):
+            i += 1
+            break
+        i += 1
+    return "\n".join(lines[i:]).lstrip(), True
+
+
+@router.get("/pages")
+async def list_public_pages():
+    """List every public-facing legal page (slug + title) so the frontend
+    can build a table of contents (e.g. footer legal menu)."""
+    out = []
+    for slug, meta in PUBLIC_LEGAL_PAGES.items():
+        fp = LEGAL_DOC_DIR / f"{meta['source_slug']}.md"
+        if fp.exists():
+            out.append({"slug": slug, "title": meta["title"]})
+    return out
+
+
+@router.get("/pages/{slug}")
+async def get_public_page(slug: str):
+    """Render a public legal page as HTML. Returns the rendered HTML plus
+    metadata (title, updated_at, has_draft_disclaimer) so the frontend can
+    surface a "not yet counsel-reviewed" banner separately from the body."""
+    meta = PUBLIC_LEGAL_PAGES.get(slug)
+    if not meta:
+        raise HTTPException(status_code=404, detail="Unknown legal page")
+    fp = LEGAL_DOC_DIR / f"{meta['source_slug']}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Source markdown missing")
+
+    raw_md = fp.read_text(encoding="utf-8")
+    cleaned_md, had_disclaimer = _strip_draft_disclaimer(raw_md)
+
+    import markdown as md_lib
+    html = md_lib.markdown(
+        cleaned_md,
+        extensions=["extra", "sane_lists", "toc", "tables"],
+        output_format="html5",
+    )
+
+    # File mtime as "last updated" — good enough until we add versioned
+    # publish flow (blocked backlog item).
+    from datetime import datetime, timezone
+    updated_at = datetime.fromtimestamp(fp.stat().st_mtime, tz=timezone.utc).isoformat()
+
+    return {
+        "slug": slug,
+        "source_slug": meta["source_slug"],
+        "title": meta["title"],
+        "html": html,
+        "updated_at": updated_at,
+        "has_draft_disclaimer": had_disclaimer,
+        # Download link for the counsel-facing DOCX (same content, formatted).
+        "docx_url": f"/api/legal/drafts/{meta['source_slug']}",
+    }

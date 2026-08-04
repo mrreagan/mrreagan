@@ -17,3 +17,28 @@
   a[href^="#"]:after, a[href^="/"]:after { content: ""; }
 }
 
+
+/* Public legal document renderer — inline prose styles for the HTML
+   returned by /api/legal/pages/{slug}. Tailwind Typography is not
+   installed here, so we roll a minimal ruleset that matches the rest
+   of the editorial aesthetic (Cormorant headings, generous spacing). */
+.legal-prose { color: #1A2424; font-size: 15px; line-height: 1.75; }
+.legal-prose h1 { font-family: "Cormorant Garamond", serif; font-size: 30px; margin: 2.25rem 0 0.5rem; color: #0F2424; }
+.legal-prose h2 { font-family: "Cormorant Garamond", serif; font-size: 24px; margin: 2rem 0 0.5rem; color: #0F2424; border-bottom: 1px solid #E5E1D8; padding-bottom: 0.3rem; }
+.legal-prose h3 { font-family: "Cormorant Garamond", serif; font-size: 20px; margin: 1.75rem 0 0.4rem; color: #1A2424; }
+.legal-prose h4 { font-weight: 600; font-size: 15px; margin: 1.25rem 0 0.3rem; color: #1A2424; }
+.legal-prose p { margin: 0.6rem 0; }
+.legal-prose ul, .legal-prose ol { margin: 0.6rem 0 0.6rem 1.5rem; }
+.legal-prose ul { list-style: disc; }
+.legal-prose ol { list-style: decimal; }
+.legal-prose li { margin: 0.25rem 0; }
+.legal-prose li > ul, .legal-prose li > ol { margin-top: 0.25rem; }
+.legal-prose a { color: #476B6B; text-decoration: underline; }
+.legal-prose a:hover { color: #0F2424; }
+.legal-prose strong { color: #0F2424; font-weight: 600; }
+.legal-prose blockquote { border-left: 3px solid #C9A961; background: #FAF8F5; padding: 0.6rem 0.9rem; margin: 1rem 0; color: #3D4A4A; font-style: italic; }
+.legal-prose code { background: #F4F1EA; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+.legal-prose hr { border: none; border-top: 1px solid #E5E1D8; margin: 2rem 0; }
+.legal-prose table { border-collapse: collapse; margin: 1rem 0; width: 100%; font-size: 14px; }
+.legal-prose th, .legal-prose td { border: 1px solid #E5E1D8; padding: 6px 10px; text-align: left; }
+.legal-prose th { background: #FAF8F5; font-weight: 600; }

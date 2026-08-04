@@ -28,6 +28,7 @@ import Cart from "./pages/Cart";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import LegalDocPage from "./pages/LegalDocPage";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
@@ -204,6 +205,9 @@ function AppRoutes() {
       <Route path="/register" element={<Register />} />
       <Route path="/reviews" element={<ReviewsBrowser />} />
       <Route path="/legal/indemnification" element={<IndemnificationPage />} />
+      {/* Public HTML renderer for Terms, Privacy, Cookie Notice, etc.
+          Backend guards the slug against an allowlist. */}
+      <Route path="/legal/:slug" element={<LegalDocPage />} />
 
       {/* Partner — canonical /partner. /partners preserved as redirect. */}
       <Route path="/partner" element={<PartnersDirectory />} />
