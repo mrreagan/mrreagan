@@ -15,6 +15,16 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 63 — Counsel Console + Working-Draft workflow (Feb 05 2026)
+- **New `/counsel` page** (`CounselConsole.jsx`) — filtered admin console visible via a "Counsel Console" shortcut in both admin AND counsel user-menu dropdowns.
+- **New collection `legal_doc_working_drafts`** — every counsel/admin upload lands here as a WORKING VERSION. The public source `.md` is untouched until admin explicitly releases the working draft.
+- **New endpoints**: `GET /api/legal/working-drafts`, `GET /api/legal/working-drafts/{slug}`, `GET /api/legal/working-drafts/{slug}/download` (returns `.docx` for offline edit), `POST .../mark-ready`, `POST .../release` (admin only — auto-bumps minor version with modal override), `POST .../discard` (admin only).
+- **Rewired flows**: `POST /api/legal/docs/{slug}/upload` and `POST /api/legal/comments/{slug}/apply-roundtrip` now write to the working draft instead of the released `.md`. Public site stability is preserved during counsel iteration.
+- **Release flow**: writes working-draft `content_md` → `.md`, calls `_run_docx_rebuild` (which also appends EU/UK compliance addendum), then hashes the FINAL on-disk content for the ratification body_hash (fixes the "still shows unratified" bug flagged by testing_agent). Auto-creates the next ratification version, marks working-draft state=released.
+- **Permissions**: `readonly_admin` (counsel) can create/edit/mark-ready/upload/download. Admin can also release + discard. `POST .../release` and `.../discard` re-guard with in-body `user.role != 'admin'` → 403.
+- **UX polish**: file input value reset after upload (so re-selecting same file re-fires change), header layout stacks (back link → label → h1 no longer collide), release modal pre-fills the auto-bumped version and accepts admin override.
+- **Testing**: `testing_agent` iter 47 — 17/17 backend pytest cases pass, 100% of frontend flows pass, HIGH hash-order bug caught & fixed, empty-body 422 caught & fixed, cosmetic header + input-reset issues caught & fixed.
+
 ### Iter 62 — Counsel scoped access + full-notice uploads + eye-icon restore (Feb 05 2026)
 - **Middleware refactor** (`/app/backend/utils/readonly_admin.py`): `ReadonlyEnforcementMiddleware` no longer default-denies every counsel mutation. It now only fences `/api/admin/*` mutating methods, with a narrow allow-list for `/api/admin/legal/*` and `/api/admin/settings/counsel/set-password[-from-token]`. Counsel can now shop, check out, edit their profile, DM, post reviews, and author their full legal-review workflow (comments, redlines, roundtrips, uploads).
 - **New endpoint `POST /api/legal/docs/{source_slug}/upload`**: counsel or admin can upload a full replacement for any legal source doc as `.md`, `.markdown`, `.txt`, or `.docx`. `.docx` is converted to Markdown via `python-docx` (heading levels 1-6, paragraphs, list items; tables/images flagged in an HTML comment). Auto-rebuilds the DOCX bundle and audits `legal.doc.upload_replacement`. Any existing ratification stops matching because the body hash changes — banner returns until re-ratified.

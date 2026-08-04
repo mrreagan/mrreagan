@@ -184,19 +184,21 @@ export default function CounselConsole() {
 
   return (
     <div className="container-page py-12" data-testid="counsel-console-page">
-      <Link to={isAdmin ? "/admin" : "/dashboard"} className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B] mb-6">
-        <ArrowLeft size={14} strokeWidth={1.5} /> {isAdmin ? "Admin Hub" : "Dashboard"}
-      </Link>
+      <div className="mb-6">
+        <Link to={isAdmin ? "/admin" : "/dashboard"} className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B]">
+          <ArrowLeft size={14} strokeWidth={1.5} /> {isAdmin ? "Admin Hub" : "Dashboard"}
+        </Link>
+      </div>
 
       <span className="label">Legal · Counsel Console</span>
-      <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
+      <h1 className="editorial-h1 mt-2 flex items-center gap-3">
         <ShieldCheck size={28} strokeWidth={1.2} /> Counsel Console
       </h1>
       <div className="divider-flame" />
 
       <div className="card p-5 max-w-3xl bg-[#FAF7F0]">
         <p className="text-sm text-[#0F2424] leading-relaxed">
-          <strong>The workflow.</strong> Download the released doc, edit offline, upload the full replacement (or upload a changes-only .docx via <Link to="/admin/legal/ratifications" className="underline text-[#476B6B]">the redline editor</Link>). Every upload becomes a <strong>working version</strong> — the public site keeps showing the released version untouched. When you're ready, click <em>Mark ready for admin</em>. An admin releases it as a new version — that's the only step that changes what the public sees.
+          <strong>The workflow.</strong> Download the released doc, edit offline, upload the full replacement (or upload a changes-only .docx via <Link to="/admin/legal/ratifications" className="underline text-[#476B6B]">the redline editor</Link>). Every upload becomes a <strong>working version</strong> — the public site keeps showing the released version untouched. When you&apos;re ready, click <em>Mark ready for admin</em>. An admin releases it as a new version — that&apos;s the only step that changes what the public sees.
         </p>
         <p className="text-xs text-[#5C6B6B] mt-3 leading-relaxed">
           Accepted formats: <code>.md</code>, <code>.markdown</code>, <code>.txt</code>, <code>.docx</code>. Files up to 2 MB.
@@ -304,7 +306,13 @@ export default function CounselConsole() {
                     type="file"
                     accept=".md,.markdown,.txt,.docx"
                     className="hidden"
-                    onChange={(e) => e.target.files?.[0] && uploadFullReplacement(sourceSlug, e.target.files[0])}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      // Reset the input immediately so re-selecting the same
+                      // file fires change again — otherwise browsers dedupe.
+                      e.target.value = "";
+                      if (f) uploadFullReplacement(sourceSlug, f);
+                    }}
                     data-testid={`counsel-row-${sourceSlug}-upload-input`}
                     disabled={!!busy[`${sourceSlug}:upload`]}
                   />

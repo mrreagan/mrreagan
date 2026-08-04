@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from auth_utils import get_current_user, require_roles
@@ -1095,7 +1095,7 @@ async def mark_ready(
 @router.post("/working-drafts/{source_slug}/release")
 async def release_working_draft(
     source_slug: str,
-    payload: dict,
+    payload: Optional[dict] = Body(default=None),
     user: dict = Depends(require_roles("admin")),
 ):
     """ADMIN — promote the working draft to the released `.md`.
@@ -1123,14 +1123,19 @@ async def release_working_draft(
 
     new_md = wd["content_md"] or ""
     fp.write_text(new_md, encoding="utf-8")
-    cleaned, _ = _strip_draft_disclaimer(new_md)
+
+    # Rebuild first — the rebuild script appends the EU/UK compliance
+    # addendum to the .md before generating the .docx bundle, so we must
+    # hash the FINAL on-disk content (post-rebuild) or the ratification
+    # body_hash won't match what the public page renders.
+    rebuild_ok = await _run_docx_rebuild(user=user)
+    final_md = fp.read_text(encoding="utf-8")
+    cleaned, _ = _strip_draft_disclaimer(final_md)
     body_hash = _md_body_hash(cleaned)
 
-    rebuild_ok = await _run_docx_rebuild(user=user)
-
-    version = (payload.get("version") or "").strip() or await _next_version(source_slug)
-    ratified_by = (payload.get("ratified_by") or "").strip() or user.get("email") or "admin"
-    notes = (payload.get("notes") or "").strip() or f"Released working draft {wd['id']}"
+    version = ((payload or {}).get("version") or "").strip() or await _next_version(source_slug)
+    ratified_by = ((payload or {}).get("ratified_by") or "").strip() or user.get("email") or "admin"
+    notes = ((payload or {}).get("notes") or "").strip() or f"Released working draft {wd['id']}"
     rat = {
         "id": gen_id(),
         "source_slug": source_slug,
@@ -1185,7 +1190,7 @@ async def release_working_draft(
 @router.post("/working-drafts/{source_slug}/discard")
 async def discard_working_draft(
     source_slug: str,
-    payload: dict,
+    payload: Optional[dict] = Body(default=None),
     user: dict = Depends(require_roles("admin")),
 ):
     """ADMIN — throw away the working draft. Released .md is untouched."""
@@ -1195,7 +1200,7 @@ async def discard_working_draft(
     wd = await _active_working_draft(source_slug)
     if not wd:
         raise HTTPException(status_code=404, detail="No open working draft to discard.")
-    reason = (payload.get("reason") or "").strip() or "no reason given"
+    reason = ((payload or {}).get("reason") or "").strip() or "no reason given"
     now = now_iso()
     change_log = list(wd.get("change_log") or [])
     change_log.append({
