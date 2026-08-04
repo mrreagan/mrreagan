@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import { toast } from "sonner";
+import { Shield, ArrowRight } from "lucide-react";
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
@@ -65,6 +67,26 @@ export default function Profile() {
           {loading ? "Saving..." : "Save changes"}
         </button>
       </form>
+
+      {/* Security & activity access */}
+      <Link
+        to="/account/activity"
+        className="card p-5 mt-6 flex items-center justify-between hover:shadow-md transition group"
+        data-testid="profile-my-activity-link"
+      >
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 w-9 h-9 rounded-full bg-[#F4F1EA] flex items-center justify-center text-[#476B6B]">
+            <Shield size={16} strokeWidth={1.8} />
+          </div>
+          <div>
+            <p className="font-serif text-base text-[#0F2424]">Recent activity on your account</p>
+            <p className="text-xs text-[#5C6B6B] mt-0.5">
+              See your sign-ins, password changes, documents you signed, and payments. If anything looks unfamiliar, change your password.
+            </p>
+          </div>
+        </div>
+        <ArrowRight size={16} strokeWidth={1.5} className="text-[#5C6B6B] group-hover:text-[#0F2424] shrink-0" />
+      </Link>
     </div>
   );
 }

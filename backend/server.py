@@ -242,6 +242,11 @@ from routers.counsel_audit import router as counsel_router, admin_router as coun
 api_router.include_router(counsel_router)
 api_router.include_router(counsel_admin_router)
 
+# User activity routers (Tier 1 + Tier 2 audit)
+from utils.user_activity import user_router as user_activity_router, admin_router as user_activity_admin_router  # noqa: E402
+api_router.include_router(user_activity_router)
+api_router.include_router(user_activity_admin_router)
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -261,6 +266,11 @@ app.add_middleware(ReadonlyEnforcementMiddleware)
 # admin can audit what counsel has inspected.
 from routers.counsel_audit import CounselActivityLoggerMiddleware  # noqa: E402
 app.add_middleware(CounselActivityLoggerMiddleware)
+
+# Admin trace middleware — Tier 2 user activity logging: every URL any admin
+# hits is recorded so we have a self-audit trail on privileged actions.
+from utils.user_activity import AdminTraceMiddleware  # noqa: E402
+app.add_middleware(AdminTraceMiddleware)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("birthright")

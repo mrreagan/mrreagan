@@ -81,6 +81,17 @@ async def _degrade_stale_sponsors():
         logger.error(f"sponsor_partner_maintenance error: {e}")
 
 
+async def _sweep_user_activity():
+    from database import db
+    try:
+        from utils.user_activity import sweep_stale_activity
+        count = await sweep_stale_activity(db)
+        if count:
+            logger.info(f"user_activity retention sweep: {count}")
+    except Exception as e:
+        logger.error(f"user_activity retention error: {e}")
+
+
 def start_scheduler() -> None:
     """Idempotent scheduler start. Safe to call from FastAPI startup."""
     global _scheduler
@@ -89,8 +100,9 @@ def start_scheduler() -> None:
     _scheduler = AsyncIOScheduler(timezone="UTC")
     _scheduler.add_job(_send_workshop_reminders, "interval", minutes=30, id="workshop_reminders", coalesce=True, max_instances=1)
     _scheduler.add_job(_degrade_stale_sponsors, "interval", hours=24, id="sponsor_partner_maintenance", coalesce=True, max_instances=1)
+    _scheduler.add_job(_sweep_user_activity, "interval", hours=24, id="user_activity_retention", coalesce=True, max_instances=1)
     _scheduler.start()
-    logger.info("scheduler started (workshop_reminders every 30m; sponsor_partner_maintenance every 24h)")
+    logger.info("scheduler started (workshop_reminders every 30m; sponsor_partner_maintenance every 24h; user_activity_retention every 24h)")
 
 
 def stop_scheduler() -> None:

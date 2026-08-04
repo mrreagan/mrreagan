@@ -45,6 +45,8 @@ import AdminLegalDocs from "./pages/AdminLegalDocs";
 import AdminCampaigns from "./pages/AdminCampaigns";
 import CounselReviewChecklist from "./pages/CounselReviewChecklist";
 import CounselActivityLog from "./pages/CounselActivityLog";
+import MyActivity from "./pages/MyActivity";
+import AdminUserActivity from "./pages/AdminUserActivity";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import AdminStudio from "./pages/AdminStudio";
@@ -360,6 +362,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={["admin"]}>
             <CounselActivityLog />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/user-activity"
+        element={
+          <ProtectedRoute roles={["admin"]}>
+            <AdminUserActivity />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/activity"
+        element={
+          <ProtectedRoute>
+            <MyActivity />
           </ProtectedRoute>
         }
       />
