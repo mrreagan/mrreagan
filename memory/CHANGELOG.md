@@ -3,6 +3,27 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — Ratified DOCX Rebuild + Roundtrip history
+- **One-click `.docx` rebuild** — new admin endpoint
+  `POST /api/legal/rebuild-docx` shells out to
+  `scripts/eu_compliance_and_docx.py` and rebuilds all 22 draft `.docx`
+  files plus `LEGAL_BRIEFING_FOR_COUNSEL.docx` from the current
+  markdown. Returns a summary of the files touched. Timeout 180s.
+- **Rebuild button** surfaced at the top of `/admin/legal/ratifications`
+  with a spinning icon while the script runs.
+- **Roundtrip history** — new collection `legal_doc_roundtrips` persists
+  every `apply-roundtrip` call with `applied_at`, `applied_by_user_id`,
+  `applied_by_user_email`, and `counts` (applied / rejected / skipped /
+  unmatched / total). New endpoint `GET /api/legal/roundtrips/{slug}`
+  returns the doc's roundtrip audit newest-first; counsel
+  (`readonly_admin`) inherits admin read access.
+- **UI**: Admin ratifications page now renders a per-doc "Roundtrip
+  history" card showing each entry with timestamp, applier email, and
+  colour-coded accepted / rejected / skipped counts.
+- Verified end-to-end via curl: rebuild returned 23 .docx summary
+  lines; apply-roundtrip persisted a history row with correct counts;
+  roundtrips endpoint returned it.
+
 ## 2026-02-04 — Ratification RSS + Redline roundtrip import
 - **RSS 2.0 feed** at `/api/legal/history.rss` mirrors the public
   `/legal/history` list — one item per ratification with title, version,

@@ -26,6 +26,8 @@ import {
   Download,
   Upload,
   X as XIcon,
+  RefreshCw,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
@@ -207,6 +209,10 @@ export default function AdminLegalRatifications() {
       setDecisions({});
       const c = await api.get(`/legal/comments/${sourceSlug}`);
       setComments((old) => ({ ...old, [sourceSlug]: c.data || [] }));
+      // Refresh the per-doc roundtrip history so counsel + admin see the
+      // entry they just created.
+      const h = await api.get(`/legal/roundtrips/${sourceSlug}`);
+      setRoundtripHistory(h.data || []);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Apply failed");
     } finally {
@@ -215,6 +221,30 @@ export default function AdminLegalRatifications() {
   };
 
   const openComments = sourceSlug ? (comments[sourceSlug] || []) : [];
+
+  // Per-doc roundtrip history — how counsel's work has landed over time.
+  const [roundtripHistory, setRoundtripHistory] = useState([]);
+  useEffect(() => {
+    if (!sourceSlug) { setRoundtripHistory([]); return; }
+    api.get(`/legal/roundtrips/${sourceSlug}`)
+      .then((r) => setRoundtripHistory(r.data || []))
+      .catch(() => setRoundtripHistory([]));
+  }, [sourceSlug]);
+
+  // Whole-bundle .docx rebuild (also refreshes LEGAL_BRIEFING_FOR_COUNSEL.docx).
+  const [rebuilding, setRebuilding] = useState(false);
+  const rebuildDocx = async () => {
+    if (!window.confirm("Rebuild every legal .docx from the current source markdown? This runs the build script (~30s).")) return;
+    setRebuilding(true);
+    try {
+      const r = await api.post("/legal/rebuild-docx");
+      toast.success(`Bundle rebuilt · ${r.data.summary?.length || 0} files`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail?.slice(0, 200) || "Rebuild failed");
+    } finally {
+      setRebuilding(false);
+    }
+  };
 
   return (
     <div className="container-page py-12" data-testid="admin-legal-ratifications-page">
@@ -231,6 +261,19 @@ export default function AdminLegalRatifications() {
         Each public doc shows its current ratification status. Click a
         doc to see counsel redlines, add your own, or mark it ratified.
       </p>
+
+      {isAdmin && (
+        <button
+          onClick={rebuildDocx}
+          disabled={rebuilding}
+          className="btn-outline text-xs inline-flex items-center gap-1 mt-4"
+          data-testid="legal-rebuild-docx-btn"
+          title="Rebuild every draft .docx and the combined LEGAL_BRIEFING_FOR_COUNSEL.docx from the current source markdown. Runs the build script server-side."
+        >
+          <RefreshCw size={12} className={rebuilding ? "animate-spin" : ""} />
+          {rebuilding ? "Rebuilding…" : "Rebuild counsel briefing bundle (.docx)"}
+        </button>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6 mt-8">
         {/* Left — list of public docs */}
@@ -442,6 +485,37 @@ export default function AdminLegalRatifications() {
                   ))}
                 </ul>
               </div>
+
+              {roundtripHistory.length > 0 && (
+                <div className="card p-5" data-testid="legal-roundtrip-history">
+                  <p className="text-xs uppercase tracking-wider text-[#476B6B] font-semibold mb-3 inline-flex items-center gap-1">
+                    <History size={12} /> Roundtrip history · {roundtripHistory.length} applied
+                  </p>
+                  <ul className="space-y-2">
+                    {roundtripHistory.map((h) => (
+                      <li key={h.id} className="border-l-2 border-[#476B6B] pl-3 text-xs" data-testid={`legal-roundtrip-history-${h.id}`}>
+                        <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
+                          {new Date(h.applied_at).toLocaleString()}
+                          {" · "}
+                          <span className="text-[#0F2424]">{h.applied_by_user_email}</span>
+                        </p>
+                        <p className="mt-0.5">
+                          <span className="text-[#1E4030] font-semibold">{h.counts.applied} accepted</span>
+                          {" · "}
+                          <span className="text-[#9E3C3C] font-semibold">{h.counts.rejected} rejected</span>
+                          {" · "}
+                          <span className="text-[#7A5A1A]">{h.counts.skipped} skipped</span>
+                          {h.counts.unmatched > 0 && (
+                            <>{" · "}<span className="text-[#9E3C3C]">{h.counts.unmatched} unmatched</span></>
+                          )}
+                          {" · "}
+                          <span className="text-[#5C6B6B]">total {h.counts.total}</span>
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {roundtrip && (
                 <div className="card p-5" data-testid="legal-roundtrip-preview">

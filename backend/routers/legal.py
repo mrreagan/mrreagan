@@ -1275,6 +1275,26 @@ async def apply_roundtrip(
 
     fp.write_text(raw, encoding="utf-8")
 
+    # Persist a per-doc roundtrip record so counsel can see the audit
+    # trail of how their work landed (visible on /admin/legal/ratifications
+    # under "Roundtrip history").
+    roundtrip_rec = {
+        "id": gen_id(),
+        "source_slug": source_slug,
+        "applied_at": now_iso(),
+        "applied_by_user_id": user["id"],
+        "applied_by_user_email": user.get("email"),
+        "counts": {
+            "applied": applied,
+            "rejected": rejected,
+            "skipped": skipped,
+            "unmatched": len(misses),
+            "total": len(decisions),
+        },
+        "unmatched_comment_ids": misses,
+    }
+    await db.legal_doc_roundtrips.insert_one(dict(roundtrip_rec))
+
     await log_action(
         db, user, "legal.doc.redlines.roundtrip.apply",
         target_type="legal_doc", target_id=source_slug,
@@ -1286,5 +1306,55 @@ async def apply_roundtrip(
         "rejected": rejected,
         "skipped": skipped,
         "unmatched_comment_ids": misses,
+        "roundtrip_id": roundtrip_rec["id"],
     }
+
+
+@router.get("/roundtrips/{source_slug}")
+async def list_roundtrips(
+    source_slug: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Per-doc history of every roundtrip application (newest first).
+
+    Counsel (`readonly_admin`) inherits admin read access via
+    `require_roles`, so counsel can also see how their work landed.
+    """
+    from database import db
+    rows = await db.legal_doc_roundtrips.find(
+        {"source_slug": source_slug}, {"_id": 0},
+    ).sort("applied_at", -1).to_list(200)
+    return rows
+
+
+@router.post("/rebuild-docx")
+async def rebuild_docx_bundle(user: dict = Depends(require_roles("admin"))):
+    """One-click rebuild of every draft's .docx plus the combined
+    LEGAL_BRIEFING_FOR_COUNSEL.docx. Called after a roundtrip is applied
+    so the counsel-facing bundle downloads reflect the latest source.
+    """
+    from database import db
+    import subprocess, sys
+    script = Path(__file__).resolve().parent.parent / "scripts" / "eu_compliance_and_docx.py"
+    if not script.exists():
+        raise HTTPException(status_code=500, detail="Build script missing")
+    proc = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=str(script.parent.parent),
+        capture_output=True, text=True, timeout=180,
+    )
+    ok = proc.returncode == 0
+    await log_action(
+        db, user, "legal.doc.rebuild",
+        target_type="legal_docs", target_id="all",
+        metadata={"ok": ok, "returncode": proc.returncode},
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Rebuild failed (rc={proc.returncode}): {proc.stderr[-400:]}",
+        )
+    # Return a short summary of what was regenerated.
+    summary_lines = [ln for ln in proc.stdout.splitlines() if "→" in ln or "Rebuilt" in ln][-40:]
+    return {"ok": True, "summary": summary_lines}
 
