@@ -118,6 +118,28 @@ MongoDB stores ~90 collections. High-sensitivity data includes:
 6. **Breach-notification obligations** (state-by-state).
 7. **Health-adjacent content** — decide whether platform copy needs an explicit "this is not therapy" disclaimer beyond what's in the indemnification agreement.
 
+### 4b. Audit & activity logging (added: current release)
+
+The platform now maintains three internal audit collections to give admin, counsel, and regulators forensic visibility. Counsel should be aware these exist because they materially affect the Privacy Policy (IP + user-agent are personal data) and because counsel's own review session activity is logged.
+
+| Collection | Purpose | Data captured | Retention |
+|---|---|---|---|
+| `user_activity_log` | Tier 1 security events for all authenticated users (logins, logouts, password events, sensitive document signings, payments) plus Tier 2 URL trace for admin sessions | user_id, email, role, event_type, category, method, path, status_code, IP address, user-agent, metadata, timestamp | **365 days rolling** — enforced by nightly scheduler job `user_activity_retention` |
+| `counsel_activity_log` | Every request made by any `readonly_admin` (counsel) session | user_id, email, method, path, status_code, IP address, user-agent, timestamp | **Manual purge only** — admin can purge from `/admin/counsel-activity` after a review cycle closes |
+| `counsel_review_status` | Counsel's manual sign-off on each legal draft (initials, notes, timestamp), plus auto-derived indicator of whether counsel actually opened each document URL | slug, user_id, email, manual_reviewed, manual_initials, notes, updated_at | **Retained indefinitely** — this is the durable audit trail of counsel's review |
+
+**Erasure policy for audit data:** Per product decision, audit rows are retained even after the underlying user account is deleted. This preserves the security timeline for legal defense (e.g., a former admin later disputes an action they took). This is a deliberate carve-out from the general right-of-erasure under GDPR Article 17 and CCPA §1798.105 and MUST be surfaced explicitly in the Privacy Policy as a legitimate-interests processing basis.
+
+**User transparency:** Every authenticated user can view their own Tier 1 events at `/account/activity`. Admin URL traces (Tier 2) are hidden from user-facing view.
+
+**Counsel access to the audit:** Counsel accounts are blocked from viewing any activity log — including their own. The endpoints return HTTP 403 with an explanatory message. This protects the audit trail from a compromised counsel session and is called out in draft §8b, item 22 below (Counsel Terms of Access).
+
+**Key legal questions for counsel:**
+1. Confirm the Privacy Policy adequately discloses IP + user-agent capture on login and admin activity as personal data under GDPR/CCPA.
+2. Confirm the "audit rows retained after account deletion" carve-out is defensible under a "legitimate interests" balancing test (Article 6(1)(f) GDPR) and CCPA's exception for legal compliance.
+3. Decide whether counsel should countersign a short "Counsel Terms of Access" acknowledging their session is logged (see draft §8b item 22).
+4. Decide whether the Board Member / Officer Agreement (draft #11) needs a "no expectation of privacy on admin console" clause acknowledging admin URL trace.
+
 ---
 
 
@@ -186,6 +208,7 @@ The 21 first-draft documents below were generated as first-draft starting points
 19. Data Processing Agreement Template (Draft): `https://birthright.live/api/legal/drafts/19-data-processing-agreement-template`
 20. Nonprofit Governance Bundle — Articles, Bylaws, Conflict of Interest (COI), Whistleblower, Retention (Draft): `https://birthright.live/api/legal/drafts/20-nonprofit-governance-bundle`
 21. State Charitable Solicitation Registration Plan (Draft): `https://birthright.live/api/legal/drafts/21-charitable-solicitation-plan`
+22. Counsel Terms of Access (recommended new draft — see clauses below): *no downloadable draft yet; counsel to author from the clause list in §8b.1 item 22*
 
 ### 8b.1 Recommended operative language for each draft — key clauses to modify or ratify
 
@@ -202,12 +225,16 @@ Below is a first-draft summary of the operative language for each drafted agreem
 - **Dispute resolution.** Informal negotiation → mediation → binding arbitration; class-action waiver only if permitted by counsel and disclosed prominently.
 
 **2. Privacy Policy** — Recommended core clauses:
-- **Categories of data collected** (account, PII, transactional, health-adjacent journaling, uploaded files, AI conversation logs, cookies/analytics).
-- **Purposes of processing** (service delivery, communications, billing, moderation, analytics, legal compliance).
-- **Legal bases** (contract performance, consent for marketing, legitimate interests for security).
+- **Categories of data collected** (account, PII, transactional, health-adjacent journaling, uploaded files, AI conversation logs, cookies/analytics, **security-audit data including IP address, user-agent, timestamps of every login and every admin session URL**).
+- **Purposes of processing** (service delivery, communications, billing, moderation, analytics, legal compliance, **security monitoring and fraud prevention**).
+- **Legal bases** (contract performance, consent for marketing, **legitimate interests (GDPR Article 6(1)(f)) for security audit logging**).
 - **Sharing with sub-processors** (Stripe, Resend, Printful, Lulu, Google, Anthropic, Cloudflare, Emergent) with links to each vendor's policy.
-- **Retention schedule** by data category.
+- **Retention schedule** by data category, including:
+  - Security audit logs (`user_activity_log`): **365 days rolling**
+  - Counsel activity logs (`counsel_activity_log`): retained until manual admin purge
+  - Counsel review sign-offs (`counsel_review_status`): retained indefinitely as a durable audit record
 - **User rights** — access, correction, deletion, portability, objection, opt-out of sale/share (California Consumer Privacy Act / California Privacy Rights Act — CCPA / CPRA).
+- **Erasure carve-out for audit logs** — *"When you delete your account, we will remove your personal profile and account records. Certain security audit entries (records of your sign-ins, password changes, and consent to legal agreements) will be retained for 365 days as part of our security-audit log, on the basis of our legitimate interests in maintaining a defensible security posture and complying with legal obligations. After 365 days, these entries are automatically purged."*
 - **International transfers** — Standard Contractual Clauses (SCCs) for European Union / United Kingdom users.
 - **Contact** — privacy@birthright.live plus mailing address.
 
@@ -278,6 +305,7 @@ Below is a first-draft summary of the operative language for each drafted agreem
 - **Indemnification by foundation** for acts within scope of duties, subject to statutory limits and directors and officers (D&O) insurance policy.
 - **Confidentiality** — board deliberations, personnel matters, participant data.
 - **Term and removal** — three-year staggered terms; removal with two-thirds vote of remaining board.
+- **No expectation of privacy on the admin console** — *"You acknowledge that all activity on the Birthright administrative console (URLs under `/admin/*`, mutating API calls, sign-ins from admin accounts) is automatically logged to an internal audit trail visible to other administrators and to Board members with governance oversight duties. This logging is part of the Foundation's security posture and is retained for 365 days on a rolling basis. You have no expectation of privacy in these logs when acting in your administrative capacity."*
 
 **12. Foundation Working-Group Volunteer Agreement** — Recommended core clauses:
 - **Volunteer status** — not an employee; no compensation beyond reimbursed expenses.
@@ -336,6 +364,14 @@ Below is a first-draft summary of the operative language for each drafted agreem
 - Prioritize registration in California, New York, Florida, Illinois, Pennsylvania, and Texas ahead of any public fundraising campaign.
 - Register through the Unified Registration Statement where accepted; state-specific forms elsewhere.
 - Track annual renewals and financial reporting thresholds.
+
+**22. Counsel Terms of Access (new — recommended)** — Recommended core clauses:
+- **Scope of access.** Foundation grants counsel a personal, non-transferable, read-only account (role `readonly_admin`) for the sole purpose of reviewing the platform in support of the engagement.
+- **Session logging acknowledgement.** *"You acknowledge that every request made from your session is logged to an internal audit trail (URL, HTTP method, response status, IP address, user-agent, and timestamp). This log is visible to Foundation administrators; you are not permitted to view or modify it from your own session."*
+- **No modification of platform data.** All modification attempts (POST/PUT/PATCH/DELETE) are automatically rejected by server-side middleware; counsel represents they will not attempt to circumvent this control.
+- **Confidentiality.** Counsel treats all data observed on the platform as confidential and privileged and will not extract, screenshot, or share any member, partner, or transaction data without prior written consent from the Foundation, except as required by applicable rules of professional conduct.
+- **Termination and credential rotation.** Access terminates at the conclusion of the engagement; the Foundation will rotate or archive the counsel credential at that time.
+- **Non-privileged nature of the audit log.** The audit log is a business record, not privileged work product; the Foundation may produce it if compelled in litigation or by regulator.
 
 ## 5. Third-Party Integrations (Sub-processors)
 
@@ -625,6 +661,12 @@ The platform actively uses generative AI for:
 - Legal agreements manager: `https://birthright.live/admin/legal/agreements`
 - AI usage: `https://birthright.live/admin/ai-usage`
 - Reports: `https://birthright.live/admin/reports`
+- **Counsel review checklist (per-doc manual + auto tracking):** `https://birthright.live/admin/counsel-review`
+- **Counsel activity log (admin-only; counsel blocked from own log):** `https://birthright.live/admin/counsel-activity`
+- **User activity & admin trace (Tier 1 + Tier 2 audit view):** `https://birthright.live/admin/user-activity`
+
+### User-facing (any authenticated user)
+- **My activity (security events on my own account):** `https://birthright.live/account/activity`
 
 ### API endpoints of legal interest (JSON responses inspectable at these URLs when authenticated)
 - Terms/indemnification versions: `GET /api/legal/indemnification/active`
@@ -672,6 +714,10 @@ Counsel may sign in to inspect every admin and public surface on the platform. A
 - **Email:** `counsel@birthright.org`
 - **Password:** `counsel-review-2026`
 - **Role:** `readonly_admin`
+
+**One important disclosure:** every request from the counsel session (URL visited, HTTP method, response status, IP address, user-agent, and timestamp) is logged to an internal audit trail visible to Foundation administrators. This is a normal security measure and is described more fully in §4b and in the recommended Counsel Terms of Access (draft §8b item 22). Counsel accounts are themselves blocked from viewing the audit log, so a compromised counsel session cannot inspect or alter its own record.
+
+A companion **review checklist** at `https://birthright.live/admin/counsel-review` (visible to counsel and admin) lets counsel check off each document as reviewed with initials and notes; that record persists indefinitely as the durable sign-off trail.
 
 Please notify engineering (via the executive director) when the review is complete so the account can be rotated or archived.
 

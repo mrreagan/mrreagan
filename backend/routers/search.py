@@ -51,7 +51,7 @@ async def _search_workshops(db, q: str, limit: int) -> list[dict]:
         {
             "_id": 0, "id": 1, "title": 1, "slug": 1, "short_description": 1,
             "image_url": 1, "status": 1, "start_date": 1,
-            "regular_price": 1, "early_bird_price": 1,
+            "regular_price": 1, "early_bird_price": 1, "image_caption": 1,
         },
     ).sort([("status", 1), ("start_date", 1)]).limit(limit)
     out = []
@@ -62,6 +62,7 @@ async def _search_workshops(db, q: str, limit: int) -> list[dict]:
             "title": w.get("title"),
             "subtitle": w.get("short_description"),
             "image_url": w.get("image_url"),
+            "image_alt": w.get("image_caption") or w.get("title"),
             "url": f"/workshops/{w.get('slug') or w['id']}",
             "meta": {
                 "status": w.get("status"),
@@ -131,6 +132,7 @@ async def _search_partners(db, q: str, limit: int) -> list[dict]:
         {
             "_id": 0, "id": 1, "slug": 1, "display_name": 1, "headline": 1,
             "partner_type": 1, "photo_url": 1, "location": 1,
+            "image_caption": 1,
         },
     ).limit(limit)
     out = []
@@ -141,6 +143,7 @@ async def _search_partners(db, q: str, limit: int) -> list[dict]:
             "title": p.get("display_name"),
             "subtitle": p.get("headline") or f"{p.get('partner_type','').title()} partner",
             "image_url": p.get("photo_url"),
+            "image_alt": p.get("image_caption") or p.get("display_name"),
             "url": f"/partners/{p.get('slug') or p['id']}",
             "meta": {
                 "partner_type": p.get("partner_type"),
@@ -165,7 +168,7 @@ async def _search_research(db, q: str, limit: int) -> list[dict]:
         {
             "_id": 0, "id": 1, "slug": 1, "title": 1, "abstract": 1,
             "summary": 1, "cover_image_url": 1, "kind": 1, "tags": 1,
-            "published_at": 1,
+            "published_at": 1, "image_caption": 1,
         },
     ).sort("published_at", -1).limit(limit)
     out = []
@@ -176,6 +179,7 @@ async def _search_research(db, q: str, limit: int) -> list[dict]:
             "title": r.get("title"),
             "subtitle": (r.get("summary") or r.get("abstract") or "")[:140],
             "image_url": r.get("cover_image_url"),
+            "image_alt": r.get("image_caption") or r.get("title"),
             "url": f"/research/{r.get('slug') or r['id']}",
             "meta": {
                 "kind": r.get("kind"),
@@ -207,7 +211,7 @@ async def _search_gallery(db, q: str, limit: int) -> list[dict]:
         },
         {
             "_id": 0, "id": 1, "slug": 1, "display_name": 1, "headline": 1,
-            "photo_url": 1, "medium": 1, "location": 1,
+            "photo_url": 1, "medium": 1, "location": 1, "image_caption": 1,
         },
     ).limit(limit)
     out = []
@@ -218,6 +222,7 @@ async def _search_gallery(db, q: str, limit: int) -> list[dict]:
             "title": a.get("display_name"),
             "subtitle": a.get("headline") or a.get("medium") or "Featured artist",
             "image_url": a.get("photo_url"),
+            "image_alt": a.get("image_caption") or a.get("display_name"),
             "url": f"/gallery/{a.get('slug') or a['id']}",
             "meta": {
                 "medium": a.get("medium"),

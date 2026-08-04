@@ -300,7 +300,7 @@ function PartnerCard({ profile, sampleMode }) {
       </div>
       <div className="flex items-center gap-3">
         {profile.photo_url ? (
-          <img src={profile.photo_url} alt="" className="w-12 h-12 rounded-full object-cover" />
+          <img src={profile.photo_url} alt={profile.image_caption || profile.display_name} className="w-12 h-12 rounded-full object-cover" />
         ) : (
           <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: `${cfg.color}20` }}>
             <Icon size={20} strokeWidth={1.5} style={{ color: cfg.color }} />

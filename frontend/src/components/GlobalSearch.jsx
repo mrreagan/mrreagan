@@ -162,7 +162,7 @@ export default function GlobalSearch() {
                                 data-testid={`search-result-${r.type}-${r.id}`}
                               >
                                 {r.image_url ? (
-                                  <img src={r.image_url} alt="" className="w-10 h-10 rounded object-cover shrink-0 bg-[#FAF8F5]" />
+                                  <img src={r.image_url} alt={r.image_alt || r.title} className="w-10 h-10 rounded object-cover shrink-0 bg-[#FAF8F5]" />
                                 ) : (
                                   <div className="w-10 h-10 rounded bg-[#FAF8F5] flex items-center justify-center shrink-0">
                                     <Icon size={14} strokeWidth={1.6} style={{ color: meta.color }} />

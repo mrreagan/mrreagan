@@ -87,7 +87,7 @@ function OfferingTile({ product }) {
         {product.image_url ? (
           <img
             src={product.image_url.startsWith("http") ? product.image_url : product.image_url}
-            alt=""
+            alt={product.image_caption || product.name}
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
           />

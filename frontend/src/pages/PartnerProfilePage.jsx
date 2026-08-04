@@ -54,7 +54,7 @@ export default function PartnerProfilePage() {
       )}
       <div className="flex items-start gap-4 mt-4">
         {profile.photo_url ? (
-          <img src={profile.photo_url} alt="" className="w-20 h-20 rounded-full object-cover" />
+          <img src={profile.photo_url} alt={profile.image_caption || `${profile.display_name} · ${TYPE_LABEL[profile.partner_type] || "Partner"}`} className="w-20 h-20 rounded-full object-cover" />
         ) : (
           <div className="w-20 h-20 rounded-full bg-[#FAF8F5] border border-[#E5E1D8]" />
         )}

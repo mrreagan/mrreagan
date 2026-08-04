@@ -3,6 +3,19 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — Checkout consent + AI-caption alt tags
+- Cart / checkout now requires two mandatory tick-boxes (Terms of Service +
+  Privacy Policy) before the "Proceed to checkout" button becomes enabled.
+  Legally parallels the existing `/register` consent gate.
+- Global site-search backend (`routers/search.py`) now returns an
+  `image_alt` field for each hit (products, partners, workshops, research,
+  gallery), pulling from the AI vision `image_caption` and falling back to
+  the human name/title.
+- Frontend `<img>` tags wired to prefer `image_caption`:
+  `Cart` item thumb, `ProductDetail` hero, `PartnerProfilePage` avatar,
+  `PartnersDirectory` avatar, `Research` cover, `PartnerOfferings` tile,
+  `GlobalSearch` result thumb.
+
 Pre–May 22, 2026 entries are reconstructed from PRD.md and are month-level
 because the git history was reinitialized on May 19, 2026.
 

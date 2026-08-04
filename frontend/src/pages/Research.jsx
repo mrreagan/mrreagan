@@ -134,7 +134,7 @@ function ArtifactCard({ artifact, highlight }) {
         </span>
       )}
       {artifact.cover_image_url && (
-        <img src={artifact.cover_image_url} alt="" className="w-full h-32 object-cover rounded mb-4" />
+        <img src={artifact.cover_image_url} alt={artifact.image_caption || artifact.title} className="w-full h-32 object-cover rounded mb-4" />
       )}
       <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[#476B6B]">
         <TierIcon size={11} strokeWidth={1.5} />

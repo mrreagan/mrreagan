@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import api from "../lib/api";
 import { toast } from "sonner";
-import { Trash2, ArrowLeft, Truck } from "lucide-react";
+import { Trash2, ArrowLeft, Truck, ShieldCheck } from "lucide-react";
 
 function EmptyCart() {
   return (
@@ -20,7 +20,7 @@ function CartItem({ item, onUpdate, onRemove }) {
   const isPod = ["printful", "lulu"].includes(item.fulfillable_via);
   return (
     <div className="card p-5 flex gap-4" data-testid={`cart-item-${item.product_id}`}>
-      <img src={item.image_url} alt={item.name} className="w-24 h-24 object-cover rounded-lg" />
+      <img src={item.image_url} alt={item.image_caption || item.name} className="w-24 h-24 object-cover rounded-lg" />
       <div className="flex-1">
         <p className="font-serif text-lg">{item.name}</p>
         <p className="text-sm text-[#5C6B6B] mt-1">${item.price.toFixed(2)} each</p>
@@ -92,8 +92,8 @@ function ShippingForm({ value, onChange }) {
   );
 }
 
-function CartSummary({ total, onCheckout, onClear, loading, needsShipping, shippingValid }) {
-  const disabled = loading || (needsShipping && !shippingValid);
+function CartSummary({ total, onCheckout, onClear, loading, needsShipping, shippingValid, consentGiven, onConsentChange }) {
+  const disabled = loading || (needsShipping && !shippingValid) || !consentGiven.terms || !consentGiven.privacy;
   return (
     <div className="card p-6 h-fit sticky top-24" data-testid="cart-summary">
       <span className="label">Summary</span>
@@ -109,11 +109,56 @@ function CartSummary({ total, onCheckout, onClear, loading, needsShipping, shipp
         <span className="font-serif text-lg">Total</span>
         <span className="font-serif text-lg">${total.toFixed(2)}</span>
       </div>
+
+      {/* Legal consent — required before purchase. Backend enforces via checkout endpoint. */}
+      <div className="mt-5 pt-4 border-t border-[#E5E1D8] space-y-2" data-testid="cart-consent-block">
+        <p className="text-[10px] uppercase tracking-wider text-[#476B6B] font-semibold inline-flex items-center gap-1">
+          <ShieldCheck size={11} strokeWidth={1.8} /> Before you check out
+        </p>
+        <label className="flex items-start gap-2 cursor-pointer text-xs text-[#3D4A4A] leading-relaxed">
+          <input
+            type="checkbox"
+            checked={consentGiven.terms}
+            onChange={(e) => onConsentChange({ ...consentGiven, terms: e.target.checked })}
+            className="mt-0.5 h-3.5 w-3.5 accent-[#C9A961]"
+            data-testid="cart-accept-terms"
+          />
+          <span>
+            I agree to the{" "}
+            <Link to="/legal/terms" target="_blank" className="underline text-[#476B6B] hover:text-[#0F2424]">
+              Terms of Service
+            </Link>
+            {" "}and understand this is a final sale for print-on-demand items.
+          </span>
+        </label>
+        <label className="flex items-start gap-2 cursor-pointer text-xs text-[#3D4A4A] leading-relaxed">
+          <input
+            type="checkbox"
+            checked={consentGiven.privacy}
+            onChange={(e) => onConsentChange({ ...consentGiven, privacy: e.target.checked })}
+            className="mt-0.5 h-3.5 w-3.5 accent-[#C9A961]"
+            data-testid="cart-accept-privacy"
+          />
+          <span>
+            I agree to the{" "}
+            <Link to="/legal/privacy" target="_blank" className="underline text-[#476B6B] hover:text-[#0F2424]">
+              Privacy Policy
+            </Link>
+            {" "}and to sharing my shipping address with the relevant print partner.
+          </span>
+        </label>
+      </div>
+
       <button onClick={onCheckout} disabled={disabled} className="btn-primary w-full justify-center mt-6" data-testid="cart-checkout-btn">
         {loading ? "Loading..." : "Proceed to checkout"}
       </button>
       {needsShipping && !shippingValid && (
         <p className="text-[10px] text-[#9E3C3C] mt-2 text-center">Complete shipping address to continue</p>
+      )}
+      {(!consentGiven.terms || !consentGiven.privacy) && (
+        <p className="text-[10px] text-[#9E3C3C] mt-2 text-center" data-testid="cart-consent-missing">
+          Please accept the Terms and Privacy Policy to continue
+        </p>
       )}
       <button onClick={onClear} className="btn-ghost w-full mt-2 text-xs">
         Clear cart
@@ -130,6 +175,7 @@ export default function Cart() {
     city: "", state_code: "", postcode: "",
     country_code: "US", phone_number: "",
   });
+  const [consentGiven, setConsentGiven] = useState({ terms: false, privacy: false });
 
   const needsShipping = useMemo(
     () => items.some((i) => ["printful", "lulu"].includes(i.fulfillable_via)),
@@ -140,6 +186,10 @@ export default function Cart() {
     address.state_code.trim().length >= 2 && address.postcode.trim().length >= 3;
 
   const handleCheckout = async () => {
+    if (!consentGiven.terms || !consentGiven.privacy) {
+      toast.error("Please accept the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
     setLoading(true);
     try {
       const payload = {
@@ -184,6 +234,8 @@ export default function Cart() {
             loading={loading}
             needsShipping={needsShipping}
             shippingValid={shippingValid}
+            consentGiven={consentGiven}
+            onConsentChange={setConsentGiven}
           />
         </div>
       )}

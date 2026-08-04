@@ -41,13 +41,44 @@ def _public_user(user: dict) -> dict:
 
 
 @router.post("/register")
-async def register(data: UserRegister, response: Response):
+async def register(data: UserRegister, request: Request, response: Response):
+    if not data.accepted_terms or not data.accepted_privacy:
+        raise HTTPException(
+            status_code=400,
+            detail="You must accept the Terms of Service and Privacy Policy to create an account.",
+        )
     if await db.users.find_one({"email": data.email.lower()}):
         raise HTTPException(status_code=400, detail="Email already registered")
     user = _build_user_doc(data)
+    user["terms_accepted_at"] = now_iso()
+    user["privacy_accepted_at"] = now_iso()
     await db.users.insert_one(user)
     token = create_token(user["id"], user["role"])
     set_session_cookie(response, token)
+    # Log security events: account creation + consent captured.
+    try:
+        from utils.user_activity import log_event, CAT_ACCOUNT, CAT_SIGN
+        await log_event(
+            db, user_id=user["id"], email=user["email"], role=user["role"],
+            event_type="account.created", category=CAT_ACCOUNT,
+            method="POST", path="/api/auth/register", status_code=200, request=request,
+        )
+        await log_event(
+            db, user_id=user["id"], email=user["email"], role=user["role"],
+            event_type="signing.terms_accepted", category=CAT_SIGN,
+            method="POST", path="/api/auth/register", status_code=200,
+            metadata={"policy": "terms_of_service", "version": "current"},
+            request=request,
+        )
+        await log_event(
+            db, user_id=user["id"], email=user["email"], role=user["role"],
+            event_type="signing.privacy_accepted", category=CAT_SIGN,
+            method="POST", path="/api/auth/register", status_code=200,
+            metadata={"policy": "privacy_policy", "version": "current"},
+            request=request,
+        )
+    except Exception:
+        pass
     return {"token": token, "user": _public_user(user)}
 
 

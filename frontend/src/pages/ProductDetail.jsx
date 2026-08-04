@@ -60,7 +60,7 @@ export default function ProductDetail() {
                   data-testid={`product-gallery-thumb-${i}`}
                   aria-label={`View image ${i + 1} of ${gallery.length}`}
                 >
-                  <img src={src} alt="" className="w-full h-full object-cover" />
+                  <img src={src} alt={i === 0 ? (p.image_caption || p.name) : `${p.name} — angle ${i + 1}`} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>

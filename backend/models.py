@@ -20,6 +20,9 @@ class UserRegister(BaseModel):
     first_name: str
     last_name: str
     phone: Optional[str] = None
+    # Consent flags — required at registration; without these the API rejects the sign-up.
+    accepted_terms: bool = False
+    accepted_privacy: bool = False
 
 
 class UserLogin(BaseModel):

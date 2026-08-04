@@ -15,6 +15,11 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 60 — Checkout consent + AI-caption alt-tag wiring (Feb 04 2026)
+- **Cart consent gate**: `Cart.jsx` now shows a "Before you check out" block with two mandatory tick-boxes (Terms of Service + Privacy Policy), each linking to `/legal/terms` and `/legal/privacy`. Checkout button stays disabled until both are checked. Matches the `/register` gate for consistency.
+- **AI-caption alt tags**: `<img>` tags across the storefront now prefer `image_caption` (the AI vision output) for accessibility and SEO — `Cart` items, `ProductDetail` hero, `PartnerProfilePage` avatar, `PartnersDirectory` cards, `Research` covers, `PartnerOfferings` tiles, `GlobalSearch` result thumbs.
+- **`routers/search.py`**: search API now returns `image_alt` for every result type (product / partner / workshop / research / gallery) and the frontend consumes it in `GlobalSearch`.
+
 ### Iter 59 — Sponsor Pill + Campaigns system (Feb 2026)
 - **New backend router**: `routers/campaigns.py` with public list/detail/pledge endpoints (`GET /api/campaigns`, `GET /api/campaigns/{slug}`, `POST /api/campaigns/{slug}/pledge`) and admin CRUD + pledge status management. Every API response embeds a `non_deductible_notice` string so the frontend cannot forget to display it.
 - **New DB collections**: `sponsor_campaigns` (title, slug, tagline, story markdown, goal_amount, tiers[], status, contingency_note) and `sponsor_pledges` (sponsor_name, email, org, amount, tier_id, message, display_publicly opt-in, status: pending → approved → invoiced → paid). Pledge-only flow — no payment processing until 501(c)(3) is granted.

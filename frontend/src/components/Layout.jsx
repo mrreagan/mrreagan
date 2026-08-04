@@ -6,6 +6,7 @@ import { useCart } from "../contexts/CartContext";
 import { ShoppingBag, Menu, X, User, LogOut, ChevronDown } from "lucide-react";
 import AgreementResignBanner from "./AgreementResignBanner";
 import ReadOnlyBanner from "./ReadOnlyBanner";
+import CookieConsentBanner from "./CookieConsentBanner";
 import HelpAssistant from "./HelpAssistant";
 import GlobalSearch from "./GlobalSearch";
 
@@ -329,6 +330,7 @@ export default function Layout({ children }) {
       </main>
       <Footer />
       <HelpAssistant />
+      <CookieConsentBanner />
     </div>
   );
 }
