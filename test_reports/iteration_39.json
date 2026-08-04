@@ -1,0 +1,34 @@
+{
+  "summary": "Backend-only verification of the @birthright.org -> @birthright.live domain migration. New test suite /app/backend/tests/test_iter45_domain_migration.py (16 tests) passes 100%: all five seeded accounts log in on the new domain with correct roles (admin/participant/facilitator/facilitator/readonly_admin) and /api/auth/me agrees; all five old @birthright.org emails now correctly return 401; counsel read flows (GET /api/legal/pages, POST redline comment, list-verify) work and apply-roundtrip is still 403 {readonly:true}; admin GET /api/admin/settings/counsel returns email='counsel@birthright.live', rotate to temp pw + login + restore to counsel-review-2026 all succeed (counsel login re-verified 200 after teardown); doc checks pass for test_credentials.md, 00a-counsel-user-guide.md and LEGAL_BRIEFING_FOR_COUNSEL.md (no stale @birthright.org emails). Regression: the existing counsel suite (iter32/33/34/35/36/36b/38) FAILS as-checked-in (15 failed, 38 errors) purely because every fixture hardcodes @birthright.org credentials. To prove there is no functional regression I copied those 7 files to /tmp/migcheck with the domain rewritten (originals untouched) and ran them: 65/65 PASSED. So the migration itself is clean; only test fixtures need updating.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "utils/order_dispatch.py:118", "issue": "Stale fallback contact address 'fulfillment@birthright.org' still used when order.contact_email is missing — should be @birthright.live"},
+      {"endpoint": "routers/partner_prospects.py:259,287", "issue": "Marketing copy sent to partners still says 'birthright.org' as the storefront domain (should be birthright.live)"}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter45_domain_migration.py",
+    "/app/test_reports/pytest/iter45_counsel_suite.xml",
+    "/app/test_reports/pytest/iter45_counsel_suite_rewritten.xml"
+  ],
+  "action_items": [
+    "Update hardcoded @birthright.org credentials in 50 test files under /app/backend/tests (154 occurrences). Confirmed-broken counsel suites and their lines: test_iter32_counsel_guide.py:16-17, test_iter33_counsel_allowlist.py:16, test_iter34_counsel_settings.py:14-16,107, test_iter35_counsel_settings_strict.py:16-17, test_iter36_counsel_session_setpw.py:26-27, test_iter36b_counsel_race_boundary.py:24-25, test_iter38_counsel_iat_ms.py:22-23. Other high-occurrence files: test_iter3_emails.py (22), test_iter8_refactor.py (7), test_iter9_partners.py (5), backend_test.py:24-27, test_iter7_governance.py, test_iter4/5/6, test_iter10/11/12/18/19/21/22/23/27/28/29/30/31/32b/33_interior/34_order/35_lulu/36_cutover/37/38_artist/39/40/41/42/43/44, test_products_iter2.py. A global sed 's/@birthright.org/@birthright.live/g' across /app/backend/tests is sufficient (verified in /tmp/migcheck).",
+    "Fix stale fallback email in utils/order_dispatch.py:118 (fulfillment@birthright.org)",
+    "Update partner-facing copy in routers/partner_prospects.py:259,287 and frontend/src/pages/PartnerInvite.jsx:200 ('birthright.org' -> 'birthright.live')",
+    "Optional: memory/STRIPE_ACTIVATION_GUIDE.md:113, memory/PRD.md:146,161, memory/CHANGELOG.md:117 still cite @birthright.org accounts (historical notes; PRD/guide references are operational so worth updating)"
+  ],
+  "critical_code_review_comments": [
+    "seed_data.py and utils/readonly_admin.py COUNSEL_EMAIL default are correctly on @birthright.live; Mongo has no logged-in-able @birthright.org account left (all 5 return 401), so the migration is complete on the data side.",
+    "The entire backend test suite is now red on credentials alone — this masks real regressions for future iterations and should be fixed in one pass before the next feature work."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter45_domain_migration.py"],
+  "success_rate": {"backend": "100% (16/16 migration tests; 65/65 counsel suite when emails rewritten)", "frontend": "not tested (per request)"},
+  "seed_data_creation": "One TEST_-prefixed legal redline comment on 01-terms-of-service, deleted in teardown. Counsel password rotated to temp-verify-migration-2026 and restored to counsel-review-2026 (verified 200).",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@birthright.live / birthright2026; demo@birthright.live / birthright2026; elena@birthright.live / birthright2026; marcus@birthright.live / birthright2026; counsel@birthright.live / counsel-review-2026 (readonly_admin) — all verified working",
+  "context_for_next_testing_agent": "test_iter45_domain_migration.py is the canonical migration regression file. If existing tests still 401 on login, they are on the old @birthright.org domain — check line ~15-30 of the file for hardcoded creds. /tmp/migcheck contains rewritten copies used to prove no functional regression (can be regenerated with sed).",
+  "rca_of_the_issue": "No product defect. Test failures across the counsel suite are caused solely by hardcoded @birthright.org fixture credentials that no longer exist in Mongo after the domain migration; rewriting the domain in the fixtures makes all 65 tests pass."
+}

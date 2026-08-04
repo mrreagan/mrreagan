@@ -741,7 +741,7 @@ Engineering can provide counsel with:
 Counsel may sign in to inspect every admin and public surface on the platform. All modification attempts (POST / PUT / PATCH / DELETE requests) are rejected by server-side middleware with HTTP 403; a persistent "Counsel review · read-only" banner appears at the top of every page during the session.
 
 - **Sign-in URL:** `https://birthright.live/login`
-- **Email:** `counsel@birthright.org`
+- **Email:** `counsel@birthright.live`
 - **Password:** `counsel-review-2026`
 - **Role:** `readonly_admin`
 

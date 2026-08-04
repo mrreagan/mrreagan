@@ -33,11 +33,11 @@ def _seed_user(email: str, name: tuple[str, str], role: str, profile: Optional[d
 def _build_seed_users() -> list[dict]:
     return [
         _seed_user(
-            "admin@birthright.org", ("Birthright", "Admin"), "admin",
+            "admin@birthright.live", ("Birthright", "Admin"), "admin",
             {"bio": "Founding administrator of the Birthright Foundation."},
         ),
         _seed_user(
-            "elena@birthright.org", ("Elena", "Hartwell"), "facilitator",
+            "elena@birthright.live", ("Elena", "Hartwell"), "facilitator",
             {
                 "bio": "Elena is a licensed therapist with over fifteen years guiding individuals and families through attachment work. She believes secure bonds are restorative, not aspirational.",
                 "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600",
@@ -46,7 +46,7 @@ def _build_seed_users() -> list[dict]:
             },
         ),
         _seed_user(
-            "marcus@birthright.org", ("Marcus", "Okafor"), "facilitator",
+            "marcus@birthright.live", ("Marcus", "Okafor"), "facilitator",
             {
                 "bio": "Marcus weaves contemplative practice with relational science to help groups recover what was always theirs: the right to belong.",
                 "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600",
@@ -54,7 +54,7 @@ def _build_seed_users() -> list[dict]:
                 "credentials": "PhD Psychology, Group Facilitator",
             },
         ),
-        _seed_user("demo@birthright.org", ("Sam", "Rivera"), "participant"),
+        _seed_user("demo@birthright.live", ("Sam", "Rivera"), "participant"),
     ]
 
 

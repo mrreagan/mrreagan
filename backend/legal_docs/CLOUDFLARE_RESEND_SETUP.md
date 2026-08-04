@@ -1,7 +1,7 @@
 # Cloudflare + Resend Setup for Counsel Email
 
 **Effective date:** February 2026 · Owner: Executive Director
-(admin@birthright.org).
+(admin@birthright.live).
 
 You need to do these once, per production domain, before onboarding
 your first real outside counsel. **You do not need code changes** — this
@@ -57,19 +57,19 @@ audit logs.
 
 ---
 
-## Step 3 · Rotate Birthright's stored counsel email (2 min)
+### Step 3 · (Optional) rotate to a routed alias
 
-Now that `counsel@birthright.live` exists and forwards, point the
-platform at it.
+If you'd prefer counsel to login under a routed alias — e.g. an alias
+scoped to a particular firm engagement — change the stored email:
 
 1. Sign in as admin at https://birthright.live/login.
 2. Go to **Admin → Governance & System → Counsel credentials**.
-3. Change the email field to `counsel@birthright.live`.
+3. Change the email to your preferred routed alias (e.g. `counsel-jane@birthright.live`).
 4. Click **Rotate credentials**.
-5. Confirm the "Current" card shows the new email.
 
-The old address `counsel@birthright.org` is now retired — logins under
-it will 401.
+The default `counsel@birthright.live` continues to work if you don't
+rotate; this step is only needed when you want a distinct alias per
+engagement.
 
 ---
 
@@ -125,4 +125,4 @@ alias. Not required for the current setup.
 
 ---
 
-*Questions? admin@birthright.org.*
+*Questions? admin@birthright.live.*

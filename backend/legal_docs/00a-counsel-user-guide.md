@@ -43,7 +43,7 @@ if you're happy with paper.
 
 - **URL:** https://birthright.live *(preview URL sent separately for
   pre-launch review sessions)*
-- **Email:** counsel@birthright.org
+- **Email:** counsel@birthright.live
 - **Password:** counsel-review-2026 *(change on first login → Account → Security)*
 - **Role:** `readonly_admin` — read-only across the whole admin console;
   a small allow-list lets you post comments and reset your own password.

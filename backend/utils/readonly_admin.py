@@ -126,7 +126,7 @@ def _peek_role_from_request(request: Request) -> str | None:
 # =========================================================================
 # Seed helper
 # =========================================================================
-COUNSEL_EMAIL = os.environ.get("COUNSEL_EMAIL", "counsel@birthright.org")
+COUNSEL_EMAIL = os.environ.get("COUNSEL_EMAIL", "counsel@birthright.live")
 _DEFAULT_COUNSEL_PASSWORD = "counsel-review-2026"  # noqa: S105 — seed only, published in test_credentials.md
 COUNSEL_PASSWORD = os.environ.get("COUNSEL_PASSWORD", _DEFAULT_COUNSEL_PASSWORD)
 
