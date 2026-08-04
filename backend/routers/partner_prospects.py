@@ -1295,6 +1295,22 @@ async def accept_invite(token: str, data: InviteAccept):
     except Exception:
         token_jwt = None
 
+    # Audit: partner agreement accepted (Tier 1 signing event)
+    try:
+        from utils.user_activity import log_event, CAT_SIGN
+        await log_event(
+            db, user_id=target_user_id, email=contact_email, role="user",
+            event_type="signing.partner_agreement_signed", category=CAT_SIGN,
+            method="POST", path="/api/partners/invite/{token}/accept", status_code=200,
+            metadata={
+                "partner_type": inv.get("partner_type"),
+                "profile_id": profile["id"],
+                "selected_subscription_tier": data.selected_subscription_tier,
+            },
+        )
+    except Exception:
+        pass
+
     return {
         "ok": True,
         "user_id": target_user_id,

@@ -300,6 +300,17 @@ async def sign_active(request: Request, user: dict = Depends(get_current_user)):
         target_type="indemnification_version", target_id=active["id"],
         metadata={"version": active["version"]},
     )
+    try:
+        from utils.user_activity import log_event, CAT_SIGN
+        await log_event(
+            db, user_id=user["id"], email=user.get("email"), role=user.get("role"),
+            event_type="signing.indemnification_signed", category=CAT_SIGN,
+            method="POST", path="/api/legal/indemnification/sign", status_code=200,
+            metadata={"version": active["version"], "version_id": active["id"]},
+            request=request,
+        )
+    except Exception:
+        pass
     sig.pop("_id", None)
     return {"already_signed": False, **sig}
 
