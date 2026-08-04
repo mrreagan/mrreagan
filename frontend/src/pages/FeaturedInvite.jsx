@@ -12,7 +12,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { Sparkles, Check, X, Eye, ChevronRight, HeartHandshake, Info } from "lucide-react";
+import { Sparkles, Check, X, Eye, EyeOff, ChevronRight, HeartHandshake, Info } from "lucide-react";
 import { setStoredToken } from "../lib/api";
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -38,6 +38,7 @@ export default function FeaturedInvite() {
   const [position, setPosition] = useState("br");  // preview-only — server locks on month start
   const [step, setStep] = useState("explore");     // explore | accept | declined
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -372,15 +373,27 @@ export default function FeaturedInvite() {
         <section className="mt-8 max-w-2xl card p-5" data-testid="accept-form">
           <p className="font-serif text-lg text-[#1A2424]">One last step — set your password</p>
           <p className="text-xs text-[#5C6B6B] mt-1">We'll create your birthright Artist account using <strong className="text-[#1A2424]">{inv.contact_email || "your email"}</strong>.</p>
-          <input
-            type="password"
-            placeholder="Choose a password (8+ characters)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input-field mt-3"
-            data-testid="accept-password-input"
-            autoComplete="new-password"
-          />
+          <div className="relative mt-3">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Choose a password (8+ characters)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="input-field pr-11"
+              data-testid="accept-password-input"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              data-testid="accept-password-toggle"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={18} strokeWidth={1.4} /> : <Eye size={18} strokeWidth={1.4} />}
+            </button>
+          </div>
           <label className="mt-3 flex items-start gap-2 text-sm text-[#1A2424]">
             <input
               type="checkbox"

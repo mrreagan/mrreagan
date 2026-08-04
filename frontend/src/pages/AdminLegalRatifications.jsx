@@ -220,6 +220,29 @@ export default function AdminLegalRatifications() {
     }
   };
 
+  // Full-notice upload — replace the entire source doc with a new .md or
+  // .docx. Available to admin AND counsel; the backend rebuilds the
+  // .docx bundle and any existing ratification stops matching until a
+  // new one is recorded.
+  const [uploadingReplace, setUploadingReplace] = useState(false);
+  const uploadReplacement = async (file) => {
+    if (!sourceSlug || !file) return;
+    if (!window.confirm(`Replace the ENTIRE source of "${openMeta?.title || sourceSlug}" with ${file.name}? Any current ratification will no longer match until you record a new one.`)) return;
+    setUploadingReplace(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await api.post(`/legal/docs/${sourceSlug}/upload`, fd);
+      toast.success(`Uploaded · ${r.data.bytes_written} bytes · docx ${r.data.rebuilt_docx ? "refreshed" : "refresh failed"}`);
+      // Refresh the doc metadata so ratification badge + banner update.
+      await openDoc(openSlug);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Upload failed");
+    } finally {
+      setUploadingReplace(false);
+    }
+  };
+
   const openComments = sourceSlug ? (comments[sourceSlug] || []) : [];
 
   // Per-doc roundtrip history — how counsel's work has landed over time.
@@ -340,6 +363,38 @@ export default function AdminLegalRatifications() {
                 ) : (
                   <p className="text-sm text-[#7A5A1A] mt-2">Not yet ratified. The public draft banner is showing.</p>
                 )}
+              </div>
+
+              {/* Full-notice upload — big red button for whole-doc replacement */}
+              <div className="card p-5" data-testid="legal-full-upload-card">
+                <p className="text-xs uppercase tracking-wider text-[#476B6B] font-semibold inline-flex items-center gap-1">
+                  <Upload size={12} /> Replace entire notice
+                </p>
+                <p className="text-xs text-[#5C6B6B] mt-2 leading-relaxed">
+                  Upload a fresh <code className="text-[#0F2424]">.md</code> or <code className="text-[#0F2424]">.docx</code> file to overwrite the current source for this notice. Any active ratification stops matching until you record a new one. Use this instead of inline redlines when you're rewriting a whole document rather than annotating diffs.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <label
+                    className={`btn-primary text-xs inline-flex items-center gap-1 cursor-pointer ${uploadingReplace ? "opacity-60 pointer-events-none" : ""}`}
+                    data-testid="legal-full-upload-btn"
+                  >
+                    <Upload size={12} />
+                    {uploadingReplace ? "Uploading…" : "Upload replacement (.md or .docx)"}
+                    <input
+                      type="file"
+                      accept=".md,.markdown,.txt,.docx"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && uploadReplacement(e.target.files[0])}
+                      data-testid="legal-full-upload-input"
+                      disabled={uploadingReplace}
+                    />
+                  </label>
+                  {isCounsel && (
+                    <span className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
+                      Available to counsel
+                    </span>
+                  )}
+                </div>
               </div>
 
               {isAdmin && !openMeta.ratified && (

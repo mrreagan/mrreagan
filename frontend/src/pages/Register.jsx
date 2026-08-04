@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { BrandLogo } from "../components/BrandLogo";
 import { toast } from "sonner";
@@ -9,6 +10,7 @@ export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", password: "", accepted_terms: false, accepted_privacy: false });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
@@ -59,7 +61,27 @@ export default function Register() {
           </div>
           <div>
             <label className="label block mb-2">Password (min 6)</label>
-            <input required type="password" minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input-field" data-testid="register-password" />
+            <div className="relative">
+              <input
+                required
+                type={showPassword ? "text" : "password"}
+                minLength={6}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className="input-field pr-11"
+                data-testid="register-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                data-testid="register-password-toggle"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={18} strokeWidth={1.4} /> : <Eye size={18} strokeWidth={1.4} />}
+              </button>
+            </div>
           </div>
 
           {/* Consent checkboxes — required. Backend enforces both flags true. */}

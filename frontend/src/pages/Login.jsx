@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { BrandLogo } from "../components/BrandLogo";
 import { toast } from "sonner";
@@ -10,6 +11,7 @@ export default function Login() {
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
@@ -43,7 +45,26 @@ export default function Login() {
           </div>
           <div>
             <label className="label block mb-2">Password</label>
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="input-field" data-testid="login-password" />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-field pr-11"
+                data-testid="login-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                data-testid="login-password-toggle"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={18} strokeWidth={1.4} /> : <Eye size={18} strokeWidth={1.4} />}
+              </button>
+            </div>
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full justify-center" data-testid="login-submit">
             {loading ? "Signing in..." : "Sign in"}

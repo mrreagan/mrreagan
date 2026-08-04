@@ -10,7 +10,7 @@
  */
 import React, { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { KeyRound, CheckCircle2 } from "lucide-react";
+import { KeyRound, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
 
@@ -19,6 +19,8 @@ export default function CounselSetPasswordPage() {
   const token = params.get("token") || "";
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
 
@@ -77,24 +79,48 @@ export default function CounselSetPasswordPage() {
       </p>
 
       <form onSubmit={submit} className="mt-6 space-y-3" data-testid="counsel-set-password-form">
-        <input
-          type="password"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          placeholder="New password (min 12 chars)"
-          className="input input-bordered w-full text-sm"
-          autoComplete="new-password"
-          data-testid="counsel-set-password-input"
-        />
-        <input
-          type="password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          placeholder="Confirm new password"
-          className="input input-bordered w-full text-sm"
-          autoComplete="new-password"
-          data-testid="counsel-set-password-confirm"
-        />
+        <div className="relative">
+          <input
+            type={showPw ? "text" : "password"}
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            placeholder="New password (min 12 chars)"
+            className="input input-bordered w-full text-sm pr-11"
+            autoComplete="new-password"
+            data-testid="counsel-set-password-input"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPw((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+            aria-label={showPw ? "Hide password" : "Show password"}
+            data-testid="counsel-set-password-toggle"
+            tabIndex={-1}
+          >
+            {showPw ? <EyeOff size={18} strokeWidth={1.4} /> : <Eye size={18} strokeWidth={1.4} />}
+          </button>
+        </div>
+        <div className="relative">
+          <input
+            type={showConfirm ? "text" : "password"}
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="Confirm new password"
+            className="input input-bordered w-full text-sm pr-11"
+            autoComplete="new-password"
+            data-testid="counsel-set-password-confirm"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirm((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+            aria-label={showConfirm ? "Hide password" : "Show password"}
+            data-testid="counsel-set-password-confirm-toggle"
+            tabIndex={-1}
+          >
+            {showConfirm ? <EyeOff size={18} strokeWidth={1.4} /> : <Eye size={18} strokeWidth={1.4} />}
+          </button>
+        </div>
         <button type="submit" disabled={busy} className="btn-primary text-sm" data-testid="counsel-set-password-submit">
           {busy ? "Saving…" : "Set password"}
         </button>

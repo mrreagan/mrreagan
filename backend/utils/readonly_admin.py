@@ -1,20 +1,31 @@
-"""Read-only counsel access.
+"""Counsel access — end-user privileges + full legal-review write + admin-mutation lock.
 
 Purpose:
-    Give outside legal counsel a real login they can use to inspect every
-    admin and public URL on the platform WITHOUT being able to mutate data.
+    Give outside legal counsel a real login they can use to (a) inspect every
+    admin URL, (b) fully author their legal work (comments, redlines, roundtrips,
+    full-notice uploads), and (c) use the platform as a normal end user (cart,
+    checkout, profile, orders) so they can experience the site in production
+    context. Only the sensitive admin-mutation surface is locked down.
 
 Design:
     - New user role: `readonly_admin`.
-    - A FastAPI middleware inspects every incoming request. If the caller
-      is authenticated with `role = readonly_admin` and the HTTP method is
-      NOT safe (POST/PUT/PATCH/DELETE), the request is rejected with 403.
+    - A FastAPI middleware inspects every incoming request. Counsel is allowed
+      to mutate freely EXCEPT on paths under `/api/admin/*` (which run the
+      site — settings, users, refunds, payouts, campaigns, etc). Legal work
+      lives under `/api/legal/*`, so counsel can write there without any
+      allow-listing gymnastics.
     - `require_roles("admin")` decorators are extended platform-wide to also
       accept `readonly_admin`. Combined with the middleware, this gives
-      counsel view-only access to every admin surface without cascading
-      hand-edits across every router.
+      counsel full access to legal admin surfaces (`/api/legal/*`) while the
+      middleware still fences off broader admin mutations.
     - Startup seed guarantees a canonical counsel account exists. Credentials
       are also mirrored to /app/memory/test_credentials.md for handoff.
+
+Explicit exceptions (counsel-writable subset of /api/admin/*):
+    - /api/admin/legal/*      — full legal review flow (notice uploads, etc)
+    - /api/admin/settings/counsel/set-password-from-token
+      + /api/admin/settings/counsel/set-password
+      so counsel can accept a self-service password link.
 
 Notes:
     - Login/logout is intentionally exempt so counsel can actually sign in.
@@ -25,7 +36,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 from typing import Callable
 
 from fastapi import Request
@@ -41,32 +51,20 @@ READONLY_ROLE = "readonly_admin"
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
-# Paths a counsel account must be able to hit even though they mutate — login,
-# logout, session refresh, password reset. Anything with side effects that a
-# read-only session legitimately needs.
-_ALLOWLIST_EXACT = frozenset({
-    "/api/auth/login",
-    "/api/auth/logout",
-    "/api/auth/refresh",
-})
-_ALLOWLIST_PREFIXES = (
-    "/api/auth/",             # covers login/logout/refresh + optional MFA in future
-    "/api/password-reset/",   # counsel can reset their own password
-    "/api/counsel/review-status/",  # counsel can check off their own review checklist
+# Any mutation whose path starts with one of these prefixes is denied for
+# counsel. Everything else — including /api/legal/*, /api/cart, /api/checkout,
+# /api/me, /api/orders, /api/reviews, /api/dm, etc — is allowed so counsel
+# can use the platform as a normal end user AND author legal work.
+_DENY_PREFIXES = (
+    "/api/admin/",
 )
 
-# Regex allow-list — used when a write path must be permitted by exact
-# shape rather than by prefix. We use this for the comment-CREATE route
-# because it lives under /api/legal/comments/{slug} but there are also
-# mutating sub-routes (/apply-roundtrip, /import-roundtrip, /{id}/resolve)
-# that MUST stay blocked for counsel. Prefix allow-listing would leak
-# those; explicit shape allow-listing does not.
-_ALLOWLIST_REGEX = (
-    # POST /api/legal/comments/<slug>   — counsel can post a redline / comment.
-    # The <slug> is a filename-safe token; anything with an extra path
-    # segment (apply-roundtrip / import-roundtrip / <id>/resolve / export)
-    # is intentionally excluded.
-    re.compile(r"^/api/legal/comments/[A-Za-z0-9._-]+/?$"),
+# Narrow write allow-list carved OUT of `_DENY_PREFIXES`. These are admin
+# routes counsel legitimately needs even though they live under `/api/admin/*`.
+_ADMIN_ALLOWLIST_PREFIXES = (
+    "/api/admin/legal/",                                # full legal-review surface (notice uploads, drafts)
+    "/api/admin/settings/counsel/set-password-from-token",
+    "/api/admin/settings/counsel/set-password",
 )
 
 
@@ -76,28 +74,34 @@ class ReadonlyEnforcementMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         path = request.url.path
-        if path in _ALLOWLIST_EXACT:
-            return await call_next(request)
-        if any(path.startswith(p) for p in _ALLOWLIST_PREFIXES):
-            return await call_next(request)
-        if any(rx.match(path) for rx in _ALLOWLIST_REGEX):
+
+        # Not an /api/admin/* mutation → let it through (cart, checkout,
+        # profile, orders, legal review, reviews, DMs, …).
+        if not any(path.startswith(p) for p in _DENY_PREFIXES):
             return await call_next(request)
 
-        # Not a safe method and not allow-listed. Check if the caller is a
-        # read-only admin; if so, refuse. Everyone else falls through.
+        # /api/admin/* mutation on an explicit allow-list (legal work +
+        # counsel self-service password) → let it through.
+        if any(path.startswith(p) for p in _ADMIN_ALLOWLIST_PREFIXES):
+            return await call_next(request)
+
+        # /api/admin/* mutation NOT on the allow-list. Check the caller —
+        # counsel gets refused; every other role passes through unchanged
+        # (they still hit whatever role gate the route itself defines).
         role = _peek_role_from_request(request)
         if role == READONLY_ROLE:
             logger.info(
-                "readonly_admin blocked from %s %s (headers: %s)",
+                "readonly_admin blocked from %s %s (origin: %s)",
                 request.method, path, request.headers.get("origin", "?"),
             )
             return JSONResponse(
                 status_code=403,
                 content={
                     "detail": (
-                        "This is a read-only counsel account. Data cannot be "
-                        "modified from this session. Contact engineering if "
-                        "you need mutable admin access."
+                        "This admin route is off-limits for the counsel account. "
+                        "Counsel has full access to legal review, notice uploads, "
+                        "and normal end-user actions (cart, checkout, profile). "
+                        "Contact engineering if you need broader admin access."
                     ),
                     "readonly": True,
                 },

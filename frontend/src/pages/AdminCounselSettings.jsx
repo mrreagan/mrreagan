@@ -10,7 +10,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Briefcase, KeyRound, Save, RefreshCw, Send } from "lucide-react";
+import { ArrowLeft, Briefcase, KeyRound, Save, RefreshCw, Send, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
 
@@ -19,6 +19,8 @@ export default function AdminCounselSettings() {
   const [form, setForm] = useState({ email: "", password: "", confirm: "" });
   const [busy, setBusy] = useState(false);
   const [sendingLink, setSendingLink] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const sendSetPasswordLink = async () => {
     if (!window.confirm(`Email a one-time set-password link to ${state?.email}? Any older unused link is superseded.`)) return;
@@ -157,24 +159,48 @@ export default function AdminCounselSettings() {
             <p className="text-xs text-[#5C6B6B] mt-1 leading-relaxed">
               Leave blank to keep the current password. Minimum 12 characters. Any active counsel session is invalidated on rotation.
             </p>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="New password (min 12 chars)"
-              className="input input-bordered w-full text-sm mt-3"
-              data-testid="counsel-new-password"
-              autoComplete="new-password"
-            />
-            <input
-              type="password"
-              value={form.confirm}
-              onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-              placeholder="Confirm new password"
-              className="input input-bordered w-full text-sm mt-2"
-              data-testid="counsel-confirm-password"
-              autoComplete="new-password"
-            />
+            <div className="relative mt-3">
+              <input
+                type={showPw ? "text" : "password"}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="New password (min 12 chars)"
+                className="input input-bordered w-full text-sm pr-11"
+                data-testid="counsel-new-password"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+                aria-label={showPw ? "Hide password" : "Show password"}
+                data-testid="counsel-new-password-toggle"
+                tabIndex={-1}
+              >
+                {showPw ? <EyeOff size={16} strokeWidth={1.4} /> : <Eye size={16} strokeWidth={1.4} />}
+              </button>
+            </div>
+            <div className="relative mt-2">
+              <input
+                type={showConfirm ? "text" : "password"}
+                value={form.confirm}
+                onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+                placeholder="Confirm new password"
+                className="input input-bordered w-full text-sm pr-11"
+                data-testid="counsel-confirm-password"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+                aria-label={showConfirm ? "Hide password" : "Show password"}
+                data-testid="counsel-confirm-password-toggle"
+                tabIndex={-1}
+              >
+                {showConfirm ? <EyeOff size={16} strokeWidth={1.4} /> : <Eye size={16} strokeWidth={1.4} />}
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 mt-6">

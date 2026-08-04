@@ -13,7 +13,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import {
   Sparkles, Check, X, ChevronRight, HeartHandshake,
-  Briefcase,
+  Briefcase, Eye, EyeOff,
 } from "lucide-react";
 import PreviewModeBanner from "../components/PreviewModeBanner";
 import { setStoredToken } from "../lib/api";
@@ -28,6 +28,7 @@ export default function PartnerInvite() {
   const [tier, setTier] = useState(null);
   const [step, setStep] = useState("explore");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState({});
@@ -356,15 +357,27 @@ export default function PartnerInvite() {
           <p className="text-xs text-[#5C6B6B] mt-1">
             We'll create your birthright account using <strong className="text-[#1A2424]">{inv.contact_email || "your email"}</strong>.
           </p>
-          <input
-            type="password"
-            placeholder="Choose a password (8+ characters)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input-field mt-3"
-            data-testid="accept-password-input"
-            autoComplete="new-password"
-          />
+          <div className="relative mt-3">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Choose a password (8+ characters)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="input-field pr-11"
+              data-testid="accept-password-input"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              data-testid="accept-password-toggle"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={18} strokeWidth={1.4} /> : <Eye size={18} strokeWidth={1.4} />}
+            </button>
+          </div>
           <label className="mt-3 flex items-start gap-2 text-sm text-[#1A2424]">
             <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1" data-testid="accept-terms-checkbox" />
             <span className="leading-relaxed">

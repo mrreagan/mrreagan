@@ -681,6 +681,162 @@ async def revoke_ratification(
     return {"deleted": r.deleted_count}
 
 
+# ============ FULL-DOC REPLACEMENT (counsel + admin) ============
+# Lets counsel — or an admin — replace the entire source of a legal
+# document by uploading a new .md OR .docx file. This is the "big red
+# button" alternative to inline redlines: when counsel wants to rewrite
+# a whole notice rather than annotate diffs, they upload the final draft
+# here and it becomes the new source. Any existing ratification is
+# preserved as a record but stops matching (body-hash mismatch), so the
+# "first draft" banner returns until re-ratified.
+
+@router.post("/docs/{source_slug}/upload")
+async def upload_full_replacement(
+    source_slug: str,
+    request: Request,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Upload a full replacement for `<source_slug>.md`.
+
+    Accepts multipart form-data with one file:
+      - `.md`   → written verbatim as the new source
+      - `.docx` → text is extracted paragraph-by-paragraph, headings are
+                  detected via style name (`Heading 1..6`) and converted to
+                  `#`..`######`, then written as the new source
+
+    Behaviour:
+      - Overwrites `/app/backend/legal_docs/<source_slug>.md`
+      - Records an audit entry (`legal.doc.upload_replacement`)
+      - Auto-rebuilds the .docx bundle
+      - Returns the new byte-count, body-hash, and rebuild status
+    """
+    from database import db
+    fp = LEGAL_DOC_DIR / f"{source_slug}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Unknown source doc")
+
+    form = await request.form()
+    upload = form.get("file")
+    if not upload or not hasattr(upload, "filename"):
+        raise HTTPException(status_code=400, detail="Missing `file` form field")
+
+    filename = (upload.filename or "").lower()
+    blob = await upload.read()
+    if not blob:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    if filename.endswith(".md") or filename.endswith(".markdown") or filename.endswith(".txt"):
+        try:
+            new_md = blob.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"Not valid UTF-8: {exc}")
+    elif filename.endswith(".docx"):
+        new_md = _docx_to_markdown(blob)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file type. Upload `.md`, `.markdown`, `.txt`, or `.docx`.",
+        )
+
+    if not new_md.strip():
+        raise HTTPException(status_code=400, detail="Converted content is empty; refusing to overwrite source.")
+
+    # Write source. Rebuild .docx bundle. Log audit.
+    fp.write_text(new_md, encoding="utf-8")
+    cleaned_md, _ = _strip_draft_disclaimer(new_md)
+    body_hash = _md_body_hash(cleaned_md)
+
+    rebuild_ok = await _run_docx_rebuild(user=user)
+
+    await log_action(
+        db, user, "legal.doc.upload_replacement",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={
+            "filename": upload.filename,
+            "bytes": len(blob),
+            "converted_bytes": len(new_md.encode("utf-8")),
+            "body_hash": body_hash,
+            "rebuilt": rebuild_ok,
+            "uploaded_by_role": user.get("role"),
+        },
+    )
+    return {
+        "source_slug": source_slug,
+        "filename": upload.filename,
+        "bytes_written": len(new_md.encode("utf-8")),
+        "body_hash": body_hash,
+        "rebuilt_docx": rebuild_ok,
+        "message": (
+            "Source replaced. Any existing ratification no longer matches — "
+            "mark a new ratification once counsel has signed off on this text."
+        ),
+    }
+
+
+def _docx_to_markdown(blob: bytes) -> str:
+    """Best-effort .docx → Markdown conversion for full-notice uploads.
+
+    We only need enough fidelity to keep counsel's structure round-trippable:
+    heading levels, paragraphs, list items, and inline emphasis. Anything
+    fancier (tables, footnotes, images) is dropped with a comment marker so
+    the admin knows to inspect the source before ratifying.
+    """
+    from io import BytesIO
+    from docx import Document
+
+    doc = Document(BytesIO(blob))
+    out: list[str] = []
+    dropped: list[str] = []
+
+    for para in doc.paragraphs:
+        text = (para.text or "").strip()
+        style = (para.style.name if para.style else "") or ""
+
+        if not text:
+            out.append("")
+            continue
+
+        # Heading detection: "Heading 1".."Heading 6" (Word default) or "Title".
+        heading_level = 0
+        if style.lower().startswith("heading "):
+            try:
+                heading_level = int(style.split()[-1])
+            except ValueError:
+                heading_level = 0
+        elif style.lower() == "title":
+            heading_level = 1
+
+        if heading_level >= 1:
+            out.append(f"{'#' * min(heading_level, 6)} {text}")
+            continue
+
+        # List detection: Word marks numbered/bulleted lists via numId in
+        # paragraph properties. Best-effort: fall back to plain paragraph.
+        try:
+            numpr = para._p.pPr.numPr if (para._p.pPr is not None) else None
+        except Exception:
+            numpr = None
+        if numpr is not None:
+            out.append(f"- {text}")
+            continue
+
+        out.append(text)
+
+    # Flag unhandled content (tables, images) so admin knows to check.
+    if doc.tables:
+        dropped.append(f"{len(doc.tables)} table(s)")
+    if doc.inline_shapes:
+        dropped.append(f"{len(doc.inline_shapes)} inline image(s)")
+
+    md = "\n\n".join(line for line in out).replace("\n\n\n\n", "\n\n").strip() + "\n"
+    if dropped:
+        md += (
+            f"\n<!-- Uploaded .docx contained: {', '.join(dropped)}. "
+            "These were not converted; please review the original file. -->\n"
+        )
+    return md
+
+
 # ============ INLINE REDLINES / COUNSEL COMMENTS ============
 # Lightweight comment thread per legal doc. Sections are opaque strings
 # (usually the H2 heading) so counsel can pin comments to a specific

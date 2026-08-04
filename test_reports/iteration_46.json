@@ -1,0 +1,43 @@
+{
+  "summary": "Validated the three P0 fixes. Backend: 13/13 pytest cases pass in /app/backend/tests/test_iter46_counsel_upload.py covering the ReadonlyEnforcementMiddleware refactor (counsel blocked only on non-allow-listed /api/admin/* mutations with {readonly:true} + new detail copy, allowed on /api/admin/legal/*, /api/legal/comments/*, and normal end-user routes) and the new POST /api/legal/docs/{slug}/upload endpoint (.md 200, .docx 200 with heading conversion, missing file 400, unknown slug 404, .pdf 400, empty 400, anonymous 401/403, admin role also succeeds). Frontend: all eye/EyeOff password toggles verified on /login, /register, /reset-password (both fields), /counsel/set-password (both fields) — each flips input type password->text->password with a lucide svg icon. Counsel logged in via UI and the 'Replace entire notice' card renders with legal-full-upload-card / -btn / -input and accept='.md,.markdown,.txt,.docx', enabled. Legal source /app/backend/legal_docs/03-cookie-notice.md and its .docx bundle were snapshotted before and byte-restored after (diff clean); TEST_ comment rows deleted from legal_doc_comments.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "ReadOnlyBanner (global counsel banner, /app/frontend/src/components/ReadOnlyBanner.jsx:25)",
+        "issues": [
+          "Copy is now factually wrong after the middleware refactor: it says 'You have view-only access to every admin and public surface. Any attempt to modify data will be rejected.' Counsel can now shop, edit profile, post redlines and upload full notices. Reword to 'Read-only on admin settings; you can shop, comment, and upload legal notices.'"
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter46_counsel_upload.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Update ReadOnlyBanner.jsx copy — it still claims counsel is fully read-only, contradicting the new middleware behaviour.",
+    "Optional consistency nit: the first counsel set-password input uses data-testid='counsel-set-password-input' while its sibling uses 'counsel-set-password-confirm' (review request assumed 'counsel-set-password'). Align naming.",
+    "Stale domain reference: /app/memory/STRIPE_ACTIVATION_GUIDE.md:113 still instructs testing with demo@birthright.org (PRD/CHANGELOG mentions are historical and fine)."
+  ],
+  "critical_code_review_comments": [
+    "ReadonlyEnforcementMiddleware allow-list uses prefix matching on '/api/admin/legal/' — any future non-legal route nested under that prefix would silently become counsel-writable. Acceptable today, worth a comment/test guard.",
+    "upload_full_replacement writes the source file with no size cap; consider a max-bytes guard (e.g. 2 MB) so a large .docx cannot block the event loop during conversion/rebuild.",
+    "_docx_to_markdown drops tables/images silently to a 'dropped' list that is not surfaced in the API response; returning it would let counsel know fidelity was lost before ratifying."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter46_counsel_upload.py"
+  ],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% (7/7 checks)"},
+  "seed_data_creation": "One TEST_iter46 legal comment created and deleted afterwards. 03-cookie-notice.md/.docx snapshotted and restored.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "counsel@birthright.live / counsel-review-2026 (readonly_admin), admin@birthright.live / birthright2026",
+  "context_for_next_testing_agent": "Regression suite for this feature: /app/backend/tests/test_iter46_counsel_upload.py (module-scoped fixture snapshots and restores the legal source file — always run the whole module, never a single upload test in isolation, or the source may be left mutated). Only open item is the stale ReadOnlyBanner copy.",
+  "rca_of_the_issue": "No defects found in the implemented functionality. The single reported issue is stale UI copy in ReadOnlyBanner.jsx that was not updated alongside the middleware privilege loosening."
+}

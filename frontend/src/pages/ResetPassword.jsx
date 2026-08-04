@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import api from "../lib/api";
 import { BrandLogo } from "../components/BrandLogo";
 import { toast } from "sonner";
@@ -10,6 +11,8 @@ export default function ResetPassword() {
   const token = params.get("token") || "";
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showPw2, setShowPw2] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
@@ -55,23 +58,47 @@ export default function ResetPassword() {
           <form onSubmit={submit} className="mt-6 space-y-5" data-testid="reset-form">
             <div>
               <label className="label block mb-2">New password</label>
-              <input
-                type="password"
-                required minLength={6}
-                value={pw} onChange={(e) => setPw(e.target.value)}
-                className="input-field"
-                data-testid="reset-password-1"
-              />
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  required minLength={6}
+                  value={pw} onChange={(e) => setPw(e.target.value)}
+                  className="input-field pr-11"
+                  data-testid="reset-password-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                  data-testid="reset-password-1-toggle"
+                  tabIndex={-1}
+                >
+                  {showPw ? <EyeOff size={18} strokeWidth={1.4} /> : <Eye size={18} strokeWidth={1.4} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="label block mb-2">Confirm new password</label>
-              <input
-                type="password"
-                required minLength={6}
-                value={pw2} onChange={(e) => setPw2(e.target.value)}
-                className="input-field"
-                data-testid="reset-password-2"
-              />
+              <div className="relative">
+                <input
+                  type={showPw2 ? "text" : "password"}
+                  required minLength={6}
+                  value={pw2} onChange={(e) => setPw2(e.target.value)}
+                  className="input-field pr-11"
+                  data-testid="reset-password-2"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw2((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C6B6B] hover:text-[#0F2424] transition-colors"
+                  aria-label={showPw2 ? "Hide password" : "Show password"}
+                  data-testid="reset-password-2-toggle"
+                  tabIndex={-1}
+                >
+                  {showPw2 ? <EyeOff size={18} strokeWidth={1.4} /> : <Eye size={18} strokeWidth={1.4} />}
+                </button>
+              </div>
             </div>
             <button type="submit" disabled={loading} className="btn-primary w-full justify-center" data-testid="reset-submit">
               {loading ? "Saving..." : "Set new password"}

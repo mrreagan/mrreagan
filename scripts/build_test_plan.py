@@ -24,13 +24,13 @@ PROD_URL = "https://birthright.live"
 
 # ============ CREDENTIALS ============
 CREDS = [
-    ("admin@birthright.org",        "birthright2026", "Admin", "Full admin access · ombudsman · governance member"),
-    ("demo@birthright.org",         "birthright2026", "Participant", "Standard participant for end-to-end happy path"),
-    ("rachel@birthright.org",       "birthright2026", "Facilitator", "Owns Workshop check-in code; runs upcoming workshops"),
-    ("elena@birthright.org",        "birthright2026", "Research partner", "Active research profile; can publish artifacts"),
-    ("marcus@birthright.org",       "birthright2026", "Facilitator partner", "Active facilitator partner profile"),
-    ("priya@birthright.org",        "birthright2026", "Community partner", "Active community referral partner"),
-    ("david@birthright.org",        "birthright2026", "Vendor partner", "Active vendor partner with catalog access"),
+    ("admin@birthright.live",        "birthright2026", "Admin", "Full admin access · ombudsman · governance member"),
+    ("demo@birthright.live",         "birthright2026", "Participant", "Standard participant for end-to-end happy path"),
+    ("rachel@birthright.live",       "birthright2026", "Facilitator", "Owns Workshop check-in code; runs upcoming workshops"),
+    ("elena@birthright.live",        "birthright2026", "Research partner", "Active research profile; can publish artifacts"),
+    ("marcus@birthright.live",       "birthright2026", "Facilitator partner", "Active facilitator partner profile"),
+    ("priya@birthright.live",        "birthright2026", "Community partner", "Active community referral partner"),
+    ("david@birthright.live",        "birthright2026", "Vendor partner", "Active vendor partner with catalog access"),
 ]
 
 # ============ TEST SUITES ============

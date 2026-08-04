@@ -284,7 +284,7 @@ PREVIEW_SPECS: dict[str, dict] = {
                 "100% of the gross on off-site referrals (we don't touch the money).",
                 "The option to pause or unlist products at any time.",
             ],
-            "foundation_share": "Three scenarios: on birthright.org we keep 18%-25% (POD orders we fulfill); on off-site orders where Birthright sent the visitor (?via= tag) we keep 5%-10% as a referral fee; on your direct customers we keep 0%. All foundation shares DECREASE the longer you commit. Every order shows the breakdown to the buyer.",
+            "foundation_share": "Three scenarios: on birthright.live we keep 18%-25% (POD orders we fulfill); on off-site orders where Birthright sent the visitor (?via= tag) we keep 5%-10% as a referral fee; on your direct customers we keep 0%. All foundation shares DECREASE the longer you commit. Every order shows the breakdown to the buyer.",
         },
     },
 
