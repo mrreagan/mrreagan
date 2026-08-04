@@ -390,20 +390,22 @@ export default function AdminLegalRatifications() {
                       >
                         <Download size={12} /> Export unresolved (.docx)
                       </button>
-                      <label
-                        className="btn-outline text-xs inline-flex items-center gap-1 cursor-pointer"
-                        data-testid="legal-comment-import-roundtrip-btn"
-                        title="Upload the .docx counsel returned after reviewing your redlines. We'll parse each block, show you a per-redline preview, and let you selectively apply the resolved edits to the source draft."
-                      >
-                        <Upload size={12} /> Import roundtrip (.docx)
-                        <input
-                          type="file"
-                          accept=".docx"
-                          className="hidden"
-                          onChange={(e) => e.target.files?.[0] && uploadRoundtrip(e.target.files[0])}
-                          data-testid="legal-comment-import-roundtrip-input"
-                        />
-                      </label>
+                      {isAdmin && (
+                        <label
+                          className="btn-outline text-xs inline-flex items-center gap-1 cursor-pointer"
+                          data-testid="legal-comment-import-roundtrip-btn"
+                          title="Upload the .docx counsel returned after reviewing your redlines. We'll parse each block, show you a per-redline preview, and let you selectively apply the resolved edits to the source draft."
+                        >
+                          <Upload size={12} /> Import roundtrip (.docx)
+                          <input
+                            type="file"
+                            accept=".docx"
+                            className="hidden"
+                            onChange={(e) => e.target.files?.[0] && uploadRoundtrip(e.target.files[0])}
+                            data-testid="legal-comment-import-roundtrip-input"
+                          />
+                        </label>
+                      )}
                     </div>
                   )}
                 </div>

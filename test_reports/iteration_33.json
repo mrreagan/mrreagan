@@ -1,0 +1,43 @@
+{
+  "summary": "Re-verification of the two iteration-32 defects. Backend: 22/22 cases in /app/backend/tests/test_iter32_counsel_guide.py now PASS (the 3 previously-failing assertions — briefing fast-path section, counsel apply-roundtrip, counsel comment-resolve — all flipped to pass). Added /app/backend/tests/test_iter33_counsel_allowlist.py (11 new cases, 11 pass) covering: fast-path section present in served counsel-briefing-md AND positioned before '## 1. Entity Overview'; the same phrase present inside word/document.xml of counsel-briefing-docx; counsel comment-create still 200 with author_role=readonly_admin and persisted; counsel POST /apply-roundtrip, /import-roundtrip (multipart), /{id}/resolve, /export all 403 with {readonly:true} (NOT 400/404); counsel POST+DELETE /api/legal/ratifications/01-terms-of-service 403 {readonly:true}; counsel POST /api/legal/rebuild-docx 403 {readonly:true}; GET /export still 200 PK docx for counsel (it is a safe GET route, so the tightened allow-list does not break the export button); /api/legal/history.rss parses as valid XML with root <rss>, channel title exactly 'Birthright Foundation — Policy Ratifications' and an atom:link rel='self'. Frontend: counsel login at /login -> /dashboard, persistent 'COUNSEL REVIEW · READ-ONLY' banner on every page including /admin/legal/ratifications; opened Terms of Service row; legal-comment-import-roundtrip-btn, legal-comment-import-roundtrip-input, legal-ratify-form, legal-rebuild-docx-btn, legal-ratify-revoke and per-comment resolve buttons are all count=0 (hidden) for counsel; counsel successfully posted a redline via legal-comment-body-input + legal-comment-submit, 'Comment posted' toast appeared and the redline rendered in legal-comment-list. Zero error elements on page. All test data cleaned up.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/legal/rebuild-docx", "issue": "Still rewrites backend/legal_docs/LEGAL_BRIEFING_FOR_COUNSEL.md in place (auto §8b draft table) as a side effect, and still runs a synchronous subprocess (timeout=180) inside the request handler, blocking a worker. Carried over from iteration 32 — not a regression, but should move to a background task."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminLegalRatifications header", "issue": "Still unfixed from iter32: breadcrumb and eyebrow run together — renders as 'Admin HubLEGAL · RATIFICATION & REDLINES'; the shield icon also overlaps the eyebrow text", "selector": "[data-testid=\"admin-legal-ratifications-page\"] header", "priority": "LOW"},
+      {"component": "Cookie consent bar", "issue": "Still overlaps bottom-right content on 1920x1080 until dismissed", "selector": "cookie consent bar", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/legal/ratifications (counsel session)", "issues": ["Contrast/spacing fine; read-only banner legible", "A stale partner-agreement banner 'Agreement vtest-1780126982 is now active. Please review and re-sign…' shows for the counsel session — leftover test fixture data from an earlier iteration, and it is un-actionable for a read-only account (REVIEW & SIGN would 403)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter32_counsel_guide.py",
+    "/app/backend/tests/test_iter33_counsel_allowlist.py",
+    "/app/test_reports/pytest/iter33_results.xml"
+  ],
+  "action_items": [
+    "No blocking action items — both iteration-32 defects are verified fixed.",
+    "Optional cleanup: purge leftover legal_doc_comments fixtures (8 docs remain, incl. one body 'check email.' labelled 'REDLINE · TEST2 · RESOLVED' authored by admin@birthright.org) and the stale partner agreement version 'vtest-1780126982' that triggers the re-sign banner.",
+    "Optional: suppress the partner agreement re-sign banner for role=readonly_admin — counsel cannot sign.",
+    "Carry-over LOW: fix eyebrow/breadcrumb spacing + icon overlap on /admin/legal/ratifications, /legal, /legal/history.",
+    "Carry-over: move rebuild-docx subprocess to a background task; stop rewriting the briefing .md in place."
+  ],
+  "critical_code_review_comments": [
+    "readonly_admin allow-list is now shape-based (_ALLOWLIST_REGEX ^/api/legal/comments/[A-Za-z0-9._-]+/?$) which correctly excludes nested mutating sub-routes — good fix. Note it is still path-only, not (method, path); if a DELETE /api/legal/comments/{slug} is ever added it would be silently allowed for counsel. Recommend pairing each regex with an allowed method set.",
+    "backend/routers/legal.py remains ~1500+ lines — still worth splitting into legal_pages / legal_ratifications / legal_comments_roundtrip / legal_docs."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter33_counsel_allowlist.py"],
+  "success_rate": {"backend": "100% (33/33 across both suites)", "frontend": "100% of counsel flows tested passed"},
+  "seed_data_creation": "1 counsel redline via API + 1 via Playwright UI, both deleted in teardown (verified 0 remaining with body starting TEST_). 1 admin ratification v9.9 created and revoked by the iter32 suite (verified 0 remaining). No source markdown edited by the tests.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "counsel@birthright.org / counsel-review-2026 (readonly_admin) and admin@birthright.org / birthright2026 both verified working; /app/memory/test_credentials.md accurate.",
+  "context_for_next_testing_agent": "Both iter32 defects verified fixed. Regression suites: test_iter32_counsel_guide.py (22) + test_iter33_counsel_allowlist.py (11), all green. IMPORTANT selector note: ratification rows use the PUBLIC page slug, i.e. data-testid=legal-ratify-row-terms (not legal-ratify-row-01-terms-of-service); the source slug 01-terms-of-service is only used in API paths. Sign-in route is /login. Export redlines is a GET route so it remains available to counsel; only POST /export is 403. Remaining open items are LOW-severity carry-overs (header spacing, cookie bar overlap, stale fixture comments/agreement banner).",
+  "rca_of_the_issue": "Fixes confirmed at source: (1) LEGAL_BRIEFING_FOR_COUNSEL.md now carries '## 0. Counsel Fast Path — Minimise Your Billable Time' between the intro callout and §1, and the regenerated .docx contains the same runs in word/document.xml — verified after an admin rebuild-docx run, so the rebuild no longer strips it. (2) utils/readonly_admin.py replaced the '/api/legal/comments/' prefix entry with _ALLOWLIST_REGEX anchored to a single path segment, so ReadonlyEnforcementMiddleware now reaches the role check for all nested mutating sub-routes and returns 403 {readonly:true} before any payload validation (previously 400/404)."
+}

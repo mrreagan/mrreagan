@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Callable
 
 from fastapi import Request
@@ -52,7 +53,20 @@ _ALLOWLIST_PREFIXES = (
     "/api/auth/",             # covers login/logout/refresh + optional MFA in future
     "/api/password-reset/",   # counsel can reset their own password
     "/api/counsel/review-status/",  # counsel can check off their own review checklist
-    "/api/legal/comments/",   # counsel can post redlines/comments on legal docs
+)
+
+# Regex allow-list — used when a write path must be permitted by exact
+# shape rather than by prefix. We use this for the comment-CREATE route
+# because it lives under /api/legal/comments/{slug} but there are also
+# mutating sub-routes (/apply-roundtrip, /import-roundtrip, /{id}/resolve)
+# that MUST stay blocked for counsel. Prefix allow-listing would leak
+# those; explicit shape allow-listing does not.
+_ALLOWLIST_REGEX = (
+    # POST /api/legal/comments/<slug>   — counsel can post a redline / comment.
+    # The <slug> is a filename-safe token; anything with an extra path
+    # segment (apply-roundtrip / import-roundtrip / <id>/resolve / export)
+    # is intentionally excluded.
+    re.compile(r"^/api/legal/comments/[A-Za-z0-9._-]+/?$"),
 )
 
 
@@ -65,6 +79,8 @@ class ReadonlyEnforcementMiddleware(BaseHTTPMiddleware):
         if path in _ALLOWLIST_EXACT:
             return await call_next(request)
         if any(path.startswith(p) for p in _ALLOWLIST_PREFIXES):
+            return await call_next(request)
+        if any(rx.match(path) for rx in _ALLOWLIST_REGEX):
             return await call_next(request)
 
         # Not a safe method and not allow-listed. Check if the caller is a

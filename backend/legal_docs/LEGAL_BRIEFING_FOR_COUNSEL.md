@@ -7,6 +7,36 @@ _Version: February 2026. All figures below reflect the state of the platform in 
 
 ---
 
+## 0. Counsel Fast Path — Minimise Your Billable Time
+
+**Cheapest workflow.** Ask us to email you the two `.docx` files —
+`LEGAL_BRIEFING_FOR_COUNSEL.docx` (this file) and
+`00a-counsel-user-guide.docx`. Redline in Word with Track Changes.
+Email the marked-up files to `legal@birthright.live`. Birthright's
+Executive Director does every platform click. **You never need to log
+in for a normal review pass.**
+
+**Push these to Birthright's admin (they cost billable time and are clerical):**
+
+- Transcribing your redlines into the platform (~30 s per redline).
+- Applying accepted / rejected roundtrip decisions.
+- Marking documents as counsel-ratified after your one-line ratification email.
+- Rebuilding the counsel-briefing bundle after edits.
+- Ticking off the manual review checklist and recording your initials.
+
+**Do these personally (they are legal work, not clerical):**
+
+- Substantive legal analysis of every draft.
+- Rewording of proposed replacement text in each redline.
+- The final one-line ratification email per document.
+- Advice on licensing, insurance, and dispute-jurisdiction choices.
+
+The full per-function fast-path table (redline, roundtrip, ratify,
+revoke, checklist, activity log, change-log) lives in the standalone
+Counsel User Guide — `00a-counsel-user-guide.docx`.
+
+---
+
 ## 1. Entity Overview
 
 | Attribute | Description |
