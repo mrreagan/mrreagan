@@ -1,0 +1,39 @@
+{
+  "summary": "Re-verified the two iter36 fixes. FIX 1 (session-revocation race) works for the fresh-login path: 5/5 rotate->immediate-login->auth-call cycles returned 200, older-second tokens are still revoked (401 'Session revoked'), and the same-second boundary is accepted / earlier-second rejected as designed (new test file test_iter36b_counsel_race_boundary.py, 3/3 pass). BUT the flooring-to-seconds approach opened the inverse hole: a token minted in the SAME wall-clock second as a rotate/set-password survives revocation, which now makes the pre-existing suite flaky — test_iter36_counsel_session_setpw.py failed 2/2 runs (TestSessionRevocation::test_revocation_kills_old_token in run 1, TestSetPasswordFromToken::test_happy_path_and_session_kill in both runs) with 200 where 401 'Session revoked' was expected. FIX 2 (set-password success-screen spacing) is NOT fixed: rendered inner_text is 'You can now sign in at/loginusing counsel@birthright.org.' — RCA below. Counsel password rotated back to counsel-review-2026 and counsel_password_tokens / user_token_revocations cleared at teardown (verified counsel login 200).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/admin/settings/counsel/rotate + /api/admin/settings/counsel/set-password-from-token", "issue": "Revocation is only enforced for tokens issued in an EARLIER whole second than revoked_at (auth_utils.py:117-123 floors revoked_at and uses strict `<`). A session minted in the same second as the rotate is NOT revoked -> up to ~1s window where an old counsel JWT stays valid, and the existing iter36 revocation tests fail intermittently (100% failure of one of the two revocation assertions across 2 runs). Suggested fix: stop relying on second-granularity `iat` — add a high-precision claim in create_token (e.g. `iat_ms: int(time.time()*1000)` or a `jti`/session_version) and compare that against revoked_at with full microsecond precision, falling back to the current whole-second logic only for legacy tokens without the claim."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CounselSetPasswordPage success screen", "issue": "SPACING REGRESSION STILL PRESENT. Rendered text (data-testid counsel-set-password-done) = 'You can now sign in at/loginusing counsel@birthright.org.' — no visible space before or after the /login link (confirmed in screenshot). RCA: this preview build runs a dev Babel instrumentation plugin that wraps every JSX expression container in <span data-ve-dynamic style=\"display:contents\">; the `{\" \"}` children on CounselSetPasswordPage.jsx:57 and :61 become whitespace-only spans with display:contents, which browsers collapse to nothing. `{\" \"}` can therefore NEVER produce a visible space in this environment. Fix: put the spaces in plain JSX text on the SAME line, e.g. `<p>You can now sign in at <Link ...>/login</Link> using <strong>{done.email}</strong>.</p>`, or use &nbsp; entities inside the text nodes.", "selector": "[data-testid=\"counsel-set-password-done\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "global (36 .jsx files use {\" \"})", "issues": ["Any place relying on the `{\" \"}` idiom for spacing will render without a space in this preview build for the same display:contents reason — worth a sweep if other copy looks glued together."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter36b_counsel_race_boundary.py",
+    "/app/backend/tests/test_iter36_counsel_session_setpw.py",
+    "/app/test_reports/pytest/iter37_counsel.xml"
+  ],
+  "action_items": [
+    "Replace the second-granularity revocation comparison with a precise claim (iat_ms / jti / session_version) so revocation is guaranteed while a same-second fresh login still passes; then re-run test_iter36_counsel_session_setpw.py 3x to confirm no flakiness.",
+    "Fix CounselSetPasswordPage.jsx success paragraph spacing by inlining the spaces in JSX text (or &nbsp;) instead of `{\" \"}` — lines 56-62."
+  ],
+  "critical_code_review_comments": [
+    "auth_utils.py::_is_token_revoked cannot be made correct with second-precision `iat` alone: any rule that revokes same-second tokens also revokes the legitimate post-rotate login. Encode a millisecond timestamp or session version in the JWT.",
+    "Frontend: avoid the `{\" \"}` spacing idiom in this codebase — the visual-editor Babel plugin wraps expression containers in display:contents spans and the whitespace is lost."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter36b_counsel_race_boundary.py"],
+  "success_rate": {"backend": "95% (55/58 in the 5-file counsel regression run, 3 failures all rooted in the same-second revocation gap; new boundary suite 3/3)", "frontend": "50% (set-password submit flow works, success-screen copy spacing fails)"},
+  "seed_data_creation": "Seeded one-time counsel_password_tokens docs (deleted at teardown); temporarily rotated counsel password during tests and restored to counsel-review-2026.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@birthright.org / birthright2026 ; counsel@birthright.org / counsel-review-2026 (restored)",
+  "context_for_next_testing_agent": "Use /app/backend/tests/test_iter36b_counsel_race_boundary.py for the race + boundary checks (rotate->immediate login x5, older-token revoke, fabricated same-second revocation). Run test_iter36_counsel_session_setpw.py at least twice — its two revocation assertions fail whenever the old token happens to be minted in the same second as the rotate; if a run fails mid-test the counsel password is left rotated, so rotate it back to counsel-review-2026 before re-running. Seed set-password tokens directly in db.counsel_password_tokens (sha256 of raw token).",
+  "rca_of_the_issue": "1) Session revocation: jwt `iat` has 1-second granularity. Flooring revoked_at + strict `<` fixed the false-positive (fresh login) but created a false-negative window: old tokens issued in the same second as the rotate pass validation. Deterministically reproducible by logging in and rotating within the same second (test_iter36 happy-path does exactly that). 2) Spacing: `{\" \"}` JSX expression containers are rewritten by the preview build's instrumentation plugin into <span style=\"display:contents\"> </span>; whitespace-only inline content in a display:contents span collapses, so no space renders. Verified by inspecting /static/js/bundle.js around 'You can now sign in at'."
+}

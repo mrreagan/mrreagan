@@ -96,20 +96,31 @@ async def get_current_user(
 
 
 def _is_token_revoked(iat: Optional[int], revoked_at_iso: Optional[str]) -> bool:
-    """Return True iff the token was issued at OR BEFORE the recorded
-    revocation moment. Defensive against malformed data — never raises."""
+    """Return True iff the token was issued STRICTLY BEFORE the recorded
+    revocation moment.
+
+    Subtlety worth knowing about: `jwt.encode` stores `iat` as an integer
+    second (Unix time floored). `revoked_at_iso` is written with
+    microsecond precision from `datetime.now(timezone.utc)`. Comparing
+    them naively with `<=` treats a login that happens in the SAME
+    second as (i.e. milliseconds AFTER) a rotate as revoked. To keep the
+    boundary crisp, we floor `revoked_at` to whole seconds and require
+    strict `<` — the token is revoked only if it was minted in an
+    EARLIER second than the rotate.
+    """
     if not iat or not revoked_at_iso:
         return False
     try:
         revoked_dt = datetime.fromisoformat(revoked_at_iso.replace("Z", "+00:00"))
     except Exception:
         return False
+    revoked_dt = revoked_dt.replace(microsecond=0)
     # jwt `iat` may arrive as int OR as a datetime depending on lib version.
     if isinstance(iat, datetime):
-        iat_dt = iat
+        iat_dt = iat.replace(microsecond=0)
     else:
         iat_dt = datetime.fromtimestamp(int(iat), tz=timezone.utc)
-    return iat_dt <= revoked_dt
+    return iat_dt < revoked_dt
 
 
 def require_roles(*roles: str):

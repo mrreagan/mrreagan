@@ -55,8 +55,10 @@ export default function CounselSetPasswordPage() {
         <div className="divider-flame" />
         <p className="text-sm text-[#0F2424] mt-3">
           You can now sign in at{" "}
-          <Link to="/login" className="underline text-[#476B6B]" data-testid="counsel-set-password-signin-link">/login</Link>{" "}
-          using <strong>{done.email}</strong>.
+          <Link to="/login" className="underline text-[#476B6B]" data-testid="counsel-set-password-signin-link">
+            /login
+          </Link>
+          {" "}using <strong>{done.email}</strong>.
         </p>
       </div>
     );
