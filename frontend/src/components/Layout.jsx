@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { ShoppingBag, Menu, X, User, LogOut, ChevronDown } from "lucide-react";
 import AgreementResignBanner from "./AgreementResignBanner";
+import ReadOnlyBanner from "./ReadOnlyBanner";
 import HelpAssistant from "./HelpAssistant";
 import GlobalSearch from "./GlobalSearch";
 
@@ -320,6 +321,7 @@ export function Footer() {
 export default function Layout({ children }) {
   return (
     <div className="min-h-screen flex flex-col">
+      <ReadOnlyBanner />
       <Header />
       <AgreementResignBanner />
       <main className="flex-1" data-testid="main-content">

@@ -48,7 +48,7 @@ Each of the following flows real money today via Stripe (LIVE mode).
 
 **Key legal questions:**
 1. Sales tax nexus — Stripe collects payments but we do **not** currently collect sales tax. Which states require registration given remote sales of tangible personal property?
-2. UBI (unrelated business income) implications if 501(c)(3).
+2. UBI (unrelated business income taxation under Internal Revenue Code Section 512) implications if 501(c)(3).
 3. Donations vs. purchases distinction on receipts (needed for donor tax deduction if 501(c)(3)).
 4. "Foundation" naming — is it a regulated term in the state of incorporation?
 5. Sponsorship tiers with perks — quid-pro-quo disclosure rules.
@@ -59,23 +59,31 @@ Each of the following flows real money today via Stripe (LIVE mode).
 
 Codified in the `users.role` field and gated in `auth_utils.require_roles(...)`.
 
-| Role | Description | Existing agreements? |
-|---|---|---|
-| **Admin** | Full platform control. Currently one person (executive director) + engineering. | None. Need admin/board conduct policy. |
-| **Facilitator** | Leads workshops, has a public bio at `/facilitators/{slug}`. Paid per session or salaried. | None. Need facilitator services agreement + IP assignment for workshop materials. |
-| **Participant (member)** | Standard end user. Signs up at `/register`. | Placeholder **Universal Indemnification & Hold-Harmless Agreement** at `/legal/indemnification` (see §8). Terms of Service and Privacy Policy do NOT yet exist in publish-ready form. |
-| **Partner (artist)** | Sells artwork via the platform gallery. Onboarded via `/partner/apply`. Handles fulfillment directly. | None. Need consignment/gallery agreement, artist warranty of authenticity, revenue-share terms. |
-| **Partner (vendor)** | Sells physical goods (e.g., 7C's Farmstead patches) fulfilled by them. Onboarded via `/dashboard/vendor/*`. | None. Need supplier / dropship agreement, wholesale pricing terms, IP indemnity from vendor. |
-| **Community partner (referrer)** | Non-vendor partners who refer traffic and earn a commission. | Placeholder referral terms in-app. Need formal referral agreement + Form W-9/1099 process. |
-| **Sponsor** | Recurring financial supporter. | None. Public recognition needs sponsor consent language. |
-| **Foundation member** | Paid governance / working-group role. `is_foundation=true`. | None. Need officer/director agreement + D&O policy + conflict-of-interest disclosure. |
-| **Ombudsman** | Handles disputes. Access at `/admin/ombudsman`. | None. Need ombudsman charter + confidentiality clause. |
+**Glossary — Type column abbreviations (multi-select):**
+- **L = Lead / Leader.** Applies to roles with governance, executive, or platform-administration authority (Admin, Foundation member, Ombudsman).
+- **M = Member.** Applies universally to every role — everyone with an account is a member of the Birthright ecosystem and is subject to the participant-level agreements (Terms of Service, Privacy Policy, Universal Indemnification).
+- **P = Partner.** Applies to roles where the person or organization has a contractual working relationship with the foundation beyond simple participation — facilitators, artists, vendors, community referrers, and sponsors (Sponsor is now a partner type).
+
+**Other abbreviations in this table:** *(spelled out here to avoid ambiguity elsewhere in this document)* IP = intellectual property; D&O = directors and officers liability insurance; W-9 / 1099-NEC / 1099-K = Internal Revenue Service (IRS) tax forms; PII = personally identifiable information; PHI = protected health information; HIPAA = Health Insurance Portability and Accountability Act; JWT = JSON Web Token; DPA = data processing agreement; POD = print-on-demand; TOS = terms of service; DNS = domain name system; DDoS = distributed denial of service; SCC = Standard Contractual Clause; IDTA = International Data Transfer Agreement.
+
+| Role | Type | Description | Existing agreements? |
+|---|---|---|---|
+| **Admin** | L, M | Full platform control. Currently one person (executive director) plus engineering. | None. Need admin/board conduct policy. |
+| **Facilitator** | M, P | Leads workshops, has a public bio at `/facilitators/{slug}`. Paid per session or salaried. | None. Need facilitator services agreement plus intellectual-property assignment for workshop materials. |
+| **Participant (member)** | M | Standard end user. Signs up at `/register`. | Placeholder **Universal Indemnification & Hold-Harmless Agreement** at `/legal/indemnification` (see §8). Terms of Service and Privacy Policy do NOT yet exist in publish-ready form. |
+| **Partner (artist)** | M, P | Sells artwork via the platform gallery. Onboarded via `/partner/apply`. Handles fulfillment directly. | None. Need consignment/gallery agreement, artist warranty of authenticity, revenue-share terms. |
+| **Partner (vendor)** | M, P | Sells physical goods (e.g., 7C's Farmstead patches) fulfilled by them. Onboarded via `/dashboard/vendor/*`. | None. Need supplier / dropship agreement, wholesale pricing terms, intellectual-property indemnity from vendor. |
+| **Community partner (referrer)** | M, P | Non-vendor partners who refer traffic and earn a commission. | Placeholder referral terms in-app. Need formal referral agreement plus Internal Revenue Service Form W-9 / 1099-NEC process. |
+| **Sponsor** | M, P | Financial supporter — recurring subscription OR one-time campaign pledge. Auto-elevated to Sponsor Partner (with a public partner profile) once cumulative contributions cross the threshold ($100 one-time or $25/mo × 3 months minimum). Not currently tax-deductible; Birthright has not yet received 501(c)(3) determination from the IRS. | None. Need sponsorship agreement, sponsor recognition consent language, and non-deductible-contribution disclosure that already appears site-wide. |
+| **Foundation member** | L, M | Paid governance / working-group role. `is_foundation=true`. | None. Need officer/director agreement plus directors and officers (D&O) liability insurance plus conflict-of-interest disclosure. |
+| **Ombudsman** | L, M | Handles disputes. Access at `/admin/ombudsman`. | None. Need ombudsman charter plus confidentiality clause. |
 
 **Key legal questions:**
-1. Independent-contractor vs. employee classification for facilitators.
-2. W-9 collection and 1099-NEC/1099-K threshold compliance for partner payouts.
-3. Standard board/officer indemnification clauses + D&O insurance.
+1. Independent-contractor versus employee classification for facilitators.
+2. Internal Revenue Service Form W-9 collection and Form 1099-NEC / 1099-K threshold compliance for partner payouts.
+3. Standard board/officer indemnification clauses plus directors and officers (D&O) liability insurance.
 4. Volunteer waivers (facilitators occasionally host free sessions).
+5. Sponsor recognition consent and public-listing opt-in language (needed before displaying any real sponsor's name or logo publicly).
 
 ---
 
@@ -89,7 +97,7 @@ MongoDB stores ~90 collections. High-sensitivity data includes:
 | PII | `users`, `partner_applications`, `foundation_role_applications`, shipping addresses in `payment_transactions`, `orders`, `vendor_orders` | Names, emails, phones, addresses. |
 | Payment records | `payment_transactions`, `refund_cascades`, `ai_wallet_entries` | We store Stripe session IDs and metadata; **no card numbers or CVV** (Stripe Checkout hosts card entry). |
 | Payout banking info | `partner_payout_methods` | Method type + last-4 identifier only; sensitive fields encrypted with `PAYOUT_ENCRYPTION_KEY`. |
-| Health-adjacent content | `discussions`, `community_posts`, `dm_messages`, `chat_messages`, `research_artifacts`, `disputes` | Members journal about relational trauma, attachment history. **This is arguably sensitive personal data** even though it isn't HIPAA-covered PHI. |
+| Health-adjacent content | `discussions`, `community_posts`, `dm_messages`, `chat_messages`, `research_artifacts`, `disputes` | Members journal about relational trauma, attachment history. **This is arguably sensitive personal data** even though it isn't Health Insurance Portability and Accountability Act (HIPAA)-covered protected health information (PHI). |
 | Uploaded files | `order_attachments`, `workshop_photos`, gallery images | Any file the buyer uploads for custom orders. |
 | AI conversation logs | Chat context stored server-side and forwarded to Google Gemini / Anthropic Claude via Emergent LLM Key. | See §5. |
 | Analytics / audit | `audit_log`, `share_events`, `referral_clicks`, `ai_usage_events`, `email_log` | Includes IPs and referrers. |
@@ -97,8 +105,14 @@ MongoDB stores ~90 collections. High-sensitivity data includes:
 
 **Key legal questions:**
 1. **Privacy policy** covering all of the above — currently missing.
-2. **GDPR / UK-GDPR / CCPA / CPRA / VCDPA / CPA / TDPSA** applicability — buyers can transact from anywhere. Right-of-access and deletion workflows are not yet built.
-3. **Age gate.** No COPPA age-gate today; workshops describe attachment work aimed at adults but nothing prevents a minor from signing up.
+2. **Privacy law applicability across jurisdictions** — buyers can transact from anywhere. Right-of-access and deletion workflows are not yet built. Applicable frameworks include:
+   - General Data Protection Regulation (GDPR — European Union)
+   - United Kingdom GDPR (UK-GDPR)
+   - California Consumer Privacy Act / California Privacy Rights Act (CCPA / CPRA)
+   - Virginia Consumer Data Protection Act (VCDPA)
+   - Colorado Privacy Act (CPA)
+   - Texas Data Privacy and Security Act (TDPSA)
+3. **Age gate.** No Children's Online Privacy Protection Act (COPPA) age-gate today; workshops describe attachment work aimed at adults but nothing prevents a minor from signing up.
 4. **Data processing agreements (DPAs)** with each sub-processor (see §5).
 5. **Retention schedule** for chat/DM/journaling content.
 6. **Breach-notification obligations** (state-by-state).
@@ -132,8 +146,8 @@ platform:
   generation are labeled as AI-assisted. Not used for automated
   decisions with legal effect. Transparency notice is already present in
   the Terms of Service draft §9.
-- **International data transfers** rely on the 2021 SCCs + UK IDTA.
-  Every sub-processor DPA (§5) must incorporate these where applicable.
+- **International data transfers** rely on the 2021 Standard Contractual Clauses (SCCs) plus the United Kingdom International Data Transfer Agreement (UK IDTA).
+  Every sub-processor data processing agreement (DPA) (§5) must incorporate these where applicable.
 - **DPO** — designate `dpo@birthright.live` when the threshold criteria
   in GDPR Art. 37 are met (systematic large-scale monitoring or large-
   scale processing of special-category data).
@@ -145,35 +159,187 @@ platform:
 
 ---
 
-## 8b. Draft documents — public download links
+## 8b. Draft documents — public download links and recommended language
 
-| # | Draft | Category | Public download |
-|---|---|---|---|
-| 1 | **Terms of Service (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/01-terms-of-service |
-| 2 | **Privacy Policy (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/02-privacy-policy |
-| 3 | **Cookie & Tracking Notice (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/03-cookie-notice |
-| 4 | **Universal Indemnification & Hold-Harmless Agreement (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/04-indemnification-hold-harmless |
-| 5 | **Facilitator Services Agreement + IP Assignment (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/05-facilitator-services-agreement |
-| 6 | **Artist Consignment / Gallery Partner Agreement (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/06-artist-consignment-agreement |
-| 7 | **Vendor Supplier / Dropship Agreement (Draft, 7C's Farmstead first)** | Partner agreements | https://birthright.live/api/legal/drafts/07-vendor-supplier-agreement |
-| 8 | **Community Partner Referral Agreement (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/08-community-partner-referral-agreement |
-| 9 | **Sponsorship Agreement / Sponsor Recognition Consent (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/09-sponsorship-agreement |
-| 10 | **Sliding-Scale & Scholarship Terms (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/10-sliding-scale-scholarship-terms |
-| 11 | **Board Member / Officer Agreement + D&O Coverage (Draft)** | Governance | https://birthright.live/api/legal/drafts/11-board-officer-agreement |
-| 12 | **Foundation Working-Group Volunteer Agreement (Draft)** | Governance | https://birthright.live/api/legal/drafts/12-volunteer-agreement |
-| 13 | **Ombudsman Charter (Draft)** | Governance | https://birthright.live/api/legal/drafts/13-ombudsman-charter |
-| 14 | **Content Moderation & Community Standards Policy (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/14-community-standards |
-| 15 | **Refund & Returns Policy (Draft, Public)** | Public-facing | https://birthright.live/api/legal/drafts/15-refund-returns-policy |
-| 16 | **Sales-Tax Registration Plan (Draft)** | Internal / Compliance | https://birthright.live/api/legal/drafts/16-sales-tax-registration-plan |
-| 17 | **Trademark Filings Plan (Draft)** | Internal / IP | https://birthright.live/api/legal/drafts/17-trademark-filings-plan |
-| 18 | **Copyright Registration Strategy (Draft)** | Internal / IP | https://birthright.live/api/legal/drafts/18-copyright-registration-strategy |
-| 19 | **Data Processing Agreement Template (Draft)** | Governance | https://birthright.live/api/legal/drafts/19-data-processing-agreement-template |
-| 20 | **Nonprofit Governance Bundle (Draft — Articles, Bylaws, COI, Whistleblower, Retention)** | Governance | https://birthright.live/api/legal/drafts/20-nonprofit-governance-bundle |
-| 21 | **State Charitable Solicitation Registration Plan (Draft)** | Internal / Compliance | https://birthright.live/api/legal/drafts/21-charitable-solicitation-plan |
+The 21 first-draft documents below were generated as first-draft starting points for counsel to modify or ratify. Each is downloadable as a Microsoft Word (.docx) file at the plaintext URL shown. **Note: URLs are plain text so they can be copy-pasted into any browser without relying on hyperlink formatting.** Each entry also lists the recommended operative clauses so counsel can preview the core language without downloading. Every draft carries a prominent disclaimer that it is an AI-generated first draft and not legal advice.
+
+**Index (plaintext URLs — copy directly into browser):**
+
+1. Terms of Service (Draft): `https://birthright.live/api/legal/drafts/01-terms-of-service`
+2. Privacy Policy (Draft): `https://birthright.live/api/legal/drafts/02-privacy-policy`
+3. Cookie & Tracking Notice (Draft): `https://birthright.live/api/legal/drafts/03-cookie-notice`
+4. Universal Indemnification & Hold-Harmless Agreement (Draft): `https://birthright.live/api/legal/drafts/04-indemnification-hold-harmless`
+5. Facilitator Services Agreement plus Intellectual-Property Assignment (Draft): `https://birthright.live/api/legal/drafts/05-facilitator-services-agreement`
+6. Artist Consignment / Gallery Partner Agreement (Draft): `https://birthright.live/api/legal/drafts/06-artist-consignment-agreement`
+7. Vendor Supplier / Dropship Agreement — 7C's Farmstead first (Draft): `https://birthright.live/api/legal/drafts/07-vendor-supplier-agreement`
+8. Community Partner Referral Agreement (Draft): `https://birthright.live/api/legal/drafts/08-community-partner-referral-agreement`
+9. Sponsorship Agreement / Sponsor Recognition Consent (Draft): `https://birthright.live/api/legal/drafts/09-sponsorship-agreement`
+10. Sliding-Scale & Scholarship Terms (Draft): `https://birthright.live/api/legal/drafts/10-sliding-scale-scholarship-terms`
+11. Board Member / Officer Agreement plus Directors and Officers (D&O) Coverage (Draft): `https://birthright.live/api/legal/drafts/11-board-officer-agreement`
+12. Foundation Working-Group Volunteer Agreement (Draft): `https://birthright.live/api/legal/drafts/12-volunteer-agreement`
+13. Ombudsman Charter (Draft): `https://birthright.live/api/legal/drafts/13-ombudsman-charter`
+14. Content Moderation & Community Standards Policy (Draft): `https://birthright.live/api/legal/drafts/14-community-standards`
+15. Refund & Returns Policy (Draft, Public): `https://birthright.live/api/legal/drafts/15-refund-returns-policy`
+16. Sales-Tax Registration Plan (Draft): `https://birthright.live/api/legal/drafts/16-sales-tax-registration-plan`
+17. Trademark Filings Plan (Draft): `https://birthright.live/api/legal/drafts/17-trademark-filings-plan`
+18. Copyright Registration Strategy (Draft): `https://birthright.live/api/legal/drafts/18-copyright-registration-strategy`
+19. Data Processing Agreement Template (Draft): `https://birthright.live/api/legal/drafts/19-data-processing-agreement-template`
+20. Nonprofit Governance Bundle — Articles, Bylaws, Conflict of Interest (COI), Whistleblower, Retention (Draft): `https://birthright.live/api/legal/drafts/20-nonprofit-governance-bundle`
+21. State Charitable Solicitation Registration Plan (Draft): `https://birthright.live/api/legal/drafts/21-charitable-solicitation-plan`
+
+### 8b.1 Recommended operative language for each draft — key clauses to modify or ratify
+
+Below is a first-draft summary of the operative language for each drafted agreement. Each clause is stated as recommended language for counsel to redline, tighten, or ratify. Full draft text lives at the plaintext URL above.
+
+**1. Terms of Service** — Recommended core clauses:
+- **Acceptance.** *"By creating an account or making a purchase on birthright.live, you agree to these Terms of Service and to our Privacy Policy."*
+- **Service description.** Platform offers workshops, community access, digital and physical goods, and (as applicable) facilitator services. Not a substitute for medical, therapeutic, or legal advice.
+- **Age.** Users must be 18 or older; parental consent required for minors under 18 where lawful.
+- **Prohibited conduct.** Harassment, unauthorized commercial solicitation, scraping, and circumvention of platform controls.
+- **Termination.** Foundation may suspend or terminate for material breach of these Terms or the Community Standards.
+- **Limitation of liability.** Cap at aggregate fees paid in the prior 12 months, subject to jurisdictional limits.
+- **Governing law and venue.** [To be set by counsel once entity formation is complete.]
+- **Dispute resolution.** Informal negotiation → mediation → binding arbitration; class-action waiver only if permitted by counsel and disclosed prominently.
+
+**2. Privacy Policy** — Recommended core clauses:
+- **Categories of data collected** (account, PII, transactional, health-adjacent journaling, uploaded files, AI conversation logs, cookies/analytics).
+- **Purposes of processing** (service delivery, communications, billing, moderation, analytics, legal compliance).
+- **Legal bases** (contract performance, consent for marketing, legitimate interests for security).
+- **Sharing with sub-processors** (Stripe, Resend, Printful, Lulu, Google, Anthropic, Cloudflare, Emergent) with links to each vendor's policy.
+- **Retention schedule** by data category.
+- **User rights** — access, correction, deletion, portability, objection, opt-out of sale/share (California Consumer Privacy Act / California Privacy Rights Act — CCPA / CPRA).
+- **International transfers** — Standard Contractual Clauses (SCCs) for European Union / United Kingdom users.
+- **Contact** — privacy@birthright.live plus mailing address.
+
+**3. Cookie & Tracking Notice** — Recommended core clauses:
+- Categories: strictly necessary, functional, analytics, and marketing.
+- **Consent** — Opt-in banner required for non-strictly-necessary cookies in the European Union and United Kingdom. "Reject all" option must be as prominent as "Accept all."
+- Vendor list with cookie names, purposes, retention.
+- Instructions to withdraw consent and clear cookies.
+
+**4. Universal Indemnification & Hold-Harmless Agreement** — Recommended core clauses:
+- **Acknowledgement of nature of the work.** *"I understand that Birthright's workshops, community, and content address relational, attachment, and repair themes and are not a substitute for medical, mental-health, or crisis care."*
+- **Release and hold-harmless** for foreseeable participation risks.
+- **Indemnity to foundation** for injuries or claims arising from participant's own conduct.
+- **No release for gross negligence or willful misconduct** — carved out explicitly.
+- **Consent to emergency care** and to platform contacting an emergency contact if provided.
+- **Governing law and venue.**
+
+**5. Facilitator Services Agreement plus Intellectual-Property Assignment** — Recommended core clauses:
+- **Independent contractor** status; facilitator responsible for their own taxes and insurance.
+- **Scope of services** — deliver workshops per program materials, adhere to Community Standards.
+- **Compensation** — up to 65% of Birthright-intellectual-property workshop revenue; monthly payout per §9 policy.
+- **Intellectual-property assignment or exclusive license** for materials produced under Birthright's brand while performing services; facilitator retains pre-existing intellectual property.
+- **Confidentiality** — participant lists, minor children's names, mental-health disclosures.
+- **Non-disparagement** (mutual).
+- **Termination** — 30 days for convenience; immediate for cause.
+- **Insurance** — facilitator to maintain professional liability at a minimum coverage to be set by counsel.
+
+**6. Artist Consignment / Gallery Partner Agreement** — Recommended core clauses:
+- **Consignment relationship** — artist retains title to unsold works.
+- **Warranty of originality and authenticity** — artist represents each work is original and unencumbered.
+- **Revenue-share model** — 20% foundation gift added at checkout (not deducted from artist).
+- **Right of first refusal** on commissioned commissions? [Counsel to decide.]
+- **Termination and return of unsold work** upon 30 days' notice.
+- **Intellectual-property indemnity** from artist for third-party rights claims.
+
+**7. Vendor Supplier / Dropship Agreement** — Recommended core clauses:
+- **Ordering flow** — buyer purchases on birthright.live; vendor is notified; vendor fulfills directly.
+- **Wholesale pricing** and payment schedule.
+- **Product warranty** — vendor warrants goods are as described.
+- **Product-liability indemnity** — vendor indemnifies foundation for product-defect claims.
+- **Compliance representations** — vendor represents compliance with applicable labor, food-safety (where relevant), and consumer-protection laws.
+- **Insurance** — vendor to maintain product liability at a level set by counsel.
+
+**8. Community Partner Referral Agreement** — Recommended core clauses:
+- **Independent-contractor status.**
+- **Commission** — 25% of referred revenue with attribution via referral code.
+- **Payout threshold** — $50 minimum, paid monthly.
+- **Internal Revenue Service Form W-9 requirement** — no payout without a completed W-9; Form 1099-NEC issued annually where required.
+- **No misrepresentation** — referrer may not make claims beyond Birthright's own marketing copy.
+- **Termination** at will, subject to earned but unpaid commissions.
+
+**9. Sponsorship Agreement / Sponsor Recognition Consent** — Recommended core clauses:
+- **Non-deductibility disclosure** — *"Birthright Foundation has not yet submitted or received Internal Revenue Service 501(c)(3) determination. This contribution is not currently tax-deductible as a charitable donation. No representation is made about future tax status."*
+- **Public recognition consent** — sponsor opts in explicitly to be named or displayed publicly; may opt out at any time.
+- **Sponsor Partner status** — auto-elevation at $100 one-time or $25/mo × 3+ months; presenting sponsor at $5,000 or $250/mo. Renews annually; auto-degrades to Alumni Contributor after 18 months of no renewed contribution.
+- **No quid-pro-quo** — sponsorship does not confer editorial control, governance rights, or preferential treatment on the platform.
+- **Refund policy** — pledges may be withdrawn before payment is confirmed; after payment, refunds are at the foundation's discretion consistent with law.
+
+**10. Sliding-Scale & Scholarship Terms** — Recommended core clauses:
+- **Eligibility** — self-attested financial need at time of application.
+- **No formal means-testing** — foundation reserves discretion.
+- **Non-transferability** of scholarship seats.
+- **Confidentiality** of scholarship status among participants.
+
+**11. Board Member / Officer Agreement plus Directors and Officers (D&O) Coverage** — Recommended core clauses:
+- **Fiduciary duties** — duty of care, loyalty, and obedience to mission.
+- **Conflict-of-interest disclosure** — required at appointment and annually.
+- **Indemnification by foundation** for acts within scope of duties, subject to statutory limits and directors and officers (D&O) insurance policy.
+- **Confidentiality** — board deliberations, personnel matters, participant data.
+- **Term and removal** — three-year staggered terms; removal with two-thirds vote of remaining board.
+
+**12. Foundation Working-Group Volunteer Agreement** — Recommended core clauses:
+- **Volunteer status** — not an employee; no compensation beyond reimbursed expenses.
+- **Confidentiality** and code-of-conduct affirmations.
+- **Intellectual-property assignment** for volunteer contributions produced under Birthright's brand.
+- **Waiver of injury claims** consistent with state volunteer-protection acts.
+
+**13. Ombudsman Charter** — Recommended core clauses:
+- **Independence** — ombudsman reports to the board, not to the executive director.
+- **Confidentiality** — communications with ombudsman are confidential except where safety, criminal conduct, or mandatory reporting triggers apply.
+- **Scope** — disputes among members, complaints against facilitators or staff, and integrity concerns.
+- **Remedies** — mediation, facilitated apology, corrective action recommendations to leadership.
+
+**14. Content Moderation & Community Standards Policy** — Recommended core clauses:
+- **Prohibited content** — harassment, hate speech, doxxing, spam, unauthorized commercial solicitation, sexual content, disclosed minors' identities.
+- **Enforcement ladder** — warning → temporary suspension → permanent removal.
+- **Appeals** — one round of appeal to the ombudsman.
+- **Transparency** — quarterly moderation summary published anonymously.
+
+**15. Refund & Returns Policy (Public)** — Recommended core clauses:
+- **Digital products** — non-refundable once accessed, except where required by law.
+- **Physical goods** — 30-day return for defect or non-conformance; buyer pays return shipping unless foundation's error.
+- **Workshops** — full refund up to 7 days before start; 50% up to 48 hours; forfeited thereafter unless a documented emergency, at foundation's discretion.
+- **Sponsorships** — see §9 above.
+
+**16. Sales-Tax Registration Plan** — Recommended core clauses (internal plan document):
+- Nexus analysis by state — physical, economic (sales thresholds), and click-through nexus.
+- Timeline for sales-tax registration in priority states.
+- Cadence for periodic re-analysis as revenue grows.
+
+**17. Trademark Filings Plan** — Recommended core actions:
+- File United States Patent and Trademark Office (USPTO) applications for "birthright" wordmark (Classes 41 — education; 45 — social services; 25 — apparel).
+- File for the flame-plus-wordmark logo as a composite mark.
+- Consider filing key taglines (e.g., "Secure connection is your birthright") as separate marks.
+
+**18. Copyright Registration Strategy** — Recommended core actions:
+- Register all published workshop curricula with the United States Copyright Office within 90 days of first publication.
+- Register the founder's book manuscript prior to any distribution.
+- Aggregate registration of website content on a rolling annual basis.
+
+**19. Data Processing Agreement Template** — Recommended core clauses:
+- **Purpose limitation** — sub-processor may process only for the specified services.
+- **Technical and organizational measures** — encryption at rest, encryption in transit, access controls, breach-notification obligations.
+- **Sub-processor onboarding** requires prior written notice and right to object.
+- **International-transfer mechanism** — Standard Contractual Clauses (SCCs) for European Union / United Kingdom transfers.
+- **Term** — coterminous with underlying services agreement.
+
+**20. Nonprofit Governance Bundle** — Recommended documents:
+- **Articles of Incorporation** — purpose clause narrow enough to satisfy IRS Section 501(c)(3) but broad enough to cover workshops, community, and publications.
+- **Bylaws** — board composition, meeting cadence, officer roles, indemnification.
+- **Conflict of Interest (COI) Policy** — annual disclosure, recusal procedure.
+- **Whistleblower Policy** — protected reporting channel to the ombudsman and to the board chair.
+- **Document Retention Policy** — schedules by record category with legal-hold override procedure.
+
+**21. State Charitable Solicitation Registration Plan** — Recommended core actions:
+- Prioritize registration in California, New York, Florida, Illinois, Pennsylvania, and Texas ahead of any public fundraising campaign.
+- Register through the Unified Registration Statement where accepted; state-specific forms elsewhere.
+- Track annual renewals and financial reporting thresholds.
 
 ## 5. Third-Party Integrations (Sub-processors)
 
-| Vendor | Purpose | Data shared | Contract / DPA in place? |
+| Vendor | Purpose | Data shared | Contract / data processing agreement (DPA) in place? |
 |---|---|---|---|
 | **Stripe** (`stripe`, `emergentintegrations.payments.stripe`) | Payment processing, Stripe Connect (planned for artist payouts) | Buyer name, email, shipping address, order metadata | Stripe standard TOS + connected-account terms. **No custom DPA.** |
 | **Resend** (`resend`) | Transactional email (receipts, workshop confirmations, vendor reorders) | Buyer name, email, order details, uploaded file attachments | Resend TOS. **No custom DPA.** |
@@ -183,11 +349,11 @@ platform:
 | **Anthropic Claude** (via Emergent LLM Key, model `claude-sonnet-4-5`) | Help Assistant, prompt analysis for image queue | Platform DB context (team bios, product catalog), user questions | Same as above. |
 | **Cloudflare** | DNS, email routing (`hello@birthright.live` → Gmail), DDoS mitigation | Domain traffic metadata, email routing metadata | Cloudflare TOS. |
 | **Formester** (via 7C's Farmstead custom-order form) | Third-party form submission for vendor reorders | Buyer name, email, phone, shipping address, order details | 7C's has a merchant relationship with Formester; birthright has no direct contract. |
-| **Emergent** (hosting platform) | Application hosting, CI/CD | All of the above (they host the environment) | Emergent platform TOS. |
+| **Emergent** (hosting platform) | Application hosting, continuous integration and continuous deployment (CI/CD) | All of the above (they host the environment) | Emergent platform TOS. |
 | **GitHub** (via Emergent's "Save to Github") | Source code hosting | Source code, not customer data | GitHub TOS. |
 
 **Key legal questions:**
-1. Which of these require a written **DPA** under GDPR/CCPA?
+1. Which of these require a written data processing agreement (DPA) under General Data Protection Regulation (GDPR) or California Consumer Privacy Act (CCPA)?
 2. Sub-processor list needs to be published in the privacy policy.
 3. Cross-border data transfer mechanisms (SCCs) for EU users if applicable.
 
@@ -293,7 +459,7 @@ Each path implies different **product liability, warranty, and refund** obligati
 **Instruments we believe counsel needs to draft or ratify:**
 
 1. **Terms of Service** (with mandatory-arbitration and class-waiver clauses if desired)
-2. **Privacy Policy** (with sub-processor list, retention schedule, DSAR workflow)
+2. **Privacy Policy** (with sub-processor list, retention schedule, data subject access request (DSAR) workflow)
 3. **Cookie / Tracking Notice** (currently: no banner, minimal cookies used)
 4. **Universal Indemnification & Hold-Harmless** — real text to replace placeholder at `/legal/indemnification`
 5. **Facilitator Services Agreement + IP Assignment**
@@ -386,20 +552,22 @@ The platform actively uses generative AI for:
 - Vendor product catalog: https://birthright.live/dashboard/vendor/products
 - Sales reports: https://birthright.live/dashboard/partner/sales-reports
 
-### Admin (requires admin account — engineering can provision read-only counsel access on request)
-- Admin hub: https://birthright.live/admin
-- Users: https://birthright.live/admin/users
-- Products: https://birthright.live/admin/products
-- Partners: https://birthright.live/admin/partners
-- Foundation roles: https://birthright.live/admin/foundation-roles
-- Foundation applications: https://birthright.live/admin/foundation-applications
-- Ombudsman queue: https://birthright.live/admin/ombudsman
-- Disputes: https://birthright.live/admin/disputes/*
-- Refunds: https://birthright.live/admin/refunds
-- Payouts: https://birthright.live/admin/payouts
-- Legal agreements manager: https://birthright.live/admin/legal/agreements
-- AI usage: https://birthright.live/admin/ai-usage
-- Reports: https://birthright.live/admin/reports
+### Admin (requires admin account — a read-only counsel account is now provisioned; see §13 for credentials)
+- Admin hub: `https://birthright.live/admin`
+- Users: `https://birthright.live/admin/users`
+- Products: `https://birthright.live/admin/products`
+- Partners: `https://birthright.live/admin/partners`
+- Sponsor campaigns (includes pledges, sponsor partner directory, 18-month degrade sweep): `https://birthright.live/admin/campaigns`
+- Legal document downloads: `https://birthright.live/admin/legal-docs`
+- Foundation roles: `https://birthright.live/admin/foundation-roles`
+- Foundation applications: `https://birthright.live/admin/foundation-applications`
+- Ombudsman queue: `https://birthright.live/admin/ombudsman`
+- Disputes: `https://birthright.live/admin/disputes/*`
+- Refunds: `https://birthright.live/admin/refunds`
+- Payouts: `https://birthright.live/admin/payouts`
+- Legal agreements manager: `https://birthright.live/admin/legal/agreements`
+- AI usage: `https://birthright.live/admin/ai-usage`
+- Reports: `https://birthright.live/admin/reports`
 
 ### API endpoints of legal interest (JSON responses inspectable at these URLs when authenticated)
 - Terms/indemnification versions: `GET /api/legal/indemnification/active`
@@ -414,13 +582,13 @@ The platform actively uses generative AI for:
 Ordered by risk exposure today:
 
 1. **Terms of Service + Privacy Policy** — every purchase and account creation currently happens without a signed agreement. Highest immediate exposure.
-2. **Entity formation + tax status** — driving decision for everything else (donation deductibility, UBI, board indemnification).
+2. **Entity formation + tax status** — driving decision for everything else (donation deductibility, unrelated business income taxation (UBI), board indemnification).
 3. **Real indemnification agreement text** — the placeholder currently disclaims itself as "not legal advice."
 4. **Facilitator + Artist + Vendor agreements** — real money flows to third parties today with no written contract.
 5. **Sales-tax nexus + charitable-solicitation registration analysis** — state-by-state.
 6. **Trademark filings** for the birthright wordmark and flame logo.
 7. **Board/Officer agreements + D&O policy** before recruiting real (non-sample) board members to replace the current placeholders.
-8. **Data privacy framework** (privacy policy, DPAs, DSAR workflow).
+8. **Data privacy framework** (privacy policy, data processing agreements (DPAs), data subject access request (DSAR) workflow).
 9. **Refund / community-standards / dispute-arbitration** policies.
 10. **AI transparency + IP posture** on generated content.
 
@@ -435,8 +603,19 @@ Ordered by risk exposure today:
 | Public contact address | hello@birthright.live | routed via Cloudflare to Gmail |
 
 Engineering can provide counsel with:
-- A read-only admin account on the production platform
+- **A live read-only admin account on the production platform** (already provisioned — see credentials below)
 - Access to a `git`-tracked copy of the source code including all router files referenced above (`/app/backend/routers/*.py`)
 - Sample data exports for review
+
+### Read-only counsel review account
+
+Counsel may sign in to inspect every admin and public surface on the platform. All modification attempts (POST / PUT / PATCH / DELETE requests) are rejected by server-side middleware with HTTP 403; a persistent "Counsel review · read-only" banner appears at the top of every page during the session.
+
+- **Sign-in URL:** `https://birthright.live/login`
+- **Email:** `counsel@birthright.org`
+- **Password:** `counsel-review-2026`
+- **Role:** `readonly_admin`
+
+Please notify engineering (via the executive director) when the review is complete so the account can be rotated or archived.
 
 Please direct clarifying questions to James, who will loop in engineering as needed.

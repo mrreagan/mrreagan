@@ -127,7 +127,7 @@ function ProtectedRoute({ children, roles, allowOmbudsman }) {
 }
 
 const FACILITATOR_ROLES = ["facilitator", "admin"];
-const ADMIN_ROLES = ["admin"];
+const ADMIN_ROLES = ["admin", "readonly_admin"];
 
 // Slug-preserving redirects from old canonical paths to new canonical paths.
 // react-router's <Navigate> doesn't templatize :params, so we read the param

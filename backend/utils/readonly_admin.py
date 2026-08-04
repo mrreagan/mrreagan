@@ -1,0 +1,157 @@
+"""Read-only counsel access.
+
+Purpose:
+    Give outside legal counsel a real login they can use to inspect every
+    admin and public URL on the platform WITHOUT being able to mutate data.
+
+Design:
+    - New user role: `readonly_admin`.
+    - A FastAPI middleware inspects every incoming request. If the caller
+      is authenticated with `role = readonly_admin` and the HTTP method is
+      NOT safe (POST/PUT/PATCH/DELETE), the request is rejected with 403.
+    - `require_roles("admin")` decorators are extended platform-wide to also
+      accept `readonly_admin`. Combined with the middleware, this gives
+      counsel view-only access to every admin surface without cascading
+      hand-edits across every router.
+    - Startup seed guarantees a canonical counsel account exists. Credentials
+      are also mirrored to /app/memory/test_credentials.md for handoff.
+
+Notes:
+    - Login/logout is intentionally exempt so counsel can actually sign in.
+    - Webhooks (Stripe) are exempt because Stripe callers have no user
+      session — the middleware only fires when a session/JWT is present.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from typing import Callable
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from auth_utils import COOKIE_NAME, JWT_SECRET, JWT_ALG
+import jwt  # PyJWT — already installed as an auth_utils transitive dep
+
+logger = logging.getLogger("birthright.readonly")
+
+READONLY_ROLE = "readonly_admin"
+
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+# Paths a counsel account must be able to hit even though they mutate — login,
+# logout, session refresh, password reset. Anything with side effects that a
+# read-only session legitimately needs.
+_ALLOWLIST_EXACT = frozenset({
+    "/api/auth/login",
+    "/api/auth/logout",
+    "/api/auth/refresh",
+})
+_ALLOWLIST_PREFIXES = (
+    "/api/auth/",             # covers login/logout/refresh + optional MFA in future
+    "/api/password-reset/",   # counsel can reset their own password
+)
+
+
+class ReadonlyEnforcementMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: Callable):
+        if request.method in _SAFE_METHODS:
+            return await call_next(request)
+
+        path = request.url.path
+        if path in _ALLOWLIST_EXACT:
+            return await call_next(request)
+        if any(path.startswith(p) for p in _ALLOWLIST_PREFIXES):
+            return await call_next(request)
+
+        # Not a safe method and not allow-listed. Check if the caller is a
+        # read-only admin; if so, refuse. Everyone else falls through.
+        role = _peek_role_from_request(request)
+        if role == READONLY_ROLE:
+            logger.info(
+                "readonly_admin blocked from %s %s (headers: %s)",
+                request.method, path, request.headers.get("origin", "?"),
+            )
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": (
+                        "This is a read-only counsel account. Data cannot be "
+                        "modified from this session. Contact engineering if "
+                        "you need mutable admin access."
+                    ),
+                    "readonly": True,
+                },
+            )
+        return await call_next(request)
+
+
+def _peek_role_from_request(request: Request) -> str | None:
+    """Best-effort role extraction — mirrors `auth_utils.get_current_user`
+    but returns None on any failure so the request continues normally."""
+    token: str | None = None
+    auth_hdr = request.headers.get("authorization")
+    if auth_hdr and auth_hdr.lower().startswith("bearer "):
+        token = auth_hdr.split(" ", 1)[1].strip()
+    if not token:
+        token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+        return payload.get("role")
+    except Exception:
+        return None
+
+
+# =========================================================================
+# Seed helper
+# =========================================================================
+COUNSEL_EMAIL = os.environ.get("COUNSEL_EMAIL", "counsel@birthright.org")
+_DEFAULT_COUNSEL_PASSWORD = "counsel-review-2026"  # noqa: S105 — seed only, published in test_credentials.md
+COUNSEL_PASSWORD = os.environ.get("COUNSEL_PASSWORD", _DEFAULT_COUNSEL_PASSWORD)
+
+
+async def ensure_counsel_account(db) -> dict:
+    """Idempotent seed for the counsel read-only account. Returns the user doc.
+
+    - Creates the user if absent.
+    - Resets password to the configured COUNSEL_PASSWORD if it doesn't match,
+      so redeploys always leave a working credential.
+    - Ensures the role is `readonly_admin`.
+    """
+    from models import gen_id, now_iso
+    from passlib.context import CryptContext
+
+    pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    existing = await db.users.find_one({"email": COUNSEL_EMAIL})
+    hashed = pwd_ctx.hash(COUNSEL_PASSWORD)
+    if not existing:
+        user = {
+            "id": gen_id(),
+            "email": COUNSEL_EMAIL,
+            "password_hash": hashed,
+            "first_name": "Counsel",
+            "last_name": "Reviewer",
+            "role": READONLY_ROLE,
+            "is_active": True,
+            "is_foundation": False,
+            "created_at": now_iso(),
+            "notes": "Read-only counsel review account — auto-seeded. Cannot mutate data.",
+        }
+        await db.users.insert_one(user)
+        logger.info("Seeded counsel read-only account: %s", COUNSEL_EMAIL)
+        return user
+    # Existing — ensure role is right and password matches configured value.
+    updates = {}
+    if existing.get("role") != READONLY_ROLE:
+        updates["role"] = READONLY_ROLE
+    if not pwd_ctx.verify(COUNSEL_PASSWORD, existing.get("password_hash", "") or " "):
+        updates["password_hash"] = hashed
+    if not existing.get("is_active", True):
+        updates["is_active"] = True
+    if updates:
+        await db.users.update_one({"id": existing["id"]}, {"$set": updates})
+        logger.info("Reconciled counsel account fields: %s", list(updates.keys()))
+    return {**existing, **updates}

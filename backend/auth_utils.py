@@ -87,6 +87,12 @@ async def get_current_user(
 
 def require_roles(*roles: str):
     async def checker(user: dict = Depends(get_current_user)) -> dict:
+        # `readonly_admin` is a counsel-review role: it inherits all `admin`
+        # read permissions, but write attempts are blocked by the
+        # ReadonlyEnforcementMiddleware. This keeps every existing
+        # `require_roles("admin")` decorator working without edits.
+        if "admin" in roles and user.get("role") == "readonly_admin":
+            return user
         if user.get("role") not in roles:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return user

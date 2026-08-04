@@ -247,6 +247,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Read-only counsel enforcement — must be added AFTER CORS so pre-flight
+# OPTIONS requests still get CORS headers regardless of caller role.
+from utils.readonly_admin import ReadonlyEnforcementMiddleware  # noqa: E402
+app.add_middleware(ReadonlyEnforcementMiddleware)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("birthright")
 
@@ -277,6 +282,11 @@ async def startup_event() -> None:
         await ensure_istv_campaign_seeded(db)
     except Exception as e:
         logger.error(f"ISTV campaign seed error: {e}")
+    try:
+        from utils.readonly_admin import ensure_counsel_account
+        await ensure_counsel_account(db)
+    except Exception as e:
+        logger.error(f"Counsel account seed error: {e}")
     try:
         from utils.gather_seed import seed_geographic_tree
         result = await seed_geographic_tree(db)
