@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { History, BadgeCheck, ArrowLeft } from "lucide-react";
+import { History, BadgeCheck, ArrowLeft, Rss } from "lucide-react";
 import api from "../lib/api";
 
 // Group ratifications by year so the timeline stays scannable as history
@@ -44,6 +44,17 @@ export default function LegalHistoryPage() {
         Every time outside counsel ratifies a version of one of our public
         policies, it lands here. Older versions remain part of the record.
       </p>
+
+      <a
+        href={`${process.env.REACT_APP_BACKEND_URL}/api/legal/history.rss`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 inline-flex items-center gap-1 text-xs text-[#476B6B] hover:text-[#0F2424] underline decoration-[#E5E1D8]"
+        data-testid="legal-history-rss-link"
+        title="RSS 2.0 feed — subscribe from any feed reader."
+      >
+        <Rss size={12} strokeWidth={1.6} /> Subscribe via RSS
+      </a>
 
       {error && (
         <p className="mt-6 text-sm text-[#9E3C3C]" data-testid="legal-history-error">

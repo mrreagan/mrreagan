@@ -804,6 +804,76 @@ async def public_ratification_history():
     return out
 
 
+@router.get("/history.rss")
+async def public_ratification_rss(request: Request):
+    """Public RSS 2.0 feed of ratifications for partners + press to
+    subscribe. Uses the site's REACT_APP_BACKEND_URL / current host as
+    the item permalink base so feed readers de-dupe cleanly.
+    """
+    from database import db
+    from fastapi.responses import Response
+    from xml.sax.saxutils import escape as _esc
+    import os
+
+    rows = await db.legal_doc_ratifications.find(
+        {"source_slug": {"$in": list(_SOURCE_TO_PUBLIC.keys())}},
+        {"_id": 0, "source_slug": 1, "version": 1, "ratified_at": 1, "ratified_by": 1},
+    ).sort("ratified_at", -1).to_list(200)
+
+    # Public base: prefer explicit env, fall back to request host.
+    base = os.environ.get("PUBLIC_SITE_URL")
+    if not base:
+        host = request.headers.get("host", "birthright.live")
+        scheme = "https" if request.url.scheme == "https" else "http"
+        base = f"{scheme}://{host}"
+
+    def _rfc822(iso: str) -> str:
+        from datetime import datetime
+        try:
+            dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+            return dt.strftime("%a, %d %b %Y %H:%M:%S %z") or dt.strftime("%a, %d %b %Y %H:%M:%S +0000")
+        except Exception:
+            return ""
+
+    items_xml = []
+    for r in rows:
+        public_slug, title = _SOURCE_TO_PUBLIC.get(r["source_slug"], (r["source_slug"], r["source_slug"]))
+        firm = r.get("ratified_by") or "outside counsel"
+        item_title = f"{title} · v{r['version']} ratified"
+        item_desc = (
+            f"Birthright Foundation policy '{title}' was ratified at version "
+            f"{r['version']} by {firm}. The updated policy is now live at "
+            f"{base}/legal/{public_slug}."
+        )
+        link = f"{base}/legal/{public_slug}"
+        guid = f"{base}/legal/{public_slug}#v{r['version']}"
+        items_xml.append(
+            "<item>"
+            f"<title>{_esc(item_title)}</title>"
+            f"<link>{_esc(link)}</link>"
+            f"<guid isPermaLink=\"false\">{_esc(guid)}</guid>"
+            f"<pubDate>{_esc(_rfc822(r['ratified_at']))}</pubDate>"
+            f"<description>{_esc(item_desc)}</description>"
+            "</item>"
+        )
+
+    channel_updated = rows[0]["ratified_at"] if rows else ""
+    body = (
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        "<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\">"
+        "<channel>"
+        f"<title>Birthright Foundation — Policy Ratifications</title>"
+        f"<link>{_esc(base)}/legal/history</link>"
+        f"<atom:link href=\"{_esc(base)}/api/legal/history.rss\" rel=\"self\" type=\"application/rss+xml\" />"
+        "<description>Notifications whenever outside counsel ratifies a version of a public Birthright policy.</description>"
+        "<language>en-US</language>"
+        f"<lastBuildDate>{_esc(_rfc822(channel_updated))}</lastBuildDate>"
+        + "".join(items_xml) +
+        "</channel></rss>"
+    )
+    return Response(content=body, media_type="application/rss+xml; charset=utf-8")
+
+
 # ============ REDLINE EXPORT (Word track-changes .docx) ============
 # Emits a Word document with real w:ins / w:del revision markup so counsel
 # can open it in Word/LibreOffice and accept/reject each proposed change
@@ -963,4 +1033,258 @@ async def export_unresolved_redlines(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ============ REDLINE ROUNDTRIP (import edited .docx) ============
+# Counsel opens the exported .docx, accepts / rejects / edits each track
+# change in Word, saves, and returns the file. Admin uploads the file
+# here; we parse each numbered redline block (they map 1:1 to the redline
+# comment ids from the export) and extract counsel's resolved text. Admin
+# then previews and selectively applies edits to the source .md, marking
+# the corresponding comments resolved with a `rejected` flag when counsel
+# threw the redline out.
+
+
+def _extract_paragraph_text(paragraph) -> str:
+    """Return the visible-after-accept text of a docx paragraph.
+
+    Word revision runs (`w:ins` and `w:del`) do not appear via
+    `paragraph.text` even though they are the meaningful content. This
+    walks the OXML and collects both plain runs and inserted runs while
+    dropping deleted-text runs (`w:delText`) so we get what the final
+    version WOULD read like if every remaining insertion were accepted.
+    """
+    from docx.oxml.ns import qn
+    pieces: list[str] = []
+
+    for child in paragraph._p.iter():
+        tag = child.tag
+        if tag == qn("w:delText"):
+            continue                  # dropped text — treat as accepted-delete
+        if tag == qn("w:t"):
+            pieces.append(child.text or "")
+    return "".join(pieces)
+
+
+def _parse_roundtrip_docx(blob: bytes) -> list[dict]:
+    """Walk the returned .docx and, for every numbered redline block
+    ('N. Section title'), return the reader-visible resolved text.
+
+    Returns list of {index, section, resolved_text}. The frontend pairs
+    these to comment ids in order (the export writes redlines in
+    ascending `created_at`, so index N maps to the Nth open redline
+    fetched with the same sort).
+    """
+    import re
+    from io import BytesIO
+    from docx import Document
+
+    doc = Document(BytesIO(blob))
+    numbered = re.compile(r"^\s*(\d+)\.\s+(.*)$")
+    blocks: list[dict] = []
+    current: Optional[dict] = None
+
+    for para in doc.paragraphs:
+        text = _extract_paragraph_text(para).strip()
+        if not text:
+            continue
+        m = numbered.match(text)
+        if m:
+            if current:
+                blocks.append(current)
+            current = {
+                "index": int(m.group(1)),
+                "section": m.group(2).strip(),
+                "resolved_lines": [],
+            }
+            continue
+        if current is not None:
+            # Skip the fixed intro paragraphs that come before the first
+            # numbered heading, and the "Intense Quote" rationale (we
+            # detect by matching known bodies later — for now just keep
+            # everything after the numbered heading as candidate text).
+            current["resolved_lines"].append(text)
+
+    if current:
+        blocks.append(current)
+
+    out = []
+    for b in blocks:
+        # Collapse consecutive lines back to a single paragraph. The
+        # first non-empty line that isn't obviously the rationale is the
+        # counsel-resolved replacement.
+        out.append({
+            "index": b["index"],
+            "section": b["section"],
+            "resolved_text": "\n".join(b["resolved_lines"]).strip(),
+        })
+    return out
+
+
+@router.post("/comments/{source_slug}/import-roundtrip")
+async def import_roundtrip_preview(
+    source_slug: str,
+    request: Request,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Parse an uploaded track-changes .docx and return a preview.
+
+    Response pairs each parsed block with the matching UNRESOLVED redline
+    comment (by 1-based order) and computes the proposed action:
+      - accept:  counsel kept the suggested_replacement
+      - reject:  counsel restored the quoted_text
+      - edit:    counsel wrote something else
+    """
+    from database import db
+
+    form = await request.form()
+    upload = form.get("file")
+    if not upload:
+        raise HTTPException(status_code=400, detail="file required (multipart 'file')")
+    blob = await upload.read()
+    try:
+        parsed = _parse_roundtrip_docx(blob)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not parse .docx: {e}")
+
+    open_redlines = await db.legal_doc_comments.find(
+        {"source_slug": source_slug, "resolved": False, "kind": "redline"},
+        {"_id": 0},
+    ).sort("created_at", 1).to_list(500)
+
+    def _classify(quoted: str, replacement: str, resolved_text: str) -> str:
+        if not resolved_text:
+            return "reject"
+        if replacement and replacement.strip() in resolved_text:
+            return "accept"
+        if quoted and quoted.strip() in resolved_text and (not replacement or replacement.strip() not in resolved_text):
+            return "reject"
+        return "edit"
+
+    preview = []
+    for block in parsed:
+        idx = block["index"] - 1
+        if idx < 0 or idx >= len(open_redlines):
+            preview.append({
+                "index": block["index"],
+                "section": block["section"],
+                "resolved_text": block["resolved_text"],
+                "match": None,
+                "action": "orphan",
+            })
+            continue
+        red = open_redlines[idx]
+        action = _classify(red.get("quoted_text") or "", red.get("suggested_replacement") or "", block["resolved_text"])
+        preview.append({
+            "index": block["index"],
+            "section": block["section"],
+            "resolved_text": block["resolved_text"],
+            "match": {
+                "id": red["id"],
+                "section": red.get("section"),
+                "quoted_text": red.get("quoted_text"),
+                "suggested_replacement": red.get("suggested_replacement"),
+                "body": red.get("body"),
+            },
+            "action": action,
+        })
+    return {"count": len(preview), "items": preview}
+
+
+@router.post("/comments/{source_slug}/apply-roundtrip")
+async def apply_roundtrip(
+    source_slug: str,
+    payload: dict,
+    request: Request,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Apply the admin-approved subset of the parsed roundtrip.
+
+    Payload:
+      { "decisions": [ { "comment_id": "...", "action": "accept|reject|skip",
+                         "final_text": "..." } ] }
+
+    Behaviour:
+      - accept: string-replace `quoted_text` → `final_text` in the source
+        .md and mark the redline resolved (rejected=false).
+      - reject: mark the redline resolved with rejected=true; no .md edit.
+      - skip:   leave the redline open.
+
+    After edits the source .md is written back and the caller SHOULD
+    trigger the .docx rebuild separately (POST /legal/rebuild-docx) if
+    they want the counsel-briefing .docx refreshed.
+    """
+    from database import db
+    decisions = payload.get("decisions") or []
+    if not isinstance(decisions, list):
+        raise HTTPException(status_code=400, detail="decisions must be a list")
+
+    fp = LEGAL_DOC_DIR / f"{source_slug}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Unknown source doc")
+    raw = fp.read_text(encoding="utf-8")
+
+    applied = 0
+    rejected = 0
+    skipped = 0
+    misses: list[str] = []
+
+    # Load the open redlines once (id → doc) for fast lookup.
+    by_id: dict[str, dict] = {}
+    async for r in db.legal_doc_comments.find(
+        {"source_slug": source_slug, "resolved": False}, {"_id": 0}
+    ):
+        by_id[r["id"]] = r
+
+    for d in decisions:
+        cid = d.get("comment_id")
+        action = d.get("action")
+        if action == "skip" or cid not in by_id:
+            skipped += 1
+            continue
+        red = by_id[cid]
+        if action == "accept":
+            quoted = red.get("quoted_text") or ""
+            final_text = (d.get("final_text") or red.get("suggested_replacement") or "").strip()
+            if quoted and quoted in raw and final_text:
+                raw = raw.replace(quoted, final_text, 1)
+                applied += 1
+            else:
+                misses.append(cid)
+            await db.legal_doc_comments.update_one(
+                {"id": cid},
+                {"$set": {
+                    "resolved": True,
+                    "resolved_at": now_iso(),
+                    "resolved_by": user.get("email"),
+                    "rejected": False,
+                    "final_text": final_text,
+                }},
+            )
+        elif action == "reject":
+            rejected += 1
+            await db.legal_doc_comments.update_one(
+                {"id": cid},
+                {"$set": {
+                    "resolved": True,
+                    "resolved_at": now_iso(),
+                    "resolved_by": user.get("email"),
+                    "rejected": True,
+                }},
+            )
+
+    fp.write_text(raw, encoding="utf-8")
+
+    await log_action(
+        db, user, "legal.doc.redlines.roundtrip.apply",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={"applied": applied, "rejected": rejected, "skipped": skipped,
+                  "misses": len(misses)},
+    )
+    return {
+        "applied": applied,
+        "rejected": rejected,
+        "skipped": skipped,
+        "unmatched_comment_ids": misses,
+    }
 

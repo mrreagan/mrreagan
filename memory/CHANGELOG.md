@@ -3,6 +3,34 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — Ratification RSS + Redline roundtrip import
+- **RSS 2.0 feed** at `/api/legal/history.rss` mirrors the public
+  `/legal/history` list — one item per ratification with title, version,
+  link, GUID, pubDate, and description. `atom:link rel="self"` included
+  for reader compatibility. Base URL prefers the `PUBLIC_SITE_URL`
+  env var, falls back to the request host. XML-validated end-to-end.
+- **Subscribe via RSS** button surfaced on `/legal/history`.
+- **Redline roundtrip import** — new admin endpoints
+  `POST /api/legal/comments/{slug}/import-roundtrip` (multipart .docx)
+  and `POST /api/legal/comments/{slug}/apply-roundtrip`.
+  - Parser walks the returned .docx paragraph-by-paragraph, honours
+    Word revision semantics (drops `w:delText`, keeps `w:t` and `w:ins`
+    contents), extracts each numbered redline block, and classifies
+    counsel's decision as `accept` / `reject` / `edit` / `orphan`.
+  - Apply endpoint takes `[{comment_id, action, final_text}]`,
+    string-replaces `quoted_text → final_text` in the source .md for
+    accepted redlines, marks all decided comments resolved (with a
+    new `rejected` boolean when counsel threw them out), and returns
+    counts of applied / rejected / skipped / unmatched.
+- **Admin UI**: `/admin/legal/ratifications` now shows an "Import
+  roundtrip (.docx)" upload button next to Export. Uploading opens
+  a preview card with a per-redline action select (accept / reject /
+  skip) and an editable final-text input for accepted rows. Apply
+  writes the source and refreshes the comment list. Verified full
+  round-trip with curl: export → re-upload → preview shows classifier
+  action per redline → apply mutates source .md and marks comments
+  resolved.
+
 ## 2026-02-04 — Ratification change-log + Redline .docx export
 - New public endpoint `GET /api/legal/history` returns every ratification
   of a public doc, newest first (public slug + title + version + date +

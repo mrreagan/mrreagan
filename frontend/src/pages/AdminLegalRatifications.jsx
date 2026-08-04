@@ -24,6 +24,8 @@ import {
   Check,
   BadgeCheck,
   Download,
+  Upload,
+  X as XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
@@ -161,6 +163,57 @@ export default function AdminLegalRatifications() {
     }
   };
 
+  // Redline roundtrip — upload counsel's returned .docx and preview
+  // proposed edits before writing anything to the source .md.
+  const [roundtrip, setRoundtrip] = useState(null); // { items: [...] }
+  const [decisions, setDecisions] = useState({});   // { comment_id: {action, final_text} }
+  const [busyRoundtrip, setBusyRoundtrip] = useState(false);
+
+  const uploadRoundtrip = async (file) => {
+    if (!sourceSlug || !file) return;
+    setBusyRoundtrip(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await api.post(`/legal/comments/${sourceSlug}/import-roundtrip`, fd);
+      setRoundtrip(r.data);
+      // Seed default decisions from the classifier
+      const seed = {};
+      for (const it of r.data.items || []) {
+        if (it.match) {
+          const t = it.action === "accept"
+            ? (it.match.suggested_replacement || "")
+            : (it.match.quoted_text || "");
+          seed[it.match.id] = { action: it.action === "orphan" ? "skip" : it.action, final_text: t };
+        }
+      }
+      setDecisions(seed);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Could not parse file");
+    } finally {
+      setBusyRoundtrip(false);
+    }
+  };
+
+  const applyRoundtrip = async () => {
+    if (!sourceSlug || !roundtrip) return;
+    const list = Object.entries(decisions).map(([comment_id, d]) => ({ comment_id, action: d.action, final_text: d.final_text }));
+    if (list.length === 0) { toast.error("Nothing to apply."); return; }
+    setBusyRoundtrip(true);
+    try {
+      const r = await api.post(`/legal/comments/${sourceSlug}/apply-roundtrip`, { decisions: list });
+      toast.success(`Applied ${r.data.applied} · rejected ${r.data.rejected} · skipped ${r.data.skipped}`);
+      setRoundtrip(null);
+      setDecisions({});
+      const c = await api.get(`/legal/comments/${sourceSlug}`);
+      setComments((old) => ({ ...old, [sourceSlug]: c.data || [] }));
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Apply failed");
+    } finally {
+      setBusyRoundtrip(false);
+    }
+  };
+
   const openComments = sourceSlug ? (comments[sourceSlug] || []) : [];
 
   return (
@@ -285,14 +338,30 @@ export default function AdminLegalRatifications() {
                     <MessageSquare size={12} /> Counsel redlines &amp; comments
                   </p>
                   {openComments.some((c) => !c.resolved && c.kind === "redline") && (
-                    <button
-                      onClick={exportRedlines}
-                      className="btn-outline text-xs inline-flex items-center gap-1"
-                      data-testid="legal-comment-export-redlines"
-                      title="Download unresolved redlines as a Word file with track-changes markup for offline counsel review."
-                    >
-                      <Download size={12} /> Export unresolved redlines (.docx)
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={exportRedlines}
+                        className="btn-outline text-xs inline-flex items-center gap-1"
+                        data-testid="legal-comment-export-redlines"
+                        title="Download unresolved redlines as a Word file with track-changes markup for offline counsel review."
+                      >
+                        <Download size={12} /> Export unresolved (.docx)
+                      </button>
+                      <label
+                        className="btn-outline text-xs inline-flex items-center gap-1 cursor-pointer"
+                        data-testid="legal-comment-import-roundtrip-btn"
+                        title="Upload the .docx counsel returned after reviewing your redlines. We'll parse each block, show you a per-redline preview, and let you selectively apply the resolved edits to the source draft."
+                      >
+                        <Upload size={12} /> Import roundtrip (.docx)
+                        <input
+                          type="file"
+                          accept=".docx"
+                          className="hidden"
+                          onChange={(e) => e.target.files?.[0] && uploadRoundtrip(e.target.files[0])}
+                          data-testid="legal-comment-import-roundtrip-input"
+                        />
+                      </label>
+                    </div>
                   )}
                 </div>
 
@@ -373,6 +442,82 @@ export default function AdminLegalRatifications() {
                   ))}
                 </ul>
               </div>
+
+              {roundtrip && (
+                <div className="card p-5" data-testid="legal-roundtrip-preview">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs uppercase tracking-wider text-[#476B6B] font-semibold inline-flex items-center gap-1">
+                      <Upload size={12} /> Roundtrip preview — {roundtrip.count} block(s)
+                    </p>
+                    <button
+                      onClick={() => { setRoundtrip(null); setDecisions({}); }}
+                      className="btn-ghost text-xs inline-flex items-center gap-1"
+                      data-testid="legal-roundtrip-cancel"
+                    >
+                      <XIcon size={12} /> Cancel
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#5C6B6B] mb-3 leading-relaxed">
+                    Each row shows the redline as counsel returned it. Choose an action:
+                    <span className="text-[#1E4030] font-semibold"> Accept</span> writes the final text into the source .md;
+                    <span className="text-[#9E3C3C] font-semibold"> Reject</span> keeps the source unchanged;
+                    <span className="text-[#7A5A1A] font-semibold"> Skip</span> leaves the redline open for later.
+                  </p>
+                  <ul className="space-y-3" data-testid="legal-roundtrip-list">
+                    {roundtrip.items.map((it) => {
+                      const cid = it.match?.id;
+                      const d = cid ? (decisions[cid] || { action: "skip", final_text: "" }) : { action: "skip", final_text: "" };
+                      return (
+                        <li key={`${it.index}-${cid || "orphan"}`} className="border-l-2 border-[#C9A961] pl-3" data-testid={`legal-roundtrip-item-${it.index}`}>
+                          <p className="text-[10px] uppercase tracking-wider text-[#476B6B] font-semibold">
+                            #{it.index} · {it.section} · classifier: {it.action}
+                          </p>
+                          {it.match ? (
+                            <>
+                              <p className="text-xs text-[#5C6B6B] mt-1 line-through">{it.match.quoted_text}</p>
+                              <p className="text-xs text-[#1E4030] mt-1">→ {it.match.suggested_replacement}</p>
+                              <p className="text-[10px] text-[#5C6B6B] mt-1 italic">counsel&apos;s returned text: &ldquo;{(it.resolved_text || "").slice(0, 200)}&rdquo;</p>
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <select
+                                  value={d.action}
+                                  onChange={(e) => setDecisions((o) => ({ ...o, [cid]: { ...d, action: e.target.value } }))}
+                                  className="input input-bordered text-xs py-1"
+                                  data-testid={`legal-roundtrip-action-${it.index}`}
+                                >
+                                  <option value="accept">Accept</option>
+                                  <option value="reject">Reject</option>
+                                  <option value="skip">Skip</option>
+                                </select>
+                                {d.action === "accept" && (
+                                  <input
+                                    value={d.final_text}
+                                    onChange={(e) => setDecisions((o) => ({ ...o, [cid]: { ...d, final_text: e.target.value } }))}
+                                    placeholder="Final text to write"
+                                    className="input input-bordered text-xs py-1 flex-1"
+                                    data-testid={`legal-roundtrip-final-${it.index}`}
+                                  />
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-xs text-[#9E3C3C] mt-1">Orphan block — no matching open redline. This will be skipped.</p>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      onClick={applyRoundtrip}
+                      disabled={busyRoundtrip}
+                      className="btn-primary text-sm inline-flex items-center gap-1"
+                      data-testid="legal-roundtrip-apply"
+                    >
+                      <Check size={14} /> {busyRoundtrip ? "Applying…" : "Apply selected decisions"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
