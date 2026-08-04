@@ -41,10 +41,21 @@ def _redact_email(email: str) -> str:
     return f"{local[0]}{'•' * (len(local) - 2)}{local[-1]}@{domain}"
 
 
+def _require_true_admin(user: dict):
+    """`require_roles('admin')` in this codebase also admits
+    `readonly_admin` (counsel) for read-side admin routes. For the
+    credentials endpoints we want STRICT admin — otherwise counsel could
+    read `env_password_default_in_use` and learn whether the account
+    still uses the seeded default. Enforce that here explicitly."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+
 @router.get("/counsel")
 async def get_counsel_settings(user: dict = Depends(require_roles("admin"))):
     """Return the current counsel account state so the settings UI can
     prefill the form."""
+    _require_true_admin(user)
     doc = await db.users.find_one({"role": READONLY_ROLE}, {"_id": 0})
     if not doc:
         # Should never happen after boot, but degrade gracefully.
@@ -84,6 +95,7 @@ async def rotate_counsel_credentials(
     address. Both are stored in the DB user record and persist across
     backend restarts (the seeder no longer overwrites them).
     """
+    _require_true_admin(user)
     new_email = (payload.get("email") or "").strip()
     new_password = payload.get("password") or ""
     if not new_email and not new_password:

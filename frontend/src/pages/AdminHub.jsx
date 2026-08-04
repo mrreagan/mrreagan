@@ -4,6 +4,7 @@ import {
   ShoppingBag, Store, Sparkles, Image as ImageIcon, Microscope, Calendar,
   Users, UserPlus, Briefcase, FileText, Wallet, DollarSign,
   RotateCcw, Mail, Bot, BarChart3, Scale, Shield, ShieldCheck, Server, FlaskConical,
+  KeyRound,
   ArrowRight,
 } from "lucide-react";
 
@@ -71,6 +72,8 @@ const SECTIONS = [
       { to: "/admin/users", icon: Shield, label: "Users & members", desc: "All registered users. Toggle the Foundation-member flag here for wholesale equip pricing + 1:1 AI billing." },
       { to: "/admin/stats", icon: BarChart3, label: "Stats dashboard", desc: "Headline KPI counters and POD-margin tiles (the page formerly at /admin)." },
       { to: "/admin/counsel-review", icon: FileText, label: "Counsel review checklist", desc: "Two-checkbox (manual + auto) tracking of counsel's review of every legal draft. Visible to counsel and admin." },
+      { to: "/admin/legal/ratifications", icon: Scale, label: "Legal ratifications", desc: "Mark drafts counsel-ratified, track redlines, apply roundtrips." },
+      { to: "/admin/settings/counsel", icon: KeyRound, label: "Counsel credentials", desc: "Rotate the counsel email + password. Persists across redeploys." },
       { to: "/admin/counsel-activity", icon: ShieldCheck, label: "Counsel activity log", desc: "Full URL-by-URL audit trail of counsel sessions. Admin-only — counsel cannot view their own log." },
       { to: "/admin/user-activity", icon: Shield, label: "User activity & admin trace", desc: "Tier 1 security events (all users) + Tier 2 URL trace of every admin session. 365-day retention. Admin-only." },
     ],

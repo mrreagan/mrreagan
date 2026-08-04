@@ -68,10 +68,12 @@ export default function AdminCounselSettings() {
         <ArrowLeft size={14} strokeWidth={1.5} /> Admin Hub
       </Link>
 
-      <span className="label">Settings · Counsel</span>
-      <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
-        <Briefcase size={26} strokeWidth={1.2} /> Counsel credentials
-      </h1>
+      <div className="mt-4">
+        <span className="label block">Settings · Counsel</span>
+        <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
+          <Briefcase size={26} strokeWidth={1.2} /> Counsel credentials
+        </h1>
+      </div>
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B] max-w-2xl">
         Rotate the read-only counsel account&apos;s email and password. Env

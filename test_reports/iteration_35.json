@@ -1,0 +1,32 @@
+{
+  "summary": "Verification pass for the three iter34 fixes on the counsel credential settings feature. Backend: created /app/backend/tests/test_iter35_counsel_settings_strict.py (6 tests) and re-ran the iter34/32/33 regression suites — 49/49 passed. Counsel JWT now gets HTTP 403 on GET /api/admin/settings/counsel (no env_password_default_in_use leak) and 403 on POST /rotate; admin still gets 200 on both (rotate + restore verified with real counsel logins, credentials restored to documented defaults). Frontend: /admin (AdminHub) contains exactly one anchor href='/admin/settings/counsel' in Governance & System; clicking navigates to the settings page which loads state (counsel@birthright.org). Header layout verified by bounding boxes: back-link y=117 (h=20) < label y=177 < h1 y=201.8 — label sits on its own line, no collision. Counsel-side UI check: page does not leak the current email or the env-default password warning.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin (AdminHub.jsx)", "issues": ["Root wrapper uses `container max-w-6xl` without `mx-auto`, and tailwind.config.js has no container.center/padding config, so the whole Operations hub is flush against the left viewport edge (x=0, no gutter) instead of being centered like every other page which uses the custom `container-page` class. Suggest switching to `container-page max-w-6xl py-10`."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter35_counsel_settings_strict.py",
+    "/app/backend/tests/test_iter34_counsel_settings.py",
+    "/app/test_reports/pytest/iter35_results.xml"
+  ],
+  "action_items": [
+    "Optional (cosmetic): center the AdminHub container (`container-page` instead of bare `container`) so /admin is not left-flushed.",
+    "Optional (UX): counsel/readonly_admin still sees the 'Counsel credentials' tile on /admin even though the endpoint now 403s; consider hiding admin-only tiles for readonly_admin."
+  ],
+  "critical_code_review_comments": [
+    "_require_true_admin() is called inside the handlers rather than as a dependency; fine functionally, but a `require_roles('admin', strict=True)` style dependency would prevent the next endpoint author from forgetting the call.",
+    "GET /admin/settings/counsel returns the full unredacted counsel email plus email_redacted; the redacted field is currently unused by the UI."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter35_counsel_settings_strict.py"],
+  "success_rate": {"backend": "100% (49/49)", "frontend": "100% (all requested checks passed)"},
+  "seed_data_creation": "None. Counsel password was temporarily rotated during test_admin_rotate_and_restore and restored to counsel-review-2026; final GET confirms email=counsel@birthright.org and env_password_default_in_use=true.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@birthright.org / birthright2026; counsel@birthright.org / counsel-review-2026 (both working, restored)",
+  "context_for_next_testing_agent": "All three iter34 fixes verified. Regression suites to keep running: test_iter32_counsel_guide.py, test_iter33_counsel_allowlist.py, test_iter34_counsel_settings.py, test_iter35_counsel_settings_strict.py (49 tests total, run with -p no:randomly since counsel rotation tests are order sensitive). Only remaining finding is cosmetic AdminHub left-flush layout.",
+  "rca_of_the_issue": "iter34's 200 on counsel GET came from require_roles('admin') admitting readonly_admin; the new explicit _require_true_admin() gate at the top of both handlers closes it — confirmed 403 with an empty-of-secrets body."
+}
