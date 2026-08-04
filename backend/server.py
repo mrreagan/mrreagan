@@ -237,6 +237,11 @@ async def stripe_webhook_endpoint(request: Request) -> Any:
     return await stripe_webhook(request)
 
 
+# Counsel audit router (must be added to api_router BEFORE app.include_router).
+from routers.counsel_audit import router as counsel_router, admin_router as counsel_admin_router  # noqa: E402
+api_router.include_router(counsel_router)
+api_router.include_router(counsel_admin_router)
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -251,6 +256,11 @@ app.add_middleware(
 # OPTIONS requests still get CORS headers regardless of caller role.
 from utils.readonly_admin import ReadonlyEnforcementMiddleware  # noqa: E402
 app.add_middleware(ReadonlyEnforcementMiddleware)
+
+# Counsel activity logger — logs every request from readonly_admin users so
+# admin can audit what counsel has inspected.
+from routers.counsel_audit import CounselActivityLoggerMiddleware  # noqa: E402
+app.add_middleware(CounselActivityLoggerMiddleware)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("birthright")

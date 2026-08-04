@@ -51,6 +51,7 @@ _ALLOWLIST_EXACT = frozenset({
 _ALLOWLIST_PREFIXES = (
     "/api/auth/",             # covers login/logout/refresh + optional MFA in future
     "/api/password-reset/",   # counsel can reset their own password
+    "/api/counsel/review-status/",  # counsel can check off their own review checklist
 )
 
 
