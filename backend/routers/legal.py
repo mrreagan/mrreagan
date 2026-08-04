@@ -1215,17 +1215,29 @@ async def release_working_draft(
     version = ((payload or {}).get("version") or "").strip() or await _next_version(source_slug)
     ratified_by = ((payload or {}).get("ratified_by") or "").strip() or user.get("email") or "admin"
     notes = ((payload or {}).get("notes") or "").strip() or f"Released working draft {wd['id']}"
+
+    # Compute change summary from the working draft's change_log so the
+    # history timeline can show at-a-glance "5 edits by counsel@" summaries
+    # without having to reload every WD row.
+    change_summary = _summarise_wd_change_log(wd.get("change_log") or [])
+
     rat = {
         "id": gen_id(),
         "source_slug": source_slug,
         "version": version,
         "body_hash": body_hash,
+        # Snapshot the final on-disk .md so admins can rollback later.
+        # Also stores the pre-addendum content_md so a rollback restores
+        # counsel-authored text (the addendum will be re-appended by the
+        # rebuild step during rollback).
+        "content_md_snapshot": final_md,
         "notes": notes,
         "ratified_by": ratified_by,
         "ratified_at": now_iso(),
         "ratified_by_user_id": user["id"],
         "ratified_by_user_email": user.get("email"),
         "released_from_working_draft_id": wd["id"],
+        "change_summary": change_summary,
     }
     await db.legal_doc_ratifications.insert_one(dict(rat))
 
@@ -1307,6 +1319,186 @@ async def discard_working_draft(
         metadata={"working_draft_id": wd["id"], "reason": reason},
     )
     return {"state": _WD_STATE_DISCARDED, "working_draft_id": wd["id"]}
+
+
+def _summarise_wd_change_log(change_log: list) -> dict:
+    """Boil a working draft's change_log into a headline for release history.
+
+    Returns something like:
+      {
+        "edits": 5,
+        "authors": ["counsel@birthright.live"],
+        "first_edit_at": "...",
+        "last_edit_at": "...",
+        "actions": {"upload_full": 2, "apply_roundtrip": 3},
+      }
+    """
+    edits = [e for e in (change_log or []) if e.get("action") not in {"mark_ready", "release"}]
+    authors: list[str] = []
+    for e in edits:
+        em = e.get("by_email")
+        if em and em not in authors:
+            authors.append(em)
+    actions: dict[str, int] = {}
+    for e in edits:
+        a = e.get("action") or "unknown"
+        actions[a] = actions.get(a, 0) + 1
+    return {
+        "edits": len(edits),
+        "authors": authors,
+        "first_edit_at": (edits[0].get("at") if edits else None),
+        "last_edit_at": (edits[-1].get("at") if edits else None),
+        "actions": actions,
+    }
+
+
+@router.get("/history-timeline/{source_slug}")
+async def history_timeline(
+    source_slug: str,
+    limit: int = 5,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Release history for one doc.
+
+    Returns the newest `limit` versions (default 5), the total count, and
+    the current released version + body_hash. Each version carries its
+    change_summary and a `can_rollback` flag (false for legacy
+    ratifications that don't have a content snapshot).
+    """
+    from database import db
+    limit = max(1, min(int(limit or 5), 50))
+    total = await db.legal_doc_ratifications.count_documents({"source_slug": source_slug})
+    latest = await db.legal_doc_ratifications.find(
+        {"source_slug": source_slug},
+        {"_id": 0, "content_md_snapshot": 0},  # skip heavy field in list
+    ).sort("ratified_at", -1).to_list(limit)
+
+    # Look up which of these rows actually have a snapshot (for the
+    # rollback affordance). Cheap projection.
+    ids_with_snapshot = set()
+    async for r in db.legal_doc_ratifications.find(
+        {"source_slug": source_slug,
+         "content_md_snapshot": {"$exists": True, "$ne": None}},
+        {"id": 1, "_id": 0},
+    ):
+        ids_with_snapshot.add(r["id"])
+    for row in latest:
+        row["can_rollback"] = row["id"] in ids_with_snapshot
+
+    current = latest[0] if latest else None
+    return {
+        "source_slug": source_slug,
+        "total_versions": total,
+        "current_version": current.get("version") if current else None,
+        "current_body_hash": current.get("body_hash") if current else None,
+        "versions": latest,
+    }
+
+
+@router.post("/history/{source_slug}/rollback/{ratification_id}")
+async def rollback_to_version(
+    source_slug: str,
+    ratification_id: str,
+    payload: Optional[dict] = Body(default=None),
+    user: dict = Depends(require_roles("admin")),
+):
+    """ADMIN — restore a past ratification as a NEW release.
+
+    Steps:
+      1. Load the target ratification's `content_md_snapshot`
+      2. Write to /legal_docs/<slug>.md
+      3. Rebuild the .docx bundle
+      4. Create a new ratification with an auto-bumped minor version
+         (or `payload.version` override) and notes flagging the rollback
+      5. Any open working draft is discarded (releasing invalidates WIP)
+
+    The original ratification stays in history — this is an additive
+    restore, not a delete.
+    """
+    from database import db
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can rollback.")
+
+    fp = LEGAL_DOC_DIR / f"{source_slug}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Unknown source doc")
+
+    target = await db.legal_doc_ratifications.find_one(
+        {"id": ratification_id, "source_slug": source_slug}, {"_id": 0},
+    )
+    if not target:
+        raise HTTPException(status_code=404, detail="Ratification not found for this slug.")
+    snapshot = target.get("content_md_snapshot")
+    if not snapshot:
+        raise HTTPException(
+            status_code=400,
+            detail="This version has no content snapshot — rollback is not possible.",
+        )
+
+    fp.write_text(snapshot, encoding="utf-8")
+    rebuild_ok = await _run_docx_rebuild(user=user)
+    final_md = fp.read_text(encoding="utf-8")
+    cleaned, _ = _strip_draft_disclaimer(final_md)
+    body_hash = _md_body_hash(cleaned)
+
+    version = ((payload or {}).get("version") or "").strip() or await _next_version(source_slug)
+    reason = ((payload or {}).get("reason") or "").strip()
+    notes = (
+        f"Rollback to v{target.get('version')} · originally ratified "
+        f"{target.get('ratified_at')} by {target.get('ratified_by')}."
+        + (f" Reason: {reason}" if reason else "")
+    )
+
+    rat = {
+        "id": gen_id(),
+        "source_slug": source_slug,
+        "version": version,
+        "body_hash": body_hash,
+        "content_md_snapshot": final_md,
+        "notes": notes,
+        "ratified_by": user.get("email") or "admin",
+        "ratified_at": now_iso(),
+        "ratified_by_user_id": user["id"],
+        "ratified_by_user_email": user.get("email"),
+        "rolled_back_from_ratification_id": ratification_id,
+        "change_summary": {
+            "edits": 0,
+            "authors": [user.get("email")],
+            "actions": {"rollback": 1},
+            "rolled_back_from_version": target.get("version"),
+        },
+    }
+    await db.legal_doc_ratifications.insert_one(dict(rat))
+
+    # Discard any open working draft so it doesn't stealth-overwrite the
+    # rollback next time counsel edits.
+    wd = await _active_working_draft(source_slug)
+    if wd:
+        await db.legal_doc_working_drafts.update_one(
+            {"id": wd["id"]},
+            {"$set": {
+                "state": _WD_STATE_DISCARDED,
+                "discarded_at": now_iso(),
+                "discarded_by_email": user.get("email"),
+                "discard_reason": f"Rollback to v{target.get('version')}",
+            }},
+        )
+
+    await log_action(
+        db, user, "legal.doc.history.rollback",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={"rolled_back_from": ratification_id,
+                  "from_version": target.get("version"),
+                  "new_version": version,
+                  "rebuilt": rebuild_ok},
+    )
+    return {
+        "ratification_id": rat["id"],
+        "version": version,
+        "rolled_back_from_version": target.get("version"),
+        "rebuilt_docx": rebuild_ok,
+        "working_draft_discarded": bool(wd),
+    }
 
 
 # ============ INLINE REDLINES / COUNSEL COMMENTS ============

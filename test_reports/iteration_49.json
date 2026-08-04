@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 49 — Release History Timeline + admin rollback. Backend: 16/16 pytest cases pass in /app/backend/tests/test_iter49_history_timeline.py (release now persists content_md_snapshot + change_summary with edits==non-mark_ready/non-release change_log entries, authors, actions {upload_full:2}, first/last_edit_at; GET /history-timeline returns {source_slug,total_versions,current_version,current_body_hash,versions[]} newest-first with id/version/ratified_at/ratified_by/notes/change_summary/can_rollback, no _id and no heavy content_md_snapshot leak; default limit 5, limit=1 works, limit=500 clamped to 50, negative clamped to 1, unknown slug returns empty payload, unauthenticated 401/403, counsel can read; legacy row inserted directly (no snapshot) gets can_rollback:false and rollback returns 400 'no content snapshot'; counsel rollback 403, unknown rat id 404; admin rollback auto-bumps version (1.2 -> 1.3), sets rolled_back_from_ratification_id + change_summary.rolled_back_from_version, embeds optional reason in notes, on-disk .md byte-identical to target snapshot after rebuild, open working draft forced to state='discarded', working_draft_discarded flag accurate both ways). Frontend: seeded 7 releases, verified History button on all 6 counsel rows, modal opens, 'Showing 5 of 7 total releases · current v1.6', Current badge on index 0, notes + 'N edits by counsel@birthright.live · 2 upload full' lines, 'Show 2 more' pagination increments limit by 5 and disappears when all loaded, empty state on 01-terms-of-service ('No versions released yet.' + history-empty), X/footer Close both work, admin rollback prompt -> toast 'Rolled back to v1.3 · new version v1.8' -> modal closes -> row badge updates to RELEASED V1.8 and new version carries 'ROLLBACK FROM V1.3' badge, current row never has a rollback button, legacy row shows 'NO SNAPSHOT' with no rollback for admin, and counsel sees 0 rollback buttons. All test data removed: 9 ratifications + 7 working drafts deleted, 03-cookie-notice.md restored byte-identical, rebuild-docx 200, /api/legal/pages/cookie-notice 200.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/legal/history-timeline/{slug}", "issue": "limit=0 is treated as unset (`int(limit or 5)`) and silently returns 5 rows instead of the clamped minimum of 1. Harmless but inconsistent with the documented 'clamp to 1..50'; a Query(ge=1, le=50) would be cleaner and would 422 on garbage."},
+      {"endpoint": "GET /api/legal/history-timeline/{slug}", "issue": "Ordering is on the ISO string `ratified_at` only. Two ratifications created inside the same clock tick (or with a caller-supplied ratified_at) can order non-deterministically, which would put the wrong row at index 0 and therefore mis-label the 'Current' badge."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Counsel console — history modal", "issues": ["Layout, contrast and spacing read well; modal is z-[60] so it correctly sits above the cookie-consent banner (the iteration-48 overlay defect does not reproduce here).", "Rollback notes echo the raw ISO timestamp ('originally ratified 2026-08-04T22:55:03.949192+00:00') inside the notes line while every other date on the card is localised — cosmetic inconsistency only."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter49_history_timeline.py",
+    "/app/backend/tests/seed_iter49_frontend.py",
+    "/app/test_reports/pytest/iter49_results.xml"
+  ],
+  "action_items": [
+    "Optional: validate `limit` with Query(default=5, ge=1, le=50) so limit=0/garbage is explicit rather than silently defaulting.",
+    "Optional: make timeline ordering deterministic (sort by ratified_at then _id/insertion order) so same-second releases can't flip the 'Current' row.",
+    "Optional: data-testid=`history-row-{version}` collides if two ratifications share a version (possible via the payload.version override on release/rollback) — prefer the ratification id in the testid.",
+    "Optional: the rollback path discards an open working draft without appending a change_log entry (release/discard endpoints both do), so the WD audit trail loses the reason for its discard."
+  ],
+  "critical_code_review_comments": [
+    "history_timeline runs three queries (count + page + full id scan for snapshots); the `ids_with_snapshot` scan is unbounded over all ratifications of the slug. Restrict it to the ids in the current page ({'id': {'$in': page_ids}}) to keep it O(limit).",
+    "rollback_to_version writes the .md before validating anything else — it is fine today because target/snapshot are validated first, but note that a failed _run_docx_rebuild still leaves the new content on disk and inserts a ratification with rebuilt_docx=false; there is no rollback-of-the-rollback path.",
+    "CounselConsole.jsx is 841 lines with three modal components inline; extract HistoryModal/DiffModal/ReleaseModal into their own files to stay under the 700-line guidance."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter49_history_timeline.py",
+    "/app/backend/tests/seed_iter49_frontend.py",
+    "/app/test_reports/iteration_49.json"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary only: 7 releases (v1.0–v1.6) + 3 rollbacks for 03-cookie-notice plus one synthetic legacy ratification without content_md_snapshot. ALL removed at teardown (0 ratifications, 0 working drafts remain for the slug); 03-cookie-notice.md restored byte-identical from /tmp/iter49/03-cookie-notice.md.bak and the docx bundle rebuilt (200).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@birthright.live / birthright2026 (admin); counsel@birthright.live / counsel-review-2026 (readonly_admin)",
+  "context_for_next_testing_agent": "Use /app/backend/tests/seed_iter49_frontend.py seed N | cleanup to create/tear down release history for 03-cookie-notice (it snapshots the .md to /tmp/iter49 and records pre-existing row ids). 03-cookie-notice has ZERO ratifications in seed state — every version you see is test data. Badge text in the history modal is CSS-uppercased, so assert case-insensitively ('CURRENT', 'ROLLBACK FROM V1.2', 'NO SNAPSHOT'). Rollback uses window.prompt — register a page.on('dialog') handler that accepts with the reason string. Toast auto-dismisses, poll for it within ~2s of the click.",
+  "rca_of_the_issue": "No functional defects found. The two backend minors are input-handling/ordering robustness gaps: `int(limit or 5)` converts a falsy 0 into the default before clamping, and the timeline sort key is the ISO ratified_at string only, so sub-second-identical releases have undefined order."
+}

@@ -21,7 +21,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft, Upload, Download, ShieldCheck, CheckCircle2, X as XIcon,
-  Clock, FileText, MessageSquare, Send, Trash2, GitCompare,
+  Clock, FileText, MessageSquare, Send, Trash2, GitCompare, History, Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { diffLines } from "diff";
@@ -39,6 +39,7 @@ export default function CounselConsole() {
   const [busy, setBusy] = useState({});
   const [releaseModal, setReleaseModal] = useState(null); // { slug, defaultVersion }
   const [diffModal, setDiffModal] = useState(null); // { slug, title, released, working, wd }
+  const [historyModal, setHistoryModal] = useState(null); // { slug, title }
 
   const loadAll = async () => {
     try {
@@ -298,6 +299,14 @@ export default function CounselConsole() {
               {/* Right — actions */}
               <div className="flex flex-wrap gap-2 lg:justify-end lg:min-w-[380px]">
                 <button
+                  onClick={() => setHistoryModal({ slug: sourceSlug, title: p.title })}
+                  className="btn-outline text-xs inline-flex items-center gap-1"
+                  data-testid={`counsel-row-${sourceSlug}-history-btn`}
+                >
+                  <History size={12} /> History
+                </button>
+
+                <button
                   onClick={() => downloadReleased(sourceSlug, p.title)}
                   disabled={!!busy[`${sourceSlug}:dl-released`]}
                   className="btn-outline text-xs inline-flex items-center gap-1"
@@ -414,6 +423,16 @@ export default function CounselConsole() {
             setReleaseModal({ slug: diffModal.slug, title: diffModal.title, wd: diffModal.wd });
             setDiffModal(null);
           } : null}
+        />
+      )}
+
+      {/* Release history modal — anyone with counsel-console access */}
+      {historyModal && (
+        <HistoryModal
+          data={historyModal}
+          isAdmin={isAdmin}
+          onClose={() => setHistoryModal(null)}
+          onRolledBack={async () => { setHistoryModal(null); await loadAll(); }}
         />
       )}
     </div>
@@ -632,7 +651,7 @@ function buildRows(parts) {
   let rightNum = 0;
   for (const p of parts) {
     const lines = p.value.split("\n");
-    if (lines.length && lines[lines.length - 1] === "") lines.pop(); // trailing \n
+    if (lines.length && lines[lines.length - 1] === "") lines.pop();
     if (p.added) {
       for (const line of lines) {
         rightNum++;
@@ -660,4 +679,162 @@ function buildRows(parts) {
     }
   }
   return rows;
+}
+
+// ---------- History modal — release timeline + rollback ----------
+function HistoryModal({ data, isAdmin, onClose, onRolledBack }) {
+  const { slug, title } = data;
+  const [state, setState] = useState({ loading: true, data: null });
+  const [limit, setLimit] = useState(5);
+  const [busy, setBusy] = useState(null);
+
+  const load = React.useCallback(async (n) => {
+    setState((s) => ({ ...s, loading: true }));
+    try {
+      const r = await api.get(`/legal/history-timeline/${slug}`, { params: { limit: n } });
+      setState({ loading: false, data: r.data });
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Could not load history");
+      setState({ loading: false, data: null });
+    }
+  }, [slug]);
+
+  useEffect(() => { load(limit); }, [load, limit]);
+
+  const rollback = async (rat) => {
+    if (!isAdmin) return;
+    const reason = window.prompt(
+      `Rollback ${title} to v${rat.version} (${new Date(rat.ratified_at).toLocaleDateString()})?\n\nThis creates a NEW release with the old content. Any open working draft will be discarded.\n\nReason (optional):`,
+      "",
+    );
+    if (reason === null) return;
+    setBusy(rat.id);
+    try {
+      const r = await api.post(`/legal/history/${slug}/rollback/${rat.id}`, { reason });
+      toast.success(`Rolled back to v${rat.version} · new version v${r.data.version}`);
+      await onRolledBack();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Rollback failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const d = state.data;
+  const total = d?.total_versions || 0;
+  const showingAll = limit >= total;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" data-testid="history-modal">
+      <div className="bg-[#FBF3E4] rounded-2xl max-w-2xl w-full flex flex-col overflow-hidden max-h-[85vh]">
+        <div className="p-5 border-b border-[#E5E1D8] flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className="label">Release history</span>
+            <h2 className="font-serif text-2xl mt-1 truncate">{title}</h2>
+            <p className="text-xs text-[#5C6B6B] mt-1" data-testid="history-total">
+              {state.loading ? "Loading…" : (
+                total === 0 ? "No versions released yet."
+                : <>Showing <strong>{Math.min(limit, total)}</strong> of <strong>{total}</strong> total release{total === 1 ? "" : "s"} · current v<strong>{d?.current_version}</strong></>
+              )}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-[#5C6B6B] hover:text-[#0F2424]" data-testid="history-modal-close">
+            <XIcon size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-5 space-y-3" data-testid="history-modal-body">
+          {state.loading && <p className="text-sm text-[#5C6B6B]">Loading…</p>}
+          {!state.loading && total === 0 && (
+            <div className="text-sm text-[#5C6B6B] p-6 text-center" data-testid="history-empty">
+              This doc hasn&apos;t been released yet. Once an admin releases a working draft, the version will appear here.
+            </div>
+          )}
+          {(d?.versions || []).map((v, idx) => {
+            const cs = v.change_summary || {};
+            const isCurrent = idx === 0;
+            return (
+              <div
+                key={v.id}
+                className={`rounded-lg border p-4 ${isCurrent ? "border-[#1E4030] bg-white" : "border-[#E5E1D8] bg-white/60"}`}
+                data-testid={`history-row-${v.version}`}
+              >
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <strong className="font-serif text-lg text-[#0F2424]">v{v.version}</strong>
+                      {isCurrent && (
+                        <span className="text-[10px] uppercase tracking-wider bg-[#1E4030] text-[#FBF3E4] rounded-full px-2 py-0.5 font-semibold">
+                          Current
+                        </span>
+                      )}
+                      {v.rolled_back_from_ratification_id && (
+                        <span className="text-[10px] uppercase tracking-wider bg-[#F5E6D6] text-[#7A5A1A] rounded-full px-2 py-0.5 font-semibold inline-flex items-center gap-1">
+                          <Undo2 size={10} /> Rollback from v{cs.rolled_back_from_version || "?"}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#5C6B6B] mt-1">
+                      {new Date(v.ratified_at).toLocaleString()} · by <strong className="text-[#0F2424]">{v.ratified_by}</strong>
+                    </p>
+                    {v.notes && (
+                      <p className="text-sm text-[#0F2424] mt-2 leading-relaxed" data-testid={`history-row-${v.version}-notes`}>
+                        {v.notes}
+                      </p>
+                    )}
+                    {cs.edits > 0 && (
+                      <p className="text-xs text-[#5C6B6B] mt-2">
+                        <strong>{cs.edits}</strong> edit{cs.edits === 1 ? "" : "s"} by {(cs.authors || []).join(", ") || "counsel"}
+                        {cs.actions && Object.keys(cs.actions).length > 0 && (
+                          <>
+                            {" · "}
+                            {Object.entries(cs.actions).map(([a, n], i) => (
+                              <span key={a}>{i > 0 && ", "}{n} {a.replace(/_/g, " ")}</span>
+                            ))}
+                          </>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                  {isAdmin && !isCurrent && v.can_rollback && (
+                    <button
+                      onClick={() => rollback(v)}
+                      disabled={busy === v.id}
+                      className="btn-outline text-xs inline-flex items-center gap-1 text-[#7A5A1A] border-[#7A5A1A] shrink-0"
+                      data-testid={`history-row-${v.version}-rollback`}
+                    >
+                      <Undo2 size={12} /> {busy === v.id ? "Rolling back…" : "Rollback"}
+                    </button>
+                  )}
+                  {isAdmin && !isCurrent && !v.can_rollback && (
+                    <span className="text-[10px] uppercase tracking-wider text-[#5C6B6B] shrink-0" title="No content snapshot on record">
+                      No snapshot
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {!state.loading && !showingAll && total > 0 && (
+            <button
+              onClick={() => setLimit((n) => Math.min(n + 5, total))}
+              className="text-xs uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] font-semibold mt-2"
+              data-testid="history-show-more"
+            >
+              Show {Math.min(5, total - limit)} more →
+            </button>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-[#E5E1D8] flex items-center justify-between bg-[#FAF7F0]">
+          <p className="text-xs text-[#5C6B6B]">
+            Rollback creates a new release with the older content. Full history is preserved.
+          </p>
+          <button onClick={onClose} className="btn-outline text-sm" data-testid="history-modal-cancel">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
