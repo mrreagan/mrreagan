@@ -1439,7 +1439,9 @@ async def create_wd_comment(
     return doc
 
 
-_MENTION_RX = re.compile(r"@(admin|counsel)\b", re.IGNORECASE)
+# Preceded-by guard: a word or dot char before @ means we're inside an
+# email address ('foo@admin.com') or code path ('/a@admin') — skip those.
+_MENTION_RX = re.compile(r"(?<![\w.])@(admin|counsel)\b", re.IGNORECASE)
 
 def _parse_mentions(body: str) -> list[str]:
     """Return the deduped list of @roles present in the comment body.

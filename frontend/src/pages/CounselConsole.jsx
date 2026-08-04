@@ -898,7 +898,7 @@ function CommentCard({ comment, replies, currentUser, onReplyClick, onResolve, o
 }
 
 function ComposeForm({ placeholder, value, onChange, onCancel, onSubmit, busy, testidPrefix }) {
-  const hasMentions = /@(admin|counsel)\b/i.test(value || "");
+  const hasMentions = /(?<![\w.])@(admin|counsel)\b/i.test(value || "");
   return (
     <div className="font-sans">
       <textarea
@@ -937,7 +937,7 @@ function ComposeForm({ placeholder, value, onChange, onCancel, onSubmit, busy, t
 function renderCommentBody(body) {
   if (!body) return null;
   const parts = [];
-  const rx = /@(admin|counsel)\b/gi;
+  const rx = /(?<![\w.])@(admin|counsel)\b/gi;
   let last = 0;
   let m;
   while ((m = rx.exec(body)) !== null) {
@@ -1246,6 +1246,7 @@ function RollbackPreviewModal({ data, slugTitle, onCancel, onChangeReason, onCon
     }
     return { added, removed };
   }, [parts]);
+  const noChange = stats.added === 0 && stats.removed === 0;
   return (
     <div className="fixed inset-0 bg-black/60 flex items-stretch justify-center z-[70] p-4" data-testid="rollback-preview-modal">
       <div className="bg-[#FBF3E4] rounded-2xl max-w-5xl w-full flex flex-col overflow-hidden max-h-[90vh]">
@@ -1258,8 +1259,14 @@ function RollbackPreviewModal({ data, slugTitle, onCancel, onChangeReason, onCon
             </h2>
             <p className="text-xs text-[#5C6B6B] mt-1">
               Target ratified <strong>{new Date(preview.target_ratified_at).toLocaleString()}</strong> by <strong>{preview.target_ratified_by}</strong>.
-              {" "}<span className="text-[#2E5C46] font-semibold">+{stats.added} to add</span>
-              {" · "}<span className="text-[#9E3C3C] font-semibold">-{stats.removed} to remove</span>
+              {noChange ? (
+                <> · <span className="text-[#7A5A1A] font-semibold">No textual change</span></>
+              ) : (
+                <>
+                  {" "}<span className="text-[#2E5C46] font-semibold">+{stats.added} to add</span>
+                  {" · "}<span className="text-[#9E3C3C] font-semibold">-{stats.removed} to remove</span>
+                </>
+              )}
             </p>
           </div>
           <button onClick={onCancel} className="text-[#5C6B6B] hover:text-[#0F2424]" data-testid="rollback-preview-close">
@@ -1267,8 +1274,8 @@ function RollbackPreviewModal({ data, slugTitle, onCancel, onChangeReason, onCon
           </button>
         </div>
 
-        <div className="flex-1 overflow-auto bg-white" data-testid="rollback-preview-body">
-          {stats.added === 0 && stats.removed === 0 ? (
+        <div className={noChange ? "bg-white" : "flex-1 overflow-auto bg-white"} data-testid="rollback-preview-body">
+          {noChange ? (
             <div className="p-8 text-center text-[#5C6B6B]" data-testid="rollback-preview-empty">
               This rollback would produce no textual change — target and current are already identical.
             </div>
@@ -1321,9 +1328,10 @@ function RollbackPreviewModal({ data, slugTitle, onCancel, onChangeReason, onCon
               </button>
               <button
                 onClick={onConfirm}
-                disabled={busy}
-                className="btn-primary text-sm inline-flex items-center gap-1 bg-[#7A5A1A]"
+                disabled={busy || noChange}
+                className="btn-primary text-sm inline-flex items-center gap-1 bg-[#7A5A1A] disabled:opacity-50"
                 data-testid="rollback-preview-confirm"
+                title={noChange ? "Target and current are identical — no rollback needed." : undefined}
               >
                 <Undo2 size={14} /> {busy ? "Rolling back…" : `Confirm rollback to v${rat.version}`}
               </button>
