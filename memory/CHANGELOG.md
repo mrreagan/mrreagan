@@ -3,6 +3,42 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — Counsel-facing verification + hardening
+- **Counsel User Guide** — new standalone doc
+  `legal_docs/00a-counsel-user-guide.md` (+ .docx) with a
+  per-function "Fast path (paper) vs Platform path" table for every
+  counsel action; each function names what to push to Birthright's
+  admin so counsel billable time stays low. Registered in
+  `_manifest.py` and downloadable via `/api/legal/drafts/00a-counsel-user-guide`.
+- **Briefing integration** — `LEGAL_BRIEFING_FOR_COUNSEL.md` gained
+  a new `§ 0. Counsel Fast Path — Minimise Your Billable Time`
+  section between the intro callout and § 1, so the same billable-
+  time-minimising workflow appears when counsel opens the briefing
+  by itself. Regenerated .docx contains it (verified in
+  word/document.xml).
+- **AI Help Assistant** — 5 new counsel KB entries in
+  `data/help_kb.json` (counsel-fast-path, counsel-redline,
+  counsel-ratify, counsel-roundtrip-status,
+  counsel-scope-what-you-can-do) so the in-app assistant deflects
+  counsel questions without hitting the LLM.
+- **SECURITY FIX (privilege escalation)** — the read-only middleware
+  allow-list was a prefix `/api/legal/comments/` which also matched
+  the nested mutating sub-routes `/apply-roundtrip`,
+  `/import-roundtrip`, `/{id}/resolve`, and `/export`. Replaced with
+  an anchored regex `^/api/legal/comments/[A-Za-z0-9._-]+/?$` that
+  matches only the exact comment-create route; nested writes now
+  return HTTP 403 `{readonly:true}` for counsel sessions. Defence-
+  in-depth: the "Import roundtrip (.docx)" button in
+  `AdminLegalRatifications.jsx` is now `isAdmin && (...)` gated so
+  counsel never sees the affordance either.
+- **Password correction** — the counsel guide previously listed
+  `counsel2026`; the seeded value is `counsel-review-2026`. Guide
+  + briefing updated.
+- **Testing** — testing_agent iter 32 flagged both critical defects;
+  iter 33 verified fixes with 33/33 pytest cases + full Playwright
+  counsel flow pass. Suites:
+  `tests/test_iter32_counsel_guide.py`, `tests/test_iter33_counsel_allowlist.py`.
+
 ## 2026-02-04 — Auto-rebuild + Roundtrip email
 - `apply-roundtrip` now fires TWO best-effort side-effects immediately
   after the source .md is written:
