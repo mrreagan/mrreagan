@@ -102,6 +102,19 @@ export default function LegalDocPage() {
         </div>
       )}
 
+      {doc.ratified && (
+        <div
+          className="card p-3 bg-[#EAF3EA] border-l-4 border-[#2E5C46] mb-6 inline-flex items-center gap-2"
+          data-testid="legal-doc-ratified-banner"
+        >
+          <span className="text-xs uppercase tracking-wider text-[#1E4030] font-semibold">
+            Counsel-ratified v{doc.ratified_version}
+            {doc.ratified_by ? ` · ${doc.ratified_by}` : ""}
+            {doc.ratified_at ? ` · ${new Date(doc.ratified_at).toLocaleDateString()}` : ""}
+          </span>
+        </div>
+      )}
+
       {updated && (
         <p className="text-xs text-[#5C6B6B] mb-6" data-testid="legal-doc-updated-at">
           Last updated {updated}

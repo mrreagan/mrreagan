@@ -9,7 +9,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import axios from "axios";
-import { Sparkles, Check, ChevronRight, HeartHandshake, ArrowRight } from "lucide-react";
+import { Sparkles, Check, ChevronRight, HeartHandshake, ArrowRight, Briefcase } from "lucide-react";
 import PreviewModeBanner from "../components/PreviewModeBanner";
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -48,6 +48,16 @@ export default function PartnerTypeTry() {
       <div className="divider-flame" />
 
       <p className="text-base text-[#5C6B6B] max-w-2xl mt-4">{spec.blurb}</p>
+
+      {spec.is_independent_contractor && (
+        <div className="mt-4 max-w-2xl inline-flex items-start gap-2 rounded-md border border-[#476B6B]/40 bg-[#F1EFE7] px-3 py-2" data-testid="partner-try-ic-chip">
+          <Briefcase size={14} strokeWidth={1.8} className="text-[#476B6B] mt-0.5 shrink-0" />
+          <div>
+            <p className="text-xs uppercase tracking-wider text-[#0F2424] font-semibold">Independent contractor</p>
+            <p className="text-xs text-[#3D4A4A] mt-0.5 leading-relaxed">{spec.worker_classification_note}</p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 max-w-2xl">
         <PreviewModeBanner
@@ -135,7 +145,7 @@ export default function PartnerTypeTry() {
 
       {/* Dashboard features */}
       <section className="mt-10 max-w-3xl">
-        <p className="label">What's in the dashboard</p>
+        <p className="label">What&apos;s in the dashboard</p>
         <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm text-[#1A2424]">
           {(spec.options?.media || []).map((m, i) => (
             <li key={i} className="flex items-start gap-2"><Check size={12} className="mt-1 text-[#476B6B] flex-shrink-0" /> {m}</li>

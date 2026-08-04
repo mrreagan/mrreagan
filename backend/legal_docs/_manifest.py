@@ -3,6 +3,7 @@
 # Last generated: 2026-08-04T14:26:18.970707Z
 
 DRAFT_LEGAL_DOCS = [
+    {"slug": "00-counsel-review-plan", "display_name": "Counsel Review Plan — Segmented Effort & Time Budget", "category": "Briefing"},
     {"slug": "01-terms-of-service", "display_name": "Terms of Service (Draft)", "category": "Public-facing"},
     {"slug": "02-privacy-policy", "display_name": "Privacy Policy (Draft)", "category": "Public-facing"},
     {"slug": "03-cookie-notice", "display_name": "Cookie & Tracking Notice (Draft)", "category": "Public-facing"},

@@ -276,6 +276,15 @@ async def _notify_partners_of_new_version(version: dict) -> None:
 @router.post("/indemnification/sign")
 async def sign_active(request: Request, user: dict = Depends(get_current_user)):
     from database import db
+    # IC acknowledgement (optional — only sent by frontend when the user
+    # holds an IC-classified partner profile). Persist on the signature so
+    # the audit trail records the classification the user accepted under.
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    ic_acknowledged = bool(payload.get("ic_acknowledged"))
+
     active = await db.indemnification_versions.find_one({"active": True}, {"_id": 0})
     if not active:
         raise HTTPException(status_code=400, detail="No active indemnification version")
@@ -291,6 +300,7 @@ async def sign_active(request: Request, user: dict = Depends(get_current_user)):
         "user_id": user["id"],
         "user_name": f"{user['first_name']} {user['last_name']}",
         "user_role": user.get("role", "participant"),
+        "ic_acknowledged": ic_acknowledged,
         "signed_at": now_iso(),
         "ip": (request.client.host if request and request.client else None),
     }
@@ -298,7 +308,7 @@ async def sign_active(request: Request, user: dict = Depends(get_current_user)):
     await log_action(
         db, user, "legal.indemnification.sign",
         target_type="indemnification_version", target_id=active["id"],
-        metadata={"version": active["version"]},
+        metadata={"version": active["version"], "ic_acknowledged": ic_acknowledged},
     )
     try:
         from utils.user_activity import log_event, CAT_SIGN
@@ -334,20 +344,25 @@ async def my_status(user: dict = Depends(get_current_user)):
     signed = bool(sig)
 
     blocked: list[str] = []
+    ic_partner_types: list[str] = []
+    roles: set[str] = set()
+    async for prof in db.partner_profiles.find(
+        {"user_id": user["id"], "status": "active",
+         "$or": [{"is_sample": {"$exists": False}}, {"is_sample": False}]},
+        {"_id": 0, "partner_type": 1},
+    ):
+        if prof.get("partner_type"):
+            roles.add(prof["partner_type"])
+    # Kept in sync with backend/routers/partner_prospects.py::IC_PARTNER_TYPES
+    IC_SET = {"facilitator", "steward", "vendor", "artist", "community"}
+    ic_partner_types = sorted(roles & IC_SET)
+
     if not signed:
         # Compute the per-role blocked list from the user's active profiles.
         # We always include the universal pair (DMs + subscriptions) since
         # those gates apply to everyone, signed-in or not.
         blocked.append("Open new direct message threads")
         blocked.append("Start or change a subscription")
-        roles: set[str] = set()
-        async for prof in db.partner_profiles.find(
-            {"user_id": user["id"], "status": "active",
-             "$or": [{"is_sample": {"$exists": False}}, {"is_sample": False}]},
-            {"_id": 0, "partner_type": 1},
-        ):
-            if prof.get("partner_type"):
-                roles.add(prof["partner_type"])
         if "vendor" in roles or "facilitator" in roles or "artist" in roles or "research" in roles:
             blocked.append("Generate new AI Studio drafts")
         if "research" in roles:
@@ -361,6 +376,9 @@ async def my_status(user: dict = Depends(get_current_user)):
         "signed": signed,
         "signed_at": sig.get("signed_at") if sig else None,
         "blocked_actions": blocked,
+        # Broadcast the user's IC-classified partner types so the frontend
+        # can require an IC acknowledgement on the re-sign form.
+        "ic_partner_types": ic_partner_types,
     }
 
 
@@ -539,10 +557,20 @@ async def get_public_page(slug: str):
         output_format="html5",
     )
 
-    # File mtime as "last updated" — good enough until we add versioned
-    # publish flow (blocked backlog item).
     from datetime import datetime, timezone
     updated_at = datetime.fromtimestamp(fp.stat().st_mtime, tz=timezone.utc).isoformat()
+
+    # Look up the current ratification record (if any). Once counsel has
+    # marked a version as ratified, we suppress the draft-disclaimer banner
+    # in the client. The next content edit lands with a new revision and
+    # the banner returns until re-ratified.
+    ratification = await _current_ratification(meta["source_slug"])
+
+    body_hash = _md_body_hash(cleaned_md)
+    ratified = bool(
+        ratification
+        and ratification.get("body_hash") == body_hash
+    )
 
     return {
         "slug": slug,
@@ -550,7 +578,186 @@ async def get_public_page(slug: str):
         "title": meta["title"],
         "html": html,
         "updated_at": updated_at,
-        "has_draft_disclaimer": had_disclaimer,
+        # Only surface the "first draft" banner if we do NOT have a
+        # ratification record matching the current body hash.
+        "has_draft_disclaimer": had_disclaimer and not ratified,
+        "ratified": ratified,
+        "ratified_version": ratification.get("version") if ratification else None,
+        "ratified_at": ratification.get("ratified_at") if ratification else None,
+        "ratified_by": ratification.get("ratified_by") if ratification else None,
         # Download link for the counsel-facing DOCX (same content, formatted).
         "docx_url": f"/api/legal/drafts/{meta['source_slug']}",
     }
+
+
+# ============ VERSIONED PUBLISH FLOW ============
+# Once outside counsel signs off on a draft, an admin marks it as
+# "counsel-ratified v{N}". The frontend uses this to suppress the
+# "first draft" banner. Any subsequent content change invalidates the
+# ratification (body-hash mismatch) and the banner comes back.
+
+import hashlib as _hashlib
+
+
+def _md_body_hash(cleaned_md: str) -> str:
+    return _hashlib.sha256(cleaned_md.encode("utf-8")).hexdigest()[:16]
+
+
+async def _current_ratification(source_slug: str) -> Optional[dict]:
+    from database import db
+    return await db.legal_doc_ratifications.find_one(
+        {"source_slug": source_slug}, {"_id": 0}, sort=[("ratified_at", -1)]
+    )
+
+
+@router.get("/ratifications")
+async def list_ratifications(user: dict = Depends(require_roles("admin"))):
+    """Admin — every ratification record, newest first."""
+    from database import db
+    rows = await db.legal_doc_ratifications.find(
+        {}, {"_id": 0}
+    ).sort("ratified_at", -1).to_list(500)
+    return rows
+
+
+@router.post("/ratifications/{source_slug}")
+async def add_ratification(
+    source_slug: str,
+    payload: dict,
+    request: Request,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Admin — mark a doc as counsel-ratified v{N}.
+
+    Payload:  { "version": "1.0", "notes": "...", "ratified_by": "Firm & Co." }
+    """
+    from database import db
+    fp = LEGAL_DOC_DIR / f"{source_slug}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Unknown source doc")
+
+    raw_md = fp.read_text(encoding="utf-8")
+    cleaned_md, _ = _strip_draft_disclaimer(raw_md)
+
+    version = str(payload.get("version") or "").strip()
+    if not version:
+        raise HTTPException(status_code=400, detail="version required (e.g. '1.0')")
+
+    rec = {
+        "id": gen_id(),
+        "source_slug": source_slug,
+        "version": version,
+        "body_hash": _md_body_hash(cleaned_md),
+        "notes": (payload.get("notes") or "").strip() or None,
+        "ratified_by": (payload.get("ratified_by") or "").strip() or None,
+        "ratified_at": now_iso(),
+        "ratified_by_user_id": user["id"],
+        "ratified_by_user_email": user.get("email"),
+    }
+    await db.legal_doc_ratifications.insert_one(dict(rec))
+    await log_action(
+        db, user, "legal.doc.ratify",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={"version": version, "body_hash": rec["body_hash"]},
+    )
+    rec.pop("_id", None)
+    return rec
+
+
+@router.delete("/ratifications/{source_slug}")
+async def revoke_ratification(
+    source_slug: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Admin — revoke the current ratification (banner returns)."""
+    from database import db
+    r = await db.legal_doc_ratifications.delete_many({"source_slug": source_slug})
+    await log_action(
+        db, user, "legal.doc.ratify_revoke",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={"deleted": r.deleted_count},
+    )
+    return {"deleted": r.deleted_count}
+
+
+# ============ INLINE REDLINES / COUNSEL COMMENTS ============
+# Lightweight comment thread per legal doc. Sections are opaque strings
+# (usually the H2 heading) so counsel can pin comments to a specific
+# section without a full inline-diff engine.
+
+@router.get("/comments/{source_slug}")
+async def list_comments(
+    source_slug: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    from database import db
+    rows = await db.legal_doc_comments.find(
+        {"source_slug": source_slug}, {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    return rows
+
+
+@router.post("/comments/{source_slug}")
+async def add_comment(
+    source_slug: str,
+    payload: dict,
+    request: Request,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Add a redline comment (or a general note) on a legal doc."""
+    from database import db
+    fp = LEGAL_DOC_DIR / f"{source_slug}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Unknown source doc")
+    body = (payload.get("body") or "").strip()
+    if not body:
+        raise HTTPException(status_code=400, detail="body required")
+    rec = {
+        "id": gen_id(),
+        "source_slug": source_slug,
+        "section": (payload.get("section") or "").strip() or None,
+        "quoted_text": (payload.get("quoted_text") or "").strip() or None,
+        "suggested_replacement": (payload.get("suggested_replacement") or "").strip() or None,
+        "body": body,
+        "kind": payload.get("kind") or "comment",   # comment | redline | resolved
+        "resolved": False,
+        "resolved_at": None,
+        "resolved_by": None,
+        "author_id": user["id"],
+        "author_email": user.get("email"),
+        "author_role": user.get("role"),
+        "created_at": now_iso(),
+    }
+    await db.legal_doc_comments.insert_one(dict(rec))
+    await log_action(
+        db, user, "legal.doc.comment.add",
+        target_type="legal_doc", target_id=source_slug,
+        metadata={"kind": rec["kind"], "section": rec["section"]},
+    )
+    rec.pop("_id", None)
+    return rec
+
+
+@router.post("/comments/{source_slug}/{comment_id}/resolve")
+async def resolve_comment(
+    source_slug: str,
+    comment_id: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    from database import db
+    r = await db.legal_doc_comments.update_one(
+        {"id": comment_id, "source_slug": source_slug},
+        {"$set": {
+            "resolved": True,
+            "resolved_at": now_iso(),
+            "resolved_by": user.get("email"),
+        }},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    await log_action(
+        db, user, "legal.doc.comment.resolve",
+        target_type="legal_doc_comment", target_id=comment_id,
+    )
+    return {"resolved": True}
+

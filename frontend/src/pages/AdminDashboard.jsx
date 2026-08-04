@@ -195,6 +195,7 @@ function OverviewTab() {
       <QuickActionCard to="/admin/ai-usage" icon={Bot} title="AI usage" description="Per-partner AI spend + wallet balances" />
       <QuickActionCard to="/admin/system" icon={Server} title="System" description="Support emails · data migrations · operator console" />
       <QuickActionCard to="/admin/legal/agreements" icon={FileText} title="Partnership agreements" description="Publish, audit, and gate write-features" />
+      <QuickActionCard to="/admin/legal/ratifications" icon={FileText} title="Legal ratifications" description="Mark docs counsel-ratified + track redlines" />
       <QuickActionCard to="/admin/partner-sales-reports" icon={ExternalLink} title="Off-site sales reports" description="Reconcile partner-reported revenue" />
       <QuickActionCard to="/admin/featured" icon={Sparkles} title="Featured & Founding" description="Grant/revoke featured slots, founding-partner cap" />
       <QuickActionCard to="/admin/reports" icon={BarChart3} title="Foundation reports" description="Engagement, revenue, payouts" />

@@ -39,6 +39,19 @@ logger = logging.getLogger("birthright.partner_prospects")
 router = APIRouter(prefix="/partners", tags=["partner-prospects"])
 
 PARTNER_TYPES = ("facilitator", "community", "research", "vendor", "artist", "steward")
+
+# Partner types that operate as independent contractors of the Foundation.
+# Surfacing this on every partner-facing page and re-sign flow keeps the
+# worker-classification honest for tax + liability. Research is a paid-
+# honoraria basis only (not otherwise 1099-eligible).
+IC_PARTNER_TYPES = {"facilitator", "steward", "vendor", "artist", "community"}
+IC_LABEL = "Independent contractor"
+IC_TOOLTIP = (
+    "You act as an independent contractor of Birthright Foundation. "
+    "You set your own hours, methods, and business decisions; you are "
+    "responsible for your own taxes and any licences your practice requires. "
+    "This is not an employment relationship."
+)
 PROSPECT_CHANNELS = (
     "email", "phone", "text", "in_person", "studio_visit",
     "social_dm", "referral", "event", "other",
@@ -437,6 +450,12 @@ def get_preview_spec(partner_type: str) -> dict:
         raise HTTPException(404, f"Unknown partner type: {partner_type}")
     spec = dict(PREVIEW_SPECS[partner_type])
     spec["partner_type"] = partner_type
+    # Broadcast IC classification so every consumer (Types page,
+    # Try/Explore page, Invite preview, profile) can render the chip
+    # without hard-coding the list on the frontend.
+    spec["is_independent_contractor"] = partner_type in IC_PARTNER_TYPES
+    spec["worker_classification"] = IC_LABEL if partner_type in IC_PARTNER_TYPES else None
+    spec["worker_classification_note"] = IC_TOOLTIP if partner_type in IC_PARTNER_TYPES else None
     return spec
 
 
@@ -1174,7 +1193,7 @@ async def list_invites(
 @router.get("/preview-specs")
 async def public_preview_index():
     """Public — full preview index for the /partner/types comparison page."""
-    return {pt: PREVIEW_SPECS[pt] for pt in PARTNER_TYPES}
+    return {pt: get_preview_spec(pt) for pt in PARTNER_TYPES}
 
 
 @router.get("/preview-specs/{partner_type}")

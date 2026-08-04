@@ -29,6 +29,7 @@ import CheckoutSuccess from "./pages/CheckoutSuccess";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LegalDocPage from "./pages/LegalDocPage";
+import LegalIndex from "./pages/LegalIndex";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
@@ -43,6 +44,7 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminProducts from "./pages/AdminProducts";
 import AdminImageQueue from "./pages/AdminImageQueue";
 import AdminLegalDocs from "./pages/AdminLegalDocs";
+import AdminLegalRatifications from "./pages/AdminLegalRatifications";
 import AdminCampaigns from "./pages/AdminCampaigns";
 import CounselReviewChecklist from "./pages/CounselReviewChecklist";
 import CounselActivityLog from "./pages/CounselActivityLog";
@@ -205,6 +207,8 @@ function AppRoutes() {
       <Route path="/register" element={<Register />} />
       <Route path="/reviews" element={<ReviewsBrowser />} />
       <Route path="/legal/indemnification" element={<IndemnificationPage />} />
+      {/* Legal hub — index of every public policy. */}
+      <Route path="/legal" element={<LegalIndex />} />
       {/* Public HTML renderer for Terms, Privacy, Cookie Notice, etc.
           Backend guards the slug against an allowlist. */}
       <Route path="/legal/:slug" element={<LegalDocPage />} />
@@ -342,6 +346,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminLegalDocs />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/legal/ratifications"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminLegalRatifications />
           </ProtectedRoute>
         }
       />

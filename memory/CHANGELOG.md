@@ -3,6 +3,37 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — IC designations · Legal hub · Versioned ratification · Redlines
+- **IC classification broadcast**: `partner_prospects.py` now exposes
+  `is_independent_contractor`, `worker_classification`, and
+  `worker_classification_note` on every preview spec. IC types =
+  facilitator, steward, vendor, artist, community. Sponsor and Research
+  remain non-IC.
+- **UI chip surfaced** on `/partner/types` (5 IC rows) and
+  `/partner/types/:type/try` (banner block on IC types only).
+- **IC ack line** added to the agreement re-sign flow
+  (`AgreementPage.jsx`); backend persists `ic_acknowledged` on the
+  signature record; `my-status` returns `ic_partner_types` so the
+  checkbox only appears when the user holds an IC partner profile.
+- **`/legal` hub page** (`LegalIndex.jsx`) lists every allowlisted legal
+  doc with a one-line preview.
+- **Versioned publish flow**: `legal_doc_ratifications` Mongo collection +
+  admin endpoints. Rendered pages now return `ratified`,
+  `ratified_version`, `ratified_at`; `has_draft_disclaimer` auto-hides
+  when a ratification matches the current body hash. Any edit changes
+  the hash and the banner returns.
+- **Inline counsel redlines**: `legal_doc_comments` collection +
+  endpoints; counsel (`readonly_admin`) can POST via middleware
+  allow-list.
+- **Admin UI** `/admin/legal/ratifications` — ratify / revoke / redline
+  from one screen. Linked from the Admin Dashboard.
+- **New deliverable**: `legal_docs/00-counsel-review-plan.md` (+.docx)
+  segments every instrument into Essential (Section A: public+revenue,
+  635 min; B: governance, 320 min) and Optional (C: partner niches,
+  200 min; D: internal plans, 170 min) with per-subsection minutes.
+  **Total attorney time: 22 hrs** (recommend budgeting ~29 hrs
+  including drafting gap-fills + wrap meetings).
+
 ## 2026-02-04 — Public Legal Renderer
 - `GET /api/legal/pages` lists every public-facing legal doc (slug + title).
 - `GET /api/legal/pages/{slug}` renders the Markdown source (`backend/legal_docs/*.md`)

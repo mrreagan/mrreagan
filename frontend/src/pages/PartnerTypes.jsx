@@ -1,6 +1,22 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Users, Heart, Microscope, ShoppingBag, Palette, MapPin, Sparkles, HandCoins } from "lucide-react";
+import { Users, Heart, Microscope, ShoppingBag, Palette, MapPin, Sparkles, HandCoins, Briefcase } from "lucide-react";
+
+// Partner types classified as independent contractors of the Foundation.
+// Kept in sync with backend IC_PARTNER_TYPES in routers/partner_prospects.py.
+const IC_TYPES = new Set(["facilitator", "steward", "vendor", "artist", "community"]);
+
+function IcChip({ compact = false }) {
+  return (
+    <span
+      title="You act as an independent contractor of Birthright Foundation. You set your own hours + methods and are responsible for your own taxes. Not employment."
+      className={`inline-flex items-center gap-1 rounded-full border border-[#476B6B]/40 bg-[#F1EFE7] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#0F2424] font-semibold ${compact ? "" : "mt-1"}`}
+      data-testid="partner-type-ic-chip"
+    >
+      <Briefcase size={10} strokeWidth={2} /> Independent contractor
+    </span>
+  );
+}
 
 const TYPES = [
   {
@@ -103,6 +119,7 @@ export default function PartnerTypes() {
                       <Icon size={18} strokeWidth={1.4} className={t.color} />
                       <span className="font-serif text-lg">{t.label}</span>
                     </div>
+                    {IC_TYPES.has(t.slug) && <IcChip />}
                   </td>
                   <td className="py-4 pr-4 text-[#5C6B6B] max-w-[280px]">{t.one_liner}</td>
                   <td className="py-4 pr-4 text-[#5C6B6B] max-w-[260px]">{t.foundation_benefit}</td>

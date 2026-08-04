@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Scale, CheckCircle2 } from "lucide-react";
+import { Scale, CheckCircle2, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
 
 export default function AgreementPage() {
   const [version, setVersion] = useState(null);
   const [status, setStatus] = useState(null);
+  const [icAck, setIcAck] = useState(false);
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
 
@@ -18,11 +19,21 @@ export default function AgreementPage() {
       .catch(() => toast.error("Could not load agreement"));
   }, []);
 
+  const icPartnerTypes = status?.ic_partner_types || [];
+  const needsIcAck = icPartnerTypes.length > 0;
+
   const sign = async () => {
     if (!version) return;
+    if (needsIcAck && !icAck) {
+      toast.error("Please acknowledge your independent-contractor status to continue.");
+      return;
+    }
     setBusy(true);
     try {
-      await api.post("/legal/indemnification/sign", { version_id: version.id });
+      await api.post("/legal/indemnification/sign", {
+        version_id: version.id,
+        ic_acknowledged: needsIcAck ? true : undefined,
+      });
       toast.success("Thank you — agreement accepted.");
       setStatus({ ...status, signed: true });
     } catch (e) {
@@ -53,6 +64,34 @@ export default function AgreementPage() {
         </div>
       )}
 
+      {needsIcAck && !alreadySigned && (
+        <div className="card p-4 mt-4 max-w-3xl border-l-4 border-[#476B6B] bg-[#F1EFE7]" data-testid="agreement-ic-block">
+          <p className="text-xs uppercase tracking-wider text-[#0F2424] font-semibold inline-flex items-center gap-1">
+            <Briefcase size={12} strokeWidth={1.8} /> Independent contractor acknowledgement
+          </p>
+          <p className="text-xs text-[#3D4A4A] mt-1 leading-relaxed">
+            Because you hold one or more partner roles that operate on an
+            independent-contractor basis ({icPartnerTypes.join(", ")}),
+            please confirm the classification below before you sign.
+          </p>
+          <label className="mt-3 flex items-start gap-2 text-xs text-[#1A2424] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={icAck}
+              onChange={(e) => setIcAck(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-[#476B6B]"
+              data-testid="agreement-ic-ack-checkbox"
+            />
+            <span>
+              I confirm I am acting as an <strong>independent contractor</strong> of
+              Birthright Foundation. I set my own hours and methods; I am
+              responsible for my own taxes, insurance, and any licences my
+              practice requires. This is not employment.
+            </span>
+          </label>
+        </div>
+      )}
+
       <div className="mt-6 flex items-center gap-3 flex-wrap" data-testid="agreement-actions">
         {alreadySigned ? (
           <p className="text-sm text-[#2E5C46] inline-flex items-center gap-2" data-testid="agreement-already-signed">
@@ -60,7 +99,12 @@ export default function AgreementPage() {
             {status?.signed_at && new Date(status.signed_at).toLocaleDateString()}.
           </p>
         ) : (
-          <button onClick={sign} disabled={busy} className="btn-primary text-sm" data-testid="agreement-accept">
+          <button
+            onClick={sign}
+            disabled={busy || (needsIcAck && !icAck)}
+            className="btn-primary text-sm"
+            data-testid="agreement-accept"
+          >
             {busy ? "Saving…" : `I accept agreement v${version.version}`}
           </button>
         )}
