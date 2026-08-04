@@ -3,6 +3,34 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — /admin/settings/counsel · Credential rotation UI
+- **New endpoints** `GET/POST /api/admin/settings/counsel[/rotate]` let
+  a true admin (strict role check — counsel is 403'd) rotate the
+  counsel account's email and password without editing `.env` and
+  restarting.
+- **Seeder refactored** (`utils/readonly_admin.py::ensure_counsel_account`)
+  to look up by `role=readonly_admin` instead of by email, and to
+  never overwrite `email` / `password_hash` after initial bootstrap.
+  Rotations now survive backend restarts — verified in iter34 with a
+  real `sudo supervisorctl restart backend` between rotate and login.
+- **New frontend page** `AdminCounselSettings.jsx` at
+  `/admin/settings/counsel` — shows current state (with amber warning
+  when the password still matches the env default), lets admin change
+  either or both credentials, and displays last-rotated timestamp +
+  operator. Written with role gated to `["admin"]` only so counsel
+  can't even navigate to it in the UI.
+- **Admin Hub tile** added to Governance & System group in
+  `AdminHub.jsx` (initial pass mistakenly landed on the deprecated
+  `/admin/stats` page — moved to `/admin` in iter35).
+- **Security hardening** — GET/POST now call an explicit
+  `_require_true_admin(user)` gate at the top of the handler.
+  Previously `require_roles('admin')` also admitted counsel
+  (readonly_admin) for admin READ routes, which would have leaked
+  `env_password_default_in_use` to counsel.
+- **Tests** — 49/49 pass:
+  `test_iter34_counsel_settings.py` (11), `test_iter35_counsel_settings_strict.py` (6),
+  plus the earlier `test_iter32/33_counsel_*` regression suites (32).
+
 ## 2026-02-04 — Counsel-facing verification + hardening
 - **Counsel User Guide** — new standalone doc
   `legal_docs/00a-counsel-user-guide.md` (+ .docx) with a
