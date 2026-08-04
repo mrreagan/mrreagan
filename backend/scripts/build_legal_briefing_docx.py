@@ -186,6 +186,52 @@ def build():
     )
     r.italic = True
 
+    # ---- Counsel fast-path summary (embedded from 00a-counsel-user-guide) ----
+    # Give counsel the billable-time-minimising workflow up front so they
+    # never feel obliged to log into the platform for a normal review.
+    fast_h = doc.add_heading("Counsel Fast Path — Minimise Your Billable Time", level=1)
+    fast_h.paragraph_format.space_before = Pt(18)
+    p = doc.add_paragraph()
+    r = p.add_run(
+        "The cheapest workflow for you is entirely paper-based: download the "
+        "two .docx files we sent you, redline in Word with Track Changes, "
+        "and email them to legal@birthright.live. Birthright's Executive "
+        "Director does every platform click. You never need to sign in to "
+        "the site."
+    )
+    r.italic = True
+
+    p = doc.add_paragraph()
+    p.add_run("Push these functions to Birthright's admin so they do not appear on your bill:").italic = True
+    for line in [
+        "Transcribing your redlines into the platform (~30s per redline).",
+        "Applying accepted / rejected roundtrip decisions.",
+        "Marking documents as counsel-ratified after your ratification email.",
+        "Rebuilding the counsel briefing bundle after edits.",
+        "Ticking off the manual review checklist and recording your initials.",
+    ]:
+        b = doc.add_paragraph(style="List Bullet")
+        b.add_run(line)
+
+    p = doc.add_paragraph()
+    p.add_run("Please do these personally — they are legal work, not clerical work:").italic = True
+    for line in [
+        "Substantive legal analysis of every draft.",
+        "Rewording of the proposed replacement text in each redline.",
+        "The final one-line ratification email per document.",
+        "Advice on licensing, insurance, and dispute-jurisdiction choices.",
+    ]:
+        b = doc.add_paragraph(style="List Bullet")
+        b.add_run(line)
+
+    p = doc.add_paragraph()
+    p.add_run(
+        "The full per-function fast-path table (redline, roundtrip, ratify, "
+        "revoke, checklist, activity log, change-log) lives in the standalone "
+        "Counsel User Guide — file '00a-counsel-user-guide.docx'."
+    ).italic = True
+    doc.add_paragraph()  # spacer
+
     # ---- Parse markdown-ish source into rendered doc ----
     lines = text.splitlines()
     i = 0

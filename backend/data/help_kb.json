@@ -3,7 +3,7 @@
   "voice": {
     "name": "birthright Help",
     "agent_label": "AI Agent",
-    "greeting": "Hi there. You're speaking with birthright Help. I'm trained on this platform and ready to assist — you can ask for a human at any time.",
+    "greeting": "Hi there. You're speaking with birthright Help. I'm trained on this platform and ready to assist \u2014 you can ask for a human at any time.",
     "human_handoff": "I'll flag this for the human team at the Foundation. They typically reply within one business day at support@birthright.live.",
     "fallback": "I'm not sure about that one. Want me to flag it for a human at the Foundation?",
     "tone": "warm, plainspoken, never clinical, never pushy"
@@ -11,206 +11,712 @@
   "entries": [
     {
       "id": "login-magic-link",
-      "tags": ["login", "signin", "sign in", "magic link", "password", "reset", "forgot", "access"],
-      "patterns": ["how do i sign in", "how do i log in", "reset password", "forgot password", "magic link", "can't log in", "can't sign in", "cannot access"],
-      "answer": "You can sign in without a password using a Magic Link. Go to https://birthright.live, tap Sign In, enter your email and choose Magic Link — we'll email you a one-click sign-in. If you originally joined via Google, the 'Continue with Google' button works too. If the email doesn't arrive, check spam and try a different browser.",
+      "tags": [
+        "login",
+        "signin",
+        "sign in",
+        "magic link",
+        "password",
+        "reset",
+        "forgot",
+        "access"
+      ],
+      "patterns": [
+        "how do i sign in",
+        "how do i log in",
+        "reset password",
+        "forgot password",
+        "magic link",
+        "can't log in",
+        "can't sign in",
+        "cannot access"
+      ],
+      "answer": "You can sign in without a password using a Magic Link. Go to https://birthright.live, tap Sign In, enter your email and choose Magic Link \u2014 we'll email you a one-click sign-in. If you originally joined via Google, the 'Continue with Google' button works too. If the email doesn't arrive, check spam and try a different browser.",
       "follow_up_label": "Is that what you were looking for?"
     },
     {
       "id": "shared-account",
-      "tags": ["share", "partner", "spouse", "family", "two people", "couples"],
-      "patterns": ["share account", "share my login", "my partner", "my spouse", "use together", "share with wife", "share with husband"],
-      "answer": "birthright accounts are personal — workshops, AI wallet, and partner tiers are tied to a single member. We don't have a couples plan yet, but your partner can create their own free account at birthright.live. If you'd like a 'shared household' feature, send a note and we'll add your voice to the roadmap.",
+      "tags": [
+        "share",
+        "partner",
+        "spouse",
+        "family",
+        "two people",
+        "couples"
+      ],
+      "patterns": [
+        "share account",
+        "share my login",
+        "my partner",
+        "my spouse",
+        "use together",
+        "share with wife",
+        "share with husband"
+      ],
+      "answer": "birthright accounts are personal \u2014 workshops, AI wallet, and partner tiers are tied to a single member. We don't have a couples plan yet, but your partner can create their own free account at birthright.live. If you'd like a 'shared household' feature, send a note and we'll add your voice to the roadmap.",
       "follow_up_label": "Did that answer your question?"
     },
     {
       "id": "patches",
-      "tags": ["patch", "patches", "leather", "engraved", "engraving", "merch", "buy patch", "founder collection", "7cs", "7c's", "farmstead"],
-      "patterns": ["where can i buy patches", "the patches", "leather patches", "engraved patches", "founder patches", "founder collection patches", "founder collection", "where are the patches", "find the patches", "what do the patches cost", "patch prices", "patches price"],
-      "answer": "The five leather-engraved patches live in the Founder Collection at /equip. They're hand-engraved to order by 7C's Farmstead in 2–4 weeks. Each patch is $10 plus shipping. You can also buy the full set of five as a bundle for $40 (saves $10 versus buying each individually). Click any patch card and tap 'Buy on 7C's Farmstead →' to order direct from the artisan.",
+      "tags": [
+        "patch",
+        "patches",
+        "leather",
+        "engraved",
+        "engraving",
+        "merch",
+        "buy patch",
+        "founder collection",
+        "7cs",
+        "7c's",
+        "farmstead"
+      ],
+      "patterns": [
+        "where can i buy patches",
+        "the patches",
+        "leather patches",
+        "engraved patches",
+        "founder patches",
+        "founder collection patches",
+        "founder collection",
+        "where are the patches",
+        "find the patches",
+        "what do the patches cost",
+        "patch prices",
+        "patches price"
+      ],
+      "answer": "The five leather-engraved patches live in the Founder Collection at /equip. They're hand-engraved to order by 7C's Farmstead in 2\u20134 weeks. Each patch is $10 plus shipping. You can also buy the full set of five as a bundle for $40 (saves $10 versus buying each individually). Click any patch card and tap 'Buy on 7C's Farmstead \u2192' to order direct from the artisan.",
       "follow_up_label": "Want a direct link to the patches?"
     },
     {
       "id": "patch-bundle",
-      "tags": ["bundle", "all five", "set", "full set", "complete set", "collection"],
-      "patterns": ["buy all the patches", "all five patches", "full set", "patch bundle", "discount on patches", "patch collection"],
-      "answer": "Yes — the full set of five engraved patches is offered as a bundle for $40 (vs $50 if you buy each individually). Open the bundle in the Founder Collection at /equip and tap 'Order direct' to send the order through 7C's Farmstead with shipping calculated at checkout on their site.",
+      "tags": [
+        "bundle",
+        "all five",
+        "set",
+        "full set",
+        "complete set",
+        "collection"
+      ],
+      "patterns": [
+        "buy all the patches",
+        "all five patches",
+        "full set",
+        "patch bundle",
+        "discount on patches",
+        "patch collection"
+      ],
+      "answer": "Yes \u2014 the full set of five engraved patches is offered as a bundle for $40 (vs $50 if you buy each individually). Open the bundle in the Founder Collection at /equip and tap 'Order direct' to send the order through 7C's Farmstead with shipping calculated at checkout on their site.",
       "follow_up_label": "Want me to take you there?"
     },
     {
       "id": "patch-shipping",
-      "tags": ["shipping", "delivery", "lead time", "how long", "when will"],
-      "patterns": ["how long does shipping take", "patch delivery", "when will my patch arrive", "shipping cost", "lead time"],
-      "answer": "Patches are made to order by 7C's Farmstead, so lead time is typically 2–4 weeks. Shipping cost is calculated at checkout on 7C's site based on your address. If you need a patch by a specific date, mention it in the order notes and 7C's will tell you whether the timeline works.",
+      "tags": [
+        "shipping",
+        "delivery",
+        "lead time",
+        "how long",
+        "when will"
+      ],
+      "patterns": [
+        "how long does shipping take",
+        "patch delivery",
+        "when will my patch arrive",
+        "shipping cost",
+        "lead time"
+      ],
+      "answer": "Patches are made to order by 7C's Farmstead, so lead time is typically 2\u20134 weeks. Shipping cost is calculated at checkout on 7C's site based on your address. If you need a patch by a specific date, mention it in the order notes and 7C's will tell you whether the timeline works.",
       "follow_up_label": "Anything else about the patches?"
     },
     {
       "id": "patch-revenue-share",
-      "tags": ["revenue", "cut", "commission", "kickback", "affiliate", "patches money"],
-      "patterns": ["does birthright make money on patches", "what's the foundation's cut", "patches revenue"],
-      "answer": "On patches, birthright is set up as an affiliate of 7C's Farmstead — they remit 15% of every birthright-attributed sale to the Foundation, reconciled quarterly. The buyer pays the same $10 (or $40 bundle) plus shipping either way; the Foundation's share comes out of 7C's margin, not on top of the listed price.",
+      "tags": [
+        "revenue",
+        "cut",
+        "commission",
+        "kickback",
+        "affiliate",
+        "patches money"
+      ],
+      "patterns": [
+        "does birthright make money on patches",
+        "what's the foundation's cut",
+        "patches revenue"
+      ],
+      "answer": "On patches, birthright is set up as an affiliate of 7C's Farmstead \u2014 they remit 15% of every birthright-attributed sale to the Foundation, reconciled quarterly. The buyer pays the same $10 (or $40 bundle) plus shipping either way; the Foundation's share comes out of 7C's margin, not on top of the listed price.",
       "follow_up_label": "Want to know about the broader revenue framework?"
     },
     {
       "id": "artist-tiers",
-      "tags": ["artist", "tier", "tiers", "patronage", "inbound", "outbound", "emerging", "sustaining", "established", "thriving", "flourishing"],
-      "patterns": ["how do tiers work", "artist tier", "how do i level up", "tier system", "patronage tier"],
-      "answer": "Artists progress through five tiers — Emerging, Sustaining, Established, Thriving, Flourishing — based on rolling 12-month birthright-attributed revenue. Each tier carries an inbound % (you earn from referred sales) and a small outbound % (you contribute back to the ecosystem). See the full breakdown at /partner/artist. Tier transitions take effect on the 1st of the following month.",
+      "tags": [
+        "artist",
+        "tier",
+        "tiers",
+        "patronage",
+        "inbound",
+        "outbound",
+        "emerging",
+        "sustaining",
+        "established",
+        "thriving",
+        "flourishing"
+      ],
+      "patterns": [
+        "how do tiers work",
+        "artist tier",
+        "how do i level up",
+        "tier system",
+        "patronage tier"
+      ],
+      "answer": "Artists progress through five tiers \u2014 Emerging, Sustaining, Established, Thriving, Flourishing \u2014 based on rolling 12-month birthright-attributed revenue. Each tier carries an inbound % (you earn from referred sales) and a small outbound % (you contribute back to the ecosystem). See the full breakdown at /partner/artist. Tier transitions take effect on the 1st of the following month.",
       "follow_up_label": "Want to know what tier you're currently at?"
     },
     {
       "id": "ai-wallet",
-      "tags": ["ai wallet", "wallet", "top up", "ai balance", "ai cost", "ai pricing", "tokens", "billing"],
-      "patterns": ["how does ai billing work", "what's the ai wallet", "ai cost", "top up wallet", "ai pricing"],
-      "answer": "AI features (Concierge, research collab, vendor PDM) draw from your AI wallet. We charge 1.5× the underlying provider cost — the extra 50% directly supports the Foundation. Top up from your Profile → AI Wallet at packs of $10/$25/$50/$100, or enable auto-recharge so you never get blocked mid-conversation. Anonymous use of public assistants is free; only logged-in members are billed.",
+      "tags": [
+        "ai wallet",
+        "wallet",
+        "top up",
+        "ai balance",
+        "ai cost",
+        "ai pricing",
+        "tokens",
+        "billing"
+      ],
+      "patterns": [
+        "how does ai billing work",
+        "what's the ai wallet",
+        "ai cost",
+        "top up wallet",
+        "ai pricing"
+      ],
+      "answer": "AI features (Concierge, research collab, vendor PDM) draw from your AI wallet. We charge 1.5\u00d7 the underlying provider cost \u2014 the extra 50% directly supports the Foundation. Top up from your Profile \u2192 AI Wallet at packs of $10/$25/$50/$100, or enable auto-recharge so you never get blocked mid-conversation. Anonymous use of public assistants is free; only logged-in members are billed.",
       "follow_up_label": "Want me to take you to your AI Wallet?"
     },
     {
       "id": "stripe-connect-artist-payout",
-      "tags": ["stripe", "payout", "connect", "onboarding", "bank", "transfer", "get paid"],
-      "patterns": ["how do i get paid", "stripe connect", "payout method", "set up payouts", "bank account"],
-      "answer": "Artists get paid via Stripe Connect. Go to /partner/payout-method, click 'Connect with Stripe' and complete the onboarding (bank details + ID verification — runs entirely on Stripe's side). Once connected, the Admin Bulk Pay tool can transfer pending payouts directly to your bank. You can switch between Stripe Connect and manual wire/PayPal at any time on the same page.",
+      "tags": [
+        "stripe",
+        "payout",
+        "connect",
+        "onboarding",
+        "bank",
+        "transfer",
+        "get paid"
+      ],
+      "patterns": [
+        "how do i get paid",
+        "stripe connect",
+        "payout method",
+        "set up payouts",
+        "bank account"
+      ],
+      "answer": "Artists get paid via Stripe Connect. Go to /partner/payout-method, click 'Connect with Stripe' and complete the onboarding (bank details + ID verification \u2014 runs entirely on Stripe's side). Once connected, the Admin Bulk Pay tool can transfer pending payouts directly to your bank. You can switch between Stripe Connect and manual wire/PayPal at any time on the same page.",
       "follow_up_label": "Did that help?"
     },
     {
       "id": "research-publishing",
-      "tags": ["research", "publish", "brief", "paper", "artifact", "practitioner"],
-      "patterns": ["publish research", "publish a brief", "research artifact", "how do i submit research"],
+      "tags": [
+        "research",
+        "publish",
+        "brief",
+        "paper",
+        "artifact",
+        "practitioner"
+      ],
+      "patterns": [
+        "publish research",
+        "publish a brief",
+        "research artifact",
+        "how do i submit research"
+      ],
       "answer": "Approved Research partners can publish artifacts (practitioner briefs, peer-reviewed papers, summaries) from their Partner Studio. Drafts stay private until you set status to 'published'. Each artifact accepts a cover image, abstract, full text URL, DOI, and category tags. Apply at /partner/apply if you don't have a Research profile yet.",
       "follow_up_label": "Want me to open the application?"
     },
     {
       "id": "founding-membership",
-      "tags": ["founding", "founder membership", "join", "lifetime", "membership"],
-      "patterns": ["become a founder", "founding member", "lifetime membership", "how do i join"],
-      "answer": "Founding Membership is a one-time contribution that supports the Foundation's earliest years and unlocks the Founding Journal, the Founder Collection patches, and lifetime access to member workshops. Details and tiers are at /join. We're not running open enrollment year-round — when memberships are paused, you can still join the waitlist.",
+      "tags": [
+        "founding",
+        "founder membership",
+        "join",
+        "lifetime",
+        "membership"
+      ],
+      "patterns": [
+        "become a founder",
+        "founding member",
+        "lifetime membership",
+        "how do i join"
+      ],
+      "answer": "Founding Membership is a one-time contribution that supports the Foundation's earliest years and unlocks the Founding Journal, the Founder Collection patches, and lifetime access to member workshops. Details and tiers are at /join. We're not running open enrollment year-round \u2014 when memberships are paused, you can still join the waitlist.",
       "follow_up_label": "Want me to take you to /join?"
     },
     {
       "id": "workshops",
-      "tags": ["workshop", "session", "register", "registration", "schedule"],
-      "patterns": ["sign up for workshop", "register workshop", "workshop schedule", "upcoming workshops"],
-      "answer": "Live and on-demand workshops are at /practice. Open ones show 'Register' on each card — your registration creates a calendar invite and adds the workshop to your Profile. If a workshop is full, you can join the waitlist; we release seats as people drop out.",
+      "tags": [
+        "workshop",
+        "session",
+        "register",
+        "registration",
+        "schedule"
+      ],
+      "patterns": [
+        "sign up for workshop",
+        "register workshop",
+        "workshop schedule",
+        "upcoming workshops"
+      ],
+      "answer": "Live and on-demand workshops are at /practice. Open ones show 'Register' on each card \u2014 your registration creates a calendar invite and adds the workshop to your Profile. If a workshop is full, you can join the waitlist; we release seats as people drop out.",
       "follow_up_label": "Looking for a specific topic?"
     },
     {
       "id": "delete-account",
-      "tags": ["delete", "remove account", "close account", "gdpr", "data"],
-      "patterns": ["delete my account", "close my account", "remove my data", "gdpr request"],
-      "answer": "We honor account deletion requests within 30 days. Email support@birthright.live from the address on your account with the subject 'Delete my account' — we'll confirm receipt, anonymize any public artifacts you authored (or leave them up with your byline removed, your choice), and erase personally identifiable data.",
+      "tags": [
+        "delete",
+        "remove account",
+        "close account",
+        "gdpr",
+        "data"
+      ],
+      "patterns": [
+        "delete my account",
+        "close my account",
+        "remove my data",
+        "gdpr request"
+      ],
+      "answer": "We honor account deletion requests within 30 days. Email support@birthright.live from the address on your account with the subject 'Delete my account' \u2014 we'll confirm receipt, anonymize any public artifacts you authored (or leave them up with your byline removed, your choice), and erase personally identifiable data.",
       "follow_up_label": "Want me to flag this for a human?"
     },
     {
       "id": "contact-human",
-      "tags": ["human", "support", "team", "real person", "talk to someone", "contact"],
-      "patterns": ["talk to a human", "speak to a person", "real support", "contact team", "email support"],
-      "answer": "Of course — email support@birthright.live and a human at the Foundation will get back to you, usually within one business day. If you'd like, share what you're working through and I can include it in the handoff note so they have context.",
+      "tags": [
+        "human",
+        "support",
+        "team",
+        "real person",
+        "talk to someone",
+        "contact"
+      ],
+      "patterns": [
+        "talk to a human",
+        "speak to a person",
+        "real support",
+        "contact team",
+        "email support"
+      ],
+      "answer": "Of course \u2014 email support@birthright.live and a human at the Foundation will get back to you, usually within one business day. If you'd like, share what you're working through and I can include it in the handoff note so they have context.",
       "follow_up_label": "Want me to draft a quick handoff note?"
     },
     {
       "id": "what-is-birthright",
-      "tags": ["birthright", "foundation", "mission", "about", "what is"],
-      "patterns": ["what is birthright", "what does the foundation do", "about birthright"],
+      "tags": [
+        "birthright",
+        "foundation",
+        "mission",
+        "about",
+        "what is"
+      ],
+      "patterns": [
+        "what is birthright",
+        "what does the foundation do",
+        "about birthright"
+      ],
       "answer": "birthright Foundation exists on a single thesis: secure connection is everyone's birthright. We work with clinicians, artists, and patrons to make the science and practice of relational repair both visible and affordable. The platform is part publishing house, part artist economy, part practitioner network. Start at /practice or /research to see the work.",
       "follow_up_label": "Want a tour?"
     },
     {
       "id": "refund-policy",
-      "tags": ["refund", "money back", "cancel", "subscription"],
-      "patterns": ["can i get a refund", "refund policy", "cancel subscription", "cancel membership"],
-      "answer": "Workshop and membership refunds are case-by-case within 30 days of purchase — email support@birthright.live with your order number and a sentence on what didn't fit, and we'll make it right. Patch orders go through 7C's Farmstead directly; refunds for those are governed by their custom-order terms.",
+      "tags": [
+        "refund",
+        "money back",
+        "cancel",
+        "subscription"
+      ],
+      "patterns": [
+        "can i get a refund",
+        "refund policy",
+        "cancel subscription",
+        "cancel membership"
+      ],
+      "answer": "Workshop and membership refunds are case-by-case within 30 days of purchase \u2014 email support@birthright.live with your order number and a sentence on what didn't fit, and we'll make it right. Patch orders go through 7C's Farmstead directly; refunds for those are governed by their custom-order terms.",
       "follow_up_label": "Want me to flag a refund request to a human?"
     },
     {
       "id": "referral-program",
-      "tags": ["referral", "refer", "affiliate", "share link", "earn", "commission"],
-      "patterns": ["refer a friend", "referral program", "affiliate link", "how do i earn"],
-      "answer": "Every active partner has a referral code. Share your code (or your gallery URL — every visit through a /api/r/{code} link drops a 30-day attribution cookie). Sales attributed to you pay an inbound percentage based on your tier (3–5% for Artists; partner tiers vary). Your code is on your Partner Studio dashboard.",
+      "tags": [
+        "referral",
+        "refer",
+        "affiliate",
+        "share link",
+        "earn",
+        "commission"
+      ],
+      "patterns": [
+        "refer a friend",
+        "referral program",
+        "affiliate link",
+        "how do i earn"
+      ],
+      "answer": "Every active partner has a referral code. Share your code (or your gallery URL \u2014 every visit through a /api/r/{code} link drops a 30-day attribution cookie). Sales attributed to you pay an inbound percentage based on your tier (3\u20135% for Artists; partner tiers vary). Your code is on your Partner Studio dashboard.",
       "follow_up_label": "Want to see your referral code?"
     },
     {
       "id": "donate",
-      "tags": ["donate", "donation", "contribute", "support", "give", "patronage"],
-      "patterns": ["how do i donate", "make a donation", "contribute money", "give to birthright", "support the foundation"],
-      "answer": "Thank you for the impulse. The cleanest way to support the work right now is through Founding Membership at /join — a one-time contribution that funds the Foundation's earliest years. We're also happy to receive larger directed gifts (estates, sponsorships, scholarship funds); email support@birthright.live and a human will respond personally.",
+      "tags": [
+        "donate",
+        "donation",
+        "contribute",
+        "support",
+        "give",
+        "patronage"
+      ],
+      "patterns": [
+        "how do i donate",
+        "make a donation",
+        "contribute money",
+        "give to birthright",
+        "support the foundation"
+      ],
+      "answer": "Thank you for the impulse. The cleanest way to support the work right now is through Founding Membership at /join \u2014 a one-time contribution that funds the Foundation's earliest years. We're also happy to receive larger directed gifts (estates, sponsorships, scholarship funds); email support@birthright.live and a human will respond personally.",
       "follow_up_label": "Want me to take you to /join?"
     },
     {
       "id": "careers",
-      "tags": ["job", "jobs", "career", "careers", "work for", "hiring", "apply", "employment"],
-      "patterns": ["do you have jobs", "are you hiring", "work for birthright", "join the team", "apply for a job"],
-      "answer": "We don't currently run open recruitment — the Foundation is small and grows by invitation. If you'd like to be considered for future practitioner or partnership roles, email support@birthright.live with a short note about your background and what calls you to the work. We keep these on file and reach out when fit emerges.",
+      "tags": [
+        "job",
+        "jobs",
+        "career",
+        "careers",
+        "work for",
+        "hiring",
+        "apply",
+        "employment"
+      ],
+      "patterns": [
+        "do you have jobs",
+        "are you hiring",
+        "work for birthright",
+        "join the team",
+        "apply for a job"
+      ],
+      "answer": "We don't currently run open recruitment \u2014 the Foundation is small and grows by invitation. If you'd like to be considered for future practitioner or partnership roles, email support@birthright.live with a short note about your background and what calls you to the work. We keep these on file and reach out when fit emerges.",
       "follow_up_label": "Want me to flag this for a human?"
     },
     {
       "id": "sponsorship",
-      "tags": ["sponsor", "sponsorship", "scholarship", "underwrite"],
-      "patterns": ["sponsor a workshop", "scholarship program", "underwrite", "fund a workshop"],
-      "answer": "Workshop sponsorship and scholarships go through /sponsor — you can either fund a named workshop ($500–$5,000 depending on cohort size) or contribute to the general scholarship pool, which the Foundation matches at 25%. Larger directed sponsorships (named cohorts, research briefs) are arranged directly with the team.",
+      "tags": [
+        "sponsor",
+        "sponsorship",
+        "scholarship",
+        "underwrite"
+      ],
+      "patterns": [
+        "sponsor a workshop",
+        "scholarship program",
+        "underwrite",
+        "fund a workshop"
+      ],
+      "answer": "Workshop sponsorship and scholarships go through /sponsor \u2014 you can either fund a named workshop ($500\u2013$5,000 depending on cohort size) or contribute to the general scholarship pool, which the Foundation matches at 25%. Larger directed sponsorships (named cohorts, research briefs) are arranged directly with the team.",
       "follow_up_label": "Want me to take you to /sponsor?"
     },
     {
       "id": "press-media",
-      "tags": ["press", "media", "interview", "podcast", "feature", "journalist"],
-      "patterns": ["press inquiry", "media inquiry", "interview request", "podcast guest", "feature birthright"],
-      "answer": "For press, podcast, or feature requests, email support@birthright.live with the outlet, your timeline, and what you'd like to cover. The Foundation does selective interviews — typically prioritizing outlets aligned with practitioner education over consumer wellness content.",
+      "tags": [
+        "press",
+        "media",
+        "interview",
+        "podcast",
+        "feature",
+        "journalist"
+      ],
+      "patterns": [
+        "press inquiry",
+        "media inquiry",
+        "interview request",
+        "podcast guest",
+        "feature birthright"
+      ],
+      "answer": "For press, podcast, or feature requests, email support@birthright.live with the outlet, your timeline, and what you'd like to cover. The Foundation does selective interviews \u2014 typically prioritizing outlets aligned with practitioner education over consumer wellness content.",
       "follow_up_label": "Want to send a quick note?"
     },
     {
       "id": "data-privacy",
-      "tags": ["privacy", "data", "tracking", "cookies", "gdpr", "ccpa"],
-      "patterns": ["privacy policy", "what data do you collect", "do you sell my data", "cookies on birthright"],
-      "answer": "We collect the minimum needed to run the platform — your account email, what you've purchased, and the workshops you've registered for. We never sell or share personal data. Full privacy details are at /privacy. For GDPR/CCPA data requests, email support@birthright.live with the subject 'Data request' and we'll respond within 30 days.",
+      "tags": [
+        "privacy",
+        "data",
+        "tracking",
+        "cookies",
+        "gdpr",
+        "ccpa"
+      ],
+      "patterns": [
+        "privacy policy",
+        "what data do you collect",
+        "do you sell my data",
+        "cookies on birthright"
+      ],
+      "answer": "We collect the minimum needed to run the platform \u2014 your account email, what you've purchased, and the workshops you've registered for. We never sell or share personal data. Full privacy details are at /privacy. For GDPR/CCPA data requests, email support@birthright.live with the subject 'Data request' and we'll respond within 30 days.",
       "follow_up_label": "Want me to flag a data request?"
     },
     {
       "id": "gift-purchase",
-      "tags": ["gift", "buy as gift", "for someone", "send to friend"],
-      "patterns": ["buy as a gift", "gift a workshop", "gift a patch", "send to a friend", "gift card"],
-      "answer": "You can buy any item or workshop seat as a gift — at checkout, put the recipient's name and email in the order notes and we'll personalize the welcome. For patches via 7C's Farmstead, mention the recipient's shipping address in their order form. We don't yet have a dedicated gift-card SKU, but it's on the roadmap.",
+      "tags": [
+        "gift",
+        "buy as gift",
+        "for someone",
+        "send to friend"
+      ],
+      "patterns": [
+        "buy as a gift",
+        "gift a workshop",
+        "gift a patch",
+        "send to a friend",
+        "gift card"
+      ],
+      "answer": "You can buy any item or workshop seat as a gift \u2014 at checkout, put the recipient's name and email in the order notes and we'll personalize the welcome. For patches via 7C's Farmstead, mention the recipient's shipping address in their order form. We don't yet have a dedicated gift-card SKU, but it's on the roadmap.",
       "follow_up_label": "Want me to flag a gift card request?"
     },
     {
       "id": "homepage-tour",
-      "tags": ["tour", "what does this site do", "navigate", "where to start", "first time"],
-      "patterns": ["give me a tour", "where do i start", "first time here", "show me around", "what should i look at"],
-      "answer": "Quick tour: /practice is where you'll find workshops and the on-demand library. /research holds practitioner briefs and peer-reviewed papers. /gallery is the artist economy — paintings, photography, mixed media — every purchase carries a 20% Foundation patronage. /equip is the storefront, including the Founder Collection patches. /join is how you become a Founding Member.",
+      "tags": [
+        "tour",
+        "what does this site do",
+        "navigate",
+        "where to start",
+        "first time"
+      ],
+      "patterns": [
+        "give me a tour",
+        "where do i start",
+        "first time here",
+        "show me around",
+        "what should i look at"
+      ],
+      "answer": "Quick tour: /practice is where you'll find workshops and the on-demand library. /research holds practitioner briefs and peer-reviewed papers. /gallery is the artist economy \u2014 paintings, photography, mixed media \u2014 every purchase carries a 20% Foundation patronage. /equip is the storefront, including the Founder Collection patches. /join is how you become a Founding Member.",
       "follow_up_label": "Want a deeper tour of any one of those?"
     },
     {
       "id": "leadership-executive-director",
-      "tags": ["executive director", "ed", "director", "james", "reagan", "founder", "lead", "leads", "leader", "who runs", "who runs this", "who leads", "in charge"],
-      "patterns": ["who is the executive director", "who's the executive director", "who runs birthright", "who leads birthright", "who's in charge", "who is james", "who is james reagan", "executive director of birthright", "tell me about james"],
-      "answer": "James Reagan is the executive director of the Birthright Foundation — he leads operations and partnerships and is a long-time advocate of attachment-informed community work. He's currently the foundation's only standing officer; the /lead page also shows three placeholder bios illustrating the seats the foundation is actively building toward.",
+      "tags": [
+        "executive director",
+        "ed",
+        "director",
+        "james",
+        "reagan",
+        "founder",
+        "lead",
+        "leads",
+        "leader",
+        "who runs",
+        "who runs this",
+        "who leads",
+        "in charge"
+      ],
+      "patterns": [
+        "who is the executive director",
+        "who's the executive director",
+        "who runs birthright",
+        "who leads birthright",
+        "who's in charge",
+        "who is james",
+        "who is james reagan",
+        "executive director of birthright",
+        "tell me about james"
+      ],
+      "answer": "James Reagan is the executive director of the Birthright Foundation \u2014 he leads operations and partnerships and is a long-time advocate of attachment-informed community work. He's currently the foundation's only standing officer; the /lead page also shows three placeholder bios illustrating the seats the foundation is actively building toward.",
       "follow_up_label": "Want me to take you to the leadership page?"
     },
     {
       "id": "leadership-team",
-      "tags": ["leadership", "team", "governing", "board", "who", "members", "directors", "board chair", "advisors", "officers"],
-      "patterns": ["who is on the team", "who's on the team", "leadership team", "governing members", "board members", "who runs the foundation", "who is the board chair", "tell me about the leadership", "who are the officers"],
-      "answer": "James Reagan is the current executive director and the foundation's standing officer. The /lead page also shows three placeholder bios (Board Chair, Director of Community Stewardship, Research Advisor) that illustrate the seats the foundation is actively building toward — those positions aren't filled yet. As the board fills out, real bios replace the placeholders.",
+      "tags": [
+        "leadership",
+        "team",
+        "governing",
+        "board",
+        "who",
+        "members",
+        "directors",
+        "board chair",
+        "advisors",
+        "officers"
+      ],
+      "patterns": [
+        "who is on the team",
+        "who's on the team",
+        "leadership team",
+        "governing members",
+        "board members",
+        "who runs the foundation",
+        "who is the board chair",
+        "tell me about the leadership",
+        "who are the officers"
+      ],
+      "answer": "James Reagan is the current executive director and the foundation's standing officer. The /lead page also shows three placeholder bios (Board Chair, Director of Community Stewardship, Research Advisor) that illustrate the seats the foundation is actively building toward \u2014 those positions aren't filled yet. As the board fills out, real bios replace the placeholders.",
       "follow_up_label": "Want me to take you to the leadership page?"
     },
     {
       "id": "what-is-birthright",
-      "tags": ["what is birthright", "what's birthright", "about", "mission", "purpose", "explain", "describe", "foundation"],
-      "patterns": ["what is birthright", "what's birthright", "what does birthright do", "what is the foundation", "tell me about birthright", "what's the mission", "what is your mission", "explain birthright"],
+      "tags": [
+        "what is birthright",
+        "what's birthright",
+        "about",
+        "mission",
+        "purpose",
+        "explain",
+        "describe",
+        "foundation"
+      ],
+      "patterns": [
+        "what is birthright",
+        "what's birthright",
+        "what does birthright do",
+        "what is the foundation",
+        "tell me about birthright",
+        "what's the mission",
+        "what is your mission",
+        "explain birthright"
+      ],
       "answer": "birthright is an educational foundation built on one conviction: secure bonds are everyone's birthright. We publish practitioner research, run small in-person and online workshops on attachment-informed relating, support an artist economy of partners producing aligned goods and creative work, and host a community of facilitators, researchers, vendors, and stewards. The full mission and education structure live at /about.",
       "follow_up_label": "Want a tour of any specific part?"
     },
     {
       "id": "partner-apply",
-      "tags": ["apply", "application", "become a partner", "join birthright", "partner signup", "applying"],
-      "patterns": ["how do i apply", "apply to be a partner", "become a partner", "partner application", "how do i become a partner", "want to be a partner", "vendor application", "facilitator application", "join as a partner"],
-      "answer": "Anyone can apply to become a birthright partner — we have six tracks: Vendor, Community, Research, Facilitator, Artist, and Steward. Start at /partner/apply, tell us which track fits your work, and a steward will follow up within a few days. You can see live examples of each track at /partner and the type comparison + tier structure at /partner/types.",
+      "tags": [
+        "apply",
+        "application",
+        "become a partner",
+        "join birthright",
+        "partner signup",
+        "applying"
+      ],
+      "patterns": [
+        "how do i apply",
+        "apply to be a partner",
+        "become a partner",
+        "partner application",
+        "how do i become a partner",
+        "want to be a partner",
+        "vendor application",
+        "facilitator application",
+        "join as a partner"
+      ],
+      "answer": "Anyone can apply to become a birthright partner \u2014 we have six tracks: Vendor, Community, Research, Facilitator, Artist, and Steward. Start at /partner/apply, tell us which track fits your work, and a steward will follow up within a few days. You can see live examples of each track at /partner and the type comparison + tier structure at /partner/types.",
       "follow_up_label": "Want me to open the application?"
     },
     {
       "id": "partner-types",
-      "tags": ["partner tracks", "kinds of partners", "different partner tracks", "categories"],
-      "patterns": ["what kinds of partners are there", "what are the partner tracks", "different tracks of partners", "compare partner tracks", "partner type comparison"],
+      "tags": [
+        "partner tracks",
+        "kinds of partners",
+        "different partner tracks",
+        "categories"
+      ],
+      "patterns": [
+        "what kinds of partners are there",
+        "what are the partner tracks",
+        "different tracks of partners",
+        "compare partner tracks",
+        "partner type comparison"
+      ],
       "answer": "There are six partner tracks at birthright: Vendor (makers, goods, services), Community (groups, congregations, podcasts amplifying the work), Research (briefs and longitudinal studies), Facilitator (workshop-leading practitioners), Artist (visual and creative work), and Steward (mentors and witnesses in established circles). Full comparison + tier structure lives at /partner/types.",
       "follow_up_label": "Want me to take you to the comparison page?"
+    },
+    {
+      "id": "counsel-fast-path",
+      "tags": [
+        "counsel",
+        "attorney",
+        "lawyer",
+        "law firm",
+        "review",
+        "billable"
+      ],
+      "patterns": [
+        "how do i review as counsel",
+        "how do i start reviewing",
+        "counsel workflow",
+        "review workflow",
+        "how do i redline",
+        "minimize billable time",
+        "billable time",
+        "review the drafts",
+        "review our legal drafts"
+      ],
+      "answer": "Fastest, cheapest workflow if you're outside counsel: ask Birthright to email you `LEGAL_BRIEFING_FOR_COUNSEL.docx` and `00a-counsel-user-guide.docx`. Redline in Word with Track Changes and email the marked-up file back to legal@birthright.live. Our Executive Director does every platform click for you \u2014 you never need to log in for a normal review pass. Full per-function fast-path table lives in the Counsel User Guide.",
+      "follow_up_label": "Show my platform credentials anyway"
+    },
+    {
+      "id": "counsel-redline",
+      "tags": [
+        "counsel",
+        "redline",
+        "markup",
+        "track changes"
+      ],
+      "patterns": [
+        "how do i add a redline",
+        "how do i propose a change",
+        "how do i submit redlines",
+        "how do redlines land",
+        "propose an edit"
+      ],
+      "answer": "Cheapest: mark up the .docx we sent you with Track Changes and email it to legal@birthright.live \u2014 admin transcribes it in ~30 seconds per redline. You avoid platform-typing time. If you'd rather do it in-app: sign in as counsel, open /admin/legal/ratifications, pick the doc, and use the 'Add redline' form (section + quoted text + suggested replacement + rationale).",
+      "follow_up_label": "Which files should I be downloading?"
+    },
+    {
+      "id": "counsel-ratify",
+      "tags": [
+        "counsel",
+        "ratify",
+        "ratification",
+        "sign off"
+      ],
+      "patterns": [
+        "how do i ratify",
+        "how do i sign off",
+        "mark ratified",
+        "counsel ratification"
+      ],
+      "answer": "You never touch the platform to ratify. Send one email: 'We ratify <doc> at v<N> with the redlines applied on <date>. \u2014 <Firm>'. Admin marks it on the platform, records your firm name, and the public draft banner disappears automatically. New ratifications also appear on the public RSS feed at /api/legal/history.rss.",
+      "follow_up_label": "Where do users see the change log?"
+    },
+    {
+      "id": "counsel-roundtrip-status",
+      "tags": [
+        "counsel",
+        "roundtrip",
+        "how did my redlines land"
+      ],
+      "patterns": [
+        "how did my redlines land",
+        "did my redlines get applied",
+        "roundtrip status",
+        "when will i know if the redlines were accepted"
+      ],
+      "answer": "You'll receive an automated email the moment admin applies your redlines. Subject reads e.g. 'Roundtrip applied \u00b7 Terms of Service \u00b7 4 accepted, 1 rejected.' Full per-doc history is at /admin/legal/ratifications \u2192 doc \u2192 Roundtrip history \u2014 but you don't need to check the platform; the email itself has the numbers.",
+      "follow_up_label": "How do I ratify a document?"
+    },
+    {
+      "id": "counsel-scope-what-you-can-do",
+      "tags": [
+        "counsel",
+        "role",
+        "read-only",
+        "readonly",
+        "permissions"
+      ],
+      "patterns": [
+        "what can counsel do on the platform",
+        "counsel permissions",
+        "counsel role",
+        "can counsel edit",
+        "counsel readonly"
+      ],
+      "answer": "Counsel is a read-only admin. You can browse every admin page, comment/redline on any legal doc, tick off the counsel review checklist, and reset your own password. You cannot: publish agreement versions, ratify or revoke, apply a roundtrip, delete comments, rebuild .docx bundles, or edit source markdown. Those actions belong to Birthright's Executive Director \u2014 which is why we recommend emailing instead of clicking.",
+      "follow_up_label": "How do I start reviewing?"
     }
-  ]
+  ],
+  "meta": {
+    "counsel_entries_added": "2026-02-04"
+  }
 }

@@ -1,0 +1,46 @@
+{
+  "summary": "Verification pass on counsel-facing legal features. Backend: 21 pytest cases in /app/backend/tests/test_iter32_counsel_guide.py (18 pass, 3 fail). Counsel login returns readonly_admin JWT; /api/legal/docs contains draft-00a-counsel-user-guide + counsel-briefing-docx; /api/legal/drafts/00a-counsel-user-guide and /00-counsel-review-plan both return >10KB .docx unauthenticated; /api/legal/pages returns exactly the 6 public slugs; /pages/terms renders html + draft flag; /history and /history.rss OK; counsel can GET and POST /api/legal/comments/01-terms-of-service (author_role=readonly_admin persisted); counsel POST /ratifications and /rebuild-docx correctly 403 {readonly:true}; admin ratify+list+revoke and rebuild-docx {ok:true} all work; help KB deflects 'how do i start reviewing as counsel' -> mentions LEGAL_BRIEFING_FOR_COUNSEL.docx and 'how do i add a redline' -> legal@birthright.live. Frontend: counsel login at /login, persistent readonly banner, /admin/legal/ratifications renders with 7 doc rows, ratify form + rebuild button correctly hidden for counsel, redline posted from UI and appears in comment list; anonymous /legal hub shows 6 rows + Ratification history link; /legal/terms shows the amber 'First draft — pending counsel ratification' banner with 5.4k chars of body; /legal/history renders empty-state + RSS link; help widget returns the counsel KB answers in-UI. Two real defects found: the counsel Fast Path section is NOT actually in the Legal Briefing, and the readonly allow-list leaks mutating roundtrip endpoints to counsel.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/legal/docs/counsel-briefing-md (and .docx)", "issue": "LEGAL_BRIEFING_FOR_COUNSEL.md/.docx does NOT contain a 'Counsel Fast Path — Minimise Your Billable Time' section (verified against served markdown, the file on disk, git HEAD, and the docx paragraph text). The only trace is a §8b table row 'Counsel User Guide — Minimise Billable Time' linking to the standalone guide. The standalone guide's own header claims it is 'Also embedded near the front of the Legal Briefing' — so the requirement 'integrated into the Legal Briefing for Counsel' is unmet and the guide text is currently inaccurate.", "priority": "HIGH"},
+      {"endpoint": "POST /api/legal/comments/{slug}/apply-roundtrip and /import-roundtrip and /{id}/resolve", "issue": "readonly_admin write allow-list uses prefix '/api/legal/comments/' which also matches these mutating sub-routes. Counsel POST to /comments/01-terms-of-service/apply-roundtrip returned 400 (payload validation) instead of 403 — i.e. the middleware let it through; a well-formed payload would let a read-only counsel session rewrite source legal .md files and resolve comments. Tighten the allow-list (exact-match the comment-create route, or exclude '/apply-roundtrip', '/import-roundtrip', '/resolve').", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/legal/rebuild-docx", "issue": "Rebuild rewrites backend/legal_docs/LEGAL_BRIEFING_FOR_COUNSEL.md in place (regenerates the §8b draft table). This mutates a source markdown as a side effect of an admin action — worth noting since ratification body hashes key off exact content (briefing itself is not ratified, so no hash break observed). Triggered once during this test run; diff is limited to the auto-generated table rows for the two new counsel docs."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminLegalRatifications header", "issue": "Breadcrumb 'Admin Hub' and the eyebrow label run together with no gap: renders as 'Admin HubLEGAL · RATIFICATION & REDLINES'", "selector": "[data-testid=\"admin-legal-ratifications-page\"] header", "priority": "LOW"},
+      {"component": "LegalIndex / LegalHistory header", "issue": "The scales/clock icon overlaps the eyebrow text ('LEGAL · PUBLIC ⚖ Legal', 'LEGAL · CHANGE LOG 🕘 Ratification history') — icon sits on top of the label", "selector": "[data-testid=\"legal-index-page\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Counsel roundtrip buttons", "issue": "'Import roundtrip (.docx)' is rendered for the counsel/readonly session even though it is a mutating POST; combined with the allow-list leak above it is actually reachable. Either hide it for readonly_admin or intentionally document it as counsel-permitted.", "affected_selectors": ["legal-comment-import-roundtrip-btn", "legal-comment-import-roundtrip-input"]},
+      {"flow": "Public legal pages", "issue": "Console shows repeated 401s on unauthenticated /legal and /legal/terms (session probe firing for anonymous visitors) — noise only, pages render fine.", "affected_selectors": []}
+    ],
+    "design_issues": [
+      {"screen": "/legal, /legal/terms, /admin/legal/ratifications", "issues": ["Contrast, spacing and footer are otherwise fine; amber draft banner is legible", "Cookie consent bar overlaps the bottom-right content area on 1920x1080 until dismissed"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter32_counsel_guide.py", "/app/test_reports/pytest/counsel_guide_results.xml"],
+  "action_items": [
+    "Add the 'Counsel Fast Path — Minimise Your Billable Time' section into LEGAL_BRIEFING_FOR_COUNSEL.md near the front and rebuild the .docx (or fix the guide's claim that it is embedded).",
+    "Tighten utils/readonly_admin.py allow-list so counsel can only POST the comment-create route, not /apply-roundtrip, /import-roundtrip or /{id}/resolve.",
+    "Hide 'Import roundtrip' for readonly_admin on /admin/legal/ratifications (or confirm it is intended).",
+    "Fix header spacing/icon overlap on /legal, /legal/history and /admin/legal/ratifications eyebrow labels.",
+    "Note: review request said counsel signs in at /signin; the real route is /login (docs already say /login) — no change needed unless a /signin alias is wanted."
+  ],
+  "critical_code_review_comments": [
+    "readonly_admin allow-list is prefix-based; prefix allow-lists on a router that nests mutating sub-routes under the same path is a privilege-escalation pattern. Use an explicit (method, exact-path-regex) allow-list.",
+    "backend/routers/legal.py is ~58k / 1500+ lines — split into legal_pages.py, legal_ratifications.py, legal_comments_roundtrip.py, legal_docs.py.",
+    "POST /api/legal/rebuild-docx runs a subprocess synchronously with timeout=180 inside the request handler; this blocks a worker for minutes. Move to a background task."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter32_counsel_guide.py"],
+  "success_rate": {"backend": "86% (18/21)", "frontend": "100% of counsel + public flows tested passed"},
+  "seed_data_creation": "Created and deleted: 1 counsel redline comment via API, 1 via Playwright UI, 1 admin ratification v9.9 on 01-terms-of-service (revoked). DB verified clean afterwards (0 TEST_ comments, 0 ratifications). No source markdown edited by the tests; LEGAL_BRIEFING_FOR_COUNSEL.md was rewritten by the app's own rebuild-docx endpoint (auto table only).",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "counsel@birthright.org / counsel-review-2026 (readonly_admin) and admin@birthright.org / birthright2026 both verified working; /app/memory/test_credentials.md is accurate — no update needed.",
+  "context_for_next_testing_agent": "Regression suite: /app/backend/tests/test_iter32_counsel_guide.py. Three intentionally failing assertions document open defects: (1) briefing markdown missing 'Counsel Fast Path' section, (2)+(3) counsel reaching apply-roundtrip (400) and comment resolve (404) instead of 403. Re-run after the fixes; all three should flip to pass. Sign-in route is /login, not /signin. Help widget testids: help-input, help-send, help-messages. Ratification rows use data-testid legal-ratify-row-<slug> and load ~1s after page render.",
+  "rca_of_the_issue": "Fast-path gap: the section was authored only in 00a-counsel-user-guide.md; nothing in scripts/eu_compliance_and_docx.py or the briefing source injects it into LEGAL_BRIEFING_FOR_COUNSEL.md, so the rebuild regenerates only the draft index table. Allow-list leak: _ALLOWLIST_PREFIXES contains '/api/legal/comments/', and legal.py nests POST /comments/{slug}/apply-roundtrip, /import-roundtrip and /{id}/resolve under that same prefix, so ReadonlyEnforcementMiddleware short-circuits before the role check and require_roles('admin') accepts readonly_admin."
+}
