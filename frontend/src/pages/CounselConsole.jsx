@@ -264,9 +264,9 @@ export default function CounselConsole() {
                       <Clock size={11} /> {wd.state === "awaiting_admin" ? "Awaiting admin" : "Working draft"}
                     </span>
                   )}
-                  {wd?.comment_stats?.open > 0 && (
+                  {wd?.comment_stats?.total > 0 && (
                     <span
-                      className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 font-semibold bg-[#F5E6D6] text-[#7A4A1A]"
+                      className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 font-semibold ${wd.comment_stats.open > 0 ? "bg-[#F5E6D6] text-[#7A4A1A]" : "bg-[#EAF3EA] text-[#1E4030]"}`}
                       data-testid={`counsel-row-${sourceSlug}-comments-badge`}
                     >
                       <MessageCircle size={11} /> {wd.comment_stats.open} open · {wd.comment_stats.total} total
@@ -698,7 +698,7 @@ function DiffModal({ data, onClose, onRelease, currentUser }) {
                           </td>
                         </tr>
                       )}
-                      {composeLine === row.rightNum && (
+                      {composeLine != null && composeLine === row.rightNum && (
                         <tr>
                           <td colSpan={4} className="bg-[#FFF6E3] px-3 py-2 border-y border-[#E5E1D8]">
                             <ComposeForm

@@ -1484,9 +1484,22 @@ async def delete_wd_comment(
         raise HTTPException(status_code=404, detail="Comment not found on this working draft.")
     if user.get("role") != "admin" and c.get("author_id") != user.get("id"):
         raise HTTPException(status_code=403, detail="You can only delete your own comments.")
+    # Cascade to ALL descendants, not just direct children. Threads are
+    # rare-but-possible deeper than one level via direct API use.
+    to_delete = {comment_id}
+    frontier = {comment_id}
+    while frontier:
+        children = await db.legal_working_draft_comments.find(
+            {"working_draft_id": wd["id"], "parent_id": {"$in": list(frontier)}},
+            {"id": 1, "_id": 0},
+        ).to_list(1000)
+        child_ids = {c["id"] for c in children} - to_delete
+        if not child_ids:
+            break
+        to_delete |= child_ids
+        frontier = child_ids
     r = await db.legal_working_draft_comments.delete_many({
-        "working_draft_id": wd["id"],
-        "$or": [{"id": comment_id}, {"parent_id": comment_id}],
+        "working_draft_id": wd["id"], "id": {"$in": list(to_delete)},
     })
     return {"deleted": r.deleted_count}
 
