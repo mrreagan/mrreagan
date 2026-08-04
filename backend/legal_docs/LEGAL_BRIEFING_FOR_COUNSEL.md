@@ -361,10 +361,67 @@ Below is a first-draft summary of the operative language for each drafted agreem
 
 ## 6. Intellectual Property Landscape
 
-### 6.1 Brand
-- Marks in use: **"birthright"**, **"birthright.live"**, tagline **"You are the founder of your own love story"**, **"Secure connection is your birthright"**, **"The bond is the cure"**, **"Repair is older than rupture"**, **"We are created for connection"**.
-- Logo: an ember-gold flame + wordmark. Asset URL: `https://customer-assets.emergentagent.com/job_c61b4345-eef4-4783-a5af-85e8af10eaf3/artifacts/s0oix25k_image.png`.
-- No trademark filings yet.
+### 6.1 Brand — logos, wordmark, and marks in active use
+
+#### Logos (visual marks)
+- **Primary composite mark:** birthright wordmark with the interlocking ember-and-teal flame device and the tagline lockup "SECURE BONDS > THRIVE." Embedded below (also stored at `/app/backend/legal_docs/brand_assets/logo_composite.jpeg`).
+- **Mission-statement flame lockup:** the gold flame icon paired with the italic mission-statement typography ("Secure bonds are our birthright."). Embedded below (also stored at `/app/backend/legal_docs/brand_assets/mission_statement.jpeg`).
+
+*(Both images are embedded in this document under §6.1a below and are considered the current canonical visual identity as of the date of this briefing.)*
+
+#### Wordmark / textual marks
+- **birthright** (lowercase wordmark, primary)
+- **birthright.live** (domain-mark)
+- **birthright Foundation** (organizational mark, pending entity formation)
+
+#### Taglines and marks in active public use across birthright.live
+
+The following short-form marks appear on public pages of birthright.live (URLs listed for counsel to verify context). Each is in use in commerce and is a candidate for trademark protection under the Trademark Filings Plan (draft §8b, item 17).
+
+| # | Mark / tagline | Where it appears | Nature of use |
+|---|---|---|---|
+| 1 | **"Secure bonds are your birthright."** | Homepage hero and marketing rotations | Consumer-facing brand promise (second-person) |
+| 2 | **"We are the practice ground."** | Practice page hero; about-us section | Positioning line for the platform's core offering |
+| 3 | **"A practice that grows with you"** | Practice page sub-hero; membership pages | Descriptor for the recurring/subscription nature of the work |
+| 4 | **"Born for connection"** | Homepage; about section; brand imagery | Origin-story tagline |
+| 5 | **"Secure bonds are our birthright."** | Mission statement page; about page | Corporate mission statement (first-person plural) |
+| 6 | **"A practice, not a curriculum"** | Practice page; how-it-works section | Positioning — differentiates from typical program/course model |
+| 7 | **"Made to live with the work"** | Shop / Founder Collection page; product marketing | Product-line tagline for merchandise and everyday-carry goods |
+| 8 | **"Artists in the room"** | Gallery page; artist partner pages | Positioning for the artist-partner program |
+| 9 | **"Help someone claim their birthright."** | Sponsorship page; general sponsorship call-to-action | Fundraising / sponsorship marketing line |
+| 10 | **"The people behind the work."** | Board / team page; leadership section | Governance / people-page heading |
+| 11 | **"Help us build the foundation."** | Foundation sponsorship pages; capital-fundraising calls-to-action | Founding-supporter and capital-campaign marketing line |
+| 12 | **"Communities of practice"** | Gather / community page; local-node pages | Positioning for the community-partner and local-node offering |
+
+#### Prior single-line marks (retained from earlier brief; still in use)
+- **"You are the founder of your own love story"** — legacy tagline; verify current usage before filing
+- **"Secure connection is your birthright"** — precursor to Mark #1 above; verify overlap
+- **"The bond is the cure"** — motto used in practice-page copy
+- **"Repair is older than rupture"** — motto used on practice-page copy
+- **"We are created for connection"** — precursor to Mark #4 above; verify overlap
+
+#### Legal status of the above
+- **No trademark filings yet.** All marks above are used in commerce but unregistered.
+- **Recommended filings** (see also draft §8b, item 17 — Trademark Filings Plan):
+  - USPTO Class 41 (education services — workshops, community of practice)
+  - USPTO Class 45 (social services — attachment / connection support)
+  - USPTO Class 25 (apparel — Founder Collection merchandise)
+  - USPTO Class 09 (downloadable software, digital media) — pending platform strategy
+- **Priority for filing:** Marks 1, 2, 5, 6, 8 have the strongest source-identifier character and are most exposed to third-party adoption. Marks 3, 4, 7, 9, 10, 11, 12 are descriptive-suggestive and should be evaluated for distinctiveness with counsel.
+- **Composite logo mark** (birthright wordmark + flame device) should be filed as a single composite mark in Classes 41 and 45.
+- **International (Madrid Protocol)** filing to be considered after United States registration, given EU customer base already visible in traffic.
+
+### 6.1a Embedded brand assets
+
+*The two images below are the canonical current visual identity as of the date of this briefing. Counsel may reproduce them for filing-preparation purposes.*
+
+**Figure 1 — Primary composite mark (wordmark + flame device + "SECURE BONDS > THRIVE" tagline lockup):**
+
+![Primary composite mark — birthright wordmark, flame device, and SECURE BONDS > THRIVE tagline lockup](brand_assets/logo_composite.jpeg)
+
+**Figure 2 — Mission-statement flame lockup ("Secure bonds are our birthright."):**
+
+![Mission statement lockup — gold flame icon and "Secure bonds are our birthright." italic typography](brand_assets/mission_statement.jpeg)
 
 ### 6.2 Content authored in-house
 - Workshop scripts and materials (`workshops`, `workshop_photos`).

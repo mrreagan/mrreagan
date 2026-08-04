@@ -255,6 +255,36 @@ def build():
             doc.add_paragraph()  # spacing after table
             continue
 
+        # Markdown image — ![alt](path). Embed the referenced file as an inline
+        # picture. Path is relative to the .md source directory.
+        img_match = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)$", stripped)
+        if img_match:
+            alt_text, img_path = img_match.group(1), img_match.group(2)
+            resolved = (SRC.parent / img_path).resolve()
+            if resolved.exists():
+                p = doc.add_paragraph()
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                run = p.add_run()
+                try:
+                    run.add_picture(str(resolved), width=Inches(4.5))
+                except Exception as e:
+                    p.add_run(f"[image embed failed: {alt_text} — {e}]").italic = True
+                # Caption (small italic beneath the image)
+                if alt_text:
+                    cap = doc.add_paragraph()
+                    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    cap.paragraph_format.space_after = Pt(10)
+                    cr = cap.add_run(alt_text)
+                    cr.italic = True
+                    cr.font.size = Pt(9)
+                    cr.font.color.rgb = RGBColor(0x5C, 0x6B, 0x6B)
+            else:
+                # Image file missing — render alt text so the doc still builds.
+                p = doc.add_paragraph()
+                p.add_run(f"[Image not found on disk: {img_path} — alt: {alt_text}]").italic = True
+            i += 1
+            continue
+
         # Bullet list
         if stripped.startswith("- "):
             p = doc.add_paragraph(style="List Bullet")
