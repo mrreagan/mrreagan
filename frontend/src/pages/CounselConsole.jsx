@@ -21,9 +21,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft, Upload, Download, ShieldCheck, CheckCircle2, X as XIcon,
-  Clock, FileText, MessageSquare, Send, Trash2,
+  Clock, FileText, MessageSquare, Send, Trash2, GitCompare,
 } from "lucide-react";
 import { toast } from "sonner";
+import { diffLines } from "diff";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -37,6 +38,7 @@ export default function CounselConsole() {
   const [workingDrafts, setWorkingDrafts] = useState([]);
   const [busy, setBusy] = useState({});
   const [releaseModal, setReleaseModal] = useState(null); // { slug, defaultVersion }
+  const [diffModal, setDiffModal] = useState(null); // { slug, title, released, working, wd }
 
   const loadAll = async () => {
     try {
@@ -136,11 +138,12 @@ export default function CounselConsole() {
   };
 
   const markReady = async (sourceSlug) => {
-    if (!window.confirm("Mark this working draft ready for admin review? Editing after this will move it back to Draft.")) return;
+    if (!window.confirm("Mark this working draft ready for admin review? Editing after this will move it back to Draft. Admins will be notified by email.")) return;
     setRowBusy(sourceSlug, "ready", true);
     try {
-      await api.post(`/legal/working-drafts/${sourceSlug}/mark-ready`);
-      toast.success("Marked ready for admin");
+      const r = await api.post(`/legal/working-drafts/${sourceSlug}/mark-ready`);
+      const emailNote = r.data.email_id ? " · admins notified" : "";
+      toast.success(`Marked ready for admin${emailNote}`);
       await loadAll();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Mark-ready failed");
@@ -179,6 +182,24 @@ export default function CounselConsole() {
       toast.error(e?.response?.data?.detail || "Discard failed");
     } finally {
       setRowBusy(sourceSlug, "discard", false);
+    }
+  };
+
+  const openDiff = async (sourceSlug, title) => {
+    setRowBusy(sourceSlug, "diff", true);
+    try {
+      const r = await api.get(`/legal/working-drafts/${sourceSlug}`);
+      setDiffModal({
+        slug: sourceSlug,
+        title,
+        released: r.data.released_md || "",
+        working: r.data.content_md || "",
+        wd: r.data,
+      });
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Could not load diff");
+    } finally {
+      setRowBusy(sourceSlug, "diff", false);
     }
   };
 
@@ -287,6 +308,17 @@ export default function CounselConsole() {
 
                 {wd && (
                   <button
+                    onClick={() => openDiff(sourceSlug, p.title)}
+                    disabled={!!busy[`${sourceSlug}:diff`]}
+                    className="btn-outline text-xs inline-flex items-center gap-1"
+                    data-testid={`counsel-row-${sourceSlug}-view-diff`}
+                  >
+                    <GitCompare size={12} /> View diff
+                  </button>
+                )}
+
+                {wd && (
+                  <button
                     onClick={() => downloadWorking(sourceSlug, p.title)}
                     disabled={!!busy[`${sourceSlug}:dl-working`]}
                     className="btn-outline text-xs inline-flex items-center gap-1"
@@ -372,6 +404,18 @@ export default function CounselConsole() {
           busy={!!busy[`${releaseModal.slug}:release`]}
         />
       )}
+
+      {/* Diff modal — anyone with counsel-console access */}
+      {diffModal && (
+        <DiffModal
+          data={diffModal}
+          onClose={() => setDiffModal(null)}
+          onRelease={isAdmin ? () => {
+            setReleaseModal({ slug: diffModal.slug, title: diffModal.title, wd: diffModal.wd });
+            setDiffModal(null);
+          } : null}
+        />
+      )}
     </div>
   );
 }
@@ -444,4 +488,175 @@ function bumpMinor(v) {
   if (Number.isNaN(n)) return `${v}.1`;
   parts.push(String(n + 1));
   return parts.join(".");
+}
+
+// ---------- Diff modal — side-by-side redline ----------
+function DiffModal({ data, onClose, onRelease }) {
+  const { title, released, working, wd } = data;
+  const [mode, setMode] = useState("side"); // "side" | "unified"
+
+  // Line-level diff. Each part has {value, added?, removed?, count}.
+  const parts = useMemo(() => diffLines(released || "", working || ""), [released, working]);
+
+  // Build aligned left/right rows for side-by-side view.
+  const rows = useMemo(() => buildRows(parts), [parts]);
+
+  const stats = useMemo(() => {
+    let added = 0, removed = 0;
+    for (const p of parts) {
+      const lc = (p.value.match(/\n/g) || []).length || (p.value ? 1 : 0);
+      if (p.added) added += lc;
+      else if (p.removed) removed += lc;
+    }
+    return { added, removed };
+  }, [parts]);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-stretch justify-center z-50 p-4" data-testid="diff-modal">
+      <div className="bg-[#FBF3E4] rounded-2xl max-w-6xl w-full flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 p-5 border-b border-[#E5E1D8]">
+          <div className="min-w-0">
+            <span className="label">Working draft vs. released</span>
+            <h2 className="font-serif text-2xl mt-1 truncate">{title}</h2>
+            <p className="text-xs text-[#5C6B6B] mt-1">
+              <span className="text-[#2E5C46] font-semibold" data-testid="diff-stat-added">+{stats.added} added</span>
+              {" · "}
+              <span className="text-[#9E3C3C] font-semibold" data-testid="diff-stat-removed">-{stats.removed} removed</span>
+              {" · "}
+              <span>state <strong>{wd?.state}</strong></span>
+              {" · "}
+              <span>last edit by {wd?.last_edited_by_email || wd?.created_by_email}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="rounded-full bg-white/70 p-0.5 flex text-xs">
+              <button
+                onClick={() => setMode("side")}
+                className={`px-3 py-1 rounded-full ${mode === "side" ? "bg-[#0F2424] text-[#FBF3E4]" : "text-[#0F2424]"}`}
+                data-testid="diff-mode-side"
+              >Side-by-side</button>
+              <button
+                onClick={() => setMode("unified")}
+                className={`px-3 py-1 rounded-full ${mode === "unified" ? "bg-[#0F2424] text-[#FBF3E4]" : "text-[#0F2424]"}`}
+                data-testid="diff-mode-unified"
+              >Unified</button>
+            </div>
+            <button onClick={onClose} className="text-[#5C6B6B] hover:text-[#0F2424]" data-testid="diff-modal-close">
+              <XIcon size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-auto bg-white" data-testid="diff-modal-body">
+          {mode === "side" ? (
+            <table className="w-full font-mono text-xs" style={{ tableLayout: "fixed" }}>
+              <thead className="sticky top-0 bg-[#FAF7F0] text-[#5C6B6B] uppercase tracking-wider text-[10px] z-10">
+                <tr>
+                  <th className="w-10 px-1 py-2 text-right"></th>
+                  <th className="px-3 py-2 text-left border-r border-[#E5E1D8]">Released</th>
+                  <th className="w-10 px-1 py-2 text-right"></th>
+                  <th className="px-3 py-2 text-left">Working draft</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i} className="align-top">
+                    <td className={`w-10 px-1 py-0.5 text-right text-[#B7B0A0] select-none ${row.leftClass}`}>{row.leftNum ?? ""}</td>
+                    <td className={`px-3 py-0.5 whitespace-pre-wrap break-words border-r border-[#F0EDE3] ${row.leftClass}`}>
+                      {row.left ?? ""}
+                    </td>
+                    <td className={`w-10 px-1 py-0.5 text-right text-[#B7B0A0] select-none ${row.rightClass}`}>{row.rightNum ?? ""}</td>
+                    <td className={`px-3 py-0.5 whitespace-pre-wrap break-words ${row.rightClass}`}>
+                      {row.right ?? ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="font-mono text-xs">
+              {parts.map((p, i) => {
+                const bg = p.added ? "bg-[#EAF3EA] text-[#1E4030]"
+                  : p.removed ? "bg-[#FBEBEB] text-[#7A2E2E]"
+                  : "text-[#0F2424]";
+                const prefix = p.added ? "+ " : p.removed ? "- " : "  ";
+                return (
+                  <div key={i} className={`px-3 py-0.5 whitespace-pre-wrap break-words ${bg}`}>
+                    {p.value.replace(/\n$/, "").split("\n").map((l, j) => (
+                      <div key={j}>{prefix}{l}</div>
+                    ))}
+                  </div>
+                );
+              })}
+              {parts.length === 0 && (
+                <div className="p-6 text-center text-[#5C6B6B]">Working draft is identical to the released version.</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-[#E5E1D8] flex items-center justify-between bg-[#FAF7F0]">
+          <p className="text-xs text-[#5C6B6B]">
+            Released body is untouched until admin releases the working draft.
+          </p>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="btn-outline text-sm" data-testid="diff-modal-cancel">
+              Close
+            </button>
+            {onRelease && (
+              <button
+                onClick={onRelease}
+                className="btn-primary text-sm inline-flex items-center gap-1 bg-[#1E4030]"
+                data-testid="diff-modal-release"
+              >
+                <ShieldCheck size={14} /> Release from here
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Turn jsdiff parts into aligned side-by-side rows. Removed lines occupy
+// the left column, added lines occupy the right column; common lines
+// occupy both. Blank cells align surrounding context.
+function buildRows(parts) {
+  const rows = [];
+  let leftNum = 0;
+  let rightNum = 0;
+  for (const p of parts) {
+    const lines = p.value.split("\n");
+    if (lines.length && lines[lines.length - 1] === "") lines.pop(); // trailing \n
+    if (p.added) {
+      for (const line of lines) {
+        rightNum++;
+        rows.push({
+          left: null, leftNum: null, leftClass: "bg-white",
+          right: line, rightNum, rightClass: "bg-[#EAF3EA] text-[#1E4030]",
+        });
+      }
+    } else if (p.removed) {
+      for (const line of lines) {
+        leftNum++;
+        rows.push({
+          left: line, leftNum, leftClass: "bg-[#FBEBEB] text-[#7A2E2E]",
+          right: null, rightNum: null, rightClass: "bg-white",
+        });
+      }
+    } else {
+      for (const line of lines) {
+        leftNum++; rightNum++;
+        rows.push({
+          left: line, leftNum, leftClass: "bg-white",
+          right: line, rightNum, rightClass: "bg-white",
+        });
+      }
+    }
+  }
+  return rows;
 }

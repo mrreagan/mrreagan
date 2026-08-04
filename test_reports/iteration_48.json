@@ -1,0 +1,46 @@
+{
+  "summary": "Iteration 48 — tested (a) mark-ready admin email fanout in routers/legal.py and (b) the working-draft diff modal in CounselConsole.jsx. Backend: 11/11 pytest cases pass (upload→working draft, mark-ready returns {state, working_draft_id, email_id}, real Resend send logged in db.email_log with template 'legal_working_draft_ready', recipients == exactly all role=admin users (counsel excluded), 2-admin fanout verified with a temporarily seeded second admin, double mark-ready idempotent, _email_working_draft_ready returns None when send_email raises, GET /working-drafts/{slug} returns released_md/content_md/change_log/is_stale/released_body_hash for fresh + multi-edit + identical drafts, 404s for slugs with no open draft). Frontend: diff modal opens with +N/-M stats, side-by-side columns (Released/Working draft) with green added / red removed cells and line numbers, unified toggle renders +/- prefixed single column and toggles back, counsel does NOT see 'Release from here', admin does; clicking it closes the diff modal and opens release-modal prefilled with the same doc (Cookie & Tracking Notice, v1.0); mark-ready confirm text contains 'Admins will be notified by email.'. One real overlay defect found: the cookie-consent banner intercepts clicks on the diff-modal footer buttons.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/legal/working-drafts/{slug}/mark-ready", "issue": "Not email-idempotent: each call sends a NEW email to every admin even when state is already 'awaiting_admin'. Repeated clicks spam admins. Consider skipping the send when wd.state == 'awaiting_admin'."},
+      {"endpoint": "GET /api/admin/emails", "issue": "Endpoint referenced in the test request does not exist; email rows had to be verified directly in Mongo. Also note persisted field names are 'template' and 'to' (not 'template_name'/'recipients') — any future admin email viewer must query those keys."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DiffModal footer vs CookieConsentBanner", "issue": "CookieConsentBanner is fixed bottom-right with z-50 — the same z-index as the diff modal — and its subtree intercepts pointer events over the modal footer. With the banner still showing, clicks on 'Close' and 'Release from here' time out (Playwright reports the banner subtree intercepting). Raise the modal to z-[60] (or hide/lower the banner while a modal is open).", "selector": "[data-testid=\"diff-modal-cancel\"], [data-testid=\"diff-modal-release\"], [data-testid=\"cookie-consent-banner\"]", "priority": "HIGH"},
+      {"component": "DiffModal unified mode", "issue": "For a working draft identical to the released doc, unified mode renders the entire document as context lines instead of a 'no changes' message — the fallback at line 593 (parts.length === 0) is dead code because diffLines always returns one unchanged part for identical inputs. Gate the empty-state on stats.added === 0 && stats.removed === 0 instead.", "selector": "[data-testid=\"diff-modal-body\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Counsel console diff modal", "issues": ["Line numbers, colors (green #EAF3EA added / red #FBEBEB removed) and contrast all read well; header stats and state are legible. No contrast/spacing problems observed.", "Diff body has no max-height stop above the footer on very long docs beyond scroll — acceptable, footer stays sticky."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter48_wd_email_diff.py",
+    "/app/backend/tests/seed_iter48_frontend.py",
+    "/app/test_reports/pytest/iter48_results.xml"
+  ],
+  "action_items": [
+    "Fix z-index conflict: diff modal (and release modal) must sit above CookieConsentBanner (both z-50) — footer buttons are currently unclickable for any user who hasn't dismissed the cookie banner.",
+    "Show the 'identical to the released version' empty state when added===0 && removed===0 (current parts.length===0 check never fires).",
+    "Skip the admin email when mark-ready is called on a draft already in 'awaiting_admin' to avoid duplicate notifications."
+  ],
+  "critical_code_review_comments": [
+    "_email_working_draft_ready loops db.users find({role:'admin'}) with no cap; fine today (1 admin) but consider a limit + dedupe on lowercase email.",
+    "mark_ready awaits the email send inline, so the response latency includes the Resend round-trip (~1s observed). Consider BackgroundTasks so a slow provider never delays the UI.",
+    "CounselConsole.jsx is 663 lines with two modals inline; extracting DiffModal/ReleaseModal into components/ would keep it under the size guideline."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter48_wd_email_diff.py",
+    "/app/backend/tests/seed_iter48_frontend.py"
+  ],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "90% (9/10 checks; diff-modal footer click blocked by cookie banner)"},
+  "seed_data_creation": "Temporary: working drafts on 03-cookie-notice / 01-terms-of-service / 10-sliding-scale-scholarship-terms, and a second admin user test_iter48_admin@birthright.live. ALL cleaned up — working drafts discarded/deleted, legal_working_draft_ready rows removed from email_log/outbound_emails, seeded admin deleted, released .md/.docx unchanged (git shows no legal_docs diff).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "counsel@birthright.live / counsel-review-2026 (readonly_admin); admin@birthright.live / birthright2026 (admin)",
+  "context_for_next_testing_agent": "Slug 'birthright-hub' does not exist — legal source slugs are the numbered files in /app/backend/legal_docs (e.g. 03-cookie-notice). Email rows live in db.email_log (real send) or db.outbound_emails (dry-run) with keys 'template' and 'to'. Resend is live in this env, so mark-ready sends real mail to admin@birthright.live; always clean up email rows and working drafts. Use /app/backend/tests/seed_iter48_frontend.py seed|clean to set up/tear down diff-modal fixtures. Dismiss the cookie-consent banner before clicking any modal footer button.",
+  "rca_of_the_issue": "Overlay bug: CookieConsentBanner (frontend/src/components/CookieConsentBanner.jsx, fixed bottom-4 right-4 z-50) and DiffModal (z-50) share the same stacking level; because the banner appears later in DOM order it wins the hit test over the modal footer region, so Playwright's actionability check fails on diff-modal-cancel/diff-modal-release. Repro: fresh browser profile (no cookie consent stored) → /counsel → View diff → click Close. Mitigation: bump modal container to z-[60] or suppress the banner while a dialog is open."
+}

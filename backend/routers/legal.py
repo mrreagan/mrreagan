@@ -1062,7 +1062,12 @@ async def mark_ready(
     source_slug: str,
     user: dict = Depends(require_roles("admin")),
 ):
-    """Counsel signals the working draft is ready for admin review."""
+    """Counsel signals the working draft is ready for admin review.
+
+    Side effect: emails every user with `role=admin` so a release never
+    sits waiting on a stale dashboard. Fire-and-forget — email failures
+    do not break the mark-ready call.
+    """
     from database import db
     wd = await _active_working_draft(source_slug)
     if not wd:
@@ -1089,7 +1094,70 @@ async def mark_ready(
         target_type="legal_doc", target_id=source_slug,
         metadata={"working_draft_id": wd["id"]},
     )
-    return {"state": _WD_STATE_READY, "working_draft_id": wd["id"]}
+    email_id = await _email_working_draft_ready(source_slug=source_slug, wd=wd, marker=user)
+    return {"state": _WD_STATE_READY, "working_draft_id": wd["id"], "email_id": email_id}
+
+
+async def _email_working_draft_ready(
+    source_slug: str,
+    wd: dict,
+    marker: dict,
+) -> Optional[str]:
+    """Email every admin user that a working draft is ready to release.
+
+    Uses the shared dry-run-safe mailer (no-op if SENDER_EMAIL / Resend
+    aren't configured). Never raises — a failed send returns None and
+    logs a warning.
+    """
+    from database import db
+    from utils.mailer import send_email
+
+    _, title = _SOURCE_TO_PUBLIC.get(source_slug, (source_slug, source_slug.replace("-", " ").title()))
+    recipients: list[str] = []
+    async for u in db.users.find({"role": "admin"}, {"_id": 0, "email": 1}):
+        if u.get("email") and u["email"] not in recipients:
+            recipients.append(u["email"])
+    if not recipients:
+        return None
+
+    site_url = os.environ.get("PUBLIC_SITE_URL", "").rstrip("/")
+    changes = len(wd.get("change_log") or [])
+    subject = f"Working draft ready · {title} · from {marker.get('email', 'counsel')}"
+    html = f"""
+    <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#1A2424">
+      <h2 style="font-family:'Cormorant Garamond',serif;color:#0F2424">Working draft ready for release</h2>
+      <p><strong>Document:</strong> {title}</p>
+      <p><strong>Marked ready by:</strong> {marker.get('email', 'counsel')} ({marker.get('role')}) · {now_iso()}</p>
+      <p><strong>Working draft id:</strong> <code>{wd.get('id', '')}</code></p>
+      <p><strong>Edits accumulated:</strong> {changes}</p>
+      <p style="color:#5C6B6B;font-size:14px">
+        Review the diff and release (or discard) at
+        <a href="{site_url}/counsel" style="color:#476B6B"><strong>{site_url or '/counsel'}/counsel</strong></a>.
+      </p>
+      <p style="color:#5C6B6B;font-size:12px">
+        Nothing on the public site changes until an admin clicks Release.
+      </p>
+    </div>
+    """
+    text = (
+        f"Working draft ready for release · {title}\n"
+        f"Marked ready by: {marker.get('email', 'counsel')} ({marker.get('role')}) at {now_iso()}\n"
+        f"Working draft id: {wd.get('id', '')}\n"
+        f"Edits accumulated: {changes}\n\n"
+        f"Review at: {site_url}/counsel\n"
+    )
+    try:
+        return await send_email(
+            to=recipients,
+            subject=subject,
+            html=html,
+            text=text,
+            template_name="legal_working_draft_ready",
+            metadata={"source_slug": source_slug, "working_draft_id": wd.get("id")},
+        )
+    except Exception as exc:
+        logger.warning("legal.working.ready.email: %s", exc)
+        return None
 
 
 @router.post("/working-drafts/{source_slug}/release")
