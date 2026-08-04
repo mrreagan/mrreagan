@@ -181,34 +181,32 @@ platform:
 
 ---
 
-## 8b. Draft documents — public download links and recommended language
+## 8b. Draft documents — public download links
 
-The 21 first-draft documents below were generated as first-draft starting points for counsel to modify or ratify. Each is downloadable as a Microsoft Word (.docx) file at the plaintext URL shown. **Note: URLs are plain text so they can be copy-pasted into any browser without relying on hyperlink formatting.** Each entry also lists the recommended operative clauses so counsel can preview the core language without downloading. Every draft carries a prominent disclaimer that it is an AI-generated first draft and not legal advice.
-
-**Index (plaintext URLs — copy directly into browser):**
-
-1. Terms of Service (Draft): `https://birthright.live/api/legal/drafts/01-terms-of-service`
-2. Privacy Policy (Draft): `https://birthright.live/api/legal/drafts/02-privacy-policy`
-3. Cookie & Tracking Notice (Draft): `https://birthright.live/api/legal/drafts/03-cookie-notice`
-4. Universal Indemnification & Hold-Harmless Agreement (Draft): `https://birthright.live/api/legal/drafts/04-indemnification-hold-harmless`
-5. Facilitator Services Agreement plus Intellectual-Property Assignment (Draft): `https://birthright.live/api/legal/drafts/05-facilitator-services-agreement`
-6. Artist Consignment / Gallery Partner Agreement (Draft): `https://birthright.live/api/legal/drafts/06-artist-consignment-agreement`
-7. Vendor Supplier / Dropship Agreement — 7C's Farmstead first (Draft): `https://birthright.live/api/legal/drafts/07-vendor-supplier-agreement`
-8. Community Partner Referral Agreement (Draft): `https://birthright.live/api/legal/drafts/08-community-partner-referral-agreement`
-9. Sponsorship Agreement / Sponsor Recognition Consent (Draft): `https://birthright.live/api/legal/drafts/09-sponsorship-agreement`
-10. Sliding-Scale & Scholarship Terms (Draft): `https://birthright.live/api/legal/drafts/10-sliding-scale-scholarship-terms`
-11. Board Member / Officer Agreement plus Directors and Officers (D&O) Coverage (Draft): `https://birthright.live/api/legal/drafts/11-board-officer-agreement`
-12. Foundation Working-Group Volunteer Agreement (Draft): `https://birthright.live/api/legal/drafts/12-volunteer-agreement`
-13. Ombudsman Charter (Draft): `https://birthright.live/api/legal/drafts/13-ombudsman-charter`
-14. Content Moderation & Community Standards Policy (Draft): `https://birthright.live/api/legal/drafts/14-community-standards`
-15. Refund & Returns Policy (Draft, Public): `https://birthright.live/api/legal/drafts/15-refund-returns-policy`
-16. Sales-Tax Registration Plan (Draft): `https://birthright.live/api/legal/drafts/16-sales-tax-registration-plan`
-17. Trademark Filings Plan (Draft): `https://birthright.live/api/legal/drafts/17-trademark-filings-plan`
-18. Copyright Registration Strategy (Draft): `https://birthright.live/api/legal/drafts/18-copyright-registration-strategy`
-19. Data Processing Agreement Template (Draft): `https://birthright.live/api/legal/drafts/19-data-processing-agreement-template`
-20. Nonprofit Governance Bundle — Articles, Bylaws, Conflict of Interest (COI), Whistleblower, Retention (Draft): `https://birthright.live/api/legal/drafts/20-nonprofit-governance-bundle`
-21. State Charitable Solicitation Registration Plan (Draft): `https://birthright.live/api/legal/drafts/21-charitable-solicitation-plan`
-22. Counsel Terms of Access (recommended new draft — see clauses below): *no downloadable draft yet; counsel to author from the clause list in §8b.1 item 22*
+| # | Draft | Category | Public download |
+|---|---|---|---|
+| 1 | **Terms of Service (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/01-terms-of-service |
+| 2 | **Privacy Policy (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/02-privacy-policy |
+| 3 | **Cookie & Tracking Notice (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/03-cookie-notice |
+| 4 | **Universal Indemnification & Hold-Harmless Agreement (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/04-indemnification-hold-harmless |
+| 5 | **Facilitator Services Agreement + IP Assignment (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/05-facilitator-services-agreement |
+| 6 | **Artist Consignment / Gallery Partner Agreement (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/06-artist-consignment-agreement |
+| 7 | **Vendor Supplier / Dropship Agreement (Draft, 7C's Farmstead first)** | Partner agreements | https://birthright.live/api/legal/drafts/07-vendor-supplier-agreement |
+| 8 | **Community Partner Referral Agreement (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/08-community-partner-referral-agreement |
+| 9 | **Sponsorship Agreement / Sponsor Recognition Consent (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/09-sponsorship-agreement |
+| 10 | **Sliding-Scale & Scholarship Terms (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/10-sliding-scale-scholarship-terms |
+| 11 | **Board Member / Officer Agreement + D&O Coverage (Draft)** | Governance | https://birthright.live/api/legal/drafts/11-board-officer-agreement |
+| 12 | **Foundation Working-Group Volunteer Agreement (Draft)** | Governance | https://birthright.live/api/legal/drafts/12-volunteer-agreement |
+| 13 | **Ombudsman Charter (Draft)** | Governance | https://birthright.live/api/legal/drafts/13-ombudsman-charter |
+| 14 | **Content Moderation & Community Standards Policy (Draft)** | Public-facing | https://birthright.live/api/legal/drafts/14-community-standards |
+| 15 | **Refund & Returns Policy (Draft, Public)** | Public-facing | https://birthright.live/api/legal/drafts/15-refund-returns-policy |
+| 16 | **Sales-Tax Registration Plan (Draft)** | Internal / Compliance | https://birthright.live/api/legal/drafts/16-sales-tax-registration-plan |
+| 17 | **Trademark Filings Plan (Draft)** | Internal / IP | https://birthright.live/api/legal/drafts/17-trademark-filings-plan |
+| 18 | **Copyright Registration Strategy (Draft)** | Internal / IP | https://birthright.live/api/legal/drafts/18-copyright-registration-strategy |
+| 19 | **Data Processing Agreement Template (Draft)** | Governance | https://birthright.live/api/legal/drafts/19-data-processing-agreement-template |
+| 20 | **Nonprofit Governance Bundle (Draft — Articles, Bylaws, COI, Whistleblower, Retention)** | Governance | https://birthright.live/api/legal/drafts/20-nonprofit-governance-bundle |
+| 21 | **State Charitable Solicitation Registration Plan (Draft)** | Internal / Compliance | https://birthright.live/api/legal/drafts/21-charitable-solicitation-plan |
+| 22 | **ISTV Contract — Full Text Review & Business Value Memo** | Advisory memos | https://birthright.live/api/legal/drafts/22-istv-contract-analysis-memo |
 
 ### 8b.1 Recommended operative language for each draft — key clauses to modify or ratify
 

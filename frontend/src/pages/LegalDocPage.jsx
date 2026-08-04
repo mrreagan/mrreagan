@@ -90,13 +90,14 @@ export default function LegalDocPage() {
           data-testid="legal-doc-draft-banner"
         >
           <p className="text-xs uppercase tracking-wider text-[#7A5A1A] font-bold inline-flex items-center gap-1">
-            <AlertTriangle size={12} strokeWidth={2} /> Draft — pending counsel review
+            <AlertTriangle size={12} strokeWidth={2} /> First draft — pending counsel ratification
           </p>
           <p className="text-sm text-[#3D3320] mt-1 leading-relaxed">
-            This is an AI-generated first draft and has not yet been reviewed by an
-            attorney. It is published here for transparency and public comment. It
-            will be replaced with the counsel-ratified version before any legal
-            action is taken based on its contents.
+            This is a first draft published for transparency and public
+            comment. It uses accepted standard language for its type but has
+            not yet been ratified by outside counsel. It will be replaced
+            with the ratified version — you'll see the banner disappear when
+            it does.
           </p>
         </div>
       )}
