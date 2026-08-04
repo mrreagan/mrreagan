@@ -3,6 +3,24 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — Auto-rebuild + Roundtrip email
+- `apply-roundtrip` now fires TWO best-effort side-effects immediately
+  after the source .md is written:
+  1. **`.docx` bundle rebuild** — same script the manual Rebuild button
+     runs, wrapped in `_run_docx_rebuild` with a 180s timeout. Result
+     surfaces on the response as `rebuilt_docx: bool`.
+  2. **Summary email** — `_email_roundtrip_summary` sends a short HTML
+     summary to the applier + every user with `role=readonly_admin`
+     (counsel). Subject includes the doc title and accepted/rejected
+     counts; body has the count table and a note if the .docx rebuild
+     failed so an admin knows to click Rebuild manually. Uses the
+     shared `send_email` mailer (Resend when configured, dry-run to
+     `outbound_emails` otherwise). Response includes `email_id`.
+- Neither side-effect can fail the roundtrip — both catch and log.
+- Verified end-to-end via curl + backend logs: apply-roundtrip returned
+  `rebuilt_docx=true` and Resend queued the email to
+  `[admin@birthright.org, counsel@birthright.org]`.
+
 ## 2026-02-04 — Ratified DOCX Rebuild + Roundtrip history
 - **One-click `.docx` rebuild** — new admin endpoint
   `POST /api/legal/rebuild-docx` shells out to

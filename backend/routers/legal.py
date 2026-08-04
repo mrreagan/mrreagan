@@ -8,6 +8,7 @@ specific version, so we have evidence of WHAT each user signed.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -1301,13 +1302,129 @@ async def apply_roundtrip(
         metadata={"applied": applied, "rejected": rejected, "skipped": skipped,
                   "misses": len(misses)},
     )
+
+    # Auto-rebuild the .docx bundle and email the applier + counsel a
+    # short summary. Both are best-effort — a failure here does not
+    # undo the roundtrip. Errors are logged, never raised.
+    rebuild_ok = await _run_docx_rebuild(user=user)
+    email_id = await _email_roundtrip_summary(
+        source_slug=source_slug,
+        applier=user,
+        counts=roundtrip_rec["counts"],
+        rebuild_ok=rebuild_ok,
+    )
+
     return {
         "applied": applied,
         "rejected": rejected,
         "skipped": skipped,
         "unmatched_comment_ids": misses,
         "roundtrip_id": roundtrip_rec["id"],
+        "rebuilt_docx": rebuild_ok,
+        "email_id": email_id,
     }
+
+
+async def _run_docx_rebuild(user: dict) -> bool:
+    """Best-effort .docx rebuild. Kicks off the same script `rebuild-docx`
+    calls but never raises — the roundtrip result is more important than
+    the .docx refresh, and admin can still click the manual Rebuild
+    button if something goes wrong."""
+    from database import db
+    import subprocess, sys
+    script = Path(__file__).resolve().parent.parent / "scripts" / "eu_compliance_and_docx.py"
+    if not script.exists():
+        logger.warning("legal.rebuild: build script missing at %s", script)
+        return False
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=str(script.parent.parent),
+            capture_output=True, text=True, timeout=180,
+        )
+        ok = proc.returncode == 0
+        await log_action(
+            db, user, "legal.doc.rebuild.auto",
+            target_type="legal_docs", target_id="all",
+            metadata={"ok": ok, "returncode": proc.returncode,
+                      "stderr_tail": proc.stderr[-200:] if proc.stderr else None},
+        )
+        return ok
+    except Exception as exc:
+        logger.warning("legal.rebuild.auto: %s", exc)
+        return False
+
+
+async def _email_roundtrip_summary(
+    source_slug: str,
+    applier: dict,
+    counts: dict,
+    rebuild_ok: bool,
+) -> Optional[str]:
+    """Send a short summary email to the admin who applied the roundtrip
+    plus every user with role=readonly_admin (counsel). Uses the shared
+    dry-run-safe mailer so this is a no-op in preview without SENDER_EMAIL
+    configured."""
+    from database import db
+    from utils.mailer import send_email
+
+    # Human-friendly title so counsel doesn't need to translate slugs.
+    _, title = _SOURCE_TO_PUBLIC.get(source_slug, (source_slug, source_slug.replace("-", " ").title()))
+
+    # Applier + every read-only admin (counsel).
+    recipients: list[str] = []
+    if applier.get("email"):
+        recipients.append(applier["email"])
+    async for u in db.users.find({"role": "readonly_admin"}, {"_id": 0, "email": 1}):
+        if u.get("email") and u["email"] not in recipients:
+            recipients.append(u["email"])
+    if not recipients:
+        return None
+
+    subject = f"Roundtrip applied · {title} · {counts['applied']} accepted, {counts['rejected']} rejected"
+    html = f"""
+    <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#1A2424">
+      <h2 style="font-family:'Cormorant Garamond',serif;color:#0F2424">Roundtrip applied</h2>
+      <p><strong>Document:</strong> {title}</p>
+      <p><strong>Applied by:</strong> {applier.get('email', 'admin')} · {now_iso()}</p>
+      <table style="border-collapse:collapse;margin:16px 0;font-family:sans-serif;font-size:14px">
+        <tr><td style="padding:4px 10px;color:#2E5C46"><strong>{counts['applied']}</strong> accepted</td></tr>
+        <tr><td style="padding:4px 10px;color:#9E3C3C"><strong>{counts['rejected']}</strong> rejected</td></tr>
+        <tr><td style="padding:4px 10px;color:#7A5A1A"><strong>{counts['skipped']}</strong> skipped</td></tr>
+        {'<tr><td style="padding:4px 10px;color:#9E3C3C"><strong>' + str(counts['unmatched']) + '</strong> unmatched</td></tr>' if counts.get('unmatched') else ''}
+        <tr><td style="padding:4px 10px;color:#5C6B6B">total {counts['total']}</td></tr>
+      </table>
+      <p style="color:#5C6B6B;font-size:13px">
+        Counsel-briefing .docx bundle: <strong>{'refreshed automatically' if rebuild_ok else 'refresh failed — an admin should re-run the Rebuild button'}</strong>.
+      </p>
+      <p style="color:#5C6B6B;font-size:13px">
+        See the full history at
+        <a href="{os.environ.get('PUBLIC_SITE_URL', '')}/admin/legal/ratifications" style="color:#476B6B">/admin/legal/ratifications</a>.
+      </p>
+    </div>
+    """
+    text = (
+        f"Roundtrip applied · {title}\n"
+        f"Applied by: {applier.get('email', 'admin')} at {now_iso()}\n\n"
+        f"Accepted: {counts['applied']}\n"
+        f"Rejected: {counts['rejected']}\n"
+        f"Skipped:  {counts['skipped']}\n"
+        + (f"Unmatched: {counts['unmatched']}\n" if counts.get('unmatched') else "")
+        + f"Total:    {counts['total']}\n\n"
+        f"Bundle rebuild: {'ok' if rebuild_ok else 'FAILED — an admin should re-run manually'}\n"
+    )
+    try:
+        return await send_email(
+            to=recipients,
+            subject=subject,
+            html=html,
+            text=text,
+            template_name="legal_roundtrip_summary",
+            metadata={"source_slug": source_slug, "counts": counts},
+        )
+    except Exception as exc:
+        logger.warning("legal.roundtrip.email: %s", exc)
+        return None
 
 
 @router.get("/roundtrips/{source_slug}")
