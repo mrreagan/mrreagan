@@ -15,6 +15,15 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 62 — Counsel scoped access + full-notice uploads + eye-icon restore (Feb 05 2026)
+- **Middleware refactor** (`/app/backend/utils/readonly_admin.py`): `ReadonlyEnforcementMiddleware` no longer default-denies every counsel mutation. It now only fences `/api/admin/*` mutating methods, with a narrow allow-list for `/api/admin/legal/*` and `/api/admin/settings/counsel/set-password[-from-token]`. Counsel can now shop, check out, edit their profile, DM, post reviews, and author their full legal-review workflow (comments, redlines, roundtrips, uploads).
+- **New endpoint `POST /api/legal/docs/{source_slug}/upload`**: counsel or admin can upload a full replacement for any legal source doc as `.md`, `.markdown`, `.txt`, or `.docx`. `.docx` is converted to Markdown via `python-docx` (heading levels 1-6, paragraphs, list items; tables/images flagged in an HTML comment). Auto-rebuilds the DOCX bundle and audits `legal.doc.upload_replacement`. Any existing ratification stops matching because the body hash changes — banner returns until re-ratified.
+- **Frontend "Replace entire notice" card** on `/admin/legal/ratifications` — visible to both admin and counsel, wraps a hidden file input with `accept=".md,.markdown,.txt,.docx"`. Confirm dialog before upload.
+- **View-password eye toggle restored** on `Login.jsx`, `Register.jsx`, `ResetPassword.jsx`, `CounselSetPasswordPage.jsx` (2 fields), `AdminCounselSettings.jsx` (2 fields), `PartnerInvite.jsx`, `FeaturedInvite.jsx`. Uses `lucide-react` `Eye`/`EyeOff` icons. Each toggle has a unique `data-testid`.
+- **Domain sweep**: `scripts/build_test_plan.py` seed CREDS + `routers/partner_prospects.py` + `STRIPE_ACTIVATION_GUIDE.md` all migrated from `@birthright.org` → `@birthright.live`. Historical CHANGELOG entries left as-is.
+- **Counsel banner reworded** (`ReadOnlyBanner.jsx`) to reflect the new scoped-access model rather than the old fully-read-only claim.
+- **Testing**: `test_iter46_counsel_upload.py` — 13/13 backend + 7/7 frontend flows pass.
+
 ### Iter 61 — Public Legal Renderer (Feb 04 2026)
 - New backend routes `GET /api/legal/pages` (list) and `GET /api/legal/pages/{slug}` (render). Slugs are allowlisted to `terms`, `privacy`, `cookie-notice`, `refunds`, `scholarships`, `community-standards`.
 - Markdown is rendered server-side with `markdown==3.10.3` (extra, tables, sane_lists, toc). The leading AI-first-draft blockquote is stripped and re-surfaced as an amber "Draft — pending counsel review" banner in the UI, keeping the actual body clean.

@@ -110,7 +110,7 @@ Once Parts A–D are done and I've applied the three secrets:
    - Webhook signature verifies and the order is marked `paid`.
    - The buyer receives the Resend confirmation email (once DKIM verifies
      — see DNS step below).
-4. **Connect onboarding test** — `demo@birthright.org` artist account
+4. **Connect onboarding test** — `demo@birthright.live` artist account
    clicks "Connect Stripe" → completes Express onboarding with a real
    bank account (or Stripe's test bank routing 110000000 / 000123456789
    if your account allows live test-Connect) → `account.updated` webhook
