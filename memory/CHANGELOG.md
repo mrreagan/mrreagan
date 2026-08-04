@@ -3,6 +3,37 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — Counsel-flow polish + hardening
+- **AdminHub layout** — `container` → `container-page max-w-6xl` so
+  `/admin` is centred (was left-flushed at ≥1280 px).
+- **Session revocation** — `auth_utils.create_token` now embeds an
+  `iat_ms` millisecond claim in every JWT; `get_current_user` checks it
+  strict-< against `user_token_revocations.revoked_at` (microsecond
+  precise). Legacy whole-second `iat` is still honoured as fallback for
+  tokens minted before this change. Verified 5/5 same-second same-
+  wall-clock rotate → old-token 401 across 3 consecutive test runs
+  (65/65 counsel tests each).
+- **Send-set-password flow** — new endpoints
+  `POST /api/admin/settings/counsel/send-set-password-link` (admin
+  strict-only) and `POST /api/admin/settings/counsel/set-password-from-token`
+  (public, one-time-use, 24 h expiry). Admin never sees the plaintext.
+  Tokens stored SHA-256-hashed in `counsel_password_tokens`. Success
+  auto-revokes any active counsel session.
+- **`/counsel/set-password`** (`CounselSetPasswordPage.jsx`) — public
+  self-service page that consumes the emailed token, sets the counsel
+  password, shows a success screen linking to `/login` (using
+  `&nbsp;` non-breaking spaces so the preview build's `display:contents`
+  babel wrapper cannot collapse the whitespace).
+- **Admin UI** — new "Send set-password link" card on
+  `/admin/settings/counsel` alongside the existing rotate form.
+- **Setup guide** — new operator doc
+  `legal_docs/CLOUDFLARE_RESEND_SETUP.md` walks Birthright's ED through
+  (a) verifying `birthright.live` in Resend, (b) Cloudflare Email
+  Routing `counsel@birthright.live` → firm inbox, (c) rotating the
+  stored counsel email + (d) sending the set-password link.
+- **Testing** — 65/65 counsel tests pass across
+  test_iter32/33/34/35/36/36b/38 suites; 3 consecutive full re-runs.
+
 ## 2026-02-04 — /admin/settings/counsel · Credential rotation UI
 - **New endpoints** `GET/POST /api/admin/settings/counsel[/rotate]` let
   a true admin (strict role check — counsel is 403'd) rotate the
