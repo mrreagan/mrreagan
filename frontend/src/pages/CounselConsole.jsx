@@ -22,6 +22,7 @@ import { Link } from "react-router-dom";
 import {
   ArrowLeft, Upload, Download, ShieldCheck, CheckCircle2, X as XIcon,
   Clock, FileText, MessageSquare, Send, Trash2, GitCompare, History, Undo2,
+  CornerDownRight, MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { diffLines } from "diff";
@@ -263,6 +264,14 @@ export default function CounselConsole() {
                       <Clock size={11} /> {wd.state === "awaiting_admin" ? "Awaiting admin" : "Working draft"}
                     </span>
                   )}
+                  {wd?.comment_stats?.open > 0 && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 font-semibold bg-[#F5E6D6] text-[#7A4A1A]"
+                      data-testid={`counsel-row-${sourceSlug}-comments-badge`}
+                    >
+                      <MessageCircle size={11} /> {wd.comment_stats.open} open · {wd.comment_stats.total} total
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-[#5C6B6B] mt-1">
                   <Link to={`/legal/${p.slug}`} className="hover:text-[#476B6B]">/legal/{p.slug}</Link>
@@ -418,6 +427,7 @@ export default function CounselConsole() {
       {diffModal && (
         <DiffModal
           data={diffModal}
+          currentUser={user}
           onClose={() => setDiffModal(null)}
           onRelease={isAdmin ? () => {
             setReleaseModal({ slug: diffModal.slug, title: diffModal.title, wd: diffModal.wd });
@@ -510,9 +520,13 @@ function bumpMinor(v) {
 }
 
 // ---------- Diff modal — side-by-side redline ----------
-function DiffModal({ data, onClose, onRelease }) {
-  const { title, released, working, wd } = data;
+function DiffModal({ data, onClose, onRelease, currentUser }) {
+  const { slug, title, released, working, wd } = data;
   const [mode, setMode] = useState("side"); // "side" | "unified"
+  const [comments, setComments] = useState([]);
+  const [composeLine, setComposeLine] = useState(null); // number or null (general)
+  const [composeBody, setComposeBody] = useState("");
+  const [composing, setComposing] = useState(false);
 
   // Line-level diff. Each part has {value, added?, removed?, count}.
   const parts = useMemo(() => diffLines(released || "", working || ""), [released, working]);
@@ -530,6 +544,61 @@ function DiffModal({ data, onClose, onRelease }) {
     return { added, removed };
   }, [parts]);
 
+  const loadComments = React.useCallback(async () => {
+    if (!slug) return;
+    try {
+      const r = await api.get(`/legal/working-drafts/${slug}/comments`);
+      setComments(r.data || []);
+    } catch (e) {
+      // silent — comments panel just stays empty
+      console.warn("comments load failed", e);
+    }
+  }, [slug]);
+
+  useEffect(() => { loadComments(); }, [loadComments]);
+
+  const postComment = async (body, lineNumber, parentId) => {
+    setComposing(true);
+    try {
+      await api.post(`/legal/working-drafts/${slug}/comments`, {
+        body,
+        line_number: lineNumber ?? null,
+        side: lineNumber != null ? "working" : "general",
+        parent_id: parentId || null,
+      });
+      setComposeBody("");
+      await loadComments();
+      toast.success("Comment posted");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Post failed");
+    } finally {
+      setComposing(false);
+    }
+  };
+
+  const resolveComment = async (c, resolved) => {
+    try {
+      await api.post(`/legal/working-drafts/${slug}/comments/${c.id}/resolve`, { resolved });
+      await loadComments();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Resolve failed");
+    }
+  };
+
+  const deleteComment = async (c) => {
+    if (!window.confirm("Delete this comment (and any replies)?")) return;
+    try {
+      await api.delete(`/legal/working-drafts/${slug}/comments/${c.id}`);
+      await loadComments();
+      toast.success("Comment deleted");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Delete failed");
+    }
+  };
+
+  const openCount = comments.filter((c) => !c.resolved).length;
+  const totalCount = comments.length;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-stretch justify-center z-[60] p-4" data-testid="diff-modal">
       <div className="bg-[#FBF3E4] rounded-2xl max-w-6xl w-full flex flex-col overflow-hidden">
@@ -544,6 +613,14 @@ function DiffModal({ data, onClose, onRelease }) {
               <span className="text-[#9E3C3C] font-semibold" data-testid="diff-stat-removed">-{stats.removed} removed</span>
               {" · "}
               <span>state <strong>{wd?.state}</strong></span>
+              {totalCount > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-[#7A4A1A] font-semibold" data-testid="diff-comment-count">
+                    {openCount} open / {totalCount} comment{totalCount === 1 ? "" : "s"}
+                  </span>
+                </>
+              )}
               {" · "}
               <span>last edit by {wd?.last_edited_by_email || wd?.created_by_email}</span>
             </p>
@@ -580,18 +657,69 @@ function DiffModal({ data, onClose, onRelease }) {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, i) => (
-                  <tr key={i} className="align-top">
-                    <td className={`w-10 px-1 py-0.5 text-right text-[#B7B0A0] select-none ${row.leftClass}`}>{row.leftNum ?? ""}</td>
-                    <td className={`px-3 py-0.5 whitespace-pre-wrap break-words border-r border-[#F0EDE3] ${row.leftClass}`}>
-                      {row.left ?? ""}
-                    </td>
-                    <td className={`w-10 px-1 py-0.5 text-right text-[#B7B0A0] select-none ${row.rightClass}`}>{row.rightNum ?? ""}</td>
-                    <td className={`px-3 py-0.5 whitespace-pre-wrap break-words ${row.rightClass}`}>
-                      {row.right ?? ""}
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((row, i) => {
+                  const lineComments = row.rightNum != null
+                    ? comments.filter((c) => c.line_number === row.rightNum)
+                    : [];
+                  return (
+                    <React.Fragment key={i}>
+                      <tr className="align-top group">
+                        <td className={`w-10 px-1 py-0.5 text-right text-[#B7B0A0] select-none ${row.leftClass}`}>{row.leftNum ?? ""}</td>
+                        <td className={`px-3 py-0.5 whitespace-pre-wrap break-words border-r border-[#F0EDE3] ${row.leftClass}`}>
+                          {row.left ?? ""}
+                        </td>
+                        <td className={`w-10 px-1 py-0.5 text-right text-[#B7B0A0] select-none ${row.rightClass} relative`}>
+                          {row.rightNum ?? ""}
+                          {row.rightNum != null && (
+                            <button
+                              onClick={() => setComposeLine(row.rightNum)}
+                              className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-[#0F2424] text-[#FBF3E4] rounded-full w-4 h-4 flex items-center justify-center text-[10px] leading-none hover:bg-[#476B6B] transition-opacity"
+                              aria-label={`Add comment on line ${row.rightNum}`}
+                              data-testid={`diff-add-comment-line-${row.rightNum}`}
+                            >+</button>
+                          )}
+                        </td>
+                        <td className={`px-3 py-0.5 whitespace-pre-wrap break-words ${row.rightClass}`}>
+                          {row.right ?? ""}
+                        </td>
+                      </tr>
+                      {lineComments.length > 0 && (
+                        <tr>
+                          <td colSpan={4} className="bg-[#FAF7F0] px-3 py-2 border-y border-[#E5E1D8]">
+                            <InlineCommentThread
+                              comments={lineComments}
+                              allComments={comments}
+                              lineNumber={row.rightNum}
+                              currentUser={currentUser}
+                              onReply={(body, parentId) => postComment(body, row.rightNum, parentId)}
+                              onResolve={resolveComment}
+                              onDelete={deleteComment}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                      {composeLine === row.rightNum && (
+                        <tr>
+                          <td colSpan={4} className="bg-[#FFF6E3] px-3 py-2 border-y border-[#E5E1D8]">
+                            <ComposeForm
+                              placeholder={`Ask a question about line ${row.rightNum}…`}
+                              value={composeBody}
+                              onChange={setComposeBody}
+                              onCancel={() => { setComposeLine(null); setComposeBody(""); }}
+                              onSubmit={async () => {
+                                if (!composeBody.trim()) return;
+                                await postComment(composeBody.trim(), row.rightNum, null);
+                                setComposeLine(null);
+                              }}
+                              busy={composing}
+                              testidPrefix={`diff-compose-line-${row.rightNum}`}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           ) : (
@@ -615,6 +743,19 @@ function DiffModal({ data, onClose, onRelease }) {
               })}
             </div>
           )}
+
+          {/* General comments (not anchored to a line) */}
+          <GeneralCommentsPanel
+            comments={comments.filter((c) => c.line_number == null)}
+            allComments={comments}
+            currentUser={currentUser}
+            composing={composing}
+            composeBody={composeBody}
+            setComposeBody={setComposeBody}
+            onPost={(body, parentId) => postComment(body, null, parentId)}
+            onResolve={resolveComment}
+            onDelete={deleteComment}
+          />
         </div>
 
         {/* Footer */}
@@ -638,6 +779,197 @@ function DiffModal({ data, onClose, onRelease }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---------- Inline comment thread (anchored to a line) ----------
+function InlineCommentThread({ comments, allComments, lineNumber, currentUser, onReply, onResolve, onDelete }) {
+  const [replyTo, setReplyTo] = useState(null);
+  const [replyBody, setReplyBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const roots = comments.filter((c) => !c.parent_id);
+  return (
+    <div className="space-y-3 font-sans" data-testid={`inline-thread-line-${lineNumber ?? "general"}`}>
+      {roots.map((c) => (
+        <CommentCard
+          key={c.id}
+          comment={c}
+          replies={allComments.filter((r) => r.parent_id === c.id)}
+          currentUser={currentUser}
+          onReplyClick={() => { setReplyTo(c.id); setReplyBody(""); }}
+          onResolve={onResolve}
+          onDelete={onDelete}
+        />
+      ))}
+      {replyTo && (
+        <ComposeForm
+          placeholder="Write a reply…"
+          value={replyBody}
+          onChange={setReplyBody}
+          onCancel={() => { setReplyTo(null); setReplyBody(""); }}
+          onSubmit={async () => {
+            if (!replyBody.trim()) return;
+            setBusy(true);
+            try {
+              await onReply(replyBody.trim(), replyTo);
+              setReplyTo(null);
+              setReplyBody("");
+            } finally { setBusy(false); }
+          }}
+          busy={busy}
+          testidPrefix={`reply-line-${lineNumber ?? "general"}`}
+        />
+      )}
+    </div>
+  );
+}
+
+function CommentCard({ comment, replies, currentUser, onReplyClick, onResolve, onDelete }) {
+  // NOTE(testing-agent): indirect self-reference. Direct JSX self-recursion
+  // (<CommentCard/> inside CommentCard) crashes the @emergentbase/visual-edits
+  // babel plugin with "Maximum call stack size exceeded", which breaks the
+  // whole webpack build. Aliasing the component avoids the plugin cycle.
+  const NestedCard = CommentCard;
+  const canDelete = currentUser?.role === "admin" || currentUser?.id === comment.author_id;
+  return (
+    <div
+      className={`rounded border p-3 text-xs bg-white ${comment.resolved ? "border-[#CEE0CE] opacity-70" : "border-[#E5E1D8]"}`}
+      data-testid={`comment-${comment.id}`}
+    >
+      <div className="flex items-center gap-2 flex-wrap">
+        <strong className="text-[#0F2424] text-[13px]">{comment.author_email}</strong>
+        <span className="text-[10px] uppercase tracking-wider rounded-full bg-[#F0EDE3] px-1.5 py-0.5 text-[#5C6B6B]">{comment.author_role}</span>
+        <span className="text-[#5C6B6B]">· {new Date(comment.created_at).toLocaleString()}</span>
+        {comment.line_number != null && (
+          <span className="text-[10px] uppercase tracking-wider text-[#7A4A1A] font-semibold">Line {comment.line_number}</span>
+        )}
+        {comment.resolved && (
+          <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider bg-[#EAF3EA] text-[#1E4030] rounded-full px-2 py-0.5 font-semibold">
+            <CheckCircle2 size={10} /> Resolved
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-[#0F2424] whitespace-pre-wrap leading-relaxed">{comment.body}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          onClick={onReplyClick}
+          className="text-[11px] uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] font-semibold inline-flex items-center gap-1"
+          data-testid={`comment-${comment.id}-reply`}
+        >
+          <CornerDownRight size={12} /> Reply
+        </button>
+        <button
+          onClick={() => onResolve(comment, !comment.resolved)}
+          className="text-[11px] uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] font-semibold"
+          data-testid={`comment-${comment.id}-resolve`}
+        >
+          {comment.resolved ? "Reopen" : "Resolve"}
+        </button>
+        {canDelete && (
+          <button
+            onClick={() => onDelete(comment)}
+            className="text-[11px] uppercase tracking-wider text-[#9E3C3C] hover:text-[#0F2424] font-semibold inline-flex items-center gap-1"
+            data-testid={`comment-${comment.id}-delete`}
+          >
+            <Trash2 size={12} /> Delete
+          </button>
+        )}
+      </div>
+      {replies.length > 0 && (
+        <div className="mt-3 pl-4 border-l-2 border-[#E5E1D8] space-y-2">
+          {replies.map((r) => (
+            <NestedCard
+              key={r.id}
+              comment={r}
+              replies={[]}
+              currentUser={currentUser}
+              onReplyClick={onReplyClick}
+              onResolve={onResolve}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ComposeForm({ placeholder, value, onChange, onCancel, onSubmit, busy, testidPrefix }) {
+  return (
+    <div className="font-sans">
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="input input-bordered w-full text-sm min-h-[70px]"
+        data-testid={`${testidPrefix}-textarea`}
+      />
+      <div className="mt-2 flex justify-end gap-2">
+        <button onClick={onCancel} className="btn-outline text-xs" data-testid={`${testidPrefix}-cancel`}>Cancel</button>
+        <button
+          onClick={onSubmit}
+          disabled={busy || !value.trim()}
+          className="btn-primary text-xs inline-flex items-center gap-1"
+          data-testid={`${testidPrefix}-submit`}
+        >
+          <Send size={12} /> {busy ? "Posting…" : "Post"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GeneralCommentsPanel({ comments, allComments, currentUser, composing, composeBody, setComposeBody, onPost, onResolve, onDelete }) {
+  const [showCompose, setShowCompose] = useState(false);
+  const roots = comments.filter((c) => !c.parent_id);
+  return (
+    <div className="border-t border-[#E5E1D8] px-5 py-4 bg-[#FAF7F0]" data-testid="diff-general-comments-panel">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs uppercase tracking-wider text-[#476B6B] font-semibold inline-flex items-center gap-1">
+          <MessageCircle size={12} /> General comments · {roots.length}
+        </h3>
+        {!showCompose && (
+          <button
+            onClick={() => setShowCompose(true)}
+            className="text-xs uppercase tracking-wider text-[#476B6B] hover:text-[#0F2424] font-semibold"
+            data-testid="diff-general-add-btn"
+          >
+            + New comment
+          </button>
+        )}
+      </div>
+      {showCompose && (
+        <div className="mb-4">
+          <ComposeForm
+            placeholder="Leave a general note about this working draft…"
+            value={composeBody}
+            onChange={setComposeBody}
+            onCancel={() => { setShowCompose(false); setComposeBody(""); }}
+            onSubmit={async () => {
+              if (!composeBody.trim()) return;
+              await onPost(composeBody.trim(), null);
+              setShowCompose(false);
+            }}
+            busy={composing}
+            testidPrefix="diff-general-compose"
+          />
+        </div>
+      )}
+      {roots.length === 0 && !showCompose && (
+        <p className="text-xs text-[#5C6B6B]">No general comments yet. Use the <strong>+</strong> button on any line in the diff to ask about a specific spot, or add a general note here.</p>
+      )}
+      {roots.length > 0 && (
+        <InlineCommentThread
+          comments={roots}
+          allComments={allComments}
+          lineNumber={null}
+          currentUser={currentUser}
+          onReply={(body, parentId) => onPost(body, parentId)}
+          onResolve={onResolve}
+          onDelete={onDelete}
+        />
+      )}
     </div>
   );
 }

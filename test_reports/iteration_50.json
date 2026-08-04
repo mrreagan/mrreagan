@@ -1,0 +1,54 @@
+{
+  "summary": "Iteration 50 — working-draft inline comments. Backend: 36 pytest cases across GET/POST/resolve/DELETE comment endpoints + comment_stats on the WD list + WD-cycle scoping — 36/36 passing. Frontend: BLOCKER found first — the whole webpack build was failing (RangeError: Maximum call stack size exceeded in babel-loader on CounselConsole.jsx), so the entire app rendered only the CRA error overlay. Root-caused to the @emergentbase/visual-edits babel plugin choking on the direct JSX self-recursion in CommentCard (<CommentCard/> rendered inside CommentCard); reproduced with a 15-line minimal file. Applied a behaviour-preserving 2-line alias workaround so the build compiles, then completed full UI testing: badge, diff header count, line-hover + button, inline compose/post, threaded reply, resolve/reopen, general panel, and admin-vs-counsel delete permissions all work. One CRITICAL UI defect remains: 76 stray compose forms render as soon as the diff modal opens.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/legal/working-drafts/{slug}/comments", "issue": "line_number is coerced with int() so a float like 1.9 silently becomes line 1 (truncation). Non-numeric/0/-1 correctly become general. Cosmetic only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DiffModal (side-by-side rows)", "issue": "CRITICAL: compose form leaks onto every removed-only row. Condition is `composeLine === row.rightNum`; removed rows have rightNum === null and the initial composeLine state is null, so null === null is true. Measured 76 open compose forms (placeholder 'Ask a question about line null…') the instant the modal opens on 03-cookie-notice — the diff is unreadable. Also produces 76 duplicate data-testid='diff-compose-line-null-textarea' nodes, and because they all bind the single `composeBody` state, typing in one mirrors the text into all 76 (verified). Fix: render the compose row only when `composeLine != null && composeLine === row.rightNum`.", "selector": "[data-testid=\"diff-compose-line-null-textarea\"]", "priority": "CRITICAL"},
+      {"component": "CounselConsole build / CommentCard", "issue": "CRITICAL (fixed by testing agent): direct JSX self-recursion (<CommentCard/> inside CommentCard for replies) crashes the @emergentbase/visual-edits babel plugin => 'Module build failed … RangeError: Maximum call stack size exceeded' => whole frontend served the CRA error overlay (every route dead). I added `const NestedCard = CommentCard;` and render <NestedCard/> which breaks the plugin's cycle and compiles. Please review/keep this pattern (or split replies into a dedicated component) and never reintroduce direct self-recursive JSX.", "selector": "n/a (webpack build)", "priority": "CRITICAL"},
+      {"component": "CounselRow comments badge", "issue": "Badge is gated on `wd?.comment_stats?.open > 0`, so a working draft with 2 comments where both are resolved shows no badge at all even though total>0. Spec asked for an open/total badge; consider rendering when total>0 (e.g. '0 open · 2 total').", "selector": "[data-testid=\"counsel-row-{slug}-comments-badge\"]", "priority": "MEDIUM"},
+      {"component": "DiffModal unified mode", "issue": "Line-anchored comment threads and the per-line '+' buttons are only rendered in side-by-side mode. In unified mode only general comments are visible (verified: 1 card visible vs 4 line-anchored existing), with no hint that line comments exist.", "selector": "[data-testid=\"diff-mode-unified\"]", "priority": "LOW"},
+      {"component": "DiffModal compose state", "issue": "`composeBody` is a single shared state used by the line compose form AND the general compose form, so a half-typed line comment appears inside the general compose box (and vice versa). Should be per-form state.", "selector": "[data-testid=\"diff-general-compose-textarea\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Diff modal (side-by-side)", "issues": ["The 76 stray compose forms push the actual diff rows far apart — the modal is effectively unusable until the leak is fixed", "Hover '+' button uses opacity-0/group-hover (opacity 0 -> 1 confirmed working), but it is only 16px and overlaps the gutter number; fine but tight"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter50_wd_comments.py",
+    "/app/backend/tests/fe_setup_iter50.py",
+    "/app/test_reports/pytest/iter50_results.xml"
+  ],
+  "action_items": [
+    "FIX (critical): gate the inline compose row on `composeLine != null && composeLine === row.rightNum` in CounselConsole.jsx DiffModal so removed-only rows stop rendering compose forms.",
+    "Give line compose and general compose their own state (or key composeBody by target) to stop text mirroring.",
+    "Keep the non-self-recursive CommentCard pattern (alias NestedCard) — direct self-recursive JSX breaks the visual-edits babel plugin and kills the whole webpack build.",
+    "Render the /counsel comments badge whenever comment_stats.total > 0 (currently hidden when open === 0).",
+    "Consider rendering line-anchored threads (or at least a count) in unified diff mode.",
+    "CounselConsole.jsx is now 1174 lines — split DiffModal / comment components into their own files per the >700-line guideline."
+  ],
+  "critical_code_review_comments": [
+    "DiffModal: `{composeLine === row.rightNum && …}` is a null-equality bug — both sides are null for removed rows and on first render.",
+    "Duplicate data-testid values (diff-compose-line-null-textarea x76) break test-id uniqueness; testids must be unique per rendered node.",
+    "Backend delete cascade only removes depth-1 replies ($or id/parent_id). Reply-to-a-reply is possible via the API (parent_id can point at a reply), which would orphan grandchildren — the UI only ever nests one level, but the API allows deeper threads.",
+    "GET /working-drafts/{slug}/comments returns [] (not 404) when no open WD — intentional per docstring, verified.",
+    "list_working_drafts comment_stats uses one aggregate pipeline (good, no N+1) and _id is excluded everywhere — verified no _id leakage in comment payloads."
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/CounselConsole.jsx (build-unblocking alias: const NestedCard = CommentCard; + <NestedCard/> for replies)",
+    "/app/backend/tests/test_iter50_wd_comments.py (new)",
+    "/app/backend/tests/fe_setup_iter50.py (new seed/teardown helper)"
+  ],
+  "success_rate": {"backend": "100% (36/36 pytest cases)", "frontend": "85% — all comment flows work after build fix; 1 critical rendering leak + 3 minor issues"},
+  "seed_data_creation": "Temporary working draft on 03-cookie-notice with TEST_iter50 comments; ALL removed afterwards (legal_working_draft_comments count = 0, no open working drafts, no TEST_iter50 drafts). /app/backend/legal_docs/03-cookie-notice.md untouched (git status clean); no ratifications created.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@birthright.live / birthright2026 (admin); counsel@birthright.live / counsel-review-2026 (readonly_admin) — both valid.",
+  "context_for_next_testing_agent": "Backend suite: `pytest /app/backend/tests/test_iter50_wd_comments.py` (36 cases, self-cleaning, uses 03-cookie-notice + 01-terms-of-service). For frontend, seed with `python /app/backend/tests/fe_setup_iter50.py seed` (creates WD + 1 open + 1 resolved comment on 03-cookie-notice) and always finish with `... teardown`. Key retest after fix: open the diff modal on 03-cookie-notice and assert `document.querySelectorAll('textarea').length === 0` before any '+' click (currently 76). Verified working already: badge '1 open · 2 total', header '1 open / 2 comments', hover-'+' opacity 0->1, inline post + toast, threaded reply nesting, resolve/reopen, general panel, counsel sees delete only on own comments while admin sees all.",
+  "rca_of_the_issue": "1) Build blocker: @emergentbase/visual-edits babel plugin recurses infinitely when a component's JSX references the component itself (minimal repro: a 15-line CommentCard rendering <CommentCard/>), producing 'RangeError: Maximum call stack size exceeded' from babel-loader; plain babel-preset-react-app (+react-refresh) compiles the same file fine, which isolates the plugin. Aliasing the component (const NestedCard = CommentCard) breaks the traversal cycle. 2) Stray compose forms: DiffModal keeps a single `composeLine` initialised to null and renders the compose row when `composeLine === row.rightNum`; every removed-only diff row carries rightNum === null, so the guard is true for all of them on first render."
+}

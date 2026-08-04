@@ -977,13 +977,31 @@ async def list_working_drafts(user: dict = Depends(require_roles("admin"))):
 
     Counsel (`readonly_admin`) can also read this via the shared
     `require_roles('admin')` allow-list — the counsel console renders
-    from this endpoint.
+    from this endpoint. Each row carries a `comment_stats` field so the
+    console can show a "N open comments" badge without a second call.
     """
     from database import db
     rows = await db.legal_doc_working_drafts.find(
         {"state": {"$in": [_WD_STATE_DRAFT, _WD_STATE_READY]}},
         {"_id": 0, "content_md": 0},   # skip body for list view
     ).sort("last_edited_at", -1).to_list(200)
+
+    # Bulk-count comments per working draft in one aggregate query.
+    ids = [r["id"] for r in rows]
+    stats: dict[str, dict] = {i: {"total": 0, "open": 0} for i in ids}
+    if ids:
+        pipeline = [
+            {"$match": {"working_draft_id": {"$in": ids}}},
+            {"$group": {
+                "_id": "$working_draft_id",
+                "total": {"$sum": 1},
+                "open": {"$sum": {"$cond": [{"$eq": ["$resolved", False]}, 1, 0]}},
+            }},
+        ]
+        async for agg in db.legal_working_draft_comments.aggregate(pipeline):
+            stats[agg["_id"]] = {"total": agg["total"], "open": agg["open"]}
+    for row in rows:
+        row["comment_stats"] = stats.get(row["id"], {"total": 0, "open": 0})
     return rows
 
 
@@ -1319,6 +1337,158 @@ async def discard_working_draft(
         metadata={"working_draft_id": wd["id"], "reason": reason},
     )
     return {"state": _WD_STATE_DISCARDED, "working_draft_id": wd["id"]}
+
+
+# ============ WORKING-DRAFT INLINE COMMENTS ============
+# Threaded Q&A anchored to specific lines of the working draft (or general).
+# Both admin and counsel can post/reply/resolve/delete-own so the review
+# cycle happens inside the diff view rather than in Slack.
+
+@router.get("/working-drafts/{source_slug}/comments")
+async def list_wd_comments(
+    source_slug: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Return every comment (including resolved) for the open WD.
+
+    Returns [] if no open WD exists — the diff view uses that to skip
+    rendering the comments panel.
+    """
+    from database import db
+    wd = await _active_working_draft(source_slug)
+    if not wd:
+        return []
+    rows = await db.legal_working_draft_comments.find(
+        {"working_draft_id": wd["id"]},
+        {"_id": 0},
+    ).sort("created_at", 1).to_list(1000)
+    return rows
+
+
+@router.post("/working-drafts/{source_slug}/comments")
+async def create_wd_comment(
+    source_slug: str,
+    payload: dict,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Post an inline comment (or reply) on the open working draft.
+
+    Payload:
+      body        (str, required)          — the comment text (max 4 KB)
+      line_number (int, optional)          — anchors to a line; None = general
+      side        ("released"|"working"|"general") — column context in the diff
+      parent_id   (str, optional)          — if replying to another comment
+    """
+    from database import db
+    wd = await _active_working_draft(source_slug)
+    if not wd:
+        raise HTTPException(status_code=404, detail="No open working draft to comment on.")
+    body = (payload.get("body") or "").strip()
+    if not body:
+        raise HTTPException(status_code=400, detail="Comment body required.")
+    if len(body) > 4096:
+        raise HTTPException(status_code=400, detail="Comment exceeds 4 KB.")
+
+    side = payload.get("side") or "general"
+    if side not in ("released", "working", "general"):
+        raise HTTPException(status_code=400, detail="side must be 'released', 'working', or 'general'.")
+    line_number = payload.get("line_number")
+    if line_number is not None:
+        try:
+            line_number = int(line_number)
+            if line_number < 1:
+                line_number = None
+        except (TypeError, ValueError):
+            line_number = None
+
+    parent_id = payload.get("parent_id")
+    if parent_id:
+        parent = await db.legal_working_draft_comments.find_one(
+            {"id": parent_id, "working_draft_id": wd["id"]}, {"_id": 0, "id": 1},
+        )
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent comment not found on this working draft.")
+
+    doc = {
+        "id": gen_id(),
+        "working_draft_id": wd["id"],
+        "source_slug": source_slug,
+        "line_number": line_number,
+        "side": side,
+        "parent_id": parent_id or None,
+        "body": body,
+        "author_id": user["id"],
+        "author_email": user.get("email"),
+        "author_role": user.get("role"),
+        "created_at": now_iso(),
+        "resolved": False,
+        "resolved_at": None,
+        "resolved_by_email": None,
+    }
+    await db.legal_working_draft_comments.insert_one(dict(doc))
+    return doc
+
+
+@router.post("/working-drafts/{source_slug}/comments/{comment_id}/resolve")
+async def resolve_wd_comment(
+    source_slug: str,
+    comment_id: str,
+    payload: Optional[dict] = Body(default=None),
+    user: dict = Depends(require_roles("admin")),
+):
+    """Toggle resolve/unresolve on a comment.
+
+    Payload:
+      resolved (bool, optional) — sets the state explicitly; defaults to `true`
+    """
+    from database import db
+    wd = await _active_working_draft(source_slug)
+    if not wd:
+        raise HTTPException(status_code=404, detail="No open working draft.")
+    c = await db.legal_working_draft_comments.find_one(
+        {"id": comment_id, "working_draft_id": wd["id"]}, {"_id": 0},
+    )
+    if not c:
+        raise HTTPException(status_code=404, detail="Comment not found on this working draft.")
+    resolved = (payload or {}).get("resolved")
+    if resolved is None:
+        resolved = True
+    updates = {
+        "resolved": bool(resolved),
+        "resolved_at": now_iso() if resolved else None,
+        "resolved_by_email": user.get("email") if resolved else None,
+    }
+    await db.legal_working_draft_comments.update_one(
+        {"id": comment_id}, {"$set": updates},
+    )
+    return {**c, **updates}
+
+
+@router.delete("/working-drafts/{source_slug}/comments/{comment_id}")
+async def delete_wd_comment(
+    source_slug: str,
+    comment_id: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Delete a comment. Admins can delete any; counsel can only delete
+    their own. Deleting a parent removes its replies too (thread cascade).
+    """
+    from database import db
+    wd = await _active_working_draft(source_slug)
+    if not wd:
+        raise HTTPException(status_code=404, detail="No open working draft.")
+    c = await db.legal_working_draft_comments.find_one(
+        {"id": comment_id, "working_draft_id": wd["id"]}, {"_id": 0},
+    )
+    if not c:
+        raise HTTPException(status_code=404, detail="Comment not found on this working draft.")
+    if user.get("role") != "admin" and c.get("author_id") != user.get("id"):
+        raise HTTPException(status_code=403, detail="You can only delete your own comments.")
+    r = await db.legal_working_draft_comments.delete_many({
+        "working_draft_id": wd["id"],
+        "$or": [{"id": comment_id}, {"parent_id": comment_id}],
+    })
+    return {"deleted": r.deleted_count}
 
 
 def _summarise_wd_change_log(change_log: list) -> dict:
