@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from auth_utils import get_current_user, require_roles
@@ -1060,18 +1060,22 @@ async def download_working_draft(
 @router.post("/working-drafts/{source_slug}/mark-ready")
 async def mark_ready(
     source_slug: str,
+    background: BackgroundTasks,
     user: dict = Depends(require_roles("admin")),
 ):
     """Counsel signals the working draft is ready for admin review.
 
     Side effect: emails every user with `role=admin` so a release never
-    sits waiting on a stale dashboard. Fire-and-forget — email failures
-    do not break the mark-ready call.
+    sits waiting on a stale dashboard. Fire-and-forget via BackgroundTasks
+    so the UI response isn't held up by the Resend round-trip. Skips the
+    email entirely if the working draft was already in `awaiting_admin`
+    (idempotent — repeat clicks won't spam admins).
     """
     from database import db
     wd = await _active_working_draft(source_slug)
     if not wd:
         raise HTTPException(status_code=404, detail="No open working draft.")
+    already_ready = wd.get("state") == _WD_STATE_READY
     now = now_iso()
     change_log = list(wd.get("change_log") or [])
     change_log.append({
@@ -1080,7 +1084,7 @@ async def mark_ready(
         "by_email": user.get("email"),
         "by_role": user.get("role"),
         "action": "mark_ready",
-        "note": "Marked ready for admin review",
+        "note": "Marked ready for admin review" + (" (repeat)" if already_ready else ""),
         "bytes": len((wd.get("content_md") or "").encode("utf-8")),
     })
     await db.legal_doc_working_drafts.update_one(
@@ -1092,10 +1096,17 @@ async def mark_ready(
     await log_action(
         db, user, "legal.doc.working.mark_ready",
         target_type="legal_doc", target_id=source_slug,
-        metadata={"working_draft_id": wd["id"]},
+        metadata={"working_draft_id": wd["id"], "repeat": already_ready},
     )
-    email_id = await _email_working_draft_ready(source_slug=source_slug, wd=wd, marker=user)
-    return {"state": _WD_STATE_READY, "working_draft_id": wd["id"], "email_id": email_id}
+    scheduled = False
+    if not already_ready:
+        background.add_task(_email_working_draft_ready, source_slug, wd, user)
+        scheduled = True
+    return {
+        "state": _WD_STATE_READY,
+        "working_draft_id": wd["id"],
+        "email_scheduled": scheduled,
+    }
 
 
 async def _email_working_draft_ready(

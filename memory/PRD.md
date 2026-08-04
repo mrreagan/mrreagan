@@ -15,6 +15,16 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 64 — Diff View + Admin Auto-Notify (Feb 05 2026)
+- **Side-by-side redline modal** on `/counsel` — click `View diff` on any row with a working draft to see a two-column diff (released vs working) with green/red line highlights and line numbers. Toggle to unified/git-style view. Admins get a `Release from here` shortcut in the diff footer that jumps into the release modal.
+- **Empty-state**: when the working draft is byte-identical to the released version, the diff modal shows "Working draft is identical to the released version" instead of dumping the entire doc as context.
+- **Admin email notification** on `POST /working-drafts/{slug}/mark-ready` — emails every user with `role=admin` via Resend (template `legal_working_draft_ready`). Response returns `email_scheduled: true|false`.
+- **Idempotent**: calling mark-ready on an already `awaiting_admin` draft returns `email_scheduled: false` — no duplicate admin spam.
+- **Background dispatch**: mark-ready uses FastAPI `BackgroundTasks` so the UI response isn't held up by the Resend round-trip.
+- **z-index fixes**: raised both modals to `z-[60]` so the persistent cookie-consent banner (z-50) no longer intercepts clicks on Close/Release buttons.
+- **New dep**: `diff@9.0.0` (jsdiff) for line-diff computation.
+- **Testing**: `testing_agent` iter 48 — 11/11 backend + 10/10 frontend after fixes. Real Resend delivery confirmed via email_log entry with `template=legal_working_draft_ready`.
+
 ### Iter 63 — Counsel Console + Working-Draft workflow (Feb 05 2026)
 - **New `/counsel` page** (`CounselConsole.jsx`) — filtered admin console visible via a "Counsel Console" shortcut in both admin AND counsel user-menu dropdowns.
 - **New collection `legal_doc_working_drafts`** — every counsel/admin upload lands here as a WORKING VERSION. The public source `.md` is untouched until admin explicitly releases the working draft.

@@ -142,7 +142,7 @@ export default function CounselConsole() {
     setRowBusy(sourceSlug, "ready", true);
     try {
       const r = await api.post(`/legal/working-drafts/${sourceSlug}/mark-ready`);
-      const emailNote = r.data.email_id ? " · admins notified" : "";
+      const emailNote = r.data.email_scheduled ? " · admins notified" : " (already ready — no email)";
       toast.success(`Marked ready for admin${emailNote}`);
       await loadAll();
     } catch (e) {
@@ -428,7 +428,7 @@ function ReleaseModal({ data, ratifications, onCancel, onRelease, busy }) {
   const [version, setVersion] = useState(defaultVersion);
   const [notes, setNotes] = useState(`Released working draft ${wd?.id?.slice(0, 8) || ""}`);
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" data-testid="release-modal">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" data-testid="release-modal">
       <div className="bg-[#FBF3E4] rounded-2xl max-w-md w-full p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -512,7 +512,7 @@ function DiffModal({ data, onClose, onRelease }) {
   }, [parts]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-stretch justify-center z-50 p-4" data-testid="diff-modal">
+    <div className="fixed inset-0 bg-black/50 flex items-stretch justify-center z-[60] p-4" data-testid="diff-modal">
       <div className="bg-[#FBF3E4] rounded-2xl max-w-6xl w-full flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 p-5 border-b border-[#E5E1D8]">
@@ -577,7 +577,11 @@ function DiffModal({ data, onClose, onRelease }) {
             </table>
           ) : (
             <div className="font-mono text-xs">
-              {parts.map((p, i) => {
+              {stats.added === 0 && stats.removed === 0 ? (
+                <div className="p-8 text-center text-[#5C6B6B]" data-testid="diff-empty-state">
+                  Working draft is identical to the released version.
+                </div>
+              ) : parts.map((p, i) => {
                 const bg = p.added ? "bg-[#EAF3EA] text-[#1E4030]"
                   : p.removed ? "bg-[#FBEBEB] text-[#7A2E2E]"
                   : "text-[#0F2424]";
@@ -590,9 +594,6 @@ function DiffModal({ data, onClose, onRelease }) {
                   </div>
                 );
               })}
-              {parts.length === 0 && (
-                <div className="p-6 text-center text-[#5C6B6B]">Working draft is identical to the released version.</div>
-              )}
             </div>
           )}
         </div>
