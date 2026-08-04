@@ -1,0 +1,55 @@
+{
+  "summary": "Iteration 51 — @mention email dispatch + rollback preview. BACKEND: 28 pytest cases (27 pass, 1 skip — no ratification for another slug existed to test cross-slug 404) in /app/backend/tests/test_iter51_mentions_rollback_preview.py covering mention parsing (case-insensitivity, word boundary, dedup, unknown tokens, order preservation, persistence on GET), real email dispatch via Resend (verified rows in db.email_log with status=sent, template=legal_comment_mention), author self-suppression, zero-recipient safety (monkeypatched empty db.users.find — no send, no exception), and the new GET /api/legal/history/{slug}/rollback-preview/{id} (shape, values, counsel read access, 401 unauth, 404 unknown ratification, 404 unknown slug, 400 missing snapshot, no side effects, byte-identical current-release case). FRONTEND: full Playwright coverage on /counsel as admin — mention hint pill appears/disappears correctly (including negative case '@adminfoo'), comment bodies render @admin/@counsel as styled pills, rollback opens data-testid='rollback-preview-modal' (never window.prompt) with 'Loading…' on the trigger, correct header 'Restore v1.0 (currently v1.1)' + ratified_at/by + '+5 to add · -6 to remove', 59-row side-by-side diff, empty state after an identity rollback, cancel/close leave the History modal open with zero POSTs, and confirm fires the rollback with the reason (persisted into the new release notes), toast 'Rolled back to v1.1 · new version v1.3', both modals close and /counsel refreshes to 'Released v1.3'. All seeded data (3 WDs, 2 comments, 4 ratifications, 4 mention email_log rows) deleted and 03-cookie-notice.md/.docx restored from snapshot.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/legal/history/{slug}/rollback-preview/{id}",
+        "issue": "Docstring says 'Admin-only via require_roles(admin) allow-list', but require_roles('admin') also admits readonly_admin, so counsel can read the preview (verified 200). Behaviour matches the spec's allow-list intent — only the comment is misleading."
+      },
+      {
+        "endpoint": "GET /api/legal/history/{slug}/rollback-preview/{id}",
+        "issue": "current_version/current_ratified_at are derived from the newest ratification sorted by ratified_at, not from a hash comparison with the on-disk .md. If the .md was hand-edited after the last release, current_md and current_version can disagree. Informational only."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "RollbackPreviewModal — empty state",
+        "issues": [
+          "Header still prints '+0 to add · -0 to remove' when the diff is empty; reads oddly next to 'would produce no textual change'. Suggest hiding the stats (or showing 'No change') when added+removed === 0.",
+          "In the empty state the body keeps the max-h-[90vh] flex-1 stretch, so ~500px of blank white sits between the one-line message and the reason box. Consider shrinking the modal when there is no diff.",
+          "Cosmetic: the confirm button remains enabled in the empty state, so an admin can create a no-op release; acceptable but a warning tone would be clearer."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter51_mentions_rollback_preview.py",
+    "/app/backend/tests/fe_setup_iter51.py",
+    "/app/test_reports/pytest/iter51_results.xml"
+  ],
+  "action_items": [
+    "Optional polish only: suppress the '+0 / -0' stats and the tall blank area in the rollback-preview empty state.",
+    "Optional: correct the rollback-preview docstring (counsel/readonly_admin can read it)."
+  ],
+  "critical_code_review_comments": [
+    "CounselConsole.jsx is 1337 lines and now hosts 8+ components (DiffModal, HistoryModal, RollbackPreviewModal, ComposeForm, CommentCard, GeneralCommentsPanel, diff helpers). Split into components/counsel/* — it is past the 700-line guideline and diffLines/buildRows/stats logic is duplicated between DiffModal and RollbackPreviewModal (extract a shared useDiff hook).",
+    "_email_comment_mentions has no try/except around send_email; a Resend exception inside the BackgroundTask is swallowed by Starlette but nothing is logged against the comment. Consider wrapping and logging so failed mention notifications are diagnosable.",
+    "_MENTION_RX matches inside email addresses (e.g. 'foo@admin.com' → mentions ['admin']), so quoting an address that starts with @admin/@counsel triggers a real email. Add a preceding-char guard ((?<![\\w.]) ) if that is undesirable."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter51_mentions_rollback_preview.py",
+    "/app/backend/tests/fe_setup_iter51.py"
+  ],
+  "success_rate": {"backend": "100% (27 passed, 1 skipped of 28)", "frontend": "100% of the 11 requested flows"},
+  "seed_data_creation": "Temporary: 2 releases (v1.0, v1.1) + 2 rollback releases (v1.2, v1.3) on 03-cookie-notice, 3 working drafts, 2 comments with @admin/@counsel, 4 real mention emails. ALL removed in teardown (verified 0 ratifications / 0 WDs / 0 comments / 0 mention email_log rows) and 03-cookie-notice.md/.docx restored byte-for-byte from a pre-seed snapshot.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@birthright.live / birthright2026 ; counsel@birthright.live / counsel-review-2026",
+  "context_for_next_testing_agent": "Both features are functionally complete and verified end-to-end. Reusable helpers: /app/backend/tests/fe_setup_iter51.py (seed/teardown 2 releases + WD + mention comment on 03-cookie-notice, snapshots the .md/.docx to /tmp/iter51_snapshot and restores them). EMAIL_DRY_RUN=false so every @admin/@counsel comment sends a REAL Resend email — keep mention test counts low and clean db.email_log rows matching subject regex 'You were mentioned in a'. Only one admin (admin@birthright.live) and one readonly_admin (counsel@birthright.live) exist, so counsel posting @counsel yields zero recipients (good self-suppression test). Mailer records template='legal_comment_mention' (the earlier template_name=None note no longer applies). The 76-stray-compose-form bug from iteration 50 is fixed (rightNum != null guard). Remaining items are cosmetic empty-state polish in RollbackPreviewModal.",
+  "rca_of_the_issue": "No functional defects found. The only genuine edge case is regex-level: @MENTION_RX has no left-boundary guard, so 'foo@admin.com' inside a comment body is parsed as an @admin mention and triggers a real email (verified via API — mentions == ['admin'])."
+}

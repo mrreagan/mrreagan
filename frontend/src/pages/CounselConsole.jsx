@@ -850,7 +850,9 @@ function CommentCard({ comment, replies, currentUser, onReplyClick, onResolve, o
           </span>
         )}
       </div>
-      <p className="mt-2 text-[#0F2424] whitespace-pre-wrap leading-relaxed">{comment.body}</p>
+      <p className="mt-2 text-[#0F2424] whitespace-pre-wrap leading-relaxed" data-testid={`comment-${comment.id}-body`}>
+        {renderCommentBody(comment.body)}
+      </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           onClick={onReplyClick}
@@ -896,6 +898,7 @@ function CommentCard({ comment, replies, currentUser, onReplyClick, onResolve, o
 }
 
 function ComposeForm({ placeholder, value, onChange, onCancel, onSubmit, busy, testidPrefix }) {
+  const hasMentions = /@(admin|counsel)\b/i.test(value || "");
   return (
     <div className="font-sans">
       <textarea
@@ -905,19 +908,52 @@ function ComposeForm({ placeholder, value, onChange, onCancel, onSubmit, busy, t
         className="input input-bordered w-full text-sm min-h-[70px]"
         data-testid={`${testidPrefix}-textarea`}
       />
-      <div className="mt-2 flex justify-end gap-2">
-        <button onClick={onCancel} className="btn-outline text-xs" data-testid={`${testidPrefix}-cancel`}>Cancel</button>
-        <button
-          onClick={onSubmit}
-          disabled={busy || !value.trim()}
-          className="btn-primary text-xs inline-flex items-center gap-1"
-          data-testid={`${testidPrefix}-submit`}
-        >
-          <Send size={12} /> {busy ? "Posting…" : "Post"}
-        </button>
+      <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-[10px] text-[#5C6B6B]">
+          Tip: type <code className="text-[#7A4A1A]">@admin</code> or <code className="text-[#7A4A1A]">@counsel</code> to notify by email.
+          {hasMentions && (
+            <span className="ml-2 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider bg-[#F5E6D6] text-[#7A4A1A] rounded-full px-2 py-0.5 font-semibold" data-testid={`${testidPrefix}-mention-hint`}>
+              Will notify by email
+            </span>
+          )}
+        </p>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="btn-outline text-xs" data-testid={`${testidPrefix}-cancel`}>Cancel</button>
+          <button
+            onClick={onSubmit}
+            disabled={busy || !value.trim()}
+            className="btn-primary text-xs inline-flex items-center gap-1"
+            data-testid={`${testidPrefix}-submit`}
+          >
+            <Send size={12} /> {busy ? "Posting…" : "Post"}
+          </button>
+        </div>
       </div>
     </div>
   );
+}
+
+// Render a comment body with @admin / @counsel highlighted as pills.
+function renderCommentBody(body) {
+  if (!body) return null;
+  const parts = [];
+  const rx = /@(admin|counsel)\b/gi;
+  let last = 0;
+  let m;
+  while ((m = rx.exec(body)) !== null) {
+    if (m.index > last) parts.push(body.slice(last, m.index));
+    parts.push(
+      <span
+        key={`m-${m.index}`}
+        className="inline-block text-[11px] uppercase tracking-wider bg-[#F5E6D6] text-[#7A4A1A] rounded-full px-2 py-0.5 font-semibold mx-0.5"
+      >
+        @{m[1].toLowerCase()}
+      </span>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < body.length) parts.push(body.slice(last));
+  return parts;
 }
 
 function GeneralCommentsPanel({ comments, allComments, currentUser, composing, composeBody, setComposeBody, onPost, onResolve, onDelete }) {
@@ -1019,6 +1055,7 @@ function HistoryModal({ data, isAdmin, onClose, onRolledBack }) {
   const [state, setState] = useState({ loading: true, data: null });
   const [limit, setLimit] = useState(5);
   const [busy, setBusy] = useState(null);
+  const [previewTarget, setPreviewTarget] = useState(null); // { rat, preview, reason }
 
   const load = React.useCallback(async (n) => {
     setState((s) => ({ ...s, loading: true }));
@@ -1033,17 +1070,27 @@ function HistoryModal({ data, isAdmin, onClose, onRolledBack }) {
 
   useEffect(() => { load(limit); }, [load, limit]);
 
-  const rollback = async (rat) => {
+  const openPreview = async (rat) => {
     if (!isAdmin) return;
-    const reason = window.prompt(
-      `Rollback ${title} to v${rat.version} (${new Date(rat.ratified_at).toLocaleDateString()})?\n\nThis creates a NEW release with the old content. Any open working draft will be discarded.\n\nReason (optional):`,
-      "",
-    );
-    if (reason === null) return;
+    setBusy(rat.id);
+    try {
+      const r = await api.get(`/legal/history/${slug}/rollback-preview/${rat.id}`);
+      setPreviewTarget({ rat, preview: r.data, reason: "" });
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Could not load rollback preview");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const confirmRollback = async () => {
+    if (!previewTarget) return;
+    const { rat, reason } = previewTarget;
     setBusy(rat.id);
     try {
       const r = await api.post(`/legal/history/${slug}/rollback/${rat.id}`, { reason });
       toast.success(`Rolled back to v${rat.version} · new version v${r.data.version}`);
+      setPreviewTarget(null);
       await onRolledBack();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Rollback failed");
@@ -1131,12 +1178,12 @@ function HistoryModal({ data, isAdmin, onClose, onRolledBack }) {
                   </div>
                   {isAdmin && !isCurrent && v.can_rollback && (
                     <button
-                      onClick={() => rollback(v)}
+                      onClick={() => openPreview(v)}
                       disabled={busy === v.id}
                       className="btn-outline text-xs inline-flex items-center gap-1 text-[#7A5A1A] border-[#7A5A1A] shrink-0"
                       data-testid={`history-row-${v.version}-rollback`}
                     >
-                      <Undo2 size={12} /> {busy === v.id ? "Rolling back…" : "Rollback"}
+                      <Undo2 size={12} /> {busy === v.id ? "Loading…" : "Rollback"}
                     </button>
                   )}
                   {isAdmin && !isCurrent && !v.can_rollback && (
@@ -1166,6 +1213,122 @@ function HistoryModal({ data, isAdmin, onClose, onRolledBack }) {
           <button onClick={onClose} className="btn-outline text-sm" data-testid="history-modal-cancel">
             Close
           </button>
+        </div>
+      </div>
+      {previewTarget && (
+        <RollbackPreviewModal
+          data={previewTarget}
+          slugTitle={title}
+          onCancel={() => setPreviewTarget(null)}
+          onChangeReason={(reason) => setPreviewTarget((p) => ({ ...p, reason }))}
+          onConfirm={confirmRollback}
+          busy={busy === previewTarget.rat.id}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------- Rollback preview modal — nested inside history ----------
+function RollbackPreviewModal({ data, slugTitle, onCancel, onChangeReason, onConfirm, busy }) {
+  const { rat, preview, reason } = data;
+  const parts = useMemo(
+    () => diffLines(preview?.current_md || "", preview?.target_md || ""),
+    [preview],
+  );
+  const rows = useMemo(() => buildRows(parts), [parts]);
+  const stats = useMemo(() => {
+    let added = 0, removed = 0;
+    for (const p of parts) {
+      const lc = (p.value.match(/\n/g) || []).length || (p.value ? 1 : 0);
+      if (p.added) added += lc;
+      else if (p.removed) removed += lc;
+    }
+    return { added, removed };
+  }, [parts]);
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-stretch justify-center z-[70] p-4" data-testid="rollback-preview-modal">
+      <div className="bg-[#FBF3E4] rounded-2xl max-w-5xl w-full flex flex-col overflow-hidden max-h-[90vh]">
+        <div className="p-5 border-b border-[#E5E1D8] flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className="label">Rollback preview · {slugTitle}</span>
+            <h2 className="font-serif text-2xl mt-1">
+              Restore v{preview.target_version}
+              <span className="text-[#5C6B6B] text-base ml-2">(currently v{preview.current_version})</span>
+            </h2>
+            <p className="text-xs text-[#5C6B6B] mt-1">
+              Target ratified <strong>{new Date(preview.target_ratified_at).toLocaleString()}</strong> by <strong>{preview.target_ratified_by}</strong>.
+              {" "}<span className="text-[#2E5C46] font-semibold">+{stats.added} to add</span>
+              {" · "}<span className="text-[#9E3C3C] font-semibold">-{stats.removed} to remove</span>
+            </p>
+          </div>
+          <button onClick={onCancel} className="text-[#5C6B6B] hover:text-[#0F2424]" data-testid="rollback-preview-close">
+            <XIcon size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto bg-white" data-testid="rollback-preview-body">
+          {stats.added === 0 && stats.removed === 0 ? (
+            <div className="p-8 text-center text-[#5C6B6B]" data-testid="rollback-preview-empty">
+              This rollback would produce no textual change — target and current are already identical.
+            </div>
+          ) : (
+            <table className="w-full font-mono text-xs" style={{ tableLayout: "fixed" }}>
+              <thead className="sticky top-0 bg-[#FAF7F0] text-[#5C6B6B] uppercase tracking-wider text-[10px] z-10">
+                <tr>
+                  <th className="w-10 px-1 py-2 text-right"></th>
+                  <th className="px-3 py-2 text-left border-r border-[#E5E1D8]">Current v{preview.current_version}</th>
+                  <th className="w-10 px-1 py-2 text-right"></th>
+                  <th className="px-3 py-2 text-left">Target v{preview.target_version} (will be restored)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i} className="align-top">
+                    <td className={`w-10 px-1 py-0.5 text-right text-[#B7B0A0] select-none ${row.leftClass}`}>{row.leftNum ?? ""}</td>
+                    <td className={`px-3 py-0.5 whitespace-pre-wrap break-words border-r border-[#F0EDE3] ${row.leftClass}`}>
+                      {row.left ?? ""}
+                    </td>
+                    <td className={`w-10 px-1 py-0.5 text-right text-[#B7B0A0] select-none ${row.rightClass}`}>{row.rightNum ?? ""}</td>
+                    <td className={`px-3 py-0.5 whitespace-pre-wrap break-words ${row.rightClass}`}>
+                      {row.right ?? ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-[#E5E1D8] bg-[#FAF7F0] space-y-3">
+          <div>
+            <label className="label block mb-1">Reason (optional but recommended)</label>
+            <textarea
+              value={reason}
+              onChange={(e) => onChangeReason(e.target.value)}
+              placeholder="Why are you rolling back? This is stored in the new release's notes."
+              className="input input-bordered w-full text-sm min-h-[60px]"
+              data-testid="rollback-preview-reason"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-[#5C6B6B]">
+              Rolling back creates a new ratification with the older content. Any open working draft will be auto-discarded.
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={onCancel} className="btn-outline text-sm" data-testid="rollback-preview-cancel">
+                Cancel
+              </button>
+              <button
+                onClick={onConfirm}
+                disabled={busy}
+                className="btn-primary text-sm inline-flex items-center gap-1 bg-[#7A5A1A]"
+                data-testid="rollback-preview-confirm"
+              >
+                <Undo2 size={14} /> {busy ? "Rolling back…" : `Confirm rollback to v${rat.version}`}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

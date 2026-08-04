@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -1369,6 +1370,7 @@ async def list_wd_comments(
 async def create_wd_comment(
     source_slug: str,
     payload: dict,
+    background: BackgroundTasks,
     user: dict = Depends(require_roles("admin")),
 ):
     """Post an inline comment (or reply) on the open working draft.
@@ -1378,6 +1380,10 @@ async def create_wd_comment(
       line_number (int, optional)          — anchors to a line; None = general
       side        ("released"|"working"|"general") — column context in the diff
       parent_id   (str, optional)          — if replying to another comment
+
+    Side effect: if the body contains @admin or @counsel, emails the
+    corresponding party via BackgroundTasks. Fire-and-forget — email
+    failures do not break the post.
     """
     from database import db
     wd = await _active_working_draft(source_slug)
@@ -1409,6 +1415,7 @@ async def create_wd_comment(
         if not parent:
             raise HTTPException(status_code=404, detail="Parent comment not found on this working draft.")
 
+    mentions = _parse_mentions(body)
     doc = {
         "id": gen_id(),
         "working_draft_id": wd["id"],
@@ -1417,6 +1424,7 @@ async def create_wd_comment(
         "side": side,
         "parent_id": parent_id or None,
         "body": body,
+        "mentions": mentions,
         "author_id": user["id"],
         "author_email": user.get("email"),
         "author_role": user.get("role"),
@@ -1426,7 +1434,109 @@ async def create_wd_comment(
         "resolved_by_email": None,
     }
     await db.legal_working_draft_comments.insert_one(dict(doc))
+    if mentions:
+        background.add_task(_email_comment_mentions, source_slug, wd, doc, user)
     return doc
+
+
+_MENTION_RX = re.compile(r"@(admin|counsel)\b", re.IGNORECASE)
+
+def _parse_mentions(body: str) -> list[str]:
+    """Return the deduped list of @roles present in the comment body.
+
+    Only `@admin` and `@counsel` are recognised. Case-insensitive.
+    Returns the roles lowercased.
+    """
+    found: list[str] = []
+    for m in _MENTION_RX.finditer(body or ""):
+        role = m.group(1).lower()
+        if role not in found:
+            found.append(role)
+    return found
+
+
+async def _email_comment_mentions(
+    source_slug: str,
+    wd: dict,
+    comment: dict,
+    author: dict,
+) -> None:
+    """Email @admin / @counsel with the comment context.
+
+    - `@admin`  → every user with role=admin (dedup, skips the author)
+    - `@counsel` → every user with role=readonly_admin (typically 1 seat)
+    """
+    from database import db
+    from utils.mailer import send_email
+
+    mentions = comment.get("mentions") or []
+    if not mentions:
+        return
+
+    author_id = author.get("id")
+    recipients: list[str] = []
+    role_filter: list[str] = []
+    if "admin" in mentions:
+        role_filter.append("admin")
+    if "counsel" in mentions:
+        role_filter.append("readonly_admin")
+    if not role_filter:
+        return
+
+    async for u in db.users.find(
+        {"role": {"$in": role_filter}}, {"_id": 0, "id": 1, "email": 1},
+    ):
+        if u.get("id") == author_id:
+            continue
+        em = u.get("email")
+        if em and em not in recipients:
+            recipients.append(em)
+    if not recipients:
+        return
+
+    _, title = _SOURCE_TO_PUBLIC.get(source_slug, (source_slug, source_slug.replace("-", " ").title()))
+    line = comment.get("line_number")
+    anchor = f"line {line}" if line else "general note"
+    site_url = os.environ.get("PUBLIC_SITE_URL", "").rstrip("/")
+    subject = f"You were mentioned in a {title} comment · {anchor}"
+    html = f"""
+    <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#1A2424">
+      <h2 style="font-family:'Cormorant Garamond',serif;color:#0F2424">You were mentioned in a legal-review comment</h2>
+      <p><strong>Document:</strong> {title}</p>
+      <p><strong>From:</strong> {author.get('email', 'someone')} ({author.get('role')})</p>
+      <p><strong>Anchor:</strong> {anchor}</p>
+      <blockquote style="border-left:3px solid #C9A961;margin:16px 0;padding:8px 12px;background:#FAF7F0;color:#0F2424">
+        {(comment.get('body') or '').replace('<','&lt;').replace('>','&gt;')}
+      </blockquote>
+      <p style="color:#5C6B6B;font-size:14px">
+        Open the diff and reply at
+        <a href="{site_url}/counsel" style="color:#476B6B"><strong>{site_url or '/counsel'}/counsel</strong></a>.
+      </p>
+    </div>
+    """
+    text = (
+        f"You were mentioned in a comment on {title}.\n"
+        f"From: {author.get('email')} ({author.get('role')})\n"
+        f"Anchor: {anchor}\n\n"
+        f"{comment.get('body')}\n\n"
+        f"Open the diff at {site_url}/counsel\n"
+    )
+    try:
+        await send_email(
+            to=recipients,
+            subject=subject,
+            html=html,
+            text=text,
+            template_name="legal_comment_mention",
+            metadata={
+                "source_slug": source_slug,
+                "working_draft_id": wd.get("id"),
+                "comment_id": comment.get("id"),
+                "mentions": mentions,
+            },
+        )
+    except Exception as exc:
+        logger.warning("legal.comment.mention.email: %s", exc)
 
 
 @router.post("/working-drafts/{source_slug}/comments/{comment_id}/resolve")
@@ -1578,6 +1688,50 @@ async def history_timeline(
         "current_version": current.get("version") if current else None,
         "current_body_hash": current.get("body_hash") if current else None,
         "versions": latest,
+    }
+
+
+@router.get("/history/{source_slug}/rollback-preview/{ratification_id}")
+async def rollback_preview(
+    source_slug: str,
+    ratification_id: str,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Return the target ratification's snapshot alongside the current
+    on-disk `.md` so the UI can diff them before an admin confirms a
+    rollback. Admin-only via `require_roles('admin')` allow-list; the
+    body is text-only, no side effects.
+    """
+    from database import db
+    fp = LEGAL_DOC_DIR / f"{source_slug}.md"
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="Unknown source doc")
+    target = await db.legal_doc_ratifications.find_one(
+        {"id": ratification_id, "source_slug": source_slug}, {"_id": 0},
+    )
+    if not target:
+        raise HTTPException(status_code=404, detail="Ratification not found for this slug.")
+    snapshot = target.get("content_md_snapshot")
+    if not snapshot:
+        raise HTTPException(
+            status_code=400,
+            detail="This version has no content snapshot — rollback is not possible.",
+        )
+    current_md = fp.read_text(encoding="utf-8")
+    # Find the current ratification to expose its version for the header.
+    current = await db.legal_doc_ratifications.find_one(
+        {"source_slug": source_slug}, {"_id": 0, "version": 1, "ratified_at": 1, "ratified_by": 1},
+        sort=[("ratified_at", -1), ("id", -1)],
+    )
+    return {
+        "source_slug": source_slug,
+        "target_version": target.get("version"),
+        "target_ratified_at": target.get("ratified_at"),
+        "target_ratified_by": target.get("ratified_by"),
+        "target_md": snapshot,
+        "current_version": (current or {}).get("version"),
+        "current_ratified_at": (current or {}).get("ratified_at"),
+        "current_md": current_md,
     }
 
 
