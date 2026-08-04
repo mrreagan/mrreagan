@@ -10,7 +10,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Briefcase, KeyRound, Save, RefreshCw } from "lucide-react";
+import { ArrowLeft, Briefcase, KeyRound, Save, RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
 
@@ -18,6 +18,20 @@ export default function AdminCounselSettings() {
   const [state, setState] = useState(null);
   const [form, setForm] = useState({ email: "", password: "", confirm: "" });
   const [busy, setBusy] = useState(false);
+  const [sendingLink, setSendingLink] = useState(false);
+
+  const sendSetPasswordLink = async () => {
+    if (!window.confirm(`Email a one-time set-password link to ${state?.email}? Any older unused link is superseded.`)) return;
+    setSendingLink(true);
+    try {
+      const r = await api.post("/admin/settings/counsel/send-set-password-link");
+      toast.success(`Set-password link emailed to ${r.data.email_sent_to}. Expires in 24 hours.`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Could not send link");
+    } finally {
+      setSendingLink(false);
+    }
+  };
 
   const load = async () => {
     try {
@@ -102,6 +116,24 @@ export default function AdminCounselSettings() {
                 Password still matches the env default (<code>counsel-review-2026</code>). Rotate it before sharing the account with real outside counsel.
               </p>
             )}
+          </div>
+
+          <div className="card p-5 mt-5" data-testid="counsel-send-link-card">
+            <p className="text-[10px] uppercase tracking-wider text-[#476B6B] font-semibold inline-flex items-center gap-1">
+              <Send size={12} /> Recommended · Let counsel choose their own password
+            </p>
+            <p className="text-xs text-[#5C6B6B] mt-1 leading-relaxed">
+              Emails <strong>{state.email}</strong> a one-time link (valid 24 h) so counsel can set their own password. You never see or type the plaintext. Any older unused link is superseded.
+            </p>
+            <button
+              onClick={sendSetPasswordLink}
+              disabled={sendingLink}
+              className="btn-outline text-sm inline-flex items-center gap-1 mt-3"
+              data-testid="counsel-send-link-btn"
+            >
+              {sendingLink ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+              {sendingLink ? "Sending…" : "Send set-password link"}
+            </button>
           </div>
 
           <div className="card p-5 mt-5">

@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 36 verification of (1) AdminHub centred layout, (2) counsel session revocation on credential rotate / self-service set-password, (3) send-set-password-link + set-password-from-token flow, (4) CLOUDFLARE_RESEND_SETUP.md presence. New pytest suite /app/backend/tests/test_iter36_counsel_session_setpw.py: 9/9 passed. Frontend Playwright: AdminHub layout, /counsel/set-password (missing token, bad token, mismatch, happy path) and admin send-link card all passed. Regression run of iter32/33/34/35 counsel suites: 48/49 passed — the single failure is a real sub-second race in auth_utils._is_token_revoked (details below), not a test bug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "auth_utils.get_current_user / _is_token_revoked", "issue": "Sub-second false revocation race: JWT `iat` is whole-second (floor) while user_token_revocations.revoked_at carries microseconds. A token minted in the SAME second as (i.e. up to ~1s AFTER) a rotation is treated as revoked because floor(iat) <= revoked_at. Reproduced deterministically: 4 of 6 rotate→immediate-login cycles returned HTTP 401 'Session revoked' for a token issued after the rotation. This also caused tests/test_iter35_counsel_settings_strict.py::test_counsel_get_forbidden to fail with 401 instead of 403 when run after iter34. User impact: counsel who sets a password and signs in immediately can be bounced with 'Session revoked'. Suggested fix: compare against a floored revocation instant, e.g. `return iat_dt < revoked_dt.replace(microsecond=0)`, or store revoked_at truncated to the second and use strict `<`."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/counsel/set-password success screen (counsel-set-password-done)", "issues": ["Missing word spacing around the /login link: renders as 'You can now sign in at/loginusing counsel@birthright.org.' — the {\" \"} separators are collapsed. Add non-collapsing spaces or restructure the sentence."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter36_counsel_session_setpw.py",
+    "/app/test_reports/pytest/iter36_regression.xml"
+  ],
+  "action_items": [
+    "Fix the sub-second revocation race in auth_utils._is_token_revoked (compare iat against revoked_at truncated to whole seconds, strict <). Without it, iter35 strict-gate test is flaky and real users can be falsely logged out.",
+    "Fix spacing around the /login link on the counsel set-password success screen."
+  ],
+  "critical_code_review_comments": [
+    "auth_utils._is_token_revoked uses `<=` against a microsecond-precision revoked_at while jwt iat is second-truncated → guaranteed false positives for tokens issued within the same second.",
+    "POST /api/admin/settings/counsel/set-password-from-token is public and unauthenticated with no rate limiting; token entropy is good (48-byte urlsafe) but consider a simple attempt throttle since it sits under the /admin prefix.",
+    "send-set-password-link swallows mailer exceptions and still returns ok:true with email_id:null — the UI cannot distinguish 'email sent' from 'email failed'. Consider surfacing email_id==null as a warning toast."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter36_counsel_session_setpw.py"],
+  "success_rate": {"backend": "98% (57/58 assertions/tests; 1 pre-existing suite failure caused by the revocation race)", "frontend": "100%"},
+  "seed_data_creation": "Seeded one-time tokens in db.counsel_password_tokens for token tests; cleaned up. Counsel password rotated during tests and restored to counsel-review-2026 (verified login 200, role readonly_admin, auth endpoint 200). db.counsel_password_tokens and db.user_token_revocations emptied at end of run.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@birthright.org / birthright2026; counsel@birthright.org / counsel-review-2026 (restored)",
+  "context_for_next_testing_agent": "Run `pytest tests/test_iter36_counsel_session_setpw.py` for the session-revocation + set-password-link flow. Because rotation writes user_token_revocations, any counsel token minted in the same second as a rotate may be falsely revoked — insert a >=1s sleep after rotate before logging counsel in until the main agent fixes _is_token_revoked. Always clean counsel_password_tokens + user_token_revocations and rotate counsel back to counsel-review-2026 at teardown.",
+  "rca_of_the_issue": "iter35 failure RCA: iter34 rotates counsel credentials, which upserts user_token_revocations.revoked_at = now_iso() (microsecond precision). iter35's module-scoped counsel_token fixture logs in immediately afterwards; jwt.encode stores iat as an integer second (floor), so datetime.fromtimestamp(iat) can be earlier than revoked_at even though the login happened later. _is_token_revoked's `iat_dt <= revoked_dt` then returns True and get_current_user raises 401 'Session revoked' before the strict-admin 403 check runs."
+}

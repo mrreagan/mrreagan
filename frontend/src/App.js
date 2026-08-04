@@ -47,6 +47,7 @@ import AdminImageQueue from "./pages/AdminImageQueue";
 import AdminLegalDocs from "./pages/AdminLegalDocs";
 import AdminLegalRatifications from "./pages/AdminLegalRatifications";
 import AdminCounselSettings from "./pages/AdminCounselSettings";
+import CounselSetPasswordPage from "./pages/CounselSetPasswordPage";
 import AdminCampaigns from "./pages/AdminCampaigns";
 import CounselReviewChecklist from "./pages/CounselReviewChecklist";
 import CounselActivityLog from "./pages/CounselActivityLog";
@@ -363,6 +364,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/counsel/set-password" element={<CounselSetPasswordPage />} />
       <Route
         path="/admin/settings/counsel"
         element={

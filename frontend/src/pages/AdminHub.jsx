@@ -82,7 +82,7 @@ const SECTIONS = [
 
 export default function AdminHub() {
   return (
-    <div className="container max-w-6xl py-10" data-testid="admin-hub">
+    <div className="container-page max-w-6xl py-10" data-testid="admin-hub">
       <header className="mb-10">
         <span className="label text-[#C9A961]">Admin</span>
         <h1 className="font-serif text-4xl mt-1">Operations hub</h1>

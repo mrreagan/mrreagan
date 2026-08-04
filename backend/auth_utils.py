@@ -82,7 +82,34 @@ async def get_current_user(
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+
+    # Session revocation — if an admin action (e.g. counsel credential
+    # rotate) marked this user's tokens revoked after this token was
+    # issued, kill the session. `iat` is issued-at (unix seconds); the
+    # revocation timestamp is stored as ISO-8601.
+    revoked = await db.user_token_revocations.find_one(
+        {"user_id": user["id"]}, {"_id": 0, "revoked_at": 1},
+    )
+    if revoked and _is_token_revoked(payload.get("iat"), revoked.get("revoked_at")):
+        raise HTTPException(status_code=401, detail="Session revoked. Please sign in again.")
     return user
+
+
+def _is_token_revoked(iat: Optional[int], revoked_at_iso: Optional[str]) -> bool:
+    """Return True iff the token was issued at OR BEFORE the recorded
+    revocation moment. Defensive against malformed data — never raises."""
+    if not iat or not revoked_at_iso:
+        return False
+    try:
+        revoked_dt = datetime.fromisoformat(revoked_at_iso.replace("Z", "+00:00"))
+    except Exception:
+        return False
+    # jwt `iat` may arrive as int OR as a datetime depending on lib version.
+    if isinstance(iat, datetime):
+        iat_dt = iat
+    else:
+        iat_dt = datetime.fromtimestamp(int(iat), tz=timezone.utc)
+    return iat_dt <= revoked_dt
 
 
 def require_roles(*roles: str):
