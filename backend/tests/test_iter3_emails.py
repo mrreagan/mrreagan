@@ -10,9 +10,9 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://birthright-hub.previ
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "test_database")
 
-ADMIN = ("admin@birthright.org", "birthright2026")
-DEMO = ("demo@birthright.org", "birthright2026")
-FAC = ("elena@birthright.org", "birthright2026")
+ADMIN = ("admin@birthright.live", "birthright2026")
+DEMO = ("demo@birthright.live", "birthright2026")
+FAC = ("elena@birthright.live", "birthright2026")
 
 
 @pytest.fixture(scope="session")
@@ -82,20 +82,20 @@ def test_contact_queues_two_emails(mongo):
 
 # --- Password reset request: existing user ---
 def test_request_password_reset_existing(mongo):
-    before_tokens = mongo.password_reset_tokens.count_documents({"email": "demo@birthright.org"})
+    before_tokens = mongo.password_reset_tokens.count_documents({"email": "demo@birthright.live"})
     before_emails = mongo.outbound_emails.count_documents({"template": "password_reset"})
-    r = requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.org"})
+    r = requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.live"})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body.get("success") is True
     assert "reset link" in body.get("message", "").lower()
     time.sleep(0.5)
-    after_tokens = mongo.password_reset_tokens.count_documents({"email": "demo@birthright.org"})
+    after_tokens = mongo.password_reset_tokens.count_documents({"email": "demo@birthright.live"})
     after_emails = mongo.outbound_emails.count_documents({"template": "password_reset"})
     assert after_tokens == before_tokens + 1
     assert after_emails == before_emails + 1
     tok = mongo.password_reset_tokens.find_one(
-        {"email": "demo@birthright.org"}, sort=[("created_at", -1)]
+        {"email": "demo@birthright.live"}, sort=[("created_at", -1)]
     )
     assert tok["used"] is False
     assert tok.get("expires_at")
@@ -119,10 +119,10 @@ def test_request_password_reset_nonexistent(mongo):
 # --- Reset password with valid token, then restore original ---
 def test_reset_password_with_valid_token(mongo):
     # request fresh token
-    requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.org"})
+    requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.live"})
     time.sleep(0.3)
     tok_doc = mongo.password_reset_tokens.find_one(
-        {"email": "demo@birthright.org", "used": False}, sort=[("created_at", -1)]
+        {"email": "demo@birthright.live", "used": False}, sort=[("created_at", -1)]
     )
     assert tok_doc, "no fresh token found"
     token = tok_doc["token"]
@@ -137,7 +137,7 @@ def test_reset_password_with_valid_token(mongo):
 
     # login with NEW password
     s = requests.Session()
-    r = s.post(f"{BASE_URL}/api/auth/login", json={"email": "demo@birthright.org", "password": new_pw})
+    r = s.post(f"{BASE_URL}/api/auth/login", json={"email": "demo@birthright.live", "password": new_pw})
     assert r.status_code == 200, "login with new password should succeed"
 
     # already-used token rejected
@@ -145,10 +145,10 @@ def test_reset_password_with_valid_token(mongo):
     assert r2.status_code == 400
 
     # RESTORE original password using fresh token
-    requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.org"})
+    requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.live"})
     time.sleep(0.3)
     tok2 = mongo.password_reset_tokens.find_one(
-        {"email": "demo@birthright.org", "used": False}, sort=[("created_at", -1)]
+        {"email": "demo@birthright.live", "used": False}, sort=[("created_at", -1)]
     )
     assert tok2
     r3 = requests.post(f"{BASE_URL}/api/auth/reset-password", json={"token": tok2["token"], "new_password": "birthright2026"})
@@ -156,18 +156,18 @@ def test_reset_password_with_valid_token(mongo):
 
     # verify restore worked
     s2 = requests.Session()
-    r = s2.post(f"{BASE_URL}/api/auth/login", json={"email": "demo@birthright.org", "password": "birthright2026"})
+    r = s2.post(f"{BASE_URL}/api/auth/login", json={"email": "demo@birthright.live", "password": "birthright2026"})
     assert r.status_code == 200, "original password should be restored"
 
 
 def test_reset_password_invalidates_other_outstanding_tokens(mongo):
     # create two outstanding tokens
-    requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.org"})
+    requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.live"})
     time.sleep(0.2)
-    requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.org"})
+    requests.post(f"{BASE_URL}/api/auth/request-password-reset", json={"email": "demo@birthright.live"})
     time.sleep(0.2)
     tokens = list(
-        mongo.password_reset_tokens.find({"email": "demo@birthright.org", "used": False}).sort("created_at", -1)
+        mongo.password_reset_tokens.find({"email": "demo@birthright.live", "used": False}).sort("created_at", -1)
     )
     assert len(tokens) >= 2
 
@@ -177,7 +177,7 @@ def test_reset_password_invalidates_other_outstanding_tokens(mongo):
     assert r.status_code == 200
 
     # other(s) should be invalidated
-    others_unused = mongo.password_reset_tokens.count_documents({"email": "demo@birthright.org", "used": False})
+    others_unused = mongo.password_reset_tokens.count_documents({"email": "demo@birthright.live", "used": False})
     assert others_unused == 0, "other outstanding tokens should be invalidated"
 
 
@@ -197,7 +197,7 @@ def test_newsletter_subscribe(mongo):
 # --- Registration cancel by owner + waitlist promotion email ---
 def test_cancel_registration_promotes_waitlist(mongo, admin_session, demo_session):
     # find demo participant
-    demo_user = mongo.users.find_one({"email": "demo@birthright.org"})
+    demo_user = mongo.users.find_one({"email": "demo@birthright.live"})
 
     # Get or create a registration for demo for an upcoming workshop
     upcoming = mongo.workshops.find_one({"status": "upcoming"})
@@ -224,7 +224,7 @@ def test_cancel_registration_promotes_waitlist(mongo, admin_session, demo_sessio
     other_user = mongo.users.find_one({"role": "participant", "id": {"$ne": demo_user["id"]}})
     if not other_user:
         # use facilitator as waitlister fallback
-        other_user = mongo.users.find_one({"email": "elena@birthright.org"})
+        other_user = mongo.users.find_one({"email": "elena@birthright.live"})
     # remove any existing waitlist row for that user+workshop to ensure clean
     mongo.waitlist.delete_many({"workshop_id": upcoming["id"], "user_id": other_user["id"]})
     import uuid
@@ -260,13 +260,13 @@ def test_cancel_registration_promotes_waitlist(mongo, admin_session, demo_sessio
 
 def test_cancel_registration_wrong_user_forbidden(mongo, fac_session):
     # find a paid registration not belonging to facilitator elena
-    elena = mongo.users.find_one({"email": "elena@birthright.org"})
+    elena = mongo.users.find_one({"email": "elena@birthright.live"})
     reg = mongo.registrations.find_one(
         {"payment_status": "paid", "user_id": {"$ne": elena["id"]}, "checked_in": {"$ne": True}}
     )
     if not reg:
         # create a participant + reg
-        demo = mongo.users.find_one({"email": "demo@birthright.org"})
+        demo = mongo.users.find_one({"email": "demo@birthright.live"})
         upcoming = mongo.workshops.find_one({"status": "upcoming"})
         import uuid
         from datetime import datetime, timezone
@@ -294,7 +294,7 @@ def test_release_seat_participant_forbidden(mongo, demo_session):
 
 def test_release_seat_admin_works(mongo, admin_session):
     # Create a paid reg to release
-    demo = mongo.users.find_one({"email": "demo@birthright.org"})
+    demo = mongo.users.find_one({"email": "demo@birthright.live"})
     upcoming = mongo.workshops.find_one({"status": "upcoming"})
     import uuid
     from datetime import datetime, timezone

@@ -25,9 +25,9 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "test_database")
 
-ADMIN = {"email": "admin@birthright.org", "password": "birthright2026"}
-DEMO = {"email": "demo@birthright.org", "password": "birthright2026"}
-ELENA = {"email": "elena@birthright.org", "password": "birthright2026"}
+ADMIN = {"email": "admin@birthright.live", "password": "birthright2026"}
+DEMO = {"email": "demo@birthright.live", "password": "birthright2026"}
+ELENA = {"email": "elena@birthright.live", "password": "birthright2026"}
 
 
 # ---------- helpers ----------

@@ -19,8 +19,8 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 API_BASE = "http://localhost:8001/api"
-ADMIN_EMAIL = "admin@birthright.org"
-VENDOR_EMAIL = "demo@birthright.org"
+ADMIN_EMAIL = "admin@birthright.live"
+VENDOR_EMAIL = "demo@birthright.live"
 PASSWORD = "birthright2026"
 
 

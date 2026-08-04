@@ -15,8 +15,8 @@ if not BASE_URL:
             break
 
 API = f"{BASE_URL}/api"
-ADMIN_CREDS = {"email": "admin@birthright.org", "password": "birthright2026"}
-DEMO_CREDS = {"email": "demo@birthright.org", "password": "birthright2026"}
+ADMIN_CREDS = {"email": "admin@birthright.live", "password": "birthright2026"}
+DEMO_CREDS = {"email": "demo@birthright.live", "password": "birthright2026"}
 
 
 # ============ Fixtures ============

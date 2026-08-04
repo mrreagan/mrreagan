@@ -197,7 +197,7 @@ export default function PartnerInvite() {
           <p className="label">Subscription tier</p>
           <p className="text-xs text-[#5C6B6B] mt-1 mb-3">
             Pick your own — longer commitments shrink the foundation's cut across every channel.
-            <strong className="text-[#1A2424]"> Three scenarios per tier</strong>: orders we fulfill on birthright.org,
+            <strong className="text-[#1A2424]"> Three scenarios per tier</strong>: orders we fulfill on birthright.live,
             off-site orders where we sent you the buyer (referral), and your direct customers (always 100% yours).
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

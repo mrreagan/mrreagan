@@ -27,7 +27,7 @@ LULU_SANDBOX_ID = os.environ.get("LULU_SANDBOX_CLIENT_ID", "")
 pytestmark = pytest.mark.skipif(not LULU_SANDBOX_ID, reason="LULU_SANDBOX_CLIENT_ID not set")
 
 API_BASE = "http://localhost:8001/api"
-ADMIN_EMAIL = "admin@birthright.org"
+ADMIN_EMAIL = "admin@birthright.live"
 PASSWORD = "birthright2026"
 
 # Sample test PDFs (Dropbox-hosted, from Lulu's own sample collection)

@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 load_dotenv("/app/frontend/.env")
 BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
 API = f"{BASE_URL}/api"
-ADMIN = ("admin@birthright.org", "birthright2026")
-DEMO = ("demo@birthright.org", "birthright2026")
-ELENA = ("elena@birthright.org", "birthright2026")
-MARCUS = ("marcus@birthright.org", "birthright2026")
+ADMIN = ("admin@birthright.live", "birthright2026")
+DEMO = ("demo@birthright.live", "birthright2026")
+ELENA = ("elena@birthright.live", "birthright2026")
+MARCUS = ("marcus@birthright.live", "birthright2026")
 
 
 def _login(email: str, password: str) -> str:

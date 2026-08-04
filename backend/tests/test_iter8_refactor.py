@@ -14,10 +14,10 @@ import requests
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://birthright-hub.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN = ("admin@birthright.org", "birthright2026")
-ELENA = ("elena@birthright.org", "birthright2026")  # facilitator (Foundations + seed_demo)
-MARCUS = ("marcus@birthright.org", "birthright2026")  # facilitator (Repair)
-DEMO = ("demo@birthright.org", "birthright2026")  # paid participant on past+upcoming
+ADMIN = ("admin@birthright.live", "birthright2026")
+ELENA = ("elena@birthright.live", "birthright2026")  # facilitator (Foundations + seed_demo)
+MARCUS = ("marcus@birthright.live", "birthright2026")  # facilitator (Repair)
+DEMO = ("demo@birthright.live", "birthright2026")  # paid participant on past+upcoming
 
 
 def _login(email: str, password: str) -> str:
@@ -73,7 +73,7 @@ class TestUserProfileShape:
         # governance flags must be present (even if False)
         assert "governance_member" in me
         assert "is_ombudsman" in me
-        assert me["email"] == "demo@birthright.org"
+        assert me["email"] == "demo@birthright.live"
 
     def test_admin_me_has_governance_flags(self, tokens):
         me = requests.get(f"{API}/auth/me", headers=_h(tokens["admin"]), timeout=20).json()
@@ -257,7 +257,7 @@ class TestMailerDryRun:
         before = _count_template_in_outbound("password_reset")
         r = requests.post(
             f"{API}/auth/request-password-reset",
-            json={"email": "demo@birthright.org"},
+            json={"email": "demo@birthright.live"},
             timeout=20,
         )
         assert r.status_code in (200, 202), r.text
@@ -268,7 +268,7 @@ class TestMailerDryRun:
         any_grew = after > before
         if not any_grew:
             # fallback: just confirm SOMETHING was logged
-            any_grew = _outbound_email_count_for("demo@birthright.org") > 0
+            any_grew = _outbound_email_count_for("demo@birthright.live") > 0
         assert any_grew, "password reset request should enqueue a dry-run email"
 
 

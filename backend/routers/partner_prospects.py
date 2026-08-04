@@ -256,7 +256,7 @@ PREVIEW_SPECS: dict[str, dict] = {
             # Per-line clarity about what 'rev share' actually means in context.
             "revenue_breakdown_headers": {
                 "subscription": "What you pay Birthright",
-                "pod": "Order on birthright.org (we fulfill via Printful/Lulu)",
+                "pod": "Order on birthright.live (we fulfill via Printful/Lulu)",
                 "offsite": "Order on your own store (we send buyer to you with ?via= tag)",
             },
             "fulfillment_modes": [

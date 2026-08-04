@@ -6,10 +6,10 @@ import requests
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://birthright-hub.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN = ("admin@birthright.org", "birthright2026")
-ELENA = ("elena@birthright.org", "birthright2026")  # research partner
-DAVID = ("demo@birthright.org", "birthright2026")  # vendor partner — demo has active vendor profile per seed
-DEMO  = ("demo@birthright.org",  "birthright2026")  # participant
+ADMIN = ("admin@birthright.live", "birthright2026")
+ELENA = ("elena@birthright.live", "birthright2026")  # research partner
+DAVID = ("demo@birthright.live", "birthright2026")  # vendor partner — demo has active vendor profile per seed
+DEMO  = ("demo@birthright.live",  "birthright2026")  # participant
 
 
 def _login(email, password):

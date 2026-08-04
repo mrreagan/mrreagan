@@ -19,10 +19,10 @@ import requests
 from pymongo import MongoClient
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
-DEMO = {"email": "demo@birthright.org", "password": "birthright2026"}
-ADMIN = {"email": "admin@birthright.org", "password": "birthright2026"}
-ELENA = {"email": "elena@birthright.org", "password": "birthright2026"}
-MARCUS = {"email": "marcus@birthright.org", "password": "birthright2026"}
+DEMO = {"email": "demo@birthright.live", "password": "birthright2026"}
+ADMIN = {"email": "admin@birthright.live", "password": "birthright2026"}
+ELENA = {"email": "elena@birthright.live", "password": "birthright2026"}
+MARCUS = {"email": "marcus@birthright.live", "password": "birthright2026"}
 ELENA_ID = "dc79aee7-2043-433f-a2c2-f4cdc7339c29"
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")

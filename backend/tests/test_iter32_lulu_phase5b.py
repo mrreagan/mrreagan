@@ -26,7 +26,7 @@ LULU_OK = bool(os.environ.get("LULU_SANDBOX_CLIENT_ID"))
 pytestmark = pytest.mark.skipif(not LULU_OK, reason="LULU_SANDBOX_CLIENT_ID not set")
 
 API_BASE = "http://localhost:8001/api"
-ADMIN_EMAIL = "admin@birthright.org"
+ADMIN_EMAIL = "admin@birthright.live"
 PASSWORD = "birthright2026"
 
 

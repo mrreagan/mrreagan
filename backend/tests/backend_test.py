@@ -21,10 +21,10 @@ _mongo = MongoClient(MONGO_URL)
 _db = _mongo[DB_NAME]
 
 # Seeded credentials
-ADMIN = {"email": "admin@birthright.org", "password": "birthright2026"}
-FAC = {"email": "elena@birthright.org", "password": "birthright2026"}
-FAC2 = {"email": "marcus@birthright.org", "password": "birthright2026"}
-DEMO = {"email": "demo@birthright.org", "password": "birthright2026"}
+ADMIN = {"email": "admin@birthright.live", "password": "birthright2026"}
+FAC = {"email": "elena@birthright.live", "password": "birthright2026"}
+FAC2 = {"email": "marcus@birthright.live", "password": "birthright2026"}
+DEMO = {"email": "demo@birthright.live", "password": "birthright2026"}
 
 # Past cohort slug — demo user has paid registration
 PAST_SLUG = "foundations-spring-cohort-past"

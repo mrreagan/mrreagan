@@ -44,9 +44,9 @@ BASE_URL = _load_backend_url()
 assert BASE_URL, "REACT_APP_BACKEND_URL must be set"
 API = f"{BASE_URL}/api"
 
-ADMIN = ("admin@birthright.org", "birthright2026")
-ELENA = ("elena@birthright.org", "birthright2026")
-DEMO = ("demo@birthright.org", "birthright2026")
+ADMIN = ("admin@birthright.live", "birthright2026")
+ELENA = ("elena@birthright.live", "birthright2026")
+DEMO = ("demo@birthright.live", "birthright2026")
 
 
 def _login(email: str, password: str) -> str:
@@ -196,7 +196,7 @@ class TestFulfilment:
                 # synthesize
                 plan = plans[("community", 12)]
                 # Find demo profile id
-                user = await db.users.find_one({"email": "demo@birthright.org"})
+                user = await db.users.find_one({"email": "demo@birthright.live"})
                 profile = await db.partner_profiles.find_one(
                     {"user_id": user["id"], "partner_type": "community", "status": "active"}
                 )

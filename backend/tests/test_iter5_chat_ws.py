@@ -83,23 +83,23 @@ def workshop_id():
 
 @pytest.fixture(scope="module")
 def demo_creds():
-    return login("demo@birthright.org")
+    return login("demo@birthright.live")
 
 
 @pytest.fixture(scope="module")
 def elena_creds():
-    return login("elena@birthright.org")
+    return login("elena@birthright.live")
 
 
 @pytest.fixture(scope="module")
 def admin_creds():
-    return login("admin@birthright.org")
+    return login("admin@birthright.live")
 
 
 @pytest.fixture(scope="module")
 def marcus_creds():
     # Marcus facilitates 'Repair' workshop, not Foundations → no access via facilitator route
-    return login("marcus@birthright.org")
+    return login("marcus@birthright.live")
 
 
 # ======================= 1. AUTH =======================

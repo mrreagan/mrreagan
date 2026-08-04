@@ -11,9 +11,9 @@ if not base_url:
     raise RuntimeError("REACT_APP_BACKEND_URL missing")
 BASE = base_url.rstrip("/") + "/api"
 
-ADMIN = ("admin@birthright.org", "birthright2026")
-COUNSEL = ("counsel@birthright.org", "counsel-review-2026")
-PARTICIPANT = ("demo@birthright.org", "birthright2026")
+ADMIN = ("admin@birthright.live", "birthright2026")
+COUNSEL = ("counsel@birthright.live", "counsel-review-2026")
+PARTICIPANT = ("demo@birthright.live", "birthright2026")
 
 ROT_EMAIL = "counsel@birthright.live"
 ROT_PASSWORD = "rotated-test-password-2026"
@@ -104,7 +104,7 @@ class TestValidation:
 
     def test_email_collision_conflict(self, admin_token):
         r = requests.post(f"{BASE}/admin/settings/counsel/rotate",
-                          json={"email": "admin@birthright.org"},
+                          json={"email": "admin@birthright.live"},
                           headers=hdr(admin_token), timeout=30)
         assert r.status_code == 409, f"expected 409 got {r.status_code} {r.text[:300]}"
 

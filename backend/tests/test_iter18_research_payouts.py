@@ -15,10 +15,10 @@ if not BASE_URL:
             break
 
 API = f"{BASE_URL}/api"
-ADMIN = {"email": "admin@birthright.org", "password": "birthright2026"}
-ELENA = {"email": "elena@birthright.org", "password": "birthright2026"}   # research partner
-DEMO = {"email": "demo@birthright.org", "password": "birthright2026"}     # no research profile
-MARCUS = {"email": "marcus@birthright.org", "password": "birthright2026"}
+ADMIN = {"email": "admin@birthright.live", "password": "birthright2026"}
+ELENA = {"email": "elena@birthright.live", "password": "birthright2026"}   # research partner
+DEMO = {"email": "demo@birthright.live", "password": "birthright2026"}     # no research profile
+MARCUS = {"email": "marcus@birthright.live", "password": "birthright2026"}
 
 
 def _login(creds):

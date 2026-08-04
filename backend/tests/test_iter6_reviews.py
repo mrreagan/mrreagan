@@ -11,10 +11,10 @@ import requests
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://birthright-hub.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN = {"email": "admin@birthright.org", "password": "birthright2026"}
-DEMO = {"email": "demo@birthright.org", "password": "birthright2026"}
-ELENA = {"email": "elena@birthright.org", "password": "birthright2026"}
-MARCUS = {"email": "marcus@birthright.org", "password": "birthright2026"}
+ADMIN = {"email": "admin@birthright.live", "password": "birthright2026"}
+DEMO = {"email": "demo@birthright.live", "password": "birthright2026"}
+ELENA = {"email": "elena@birthright.live", "password": "birthright2026"}
+MARCUS = {"email": "marcus@birthright.live", "password": "birthright2026"}
 
 PAST_WORKSHOP_SLUG = "foundations-spring-cohort-past"
 UPCOMING_WORKSHOP_SLUG = "foundations-of-secure-bonds"

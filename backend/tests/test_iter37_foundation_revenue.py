@@ -24,9 +24,9 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 API_BASE = "http://localhost:8001/api"
-ADMIN_EMAIL = "admin@birthright.org"
+ADMIN_EMAIL = "admin@birthright.live"
 ADMIN_PASSWORD = "birthright2026"
-NON_ADMIN_EMAIL = "demo@birthright.org"
+NON_ADMIN_EMAIL = "demo@birthright.live"
 
 
 async def _login(email: str, password: str = "birthright2026") -> str:

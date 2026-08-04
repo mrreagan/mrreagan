@@ -15,7 +15,7 @@ if not BASE_URL:
 
 API = f"{BASE_URL}/api"
 
-ADMIN_CREDS = {"email": "admin@birthright.org", "password": "birthright2026"}
+ADMIN_CREDS = {"email": "admin@birthright.live", "password": "birthright2026"}
 SAMPLE_SLUGS = {
     "facilitator": ["sample-maya-chen", "sample-aaron-kalu"],
     "vendor": ["sample-quiet-hours-studio", "sample-hearth-practice"],

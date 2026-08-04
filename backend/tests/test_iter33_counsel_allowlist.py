@@ -13,7 +13,7 @@ if not base_url:
     raise RuntimeError("REACT_APP_BACKEND_URL missing")
 BASE_URL = base_url.rstrip("/")
 
-COUNSEL = ("counsel@birthright.org", "counsel-review-2026")
+COUNSEL = ("counsel@birthright.live", "counsel-review-2026")
 FAST_PATH = "Counsel Fast Path"
 FAST_PATH_FULL = "Counsel Fast Path — Minimise Your Billable Time"
 SLUG = "01-terms-of-service"

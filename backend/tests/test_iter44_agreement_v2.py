@@ -16,9 +16,9 @@ import requests
 BASE = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
 API = f"{BASE}/api"
 
-ADMIN_EMAIL = "admin@birthright.org"
-ELENA_EMAIL = "elena@birthright.org"
-DEMO_EMAIL = "demo@birthright.org"
+ADMIN_EMAIL = "admin@birthright.live"
+ELENA_EMAIL = "elena@birthright.live"
+DEMO_EMAIL = "demo@birthright.live"
 PWD = "birthright2026"
 
 

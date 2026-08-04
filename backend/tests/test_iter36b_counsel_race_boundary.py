@@ -21,8 +21,8 @@ backend_env = dotenv_values("/app/backend/.env")
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or frontend_env.get("REACT_APP_BACKEND_URL")).rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN = {"email": "admin@birthright.org", "password": "birthright2026"}
-COUNSEL_EMAIL = "counsel@birthright.org"
+ADMIN = {"email": "admin@birthright.live", "password": "birthright2026"}
+COUNSEL_EMAIL = "counsel@birthright.live"
 COUNSEL_PW = "counsel-review-2026"
 AUTH_ENDPOINT = f"{API}/legal/comments/01-terms-of-service"
 

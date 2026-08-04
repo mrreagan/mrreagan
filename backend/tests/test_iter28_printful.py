@@ -2,7 +2,7 @@
 
 These are integration tests — they require:
   - PRINTFUL_API_TOKEN set in backend/.env
-  - The seeded admin (admin@birthright.org / birthright2026) to exist
+  - The seeded admin (admin@birthright.live / birthright2026) to exist
   - PRINTFUL_PUBLIC_IMAGE_BASE pointing to a publicly-reachable URL
 
 Skipped automatically if PRINTFUL_API_TOKEN is missing.
@@ -26,7 +26,7 @@ PRINTFUL_TOKEN = os.environ.get("PRINTFUL_API_TOKEN", "")
 pytestmark = pytest.mark.skipif(not PRINTFUL_TOKEN, reason="PRINTFUL_API_TOKEN not set")
 
 API_BASE = "http://localhost:8001/api"
-ADMIN_EMAIL = "admin@birthright.org"
+ADMIN_EMAIL = "admin@birthright.live"
 ADMIN_PASSWORD = "birthright2026"
 
 

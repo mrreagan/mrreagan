@@ -115,7 +115,7 @@ async def dispatch_order(db, order: Dict[str, Any]) -> List[Dict[str, Any]]:
       {product_id, quantity, provider | None, provider_order_id, status, error?}
     """
     shipping_address = order.get("shipping_address") or {}
-    contact_email = order.get("contact_email") or "fulfillment@birthright.org"
+    contact_email = order.get("contact_email") or "fulfillment@birthright.live"
     items = order.get("items") or []
     fulfillments: List[Dict[str, Any]] = []
     for idx, item in enumerate(items):

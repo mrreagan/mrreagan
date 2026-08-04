@@ -13,8 +13,8 @@ if not base_url:
     raise RuntimeError("REACT_APP_BACKEND_URL missing")
 BASE_URL = base_url.rstrip("/")
 
-COUNSEL = ("counsel@birthright.org", "counsel-review-2026")
-ADMIN = ("admin@birthright.org", "birthright2026")
+COUNSEL = ("counsel@birthright.live", "counsel-review-2026")
+ADMIN = ("admin@birthright.live", "birthright2026")
 
 
 def _login(email, password):

@@ -24,9 +24,9 @@ _load_env("/app/backend/.env")
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN = {"email": "admin@birthright.org", "password": "birthright2026"}
-VENDOR = {"email": "demo@birthright.org", "password": "birthright2026"}
-NON_VENDOR = {"email": "elena@birthright.org", "password": "birthright2026"}
+ADMIN = {"email": "admin@birthright.live", "password": "birthright2026"}
+VENDOR = {"email": "demo@birthright.live", "password": "birthright2026"}
+NON_VENDOR = {"email": "elena@birthright.live", "password": "birthright2026"}
 
 
 def _login(creds):

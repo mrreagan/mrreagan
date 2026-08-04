@@ -20,7 +20,7 @@ import httpx
 import pytest
 
 BASE = os.environ.get("BIRTHRIGHT_API_BASE", "http://localhost:8001/api")
-ADMIN_EMAIL = os.environ.get("BIRTHRIGHT_ADMIN_EMAIL", "admin@birthright.org")
+ADMIN_EMAIL = os.environ.get("BIRTHRIGHT_ADMIN_EMAIL", "admin@birthright.live")
 ADMIN_PASS = os.environ.get("BIRTHRIGHT_ADMIN_PASS", "birthright2026")
 
 
@@ -43,7 +43,7 @@ def admin_tok() -> str:
 def partner_tok(admin_tok: str) -> str:
     """Create a dedicated research-partner user + active profile via admin APIs."""
     suffix = uuid.uuid4().hex[:8]
-    email = f"research-pytest-{suffix}@birthright.org"
+    email = f"research-pytest-{suffix}@birthright.live"
     password = "Pytest!ResearchModeration2026"
     reg = httpx.post(
         f"{BASE}/auth/register",

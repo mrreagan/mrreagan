@@ -1,9 +1,9 @@
 """
-Iteration 45 — Domain migration verification (@birthright.org -> @birthright.live)
+Iteration 45 — Domain migration verification (@birthright.live -> @birthright.live)
 
 Covers:
   * Login smoke for all five seeded credentialed accounts on the new domain
-  * Old @birthright.org emails must be rejected (401)
+  * Old @birthright.live emails must be rejected (401)
   * Counsel core read flows + write-lock still intact under new email
   * Admin counsel-settings read + password rotate + restore
   * Documentation content checks (test_credentials.md, counsel guide, legal briefing)

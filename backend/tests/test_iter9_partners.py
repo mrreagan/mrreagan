@@ -37,9 +37,9 @@ BASE_URL = _load_backend_url()
 assert BASE_URL, "REACT_APP_BACKEND_URL must be set"
 API = f"{BASE_URL}/api"
 
-ADMIN = ("admin@birthright.org", "birthright2026")
-ELENA = ("elena@birthright.org", "birthright2026")
-DEMO = ("demo@birthright.org", "birthright2026")
+ADMIN = ("admin@birthright.live", "birthright2026")
+ELENA = ("elena@birthright.live", "birthright2026")
+DEMO = ("demo@birthright.live", "birthright2026")
 
 
 def _login(email: str, password: str) -> str:
@@ -300,7 +300,7 @@ class TestApproveReject:
         apps = requests.get(f"{API}/admin/partners/applications",
                             headers=_h(tokens["admin"]),
                             params={"status": "pending", "partner_type": "research"}, timeout=20).json()
-        elena_app = next((a for a in apps if a.get("applicant_email") == "elena@birthright.org"), None)
+        elena_app = next((a for a in apps if a.get("applicant_email") == "elena@birthright.live"), None)
         if not elena_app:
             pytest.skip("No elena research pending app to approve")
         r = requests.post(f"{API}/admin/partners/applications/{elena_app['id']}/approve",
@@ -333,7 +333,7 @@ class TestApproveReject:
         apps = requests.get(f"{API}/admin/partners/applications",
                             headers=_h(tokens["admin"]),
                             params={"status": "pending", "partner_type": "facilitator"}, timeout=20).json()
-        elena_app = next((a for a in apps if a.get("applicant_email") == "elena@birthright.org"), None)
+        elena_app = next((a for a in apps if a.get("applicant_email") == "elena@birthright.live"), None)
         if not elena_app:
             pytest.skip("no elena pending facilitator app")
         r = requests.post(f"{API}/admin/partners/applications/{elena_app['id']}/reject",

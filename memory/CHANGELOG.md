@@ -3,6 +3,25 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-04 — Domain migration · @birthright.org → @birthright.live
+- **All seeded credential accounts moved** to the live domain:
+  admin, demo, elena, marcus, counsel.
+- **Sources updated**: `seed_data.py`, `utils/readonly_admin.py`
+  (COUNSEL_EMAIL default), plus test fixtures across every counsel
+  test suite. Test file `test_iter45_domain_migration.py` kept the
+  `.org` addresses in its "should-401" list to guard against
+  regressions.
+- **Mongo migrated** in place — no dupes created (existence-check
+  before renaming each account); old `.org` logins now correctly 401.
+- **Content updates**: `memory/test_credentials.md`, counsel guide
+  (`00a-counsel-user-guide.md` + rebuilt .docx), Legal Briefing
+  contact block, `CLOUDFLARE_RESEND_SETUP.md`, plus latent
+  references in `utils/order_dispatch.py` (fulfilment email),
+  `routers/partner_prospects.py` (partner storefront copy), and
+  `frontend/src/pages/PartnerInvite.jsx` (partner scenarios text).
+- **Verification** (testing_agent iter 39 + local pytest): 16/16 new
+  domain-migration tests pass, 65/65 counsel regressions pass.
+
 ## 2026-02-04 — Counsel-flow polish + hardening
 - **AdminHub layout** — `container` → `container-page max-w-6xl` so
   `/admin` is centred (was left-flushed at ≥1280 px).
