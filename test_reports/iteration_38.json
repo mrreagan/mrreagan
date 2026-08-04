@@ -1,0 +1,30 @@
+{
+  "summary": "Re-verified both iter37 defects — BOTH FIXED. Backend: new /app/backend/tests/test_iter38_counsel_iat_ms.py (4 tests) proves (a) freshly issued JWTs carry an int millisecond `iat_ms` consistent with `iat`, (b) same-second revocation is now precise — login -> IMMEDIATE rotate (gap ~0.15-0.4s, same wall-clock second) -> old token returns 401 'Session revoked' in 5/5 iterations, (c) rotate -> immediate login -> auth call returns 200 in 5/5 iterations (no false revocation), (d) older-token (2s gap) revocation regression still 401. Full counsel regression (iter32 guide, iter33 allowlist, iter34 settings, iter35 strict, iter36 session/setpw, iter36b race boundary, iter38) = 65 tests, run 3x: run1 65/65, run2 65/65, run3 64/65 with the single failure being an infra ConnectTimeout to the preview ingress (requests.exceptions.ConnectTimeout on /api/auth/login, not an assertion) — immediate re-run of that file plus iter36 gave 12/12 pass. No logic flakiness observed. Frontend: /counsel/set-password?token=<seeded> submit succeeded, success screen (data-testid counsel-set-password-done) now renders 'You can now sign in at\\u00a0/login\\u00a0using counsel@birthright.org.' — spaces are visible in the screenshot on both sides of the /login link, so the spacing regression is resolved. Cleanup done: counsel rotated back to counsel-review-2026 (login 200 verified), counsel_password_tokens and user_token_revocations emptied (0 docs).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "CounselSetPasswordPage success screen", "issues": ["Spacing now renders correctly, but note the characters are U+00A0 non-breaking spaces, not ASCII 0x20. A literal assertion for 'sign in at /login using' with plain spaces will FAIL; tests must normalize \\u00a0 -> ' '. Also NBSP prevents line wrapping at those two points (harmless for this short sentence, but keep in mind for narrow mobile widths)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter38_counsel_iat_ms.py",
+    "/app/test_reports/pytest/iter38_counsel_run1.xml",
+    "/app/test_reports/pytest/iter38_counsel_run2.xml",
+    "/app/test_reports/pytest/iter38_counsel_run3.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "auth_utils._is_token_revoked: the `if iat_ms:` guard treats iat_ms==0 as absent and silently falls back to the whole-second path — acceptable but the int() coercion + `if iat_ms_int:` double-guard is redundant; consider `iat_ms is not None`.",
+    "Legacy whole-second fallback still accepts a same-second token (test_iter36b::TestSameSecondBoundary asserts this by design). Once no pre-iter37 tokens can remain (>30d JWT_EXPIRE_DAYS), delete the fallback branch entirely."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter38_counsel_iat_ms.py"],
+  "success_rate": {"backend": "100% (65/65 counsel regression, 3 runs; 1 non-assertion network timeout in run3 recovered on re-run)", "frontend": "100% (set-password submit + success-screen spacing)"},
+  "seed_data_creation": "One counsel_password_tokens doc (sha256 of raw) seeded for the frontend flow; deleted afterwards. Counsel password temporarily rotated during tests, restored to counsel-review-2026.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@birthright.org / birthright2026 ; counsel@birthright.org / counsel-review-2026 (restored & verified)",
+  "context_for_next_testing_agent": "Use tests/test_iter38_counsel_iat_ms.py for iat_ms + same-second revocation; tests/test_iter36b_counsel_race_boundary.py for legacy whole-second boundary. When asserting the set-password success copy, normalize U+00A0 to a space. If a counsel test aborts mid-run the counsel password may be left rotated — rotate back to counsel-review-2026 via admin token before re-running. Preview ingress can intermittently ConnectTimeout; retry once before reporting a failure.",
+  "rca_of_the_issue": "iter37 defects both closed: (1) create_token now embeds iat_ms and _is_token_revoked compares it strict-< against microsecond-precise revoked_at, eliminating the ~1s same-second false-negative window while keeping post-rotate logins valid; (2) &nbsp; entities survive the preview build's display:contents JSX-expression wrappers, so the visible spaces around /login now render."
+}

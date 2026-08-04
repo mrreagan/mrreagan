@@ -27,11 +27,16 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def create_token(user_id: str, role: str) -> str:
+    # `iat` is second-precision (whole seconds, RFC 7519). We also embed a
+    # millisecond-precision `iat_ms` so revocation can distinguish a token
+    # minted in the same second as a rotate — see _is_token_revoked.
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "role": role,
-        "exp": datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRE_DAYS),
-        "iat": datetime.now(timezone.utc),
+        "exp": now + timedelta(days=JWT_EXPIRE_DAYS),
+        "iat": now,
+        "iat_ms": int(now.timestamp() * 1000),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
 
@@ -90,37 +95,50 @@ async def get_current_user(
     revoked = await db.user_token_revocations.find_one(
         {"user_id": user["id"]}, {"_id": 0, "revoked_at": 1},
     )
-    if revoked and _is_token_revoked(payload.get("iat"), revoked.get("revoked_at")):
+    if revoked and _is_token_revoked(payload.get("iat"), payload.get("iat_ms"), revoked.get("revoked_at")):
         raise HTTPException(status_code=401, detail="Session revoked. Please sign in again.")
     return user
 
 
-def _is_token_revoked(iat: Optional[int], revoked_at_iso: Optional[str]) -> bool:
+def _is_token_revoked(iat: Optional[int], iat_ms: Optional[int], revoked_at_iso: Optional[str]) -> bool:
     """Return True iff the token was issued STRICTLY BEFORE the recorded
-    revocation moment.
+    revocation instant.
 
-    Subtlety worth knowing about: `jwt.encode` stores `iat` as an integer
-    second (Unix time floored). `revoked_at_iso` is written with
-    microsecond precision from `datetime.now(timezone.utc)`. Comparing
-    them naively with `<=` treats a login that happens in the SAME
-    second as (i.e. milliseconds AFTER) a rotate as revoked. To keep the
-    boundary crisp, we floor `revoked_at` to whole seconds and require
-    strict `<` — the token is revoked only if it was minted in an
-    EARLIER second than the rotate.
+    Precision matters here because rotations happen in real time. Two
+    inputs are compared:
+      - `iat_ms` (preferred): millisecond-precision timestamp we embed
+        at token-creation time. Compared strict-<, microsecond-precise,
+        against the full revoked_at value.
+      - `iat` (fallback for legacy tokens): whole-second Unix time.
+        Compared against revoked_at truncated to whole seconds using
+        strict-<. That is imperfect (a same-second boundary is accepted)
+        but only applies to tokens minted before we started embedding
+        iat_ms — which is a bounded, decaying population.
     """
-    if not iat or not revoked_at_iso:
+    if not revoked_at_iso:
         return False
     try:
         revoked_dt = datetime.fromisoformat(revoked_at_iso.replace("Z", "+00:00"))
     except Exception:
         return False
-    revoked_dt = revoked_dt.replace(microsecond=0)
-    # jwt `iat` may arrive as int OR as a datetime depending on lib version.
+
+    if iat_ms:
+        try:
+            iat_ms_int = int(iat_ms)
+        except (TypeError, ValueError):
+            iat_ms_int = 0
+        if iat_ms_int:
+            iat_dt = datetime.fromtimestamp(iat_ms_int / 1000.0, tz=timezone.utc)
+            return iat_dt < revoked_dt
+
+    if not iat:
+        return False
+    revoked_s = revoked_dt.replace(microsecond=0)
     if isinstance(iat, datetime):
         iat_dt = iat.replace(microsecond=0)
     else:
         iat_dt = datetime.fromtimestamp(int(iat), tz=timezone.utc)
-    return iat_dt < revoked_dt
+    return iat_dt < revoked_s
 
 
 def require_roles(*roles: str):
