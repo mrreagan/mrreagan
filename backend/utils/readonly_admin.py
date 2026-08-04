@@ -134,42 +134,55 @@ COUNSEL_PASSWORD = os.environ.get("COUNSEL_PASSWORD", _DEFAULT_COUNSEL_PASSWORD)
 async def ensure_counsel_account(db) -> dict:
     """Idempotent seed for the counsel read-only account. Returns the user doc.
 
-    - Creates the user if absent.
-    - Resets password to the configured COUNSEL_PASSWORD if it doesn't match,
-      so redeploys always leave a working credential.
-    - Ensures the role is `readonly_admin`.
+    Bootstrap logic (first boot ever):
+        - No user with role=readonly_admin exists → create one from the
+          COUNSEL_EMAIL / COUNSEL_PASSWORD env values.
+
+    Steady-state logic (subsequent boots):
+        - A readonly_admin user exists → treat the DB as the source of truth
+          for both email and password. Only reconcile `role` and `is_active`
+          so a misconfigured field can never leave you locked out. **Never
+          overwrite the password on boot** — otherwise a rotation from the
+          `/admin/settings/counsel` page would be undone on next redeploy.
     """
     from models import gen_id, now_iso
     from passlib.context import CryptContext
 
     pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    existing = await db.users.find_one({"email": COUNSEL_EMAIL})
-    hashed = pwd_ctx.hash(COUNSEL_PASSWORD)
+
+    # Look up by role, not email, so an email rotation done from the UI
+    # keeps working across redeploys.
+    existing = await db.users.find_one({"role": READONLY_ROLE})
     if not existing:
         user = {
             "id": gen_id(),
             "email": COUNSEL_EMAIL,
-            "password_hash": hashed,
+            "password_hash": pwd_ctx.hash(COUNSEL_PASSWORD),
             "first_name": "Counsel",
             "last_name": "Reviewer",
             "role": READONLY_ROLE,
             "is_active": True,
             "is_foundation": False,
             "created_at": now_iso(),
-            "notes": "Read-only counsel review account — auto-seeded. Cannot mutate data.",
+            "notes": (
+                "Read-only counsel review account — auto-seeded from env. "
+                "Once created, credentials are managed via "
+                "/admin/settings/counsel; env vars are only used for the "
+                "initial bootstrap."
+            ),
         }
         await db.users.insert_one(user)
         logger.info("Seeded counsel read-only account: %s", COUNSEL_EMAIL)
         return user
-    # Existing — ensure role is right and password matches configured value.
+
+    # Existing — reconcile only structural fields (role + active). Do NOT
+    # touch email / password_hash — those are UI-managed.
     updates = {}
     if existing.get("role") != READONLY_ROLE:
         updates["role"] = READONLY_ROLE
-    if not pwd_ctx.verify(COUNSEL_PASSWORD, existing.get("password_hash", "") or " "):
-        updates["password_hash"] = hashed
     if not existing.get("is_active", True):
         updates["is_active"] = True
     if updates:
         await db.users.update_one({"id": existing["id"]}, {"$set": updates})
-        logger.info("Reconciled counsel account fields: %s", list(updates.keys()))
+        logger.info("Reconciled counsel account structural fields: %s", list(updates.keys()))
     return {**existing, **updates}

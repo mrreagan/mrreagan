@@ -1,0 +1,42 @@
+{
+  "summary": "Tested the new admin counsel-credential rotation feature end-to-end. Backend: 11/11 pytest cases pass (/api/admin/settings/counsel GET + /rotate: field contract, RBAC, validation 400s, 409 collision, readonly 403, rotate→login with new creds, old creds 401). Verified true persistence with a REAL `sudo supervisorctl restart backend`: rotated creds still logged in (200) and old env creds stayed rejected (401) — the seeder refactor works. Frontend: page renders, env-default amber warning shows, rotation via UI works with correct toast + refreshed current-state card, client-side mismatch/length validation works, and /admin/settings/counsel is correctly blocked for the counsel (readonly_admin) account (redirects to /dashboard). Regression: iter32 + iter33 counsel suites 33/33 pass. Counsel account was rotated BACK to counsel@birthright.org / counsel-review-2026 (verified login 200), so test_credentials.md remains accurate.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/admin/settings/counsel", "issue": "Counsel (readonly_admin) JWT returns 200, not 403 — because auth_utils.require_roles('admin') admits readonly_admin platform-wide. Intent stated was admin-only. Impact is low (counsel sees their own email) but the response also leaks `env_password_default_in_use`, telling counsel whether the account still uses the published env default. Consider an explicit role=='admin' check in this router."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminHub (/admin)", "issue": "The 'Counsel credentials' QuickActionCard was added to AdminDashboard.jsx, which is now routed at /admin/stats — NOT to AdminHub.jsx which serves /admin. So the primary Admin hub has no link to /admin/settings/counsel (link count 0 on /admin, 1 on /admin/stats). Add an entry to the 'Governance & System' group in AdminHub.jsx.", "selector": "a[href=\"/admin/settings/counsel\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/settings/counsel header", "issues": ["The 'SETTINGS · COUNSEL' label span renders inline on the same baseline as the '← Admin Hub' back-link and collides with the h1's briefcase icon (see header of screenshot) — label should be block-level below the back link."]},
+      {"screen": "/admin (Operations hub)", "issues": ["Page content is left-flush at x=0 and the card grid only spans ~940px of a 1920px viewport — hub is not centered/constrained like other pages. Likely pre-existing, unrelated to this feature."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter34_counsel_settings.py",
+    "/app/test_reports/pytest/iter34_results.xml",
+    "/app/test_reports/pytest/iter34_regression.xml"
+  ],
+  "action_items": [
+    "Add a 'Counsel credentials' → /admin/settings/counsel entry to AdminHub.jsx (Governance & System group); the tile in AdminDashboard.jsx only shows at /admin/stats.",
+    "Optional hardening: gate GET/POST /api/admin/settings/counsel on role == 'admin' explicitly so readonly_admin cannot read env_password_default_in_use.",
+    "Fix header layout on AdminCounselSettings.jsx (label span colliding with back-link/h1)."
+  ],
+  "critical_code_review_comments": [
+    "readonly_admin.ensure_counsel_account correctly looks up by role and never overwrites email/password_hash — verified across a real backend restart.",
+    "rotate endpoint writes db.user_token_revocations but nothing in the auth path reads it, so the 'active counsel session is invalidated on rotation' claim shown in the UI copy is not actually enforced — an existing counsel JWT keeps working until expiry. Either implement the revocation check in auth_utils or soften the UI copy.",
+    "admin_settings.rotate takes a raw `dict` payload instead of a Pydantic model — validation is hand-rolled; a small BaseModel would give consistent 422 semantics."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter34_counsel_settings.py"],
+  "success_rate": {"backend": "100%", "frontend": "92%"},
+  "seed_data_creation": "None persisted. Counsel account was temporarily rotated to counsel@birthright.live / rotated-test-password-2026 and counsel-ui@birthright.live during tests, then restored to counsel@birthright.org / counsel-review-2026 (login verified 200, env_password_default_in_use back to true).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@birthright.org / birthright2026; counsel@birthright.org / counsel-review-2026; demo@birthright.org / birthright2026 — all valid at end of run.",
+  "context_for_next_testing_agent": "New regression file /app/backend/tests/test_iter34_counsel_settings.py covers counsel credential rotation; it includes an autouse teardown that rotates creds back to the documented values, and one test restarts the backend via supervisorctl (run it un-parallelised, class order matters: read → validation → rotate). AdminDashboard.jsx is served at /admin/stats, AdminHub.jsx at /admin — check the right page when looking for admin tiles.",
+  "rca_of_the_issue": "Missing hub link: the Counsel credentials tile was added to OverviewTab in AdminDashboard.jsx, but the /admin route was previously repointed to AdminHub.jsx (AdminDashboard moved to /admin/stats), so the new tile is not reachable from the main admin hub."
+}

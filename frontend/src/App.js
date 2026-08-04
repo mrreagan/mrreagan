@@ -46,6 +46,7 @@ import AdminProducts from "./pages/AdminProducts";
 import AdminImageQueue from "./pages/AdminImageQueue";
 import AdminLegalDocs from "./pages/AdminLegalDocs";
 import AdminLegalRatifications from "./pages/AdminLegalRatifications";
+import AdminCounselSettings from "./pages/AdminCounselSettings";
 import AdminCampaigns from "./pages/AdminCampaigns";
 import CounselReviewChecklist from "./pages/CounselReviewChecklist";
 import CounselActivityLog from "./pages/CounselActivityLog";
@@ -359,6 +360,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminLegalRatifications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/settings/counsel"
+        element={
+          <ProtectedRoute roles={["admin"]}>
+            <AdminCounselSettings />
           </ProtectedRoute>
         }
       />
