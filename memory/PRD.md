@@ -15,6 +15,13 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 65 — Release History Timeline + Admin Rollback (Feb 05 2026)
+- **Content snapshots on release**: `release_working_draft` now persists `content_md_snapshot` and `change_summary` on the ratification row. Enables true rollback.
+- **New endpoint `GET /api/legal/history-timeline/{slug}?limit=5`**: returns `{total_versions, current_version, current_body_hash, versions:[…]}`. Each version carries `change_summary` (edits, authors, action counts, first/last edit timestamps) + `can_rollback` flag. `limit` validated via `Query(ge=1, le=50)` → 422 on 0 or garbage. Ordering is deterministic (`ratified_at` DESC then `id` DESC). Snapshot-existence scan bounded to the current page ids, not the full slug history.
+- **New endpoint `POST /api/legal/history/{slug}/rollback/{ratification_id}`**: admin-only. Restores the target snapshot as a NEW ratification (auto-bumps minor version), rebuilds the DOCX bundle, and auto-discards any open working draft with a proper change_log audit entry so the discard reason isn't lost.
+- **Frontend History modal** on `/counsel` — click `History` on any row → modal shows total count + version cards for the last 5 releases (Show more paginates by 5). Each card renders version, localised date, ratified_by, notes, change summary chip (`5 edits by counsel@ · 2 upload full, 3 apply roundtrip`), Rollback badge if applicable, `Current` badge on the newest. Rollback button admin-only.
+- **Testing**: `testing_agent` iter 49 — 16/16 backend + 100% frontend. All optional defensive suggestions implemented (Query validators, deterministic ordering, bounded ID scan, human-readable date in rollback notes, WD change_log entry on rollback discard, ratification-id data attribute for testid collisions).
+
 ### Iter 64 — Diff View + Admin Auto-Notify (Feb 05 2026)
 - **Side-by-side redline modal** on `/counsel` — click `View diff` on any row with a working draft to see a two-column diff (released vs working) with green/red line highlights and line numbers. Toggle to unified/git-style view. Admins get a `Release from here` shortcut in the diff footer that jumps into the release modal.
 - **Empty-state**: when the working draft is byte-identical to the released version, the diff modal shows "Working draft is identical to the released version" instead of dumping the entire doc as context.

@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 
 from auth_utils import get_current_user, require_roles
@@ -1355,7 +1355,7 @@ def _summarise_wd_change_log(change_log: list) -> dict:
 @router.get("/history-timeline/{source_slug}")
 async def history_timeline(
     source_slug: str,
-    limit: int = 5,
+    limit: int = Query(default=5, ge=1, le=50),
     user: dict = Depends(require_roles("admin")),
 ):
     """Release history for one doc.
@@ -1366,22 +1366,25 @@ async def history_timeline(
     ratifications that don't have a content snapshot).
     """
     from database import db
-    limit = max(1, min(int(limit or 5), 50))
     total = await db.legal_doc_ratifications.count_documents({"source_slug": source_slug})
+    # Secondary sort by id so releases minted in the same clock tick
+    # (or with a caller-supplied ratified_at) order deterministically.
     latest = await db.legal_doc_ratifications.find(
         {"source_slug": source_slug},
-        {"_id": 0, "content_md_snapshot": 0},  # skip heavy field in list
-    ).sort("ratified_at", -1).to_list(limit)
+        {"_id": 0, "content_md_snapshot": 0},
+    ).sort([("ratified_at", -1), ("id", -1)]).to_list(limit)
 
-    # Look up which of these rows actually have a snapshot (for the
-    # rollback affordance). Cheap projection.
+    # Only check the rows we're returning for snapshot presence — bounded
+    # to len(latest), not the full history of this slug.
+    page_ids = [r["id"] for r in latest]
     ids_with_snapshot = set()
-    async for r in db.legal_doc_ratifications.find(
-        {"source_slug": source_slug,
-         "content_md_snapshot": {"$exists": True, "$ne": None}},
-        {"id": 1, "_id": 0},
-    ):
-        ids_with_snapshot.add(r["id"])
+    if page_ids:
+        async for r in db.legal_doc_ratifications.find(
+            {"id": {"$in": page_ids},
+             "content_md_snapshot": {"$exists": True, "$ne": None}},
+            {"id": 1, "_id": 0},
+        ):
+            ids_with_snapshot.add(r["id"])
     for row in latest:
         row["can_rollback"] = row["id"] in ids_with_snapshot
 
@@ -1443,9 +1446,17 @@ async def rollback_to_version(
 
     version = ((payload or {}).get("version") or "").strip() or await _next_version(source_slug)
     reason = ((payload or {}).get("reason") or "").strip()
+    # Localise the target's ratified_at to a friendly date for the notes
+    # line — the raw ISO string looked out-of-place next to the rest of
+    # the counsel console dates.
+    try:
+        from datetime import datetime
+        ratified_str = datetime.fromisoformat(str(target.get("ratified_at")).replace("Z", "+00:00")).strftime("%b %d %Y")
+    except Exception:
+        ratified_str = str(target.get("ratified_at"))
     notes = (
         f"Rollback to v{target.get('version')} · originally ratified "
-        f"{target.get('ratified_at')} by {target.get('ratified_by')}."
+        f"{ratified_str} by {target.get('ratified_by')}."
         + (f" Reason: {reason}" if reason else "")
     )
 
@@ -1474,13 +1485,26 @@ async def rollback_to_version(
     # rollback next time counsel edits.
     wd = await _active_working_draft(source_slug)
     if wd:
+        wd_now = now_iso()
+        wd_log = list(wd.get("change_log") or [])
+        wd_log.append({
+            "at": wd_now,
+            "by_user_id": user["id"],
+            "by_email": user.get("email"),
+            "by_role": "admin",
+            "action": "discard",
+            "note": f"Auto-discarded during rollback to v{target.get('version')}"
+                    + (f" · reason: {reason}" if reason else ""),
+            "bytes": len((wd.get("content_md") or "").encode("utf-8")),
+        })
         await db.legal_doc_working_drafts.update_one(
             {"id": wd["id"]},
             {"$set": {
                 "state": _WD_STATE_DISCARDED,
-                "discarded_at": now_iso(),
+                "discarded_at": wd_now,
                 "discarded_by_email": user.get("email"),
                 "discard_reason": f"Rollback to v{target.get('version')}",
+                "change_log": wd_log,
             }},
         )
 

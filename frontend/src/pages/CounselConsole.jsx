@@ -758,6 +758,7 @@ function HistoryModal({ data, isAdmin, onClose, onRolledBack }) {
                 key={v.id}
                 className={`rounded-lg border p-4 ${isCurrent ? "border-[#1E4030] bg-white" : "border-[#E5E1D8] bg-white/60"}`}
                 data-testid={`history-row-${v.version}`}
+                data-ratification-id={v.id}
               >
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
