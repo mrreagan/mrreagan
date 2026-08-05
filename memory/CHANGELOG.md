@@ -3,6 +3,27 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-06 — Counsel Console diff viewer · false-positive disclaimer fixed
+- **Bug**: `GET /api/legal/working-drafts/{source_slug}` returned raw
+  released markdown, which the DOCX-rebuild pipeline prefixes with a
+  ~12-line `> ⚠️ AI-GENERATED FIRST DRAFT — PENDING COUNSEL RATIFICATION`
+  blockquote. The working-draft body had that block absent/rewritten,
+  so difflib in `DiffModal` flagged the entire preamble as +/- hunks
+  (e.g. +135/-45 for a one-word edit).
+- **Fix** (`routers/legal.py` L1071–1099): both `released_md_raw` and
+  `wd["content_md"]` now run through `_strip_draft_disclaimer(...)[0]`
+  before returning, and `released_body_hash` is recomputed on the
+  stripped body so it aligns with `base_released_hash` written at
+  draft-creation time (L991). `is_stale` can no longer false-positive
+  from the disclaimer.
+- **Verification** (testing_agent iter 53): 14/14 backend pytest tests
+  pass; one-word counsel edit now produces exactly +1/-1 in both the
+  API payload and the UI. Frontend smoke on `/counsel` → Diff button
+  for `03-cookie-notice` confirms no disclaimer text at the top of
+  either column. Regressions green: draft upload, comments CRUD,
+  bundle .zip, public pages endpoint.
+
+
 ## 2026-02-04 — Domain migration · @birthright.org → @birthright.live
 - **All seeded credential accounts moved** to the live domain:
   admin, demo, elena, marcus, counsel.
