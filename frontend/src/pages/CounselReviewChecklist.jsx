@@ -146,7 +146,7 @@ function ReviewRow({ item, onSaved }) {
   );
 }
 
-export default function CounselReviewChecklist() {
+export default function CounselReviewChecklist({ inline = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all | pending | reviewed | opened | unopened
@@ -181,23 +181,29 @@ export default function CounselReviewChecklist() {
     return items;
   }, [items, filter]);
 
+  const Wrapper = inline ? "section" : "div";
   return (
-    <div className="container-page py-12" data-testid="counsel-review-page">
-      <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B] mb-4">
-        <ArrowLeft size={14} strokeWidth={1.5} /> Admin Hub
-      </Link>
+    <Wrapper
+      className={inline ? "mt-12 pt-8 border-t border-[#E5E1D8]" : "container-page py-12"}
+      data-testid="counsel-review-section"
+    >
+      {!inline && (
+        <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B] mb-4">
+          <ArrowLeft size={14} strokeWidth={1.5} /> Admin Hub
+        </Link>
+      )}
 
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
           <span className="label">Counsel review</span>
-          <h1 className="editorial-h1 mt-1">Legal Document Review Checklist</h1>
+          <h2 className={inline ? "editorial-h2 mt-1" : "editorial-h1 mt-1"}>Review Checklist</h2>
         </div>
         <button onClick={load} className="btn-outline text-xs inline-flex items-center gap-1" data-testid="refresh-btn">
           <RefreshCw size={12} strokeWidth={1.5} /> Refresh
         </button>
       </div>
 
-      <div className="divider-flame" />
+      {!inline && <div className="divider-flame" />}
 
       <p className="text-sm text-[#5C6B6B] max-w-3xl leading-relaxed mt-4">
         Every legal draft plus the counsel briefing. Two checks per document:{" "}
@@ -254,6 +260,6 @@ export default function CounselReviewChecklist() {
           </table>
         </div>
       )}
-    </div>
+    </Wrapper>
   );
 }

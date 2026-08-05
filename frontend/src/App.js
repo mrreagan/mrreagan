@@ -380,11 +380,7 @@ function AppRoutes() {
       />
       <Route
         path="/admin/counsel-review"
-        element={
-          <ProtectedRoute roles={ADMIN_ROLES}>
-            <CounselReviewChecklist />
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/counsel" replace />}
       />
       <Route
         path="/admin/counsel-activity"

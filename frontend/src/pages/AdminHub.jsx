@@ -71,7 +71,7 @@ const SECTIONS = [
       { to: "/admin/system", icon: Server, label: "System status", desc: "Data migrations, deployment state, sanity diagnostics." },
       { to: "/admin/users", icon: Shield, label: "Users & members", desc: "All registered users. Toggle the Foundation-member flag here for wholesale equip pricing + 1:1 AI billing." },
       { to: "/admin/stats", icon: BarChart3, label: "Stats dashboard", desc: "Headline KPI counters and POD-margin tiles (the page formerly at /admin)." },
-      { to: "/admin/counsel-review", icon: FileText, label: "Counsel review checklist", desc: "Two-checkbox (manual + auto) tracking of counsel's review of every legal draft. Visible to counsel and admin." },
+      { to: "/counsel", icon: FileText, label: "Counsel Dashboard", desc: "The counsel workspace: every draft, ratification history, comments, and the review checklist merged into one page." },
       { to: "/admin/legal/ratifications", icon: Scale, label: "Legal ratifications", desc: "Mark drafts counsel-ratified, track redlines, apply roundtrips." },
       { to: "/admin/settings/counsel", icon: KeyRound, label: "Counsel credentials", desc: "Rotate the counsel email + password. Persists across redeploys." },
       { to: "/admin/counsel-activity", icon: ShieldCheck, label: "Counsel activity log", desc: "Full URL-by-URL audit trail of counsel sessions. Admin-only — counsel cannot view their own log." },

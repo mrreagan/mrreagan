@@ -192,7 +192,7 @@ plus the foundational compliance, incorporation, IP-protection, and governance
 instruments that must land before the platform can operate cleanly with real
 counterparties.
 
-Draft `.docx` for each item is available in the Counsel Console. One-line
+Draft `.docx` for each item is available in the Counsel Dashboard. One-line
 summaries only; the drafts speak for themselves.
 
 ## 5.1 Public-facing documents (all seven)
@@ -328,9 +328,9 @@ Live-checkout gating and payments are NOT AI-mediated. Points for counsel:
 
 ## 10.3 Admin surfaces (counsel account can inspect)
 
-- Counsel Console (all drafts, working-draft workflow): `https://birthright.live/counsel`
+- Counsel Dashboard (all drafts, working-draft workflow, review checklist): `https://birthright.live/counsel`
 - Admin hub: `https://birthright.live/admin`
-- Counsel review checklist: `https://birthright.live/admin/counsel-review`
+- Ratification & Redline Console (admin write ops): `https://birthright.live/admin/legal/ratifications`
 - Counsel activity log (admin-only): `https://birthright.live/admin/counsel-activity`
 - User activity / admin trace: `https://birthright.live/admin/user-activity`
 - Legal agreements manager: `https://birthright.live/admin/legal/agreements`

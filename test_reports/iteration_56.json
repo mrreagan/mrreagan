@@ -1,0 +1,43 @@
+{
+  "summary": "Verified the counsel review-status auto_visited fix end-to-end. Backend: 8/8 pytest cases pass in /app/backend/tests/test_iter56_counsel_review_autovisit.py — unit coverage of _slug_from_activity_path for all 13 current + legacy legal paths, plus live e2e where counsel (counsel@birthright.live) hits /api/legal/working-drafts/01-terms-of-service, /api/legal/history-timeline/01-terms-of-service, /api/legal/comments/01-terms-of-service (GET + POST) and admin's GET /api/counsel/review-status then shows auto_visited=true, growing auto_visit_count, populated auto_last_visited_at and auto_last_visited_by=counsel@birthright.live. Historic data now aggregates too (01-terms-of-service = 502 visits, 03-cookie-notice = 485, counsel-briefing = 83; 5 of 29 rows auto_visited). Regressions confirmed: counsel-briefing prefix match (/api/legal/docs/counsel-briefing-docx), legacy /api/legal/drafts/{slug}, admin traffic does NOT inflate counsel visit counts, manual mark PUT/revert + unknown-slug 404. Frontend: /admin/counsel-review redirects to /counsel; 'Counsel Dashboard' heading, counsel-dashboard-ratifications-link, counsel-dashboard-activity-link and embedded counsel-review-section render for BOTH admin and counsel, with Terms of Service showing 'OPENED | 502 visits | last: 8/5/2026'. Redline gating on /admin/legal/ratifications verified: button reads 'Post comment', no kind selector (0 <select> on page), no export/import roundtrip buttons; posting a plain comment succeeds (POST /api/legal/comments/01-terms-of-service -> 200, renders immediately).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/counsel/review-status", "issue": "_slug_from_activity_path maps /api/legal/pages/terms -> 'terms' and /api/legal/docs/terms -> 'terms', which is NOT a manifest slug (manifest uses 01-terms-of-service). So counsel viewing the PUBLIC rendered page or public doc key does not credit the corresponding checklist row. The review request listed GET /api/legal/pages/terms as Terms-of-Service activity — it silently does not count. Consider a public-slug -> manifest-slug alias map (terms/privacy/cookie-notice/refunds/scholarships/community-standards/indemnification)."},
+      {"endpoint": "/api/legal/comments/{slug}/{id}", "issue": "No DELETE route for public legal comments (only working-draft comments can be deleted), so test/erroneous comments cannot be removed via API. Cleaned up my test rows directly in Mongo."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminLegalRatifications", "issue": "Comment composer inputs lack data-testid (had to target by placeholder 'Comment / rationale' / 'Section'). Note the first <textarea> on the page is the ratification 'Notes / changelog entry', which makes naive selectors post into the wrong field.", "selector": "textarea[placeholder*='Comment']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/legal/ratifications + Counsel Dashboard nav", "issues": ["Copy still advertises redlines although REDLINES_ENABLED=false: eyebrow 'LEGAL · RATIFICATION & REDLINES', intro 'Click a doc to see counsel redlines, add your own', and the dashboard link label 'Ratification & Redline Console →'. Historic REDLINE-kind entries still render in the feed (acceptable) but the create-side copy should drop 'redline'."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter56_counsel_review_autovisit.py",
+    "/app/test_reports/pytest/iter56_results.xml"
+  ],
+  "action_items": [
+    "Optional: add public-page-slug -> manifest-slug alias so /api/legal/pages/terms counts toward 01-terms-of-service",
+    "Optional: update redline-era copy on ratifications page and the 'Ratification & Redline Console' nav label now that redlines are disabled",
+    "Optional: add data-testid to the counsel comment section/body/post-button on AdminLegalRatifications"
+  ],
+  "critical_code_review_comments": [
+    "_visit_summary_for and review_status both scan the ENTIRE counsel_activity_log with a full collection scan on every request (2,189+ rows and growing, now 502 hits on one slug). Add an index on {status_code, path} or precompute per-slug counters — this endpoint will degrade linearly.",
+    "_visit_summary_for's visit_count logic is subtly wrong: when a newer timestamp is found it rebuilds the dict with visit_count = prior+1, but the initial branch sets 1, so ordering-dependent; it happens to be unused by review_status (which uses aggregate_visits) — either delete it or fix the counter."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter56_counsel_review_autovisit.py",
+    "/app/backend/tests/_cleanup_iter56.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None persisted. Created TEST_iter56 comments on 01-terms-of-service during testing and deleted them from legal_doc_comments; a manual review mark on 13-ombudsman-charter was set and reverted.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@birthright.live / birthright2026; counsel@birthright.live / counsel-review-2026",
+  "context_for_next_testing_agent": "The reported bug (auto_visited always false) is FIXED and verified against real historical activity data. Reusable regression suite: /app/backend/tests/test_iter56_counsel_review_autovisit.py (includes a pure unit test of _slug_from_activity_path — extend it whenever a new /api/legal/* endpoint is added). Remaining known gap: public rendered-page paths (/api/legal/pages/terms) map to a non-manifest slug and are ignored.",
+  "rca_of_the_issue": "Root cause: counsel_audit path matcher only recognised the two legacy paths (/api/legal/drafts/{slug}, /api/legal/docs/counsel-briefing), while the current UI calls /api/legal/working-drafts/*, /api/legal/docs/{slug}/upload|comments, /api/legal/comments/*, /api/legal/history-timeline/*. The shared _slug_from_activity_path helper now maps all of them, and since the aggregation runs at read time the fix retroactively credits the 2,189 already-logged rows — confirmed 502 visits on 01-terms-of-service."
+}

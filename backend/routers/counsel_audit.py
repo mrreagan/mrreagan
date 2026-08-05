@@ -153,6 +153,41 @@ class ReviewMarkPayload(BaseModel):
     notes: Optional[str] = None
 
 
+def _slug_from_activity_path(path: str) -> str | None:
+    """Map any counsel-facing legal API URL back to its manifest slug.
+
+    Recognises every path counsel might hit during a review pass:
+      - `/api/legal/drafts/{slug}`                       (legacy render)
+      - `/api/legal/pages/{slug}`                        (rendered page)
+      - `/api/legal/working-drafts/{slug}`               (fetch WD)
+      - `/api/legal/working-drafts/{slug}/mark-ready`    (WD mark-ready)
+      - `/api/legal/working-drafts/{slug}/discard`       (WD discard)
+      - `/api/legal/docs/{slug}/upload`                  (upload replacement)
+      - `/api/legal/docs/{slug}/comments`                (comment CRUD, WD or public)
+      - `/api/legal/working-drafts/{slug}/comments…`     (WD comment CRUD)
+      - `/api/legal/comments/{slug}/…`                   (public-comment CRUD)
+      - `/api/legal/history-timeline/{slug}`             (ratification history)
+      - counsel briefing download                        → slug `counsel-briefing`
+    Anything else returns None.
+    """
+    if not path or not path.startswith("/api/legal/"):
+        return None
+    if path.startswith("/api/legal/docs/counsel-briefing"):
+        return "counsel-briefing"
+    parts = path.strip("/").split("/")
+    # parts[0]='api', parts[1]='legal', parts[2]='<segment>'
+    if len(parts) < 4:
+        return None
+    seg = parts[2]
+    if seg in ("drafts", "pages", "working-drafts", "comments", "history-timeline"):
+        return parts[3].split("?")[0]
+    if seg == "docs":
+        # `/api/legal/docs/{slug}/upload` OR `/api/legal/docs/{slug}/comments`
+        # OR the raw `/api/legal/docs/{slug}` download.
+        return parts[3].split("?")[0]
+    return None
+
+
 async def _visit_summary_for(db, user_id: str) -> dict[str, dict]:
     """Aggregate visits from the activity log per document slug so the
     checklist can auto-mark items counsel has actually opened."""
@@ -162,13 +197,7 @@ async def _visit_summary_for(db, user_id: str) -> dict[str, dict]:
         "user_id": user_id,
         "status_code": {"$lt": 400},
     }):
-        path = entry.get("path") or ""
-        slug: str | None = None
-        # Match /api/legal/drafts/{slug}
-        if path.startswith("/api/legal/drafts/"):
-            slug = path[len("/api/legal/drafts/"):].strip("/").split("?")[0]
-        elif path.startswith("/api/legal/docs/counsel-briefing"):
-            slug = "counsel-briefing"
+        slug = _slug_from_activity_path(entry.get("path") or "")
         if not slug:
             continue
         prior = slug_visits.get(slug)
@@ -207,12 +236,7 @@ async def review_status(user: dict = Depends(require_roles("admin"))):
     # any counsel account that has opened the URL.
     aggregate_visits: dict[str, dict] = {}
     async for entry in db.counsel_activity_log.find({"status_code": {"$lt": 400}}):
-        path = entry.get("path") or ""
-        slug: str | None = None
-        if path.startswith("/api/legal/drafts/"):
-            slug = path[len("/api/legal/drafts/"):].strip("/").split("?")[0]
-        elif path.startswith("/api/legal/docs/counsel-briefing"):
-            slug = "counsel-briefing"
+        slug = _slug_from_activity_path(entry.get("path") or "")
         if not slug:
             continue
         cur = aggregate_visits.get(slug) or {"visit_count": 0, "last_visited_at": "", "last_visited_by": None}

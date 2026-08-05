@@ -134,7 +134,7 @@ function UserMenu({ user, onLogout }) {
               className="block px-4 py-3 text-sm hover:bg-[#FAF8F5] text-[#476B6B] font-medium"
               data-testid="menu-counsel-console"
             >
-              Counsel Console
+              Counsel Dashboard
             </Link>
           )}
           <Link to="/profile" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm hover:bg-[#FAF8F5] border-t border-[#E5E1D8]" data-testid="menu-profile">

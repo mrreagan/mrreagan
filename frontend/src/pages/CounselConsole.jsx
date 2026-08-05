@@ -33,6 +33,7 @@ import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import { ReleaseModal } from "../components/counsel/ReleaseModal";
 import { DiffModal } from "../components/counsel/DiffModal";
+import CounselReviewChecklist from "./CounselReviewChecklist";
 import { HistoryModal } from "../components/counsel/HistoryModal";
 
 // Preferred category ordering — mirrors the admin /admin/legal-docs view.
@@ -355,11 +356,30 @@ export default function CounselConsole() {
         </Link>
       </div>
 
-      <span className="label">Legal · Documents Hub</span>
+      <span className="label">Legal · Counsel Dashboard</span>
       <h1 className="editorial-h1 mt-2 flex items-center gap-3">
-        <ShieldCheck size={28} strokeWidth={1.2} /> Legal documents
+        <ShieldCheck size={28} strokeWidth={1.2} /> Counsel Dashboard
       </h1>
       <div className="divider-flame" />
+
+      {canEdit && (
+        <div className="flex flex-wrap gap-2 mb-4" data-testid="counsel-dashboard-nav">
+          <Link
+            to="/admin/legal/ratifications"
+            className="btn-ghost text-xs inline-flex items-center gap-1"
+            data-testid="counsel-dashboard-ratifications-link"
+          >
+            Ratification & Redline Console →
+          </Link>
+          <Link
+            to="/admin/counsel-activity"
+            className="btn-ghost text-xs inline-flex items-center gap-1"
+            data-testid="counsel-dashboard-activity-link"
+          >
+            My Session Activity Log →
+          </Link>
+        </div>
+      )}
 
       <div className="card p-5 max-w-3xl bg-[#FAF7F0]">
         <p className="text-sm text-[#0F2424] leading-relaxed">
@@ -500,12 +520,24 @@ export default function CounselConsole() {
       </div>
 
       {canEdit && (
-        <p className="text-xs text-[#5C6B6B] mt-8 max-w-3xl">
-          Need the fine-grained redline / comment workflow?
-          <Link to="/admin/legal/ratifications" className="underline text-[#476B6B] ml-1" data-testid="counsel-console-redline-link">
-            Open the redline editor →
-          </Link>
-        </p>
+        <div className="mt-8 rounded-lg border border-[#E5E1D8] bg-[#FAF7F0] p-4 max-w-3xl" data-testid="counsel-dashboard-emails-note">
+          <p className="text-[11px] uppercase tracking-wider text-[#5C6B6B] font-semibold mb-2">
+            What triggers an email
+          </p>
+          <ul className="text-xs text-[#0F2424] list-disc pl-5 space-y-1">
+            <li>Counsel clicks <strong>Mark ready for admin review</strong> on a working draft → every admin gets a notification (inline; no manual step).</li>
+            <li>Someone @-mentions <code>@admin</code> or <code>@counsel</code> in a comment → real-time if you opted in, otherwise the daily digest at 08:00 UTC (auto).</li>
+            <li>Admin <strong>Releases</strong> a working draft or <strong>Rolls back</strong> to a prior version → partner + subscriber notifications go out inline.</li>
+            <li>Redline round-trip .docx is applied by admin → counsel gets a per-decision summary email (auto, no manual step).</li>
+          </ul>
+          <p className="text-[11px] text-[#5C6B6B] mt-2 leading-relaxed">
+            Manual steps needed: none for the flows above. Anything not on this list does not send email — including document downloads, individual comment posts (they roll up into the digest), and simple version-history views.
+          </p>
+        </div>
+      )}
+
+      {canEdit && (
+        <CounselReviewChecklist inline />
       )}
 
       {releaseModal && isAdmin && (

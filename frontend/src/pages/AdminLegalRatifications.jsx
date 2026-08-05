@@ -43,9 +43,12 @@ export default function AdminLegalRatifications() {
   const [openSlug, setOpenSlug] = useState(null);
   const [comments, setComments] = useState({}); // { source_slug: [comment,...] }
   const [form, setForm] = useState({ version: "", ratified_by: "", notes: "" });
+  // Redlines temporarily disabled (too cumbersome per Feb 2026 review).
+  // Comment kind is locked to "comment"; the export/roundtrip UI is hidden.
+  const REDLINES_ENABLED = false;
   const [newComment, setNewComment] = useState({
     section: "",
-    kind: "redline",
+    kind: "comment",
     quoted_text: "",
     suggested_replacement: "",
     body: "",
@@ -129,7 +132,7 @@ export default function AdminLegalRatifications() {
     try {
       await api.post(`/legal/comments/${sourceSlug}`, newComment);
       toast.success("Comment posted");
-      setNewComment({ section: "", kind: "redline", quoted_text: "", suggested_replacement: "", body: "" });
+      setNewComment({ section: "", kind: "comment", quoted_text: "", suggested_replacement: "", body: "" });
       const c = await api.get(`/legal/comments/${sourceSlug}`);
       setComments((old) => ({ ...old, [sourceSlug]: c.data || [] }));
     } catch (e) {
@@ -462,9 +465,9 @@ export default function AdminLegalRatifications() {
               <div className="card p-5">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <p className="text-xs uppercase tracking-wider text-[#476B6B] font-semibold inline-flex items-center gap-1">
-                    <MessageSquare size={12} /> Counsel redlines &amp; comments
+                    <MessageSquare size={12} /> Counsel comments
                   </p>
-                  {openComments.some((c) => !c.resolved && c.kind === "redline") && (
+                  {REDLINES_ENABLED && openComments.some((c) => !c.resolved && c.kind === "redline") && (
                     <div className="flex items-center gap-2">
                       <button
                         onClick={exportRedlines}
@@ -478,7 +481,7 @@ export default function AdminLegalRatifications() {
                         <label
                           className="btn-outline text-xs inline-flex items-center gap-1 cursor-pointer"
                           data-testid="legal-comment-import-roundtrip-btn"
-                          title="Upload the .docx counsel returned after reviewing your redlines. We'll parse each block, show you a per-redline preview, and let you selectively apply the resolved edits to the source draft."
+                          title="Upload the .docx counsel returned after reviewing your redlines."
                         >
                           <Upload size={12} /> Import roundtrip (.docx)
                           <input
@@ -502,16 +505,18 @@ export default function AdminLegalRatifications() {
                     className="input input-bordered w-full text-sm"
                     data-testid="legal-comment-section-input"
                   />
-                  <select
-                    value={newComment.kind}
-                    onChange={(e) => setNewComment({ ...newComment, kind: e.target.value })}
-                    className="input input-bordered w-full text-sm"
-                    data-testid="legal-comment-kind-input"
-                  >
-                    <option value="redline">Redline (proposed change)</option>
-                    <option value="comment">Comment (note only)</option>
-                  </select>
-                  {newComment.kind === "redline" && (
+                  {REDLINES_ENABLED && (
+                    <select
+                      value={newComment.kind}
+                      onChange={(e) => setNewComment({ ...newComment, kind: e.target.value })}
+                      className="input input-bordered w-full text-sm"
+                      data-testid="legal-comment-kind-input"
+                    >
+                      <option value="redline">Redline (proposed change)</option>
+                      <option value="comment">Comment (note only)</option>
+                    </select>
+                  )}
+                  {REDLINES_ENABLED && newComment.kind === "redline" && (
                     <>
                       <textarea
                         value={newComment.quoted_text}
@@ -537,7 +542,7 @@ export default function AdminLegalRatifications() {
                     data-testid="legal-comment-body-input"
                   />
                   <button onClick={postComment} className="btn-outline text-sm inline-flex items-center gap-1" data-testid="legal-comment-submit">
-                    <Plus size={14} /> Post {newComment.kind}
+                    <Plus size={14} /> Post comment
                   </button>
                 </div>
 
