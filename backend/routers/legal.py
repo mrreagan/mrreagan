@@ -1477,15 +1477,21 @@ async def _send_legal_mention_digests() -> dict:
     from database import db
     from utils.mailer import send_email
 
-    # Pull unresolved comments with mentions that haven't been digested.
-    # Also filter to comments whose working draft is still OPEN — a
-    # released/discarded working draft's mentions no longer need
-    # follow-up.
-    pending = await db.legal_working_draft_comments.find({
+    # Pull unresolved comments with mentions that haven't been notified
+    # for EVERY role they mention. `mention_digest_sent_roles` is the
+    # set of roles already digested for this comment; the daily job
+    # excludes a comment only when every mentioned role has already been
+    # notified. Legacy comments with `mention_digest_sent_at != None`
+    # (from the pre-per-role model) are treated as fully notified.
+    pending_cursor = db.legal_working_draft_comments.find({
         "resolved": False,
         "mentions": {"$ne": []},
         "mention_digest_sent_at": None,
-    }, {"_id": 0}).sort("created_at", 1).to_list(500)
+    }, {"_id": 0}).sort("created_at", 1)
+    pending = await pending_cursor.to_list(500)
+    hit_cap = len(pending) == 500
+    if hit_cap:
+        logger.warning("legal_mention_digest: hit 500-comment cap; extras will be handled next run")
     if not pending:
         return {"pending": 0, "sent": 0, "recipients": 0}
 
@@ -1525,7 +1531,10 @@ async def _send_legal_mention_digests() -> dict:
 
     site_url = os.environ.get("PUBLIC_SITE_URL", "").rstrip("/") or ""
     sent_count = 0
-    notified_ids: set[str] = set()
+    # Track (comment_id → set of roles successfully notified this run) so
+    # a partial-failure across roles doesn't silently drop the still-pending
+    # role.
+    role_success_by_comment: dict[str, set[str]] = {}
 
     for role, recipients in role_to_recipients.items():
         comments = per_role[role]
@@ -1583,21 +1592,30 @@ async def _send_legal_mention_digests() -> dict:
             )
             sent_count += 1
             for c in comments:
-                notified_ids.add(c["id"])
+                role_success_by_comment.setdefault(c["id"], set()).add(role)
         except Exception as exc:
             logger.warning("legal.mention.digest send failed for %s: %s", role, exc)
 
-    if notified_ids:
-        now = now_iso()
+    # Only mark a comment fully-notified when every role it mentions has
+    # been successfully sent. Others stay pending for the next run.
+    now = now_iso()
+    fully_notified: list[str] = []
+    for c in pending:
+        needed = set(c.get("mentions") or [])
+        sent = role_success_by_comment.get(c["id"], set())
+        if needed and needed.issubset(sent):
+            fully_notified.append(c["id"])
+    if fully_notified:
         await db.legal_working_draft_comments.update_many(
-            {"id": {"$in": list(notified_ids)}},
+            {"id": {"$in": fully_notified}},
             {"$set": {"mention_digest_sent_at": now}},
         )
     return {
         "pending": len(pending),
         "sent": sent_count,
-        "notified_comment_ids": list(notified_ids),
+        "notified_comment_ids": fully_notified,
         "recipients_by_role": {r: len(v) for r, v in role_to_recipients.items()},
+        "hit_cap": hit_cap,
     }
 
 

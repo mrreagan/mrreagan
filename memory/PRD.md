@@ -15,6 +15,14 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 68 — Mention Digest + CounselConsole Refactor (Feb 05 2026)
+- **Per-comment @mention email REMOVED** in favour of a once-daily digest.
+- **New scheduler job `legal_mention_digest`** (every 24h via APScheduler) collects every unresolved `@admin`/`@counsel` mention on OPEN working drafts and sends one email per role. Manual trigger endpoint `POST /api/legal/admin/mention-digest/send-now` (admin-only, 403 for counsel) for testing and inbox flushing.
+- **Per-role bookkeeping**: a comment mentioning BOTH `@admin` and `@counsel` is marked notified only when every mentioned role successfully receives its digest email — a partial-failure across roles leaves the still-pending role in the queue for next run. Log warning when the 500-comment cap is hit.
+- **`PUBLIC_SITE_URL` added to `backend/.env`** so digest / notification emails link to `https://birthright.live/counsel` (absolute) instead of a dead relative `/counsel`.
+- **Frontend refactor**: `CounselConsole.jsx` shrunk from **1345 → 453 lines**. Extracted `components/counsel/DiffModal.jsx`, `HistoryModal.jsx` (with nested `RollbackPreviewModal`), `ReleaseModal.jsx`, `CommentPrimitives.jsx` (CommentCard/InlineCommentThread/ComposeForm/GeneralCommentsPanel/renderCommentBody), and `diffHelpers.js` (buildRows, bumpMinor, computeDiffStats). Compose-form copy updated: "Will notify in next digest".
+- **Testing**: `testing_agent` iter 52 → 10/10 backend + 100% frontend. All P1 followups landed (per-role bookkeeping, cap warning, absolute URL).
+
 ### Iter 67 — Comment @mentions + Rollback Preview (Feb 05 2026)
 - **@mentions in working-draft comments**: `POST /api/legal/working-drafts/{slug}/comments` now parses `@admin` and `@counsel` from the body (case-insensitive, word-boundary + preceding-char guarded so `foo@admin.com` inside a quoted email does NOT trigger). Comment doc stores `mentions: ['admin', 'counsel']`. A BackgroundTask emails the matched role's users (all `role=admin` or `role=readonly_admin`) via Resend, deduped, author suppressed. Email template `legal_comment_mention` includes doc title, anchor (line N or general), body blockquote, link to `/counsel`.
 - **Frontend**: `ComposeForm` shows a "Will notify by email" pill live as the user types `@admin` / `@counsel`. `CommentCard` renders body via `renderCommentBody` which converts mentions to styled pill spans.
