@@ -86,10 +86,10 @@ be batched when the corresponding counterparty is ready to sign.
 | P2-c | Vendor Supplier / Dropship Agreement (7C's Farmstead first) | `07-vendor-supplier-agreement` | 85 |
 | P2-d | Community Partner Referral Agreement | `08-community-partner-referral-agreement` | 50 |
 | P2-e | Sponsorship Agreement + Sponsor Recognition Consent | `09-sponsorship-agreement` | 50 |
-| P2-f | Research Collaborator Honoraria Rider | to be drafted | 45 |
-| P2-g | Founding Partner Uplift Rider | to be drafted | 30 |
-| P2-h | Facilitator Curriculum Licence Rider | to be drafted | 30 |
-| P2-i | AI-Generated Content Policy | to be drafted | 25 |
+| P2-f | Research Collaborator Honoraria Rider | `23-research-collaborator-honoraria-rider` | 45 |
+| P2-g | Founding Partner Uplift Rider | `24-founding-partner-uplift-rider` | 30 |
+| P2-h | Facilitator Curriculum Licence Rider | `25-facilitator-curriculum-licence-rider` | 30 |
+| P2-i | AI-Generated Content Policy | `26-ai-generated-content-policy` | 25 |
 | P2-j | ISTV Contract — Business-Value & Risk Memo | `22-istv-contract-analysis-memo` | 15 |
 | | **Priority Two total** | | **480** |
 
@@ -99,9 +99,8 @@ be batched when the corresponding counterparty is ready to sign.
 
 - Reading estimates are doc-level, not prescriptive. Counsel allocates
   time as counsel sees fit.
-- Estimates exclude drafting the four **to-be-drafted** riders in
-  Priority Two (P2-f/g/h/i) and any wrap-up discussions with the
-  Foundation.
+- Estimates cover review time only. Any drafting-back or follow-up
+  negotiation with counterparties is not included here.
 - All drafts already carry an EU/UK compliance addendum (see below);
   the addendum itself does not require separate review time.
 

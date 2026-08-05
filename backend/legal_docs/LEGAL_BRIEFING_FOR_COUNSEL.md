@@ -218,6 +218,9 @@ summaries only; the drafts speak for themselves.
 | P1-l | **Data Processing Agreement template** (draft `19-data-processing-agreement-template`) | Sub-processor DPA base with SCCs + UK IDTA. |
 | P1-m | **Nonprofit Governance Bundle** (draft `20-nonprofit-governance-bundle`) | Articles, Bylaws, COI Policy, Whistleblower Policy, Document Retention Policy. |
 | P1-n | **State Charitable Solicitation Plan** (draft `21-charitable-solicitation-plan`) | Priority-state registrations ahead of any public fundraising. |
+| P1-o | **Board Member / Officer Agreement + D&O Coverage** (draft `11-board-officer-agreement`) | Fiduciary duties, COI disclosure, indemnification, admin-console audit acknowledgement. |
+| P1-p | **Ombudsman Charter** (draft `13-ombudsman-charter`) | Independence, confidentiality, scope, remedies. |
+| P1-q | **Foundation Working-Group Volunteer Agreement** (draft `12-volunteer-agreement`) | Volunteer status, confidentiality, IP assignment, injury waiver. |
 
 ---
 
@@ -233,10 +236,10 @@ and can proceed in parallel with Priority One as counsel's bandwidth allows.
 | P2-c | **Vendor Supplier / Dropship Agreement** (draft `07-vendor-supplier-agreement`) | 7C's Farmstead first; product-liability + IP indemnity from vendor. |
 | P2-d | **Community Partner Referral Agreement** (draft `08-community-partner-referral-agreement`) | 25% commission, W-9/1099 process, misrepresentation guardrails. |
 | P2-e | **Sponsorship Agreement + Sponsor Recognition Consent** (draft `09-sponsorship-agreement`) | Non-deductibility disclosure, public-recognition opt-in, no quid-pro-quo. |
-| P2-f | **Board Member / Officer Agreement + D&O Coverage** (draft `11-board-officer-agreement`) | Fiduciary duties, COI disclosure, indemnification, admin-console audit acknowledgement. |
-| P2-g | **Foundation Working-Group Volunteer Agreement** (draft `12-volunteer-agreement`) | Volunteer status, confidentiality, IP assignment, injury waiver. |
-| P2-h | **Ombudsman Charter** (draft `13-ombudsman-charter`) | Independence, confidentiality, scope, remedies. |
-| P2-i | **Counsel Terms of Access** (draft in §7.1 below) | New — countersigned by counsel; acknowledges session logging. |
+| P2-f | **Research Collaborator Honoraria Rider** (draft `23-research-collaborator-honoraria-rider`) | Honoraria schedule, IP assignment, HIPAA/IRB warranties for one-off research contributors. |
+| P2-g | **Founding Partner Uplift Rider** (draft `24-founding-partner-uplift-rider`) | 5-pt commission uplift, featured placement, first-look inventory, 24-month founding period. |
+| P2-h | **Facilitator Curriculum Licence Rider** (draft `25-facilitator-curriculum-licence-rider`) | Non-exclusive licence, attribution, contributions-back assignment, post-termination residual. |
+| P2-i | **AI-Generated Content Policy** (draft `26-ai-generated-content-policy`) | EU AI Act transparency labelling, prohibited uses, human-review layer, 90-day prompt retention. |
 | P2-j | **ISTV Contract Analysis Memo** (draft `22-istv-contract-analysis-memo`) | One-off business-value + risk memo on the ISTV contract. |
 
 ---
@@ -252,19 +255,19 @@ signature capture, and enforcement. Copy today is the self-disclaiming placehold
 ## 7.2 Foundation-role acceptance
 
 Path `/admin/foundation-roles`; role-acceptance workflow ready to accept real
-agreement text (P2-f/g).
+agreement text (Board/Officer P1-o, Volunteer P1-q, once Priority One is signed).
 
 ## 7.3 Partner onboarding
 
 `/partner/apply` + `/dashboard/partner|vendor/*`. Application forms only — no
-enforceable contract yet (P2-a/b/c/d).
+enforceable contract yet (P2-a/b/c/d, plus the P2-f–i riders where applicable).
 
 ## 7.4 Referrals, disputes, refunds
 
 Referral cookie window and payout share are implemented (`routers/referrals.py`).
 Dispute flow + ombudsman queue + refund cascade with partner-clawback are all built
 (`routers/disputes.py`, `routers/refunds.py`, `/admin/refunds`). No written policy
-codifies the rules of the road (P1-g, P2-h).
+codifies the rules of the road (P1-g refund policy, P1-p ombudsman charter).
 
 ## 7.5 Community
 
@@ -403,3 +406,7 @@ request.
 | 22 | **Nonprofit Governance Bundle (Draft — Articles, Bylaws, COI, Whistleblower, Retention)** | Governance | https://birthright.live/api/legal/drafts/20-nonprofit-governance-bundle |
 | 23 | **State Charitable Solicitation Registration Plan (Draft)** | Internal / Compliance | https://birthright.live/api/legal/drafts/21-charitable-solicitation-plan |
 | 24 | **ISTV Contract — Full Text Review & Business Value Memo** | Advisory memos | https://birthright.live/api/legal/drafts/22-istv-contract-analysis-memo |
+| 25 | **Research Collaborator Honoraria Rider (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/23-research-collaborator-honoraria-rider |
+| 26 | **Founding Partner Uplift Rider (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/24-founding-partner-uplift-rider |
+| 27 | **Facilitator Curriculum Licence Rider (Draft)** | Partner agreements | https://birthright.live/api/legal/drafts/25-facilitator-curriculum-licence-rider |
+| 28 | **AI-Generated Content Policy (Draft)** | Governance | https://birthright.live/api/legal/drafts/26-ai-generated-content-policy |

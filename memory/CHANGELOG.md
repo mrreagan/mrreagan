@@ -3,6 +3,61 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-06 — Four Priority-Two riders drafted · full `.docx`-only audit
+- **Drafted the four "to be drafted" Priority-Two riders** listed in
+  the Counsel Review Plan. Each was authored as a fresh `.md` in
+  `/app/backend/legal_docs/`, generated to `.docx` via the standard
+  pipeline (single-spaced, 1″ margins, EU/UK addendum auto-appended,
+  round-trip-clean formatting):
+    - **`23-research-collaborator-honoraria-rider`** — honoraria
+      schedule (Schedule A), works-made-for-hire IP assignment,
+      HIPAA / IRB warranties on human-subject data, moral-rights
+      waiver for editorial polish, 14-day termination.
+    - **`24-founding-partner-uplift-rider`** — +5-pt commission /
+      royalty uplift, quarterly featured placement, 30-day first-look
+      inventory, 24-month founding period with wind-down, minimum-
+      activity and non-disparagement commitments.
+    - **`25-facilitator-curriculum-licence-rider`** — non-exclusive
+      worldwide licence, no sub-licensing/publication, contributions-
+      back assignment, "Adapted from Birthright" attribution
+      requirement, personal-use residual on termination.
+    - **`26-ai-generated-content-policy`** — EU AI Act transparency
+      labelling (AI-Generated vs AI-Assisted vs Human-Authored),
+      Help-Assistant safety-topic list, prohibited uses
+      (impersonation, fabricated testimonials, clinical advice, minor
+      imagery), sub-processor DPA + training opt-out, 90-day prompt
+      retention.
+- **Documentation updated in lockstep**:
+    - `_manifest.py` gets four new entries (`23…`–`26…`) with proper
+      display names and categories (`Partner agreements` for the
+      first three, `Governance` for the AI policy).
+    - Legal Briefing §6 Priority Two table swaps the four
+      "to be drafted" rows for the ratified slug references
+      (P2-f … P2-i); ISTV memo becomes P2-j.
+    - Legal Briefing §7.2 / §7.3 / §7.4 inline slug references fixed
+      to match the new letter mapping.
+    - Counsel Review Plan Priority-Two table replaces the four
+      "to be drafted" cells with the ratified slugs; dropped the
+      now-inaccurate "excludes drafting the four to-be-drafted
+      riders" assumption.
+    - Legal Briefing §5.2 Priority One backfills the Board Officer
+      (`P1-o`), Ombudsman Charter (`P1-p`), and Volunteer Agreement
+      (`P1-q`) rows that were referenced-but-missing from the table.
+- **`.docx`-only audit** on the counsel-facing download hub:
+    - `_build_index()` in `routers/legal/_common.py` re-audited;
+      confirmed only `.docx` files are ever surfaced. Docstring +
+      inline comment updated to remove the stale "`.md` fallback"
+      reference.
+    - Live `GET /api/legal/docs`: **29 entries · 0 non-.docx leaks**
+      across 7 categories (Briefing 3, Public-facing 7, Partner
+      agreements 8, Governance 6, Internal / Compliance 2, Internal
+      / IP 2, Advisory memos 1). Every visible download in the
+      counsel console UI is `.docx`.
+- **Verified**: iter-47/48/53/54/55 regression **55/55 green**; live
+  `/counsel` shows all four new drafts under their correct
+  categories; the frontend Priority filter correctly places them
+  under Priority Two (they're not in `PRIORITY_ONE_SLUGS`).
+
 ## 2026-02-06 — .docx round-trip fidelity + margin/spacing formatting
 - **Fixed the "+142 / -32 on an unchanged upload" diff bug**
   (`routers/legal/_common.py::_docx_to_markdown`). The old converter

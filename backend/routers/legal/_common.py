@@ -38,7 +38,11 @@ def _build_index():
             "source_slug": None,   # not in the working-draft manifest
         },
     }
-    # Auto-discover drafts by manifest slug — .docx preferred, .md fallback.
+    # Auto-discover drafts by manifest slug. Only .docx files are ever
+    # exposed — source .md files live on disk as engineering-side
+    # authoring artefacts and are never returned to counsel. A draft
+    # whose .docx is missing is silently skipped (regenerate via
+    # scripts/eu_compliance_and_docx.py).
     try:
         import sys
         sys.path.insert(0, str(LEGAL_DOC_DIR))

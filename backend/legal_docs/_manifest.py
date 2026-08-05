@@ -27,4 +27,8 @@ DRAFT_LEGAL_DOCS = [
     {"slug": "20-nonprofit-governance-bundle", "display_name": "Nonprofit Governance Bundle (Draft — Articles, Bylaws, COI, Whistleblower, Retention)", "category": "Governance"},
     {"slug": "21-charitable-solicitation-plan", "display_name": "State Charitable Solicitation Registration Plan (Draft)", "category": "Internal / Compliance"},
     {"slug": "22-istv-contract-analysis-memo", "display_name": "ISTV Contract — Full Text Review & Business Value Memo", "category": "Advisory memos"},
+    {"slug": "23-research-collaborator-honoraria-rider", "display_name": "Research Collaborator Honoraria Rider (Draft)", "category": "Partner agreements"},
+    {"slug": "24-founding-partner-uplift-rider", "display_name": "Founding Partner Uplift Rider (Draft)", "category": "Partner agreements"},
+    {"slug": "25-facilitator-curriculum-licence-rider", "display_name": "Facilitator Curriculum Licence Rider (Draft)", "category": "Partner agreements"},
+    {"slug": "26-ai-generated-content-policy", "display_name": "AI-Generated Content Policy (Draft)", "category": "Governance"},
 ]
