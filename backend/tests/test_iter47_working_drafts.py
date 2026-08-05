@@ -143,7 +143,13 @@ class TestWorkingDraftHappyPath:
     def test_01_counsel_upload_creates_working_draft(self, counsel, mongo):
         _clear_open_draft(mongo, SLUG)
         before = SOURCE.read_text(encoding="utf-8")
-        pytest.released_before = before
+        # `get_working_draft` strips the leading AI-DRAFT blockquote AND the
+        # mid-document "First draft — pending counsel ratification" boilerplate
+        # from `released_md` (see routers/legal.py L572 _strip_draft_disclaimer)
+        # so the DiffModal doesn't show them as false-positive changes. Store
+        # the stripped copy here so test_03 compares like-for-like.
+        from routers.legal import _strip_draft_disclaimer  # noqa: WPS433
+        pytest.released_before = _strip_draft_disclaimer(before)[0]
 
         r = _upload(counsel, SLUG, UPLOAD_MD.encode("utf-8"), "iter47-cookie.md")
         assert r.status_code == 200, f"{r.status_code} {r.text[:400]}"

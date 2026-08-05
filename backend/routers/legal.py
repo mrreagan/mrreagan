@@ -569,22 +569,63 @@ PUBLIC_LEGAL_PAGES: dict[str, dict] = {
 }
 
 
+_MID_DOC_DRAFT_BOILERPLATE_RE = re.compile(
+    # Matches the mid/footer draft-boilerplate block injected by
+    # scripts/generate_legal_drafts_v2.py, e.g.:
+    #
+    #     ---
+    #     *First draft — pending counsel ratification. Comments to
+    #     legal@birthright.live.*
+    #
+    # Also swallows the leading `---` horizontal rule, an optional trailing
+    # `---`, and any blank lines that would otherwise collapse into an
+    # empty section. Case-insensitive on "First draft"; the em-dash and
+    # asterisks are literal so we don't over-strip legitimate italic text.
+    r"(?:^|\n)[ \t]*---[ \t]*\n"           # opening hr
+    r"[ \t]*\*first draft[^*\n]*\n"        # `*First draft — pending counsel ratification. Comments to`
+    r"[ \t]*[^*\n]*\*[ \t]*\n?"            # `legal@birthright.live.*`
+    r"(?:[ \t]*\n)*"                       # blank lines
+    r"(?:[ \t]*---[ \t]*\n?)?",            # optional closing hr (only if dangling)
+    flags=re.IGNORECASE,
+)
+
+
 def _strip_draft_disclaimer(md: str) -> tuple[str, bool]:
-    """Peel off the leading `> ⚠️ AI-GENERATED FIRST DRAFT` blockquote so the
-    rendered page can surface it as a distinct banner instead of a wall of
-    quoted text. Returns (cleaned_markdown, had_disclaimer).
+    """Peel off draft-only boilerplate so the diff viewer and rendered
+    page don't see it as content:
+
+    1. Leading `> ⚠️ AI-GENERATED FIRST DRAFT` blockquote (banner-style).
+    2. Mid-document `*First draft — pending counsel ratification.
+       Comments to legal@birthright.live.*` italic block (with its
+       surrounding `---` rules).
+
+    Both blocks are injected by the DOCX-rebuild / draft-generation
+    pipeline and are IDENTICAL on the released side and the working
+    draft side — but any tweak to the wording would otherwise produce
+    huge false-positive diff hunks. Returns (cleaned_markdown,
+    had_disclaimer). `had_disclaimer` reflects the leading blockquote
+    only (backwards-compat with existing callers that use it to render
+    the "not yet counsel-reviewed" banner).
     """
     lines = md.splitlines()
-    if not lines or not lines[0].startswith(">"):
-        return md, False
-    i = 0
-    while i < len(lines) and (lines[i].startswith(">") or lines[i].strip() == ""):
-        # Stop when we hit content that isn't a blockquote and isn't blank
-        if lines[i].strip() == "" and i + 1 < len(lines) and not lines[i + 1].startswith(">"):
+    had_leading = False
+    if lines and lines[0].startswith(">"):
+        i = 0
+        while i < len(lines) and (lines[i].startswith(">") or lines[i].strip() == ""):
+            # Stop when we hit content that isn't a blockquote and isn't blank
+            if lines[i].strip() == "" and i + 1 < len(lines) and not lines[i + 1].startswith(">"):
+                i += 1
+                break
             i += 1
-            break
-        i += 1
-    return "\n".join(lines[i:]).lstrip(), True
+        md = "\n".join(lines[i:]).lstrip()
+        had_leading = True
+
+    # Symmetric strip of the mid-document boilerplate block. Safe even
+    # when the block is missing (regex simply doesn't match).
+    md = _MID_DOC_DRAFT_BOILERPLATE_RE.sub("\n", md)
+    # Collapse any triple+ newlines the removal may have introduced.
+    md = re.sub(r"\n{3,}", "\n\n", md).strip() + ("\n" if md.endswith("\n") else "")
+    return md, had_leading
 
 
 @router.get("/pages")

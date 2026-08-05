@@ -3,6 +3,30 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-06 — Counsel Console · mid-doc draft boilerplate stripped symmetrically
+- **Follow-up hardening** to the iter-53 diff-disclaimer fix. In addition to
+  the leading `> ⚠️ AI-GENERATED FIRST DRAFT` blockquote, 21 of the source
+  .md files carry a mid-document italic block bracketed by `---` rules:
+  `*First draft — pending counsel ratification. Comments to legal@birthright.live.*`
+  (injected by `scripts/generate_legal_drafts_v2.py`). It was identical on
+  both diff sides so it was harmless today — but any DOCX-rebuild tweak to
+  the wording would have re-triggered the same class of false-positive hunk.
+- `_strip_draft_disclaimer` (`routers/legal.py` L572) now also runs a
+  compiled regex `_MID_DOC_DRAFT_BOILERPLATE_RE` that peels the boilerplate
+  block, its leading `---` rule, any surrounding blank lines, and the
+  optional dangling trailing `---`. Then collapses triple+ newlines. Safe
+  no-op on docs without the block. `had_disclaimer` return still reflects
+  the leading banner only (backwards-compat with the "not yet counsel-
+  reviewed" banner renderer).
+- **Verification**: `_strip_draft_disclaimer` unit-tested with divergent
+  boilerplate wording on both sides → identical output (i.e. future-proof).
+  Full pytest — iter-47 (40 tests) + iter-53 (14 tests) green. Live
+  `/api/legal/pages/cookie-notice` verified free of FIRST DRAFT text, mid-
+  doc block, and orphan `legal@` footer; `has_draft_disclaimer=true` banner
+  flag still fires. iter-47 test_01 updated to expect the stripped
+  released body (matches new documented behavior).
+- **Files**: `backend/routers/legal.py`, `backend/tests/test_iter47_working_drafts.py`.
+
 ## 2026-02-06 — Counsel Console diff viewer · false-positive disclaimer fixed
 - **Bug**: `GET /api/legal/working-drafts/{source_slug}` returned raw
   released markdown, which the DOCX-rebuild pipeline prefixes with a
