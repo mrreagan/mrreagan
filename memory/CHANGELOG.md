@@ -3,6 +3,48 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-06 — Legal router split + mark-ready email fanout fix
+- **Router split**: `routers/legal.py` (2,882 lines, 41 endpoints)
+  reorganized into a package `routers/legal/` with:
+    - `__init__.py` (51 lines) — mounts the 3 sub-routers under
+      `/legal` prefix and re-exports helpers/constants that
+      `server.py`, `utils/scheduler.py`, `scripts/seed_governance_v1.py`,
+      and the test suite import at the top level.
+    - `_common.py` (1,013 lines) — all shared helpers, constants,
+      models, and non-endpoint functions (`_strip_draft_disclaimer`,
+      `_released_md`, `_upsert_working_draft`, `_docx_to_markdown`,
+      `_email_working_draft_ready`, `_send_legal_mention_digests`,
+      `_build_redline_docx`, `_run_docx_rebuild`,
+      `DEFAULT_INDEMNIFICATION_BODY`, `PUBLIC_LEGAL_PAGES`,
+      `_SOURCE_TO_PUBLIC`, `_WD_STATE_*`, `LEGAL_DOC_INDEX`, etc).
+    - `public.py` (568 lines) — indemnification lifecycle (7 routes),
+      docs hub + bulk zip (3), draft renderer (1), public rendered
+      pages (2), release history + RSS (2), ratifications list (1).
+    - `working_drafts.py` (764 lines) — ratifications write ops (2),
+      docs upload (1), working-drafts CRUD + mark-ready + release +
+      discard (6), history timeline + rollback preview/execute (3),
+      admin docx rebuild (1).
+    - `comments.py` (584 lines) — WD comments CRUD (4), mention
+      digest send-now (1), public comments (3), redline export +
+      roundtrip import/preview/apply (3), roundtrips list (1).
+  Verified: `router.routes` count 41 both before and after, path +
+  method sets identical, all 42 legal/counsel pytest cases pass (17
+  iter-47 + 11 iter-48 + 14 iter-53), the 9 pre-existing counsel-
+  middleware failures are unchanged (not regressions from split), and
+  the live `/counsel` page renders all 26 docs. Fixed the
+  `Path(__file__).resolve().parent.parent` refs in `_common.py` and
+  `working_drafts.py` (extra `.parent` needed now that files live one
+  directory deeper).
+- **Mark-ready email fanout**: `POST /api/legal/working-drafts/{slug}/
+  mark-ready` no longer uses `BackgroundTasks`. The email dispatch is
+  awaited inline so (a) the response body carries the underlying
+  `email_id`, and (b) the recipient list is guaranteed to reflect
+  the admin roster at the moment counsel clicked (not whenever the
+  BG worker happened to run). Idempotent repeat calls still skip the
+  email. Fixes 2 iter-48 tests that were previously red on main
+  (`test_mark_ready_returns_email_id`, `test_fanout_to_two_admins`);
+  full iter-48 suite now 11/11 green.
+
 ## 2026-02-06 — Counsel Console · mid-doc draft boilerplate stripped symmetrically
 - **Follow-up hardening** to the iter-53 diff-disclaimer fix. In addition to
   the leading `> ⚠️ AI-GENERATED FIRST DRAFT` blockquote, 21 of the source
