@@ -1,0 +1,46 @@
+{
+  "summary": "Iteration 52 — verified (a) removal of per-comment @mention emails, (b) new daily digest job + admin-only manual trigger POST /api/legal/admin/mention-digest/send-now, (c) scheduler registration, and (d) the CounselConsole refactor. Backend: 10/10 pytest cases pass in /app/backend/tests/test_iter52_mention_digest.py (no instant mention email, mention_digest_sent_at bookkeeping, grouping by role, resolved/already-digested/closed-WD skip rules, idempotent second trigger, counsel 403, anon 401, scheduler job registered + 'scheduler started ... legal_mention_digest' log line). Frontend: /counsel loads post-refactor as both counsel and admin; History modal, Rollback preview modal (seeded 2 releases), Release modal, diff modal (+5/-76 stats, 2 open / 2 comments), general comments panel, @mention pill rendering and the new 'Will notify in next digest' hint all work. CounselConsole.jsx is 453 lines; all 5 new modules exist and lint clean. All 03-cookie-notice working_drafts / comments / ratifications / digest email_log rows removed and 03-cookie-notice.md/.docx restored byte-identical (git clean for that slug).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/legal/admin/mention-digest/send-now", "issue": "PUBLIC_SITE_URL is not set in backend/.env, so the digest email CTA renders as href=\"/counsel\" with visible link text \"/counsel\" — a dead relative link in an email client. Same helper is used by other legal emails (legal.py:1153, 2677)."},
+      {"endpoint": "_send_legal_mention_digests", "issue": "A comment mentioning BOTH @admin and @counsel is marked mention_digest_sent_at as soon as ONE role email succeeds. If the other role's send raises, that role never receives the mention (it is excluded from the next run). Consider marking per (comment, role) or only marking when all matched sends succeed."},
+      {"endpoint": "_send_legal_mention_digests", "issue": "Returned `pending` counts all open-WD pending comments even when no recipient exists for their role, so `pending>0, sent=0` is ambiguous for the manual-trigger UI; also comments stay pending forever if no user holds the role (acceptable but undocumented)."},
+      {"endpoint": "POST /api/legal/working-drafts/{slug}/release", "issue": "Pre-existing behaviour, flagged for awareness: release runs _run_docx_rebuild which rewrites EVERY legal_docs/*.docx (all 20+ files touched), not just the released slug — heavy side effect and git churn on each release."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/counsel diff modal", "issues": ["Cookie-consent banner (bottom-right, z-index above modal) overlaps the diff modal's Post/Cancel area on 1920x1080 until dismissed — cosmetic, buttons still reachable."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter52_mention_digest.py",
+    "/app/backend/tests/_iter52_fe_setup.py",
+    "/app/backend/tests/_iter52_rollback_seed.py",
+    "/app/test_reports/pytest/iter52_results.xml"
+  ],
+  "action_items": [
+    "Set PUBLIC_SITE_URL in backend/.env (or derive from request) so digest/legal emails link to an absolute URL.",
+    "Decide on per-role digest bookkeeping so a partial send failure doesn't silently drop the other role's mention."
+  ],
+  "critical_code_review_comments": [
+    "legal.py _send_legal_mention_digests: notified_ids is populated per successful role send but flushed once for all comments — cross-role coupling described above.",
+    "Digest query is capped at .to_list(500) with no continuation; if the backlog ever exceeds 500 the oldest 500 are handled and the rest silently wait to the next run — fine today, worth a log warning when the cap is hit.",
+    "CounselConsole refactor is clean: page 453 lines, modules 66–295 lines, no duplicated diff logic, eslint clean, all interactive elements keep data-testid."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter52_mention_digest.py",
+    "/app/backend/tests/_iter52_fe_setup.py",
+    "/app/backend/tests/_iter52_rollback_seed.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary 03-cookie-notice working drafts, comments, and two TEST_iter52 ratifications were created and then fully deleted; legal_docs/03-cookie-notice.md/.docx restored from snapshot. No residual TEST_iter52 rows or digest email_log entries remain.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@birthright.live / birthright2026 (admin); counsel@birthright.live / counsel-review-2026 (readonly_admin)",
+  "context_for_next_testing_agent": "Digest tests must flush the queue first (mark all pending comments digested) because pending mentions are global, not per-slug — see the `wd` fixture in test_iter52_mention_digest.py. EMAIL_DRY_RUN=false and RESEND_API_KEY is live, so every digest trigger sends REAL mail to admin@/counsel@birthright.live; keep trigger counts low. legal_doc_ratifications is empty by default, so any rollback-preview UI test must seed 2 releases (see _iter52_rollback_seed.py) and restore legal_docs afterwards. Rollback buttons only render for non-current releases (data-testid=history-row-{version}-rollback).",
+  "rca_of_the_issue": "No functional defect found in this iteration. The only real gap is missing PUBLIC_SITE_URL config, which makes the digest email's /counsel CTA a relative (dead) link in email clients."
+}

@@ -92,6 +92,20 @@ async def _sweep_user_activity():
         logger.error(f"user_activity retention error: {e}")
 
 
+async def _run_legal_mention_digest():
+    """Wrapper around routers.legal._send_legal_mention_digests so the
+    scheduler doesn't hold a stale import at boot time.
+    """
+    try:
+        from routers.legal import _send_legal_mention_digests
+        result = await _send_legal_mention_digests()
+        if (result or {}).get("sent"):
+            logger.info(f"legal_mention_digest: sent={result.get('sent')} notified={len(result.get('notified_comment_ids') or [])}")
+    except Exception as e:
+        logger.error(f"legal_mention_digest error: {e}")
+
+
+
 def start_scheduler() -> None:
     """Idempotent scheduler start. Safe to call from FastAPI startup."""
     global _scheduler
@@ -101,8 +115,9 @@ def start_scheduler() -> None:
     _scheduler.add_job(_send_workshop_reminders, "interval", minutes=30, id="workshop_reminders", coalesce=True, max_instances=1)
     _scheduler.add_job(_degrade_stale_sponsors, "interval", hours=24, id="sponsor_partner_maintenance", coalesce=True, max_instances=1)
     _scheduler.add_job(_sweep_user_activity, "interval", hours=24, id="user_activity_retention", coalesce=True, max_instances=1)
+    _scheduler.add_job(_run_legal_mention_digest, "interval", hours=24, id="legal_mention_digest", coalesce=True, max_instances=1)
     _scheduler.start()
-    logger.info("scheduler started (workshop_reminders every 30m; sponsor_partner_maintenance every 24h; user_activity_retention every 24h)")
+    logger.info("scheduler started (workshop_reminders every 30m; sponsor_partner_maintenance every 24h; user_activity_retention every 24h; legal_mention_digest every 24h)")
 
 
 def stop_scheduler() -> None:

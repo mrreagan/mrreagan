@@ -1425,6 +1425,10 @@ async def create_wd_comment(
         "parent_id": parent_id or None,
         "body": body,
         "mentions": mentions,
+        # Digest bookkeeping — the daily job flips this to an ISO ts once
+        # this mention has been included in a digest email so we don't
+        # notify twice for the same mention.
+        "mention_digest_sent_at": None,
         "author_id": user["id"],
         "author_email": user.get("email"),
         "author_role": user.get("role"),
@@ -1434,8 +1438,9 @@ async def create_wd_comment(
         "resolved_by_email": None,
     }
     await db.legal_working_draft_comments.insert_one(dict(doc))
-    if mentions:
-        background.add_task(_email_comment_mentions, source_slug, wd, doc, user)
+    # Per-comment mention email intentionally removed — mentions now
+    # roll up into a once-daily digest to prevent inbox flooding.
+    # See _send_legal_mention_digests scheduler job.
     return doc
 
 
@@ -1457,88 +1462,161 @@ def _parse_mentions(body: str) -> list[str]:
     return found
 
 
-async def _email_comment_mentions(
-    source_slug: str,
-    wd: dict,
-    comment: dict,
-    author: dict,
-) -> None:
-    """Email @admin / @counsel with the comment context.
+async def _send_legal_mention_digests() -> dict:
+    """Daily digest job — one email per role summarising every unresolved
+    @mention that hasn't been notified yet.
 
-    - `@admin`  → every user with role=admin (dedup, skips the author)
-    - `@counsel` → every user with role=readonly_admin (typically 1 seat)
+    Groups pending mentions by target role. Sends at most 2 emails total
+    (one to `role=admin`, one to `role=readonly_admin`), each listing the
+    matched comments with doc title, anchor, author, and body preview.
+    Marks each included comment `mention_digest_sent_at=now` so the next
+    run doesn't repeat them.
+
+    Returns a small stats dict for logging/manual-trigger UI.
     """
     from database import db
     from utils.mailer import send_email
 
-    mentions = comment.get("mentions") or []
-    if not mentions:
-        return
+    # Pull unresolved comments with mentions that haven't been digested.
+    # Also filter to comments whose working draft is still OPEN — a
+    # released/discarded working draft's mentions no longer need
+    # follow-up.
+    pending = await db.legal_working_draft_comments.find({
+        "resolved": False,
+        "mentions": {"$ne": []},
+        "mention_digest_sent_at": None,
+    }, {"_id": 0}).sort("created_at", 1).to_list(500)
+    if not pending:
+        return {"pending": 0, "sent": 0, "recipients": 0}
 
-    author_id = author.get("id")
-    recipients: list[str] = []
-    role_filter: list[str] = []
-    if "admin" in mentions:
-        role_filter.append("admin")
-    if "counsel" in mentions:
-        role_filter.append("readonly_admin")
-    if not role_filter:
-        return
-
-    async for u in db.users.find(
-        {"role": {"$in": role_filter}}, {"_id": 0, "id": 1, "email": 1},
+    # Filter down to comments whose WD is still open.
+    open_wd_ids = set()
+    async for wd in db.legal_doc_working_drafts.find(
+        {"state": {"$in": [_WD_STATE_DRAFT, _WD_STATE_READY]}},
+        {"_id": 0, "id": 1},
     ):
-        if u.get("id") == author_id:
-            continue
-        em = u.get("email")
-        if em and em not in recipients:
-            recipients.append(em)
-    if not recipients:
-        return
+        open_wd_ids.add(wd["id"])
+    pending = [c for c in pending if c.get("working_draft_id") in open_wd_ids]
+    if not pending:
+        return {"pending": 0, "sent": 0, "recipients": 0}
 
-    _, title = _SOURCE_TO_PUBLIC.get(source_slug, (source_slug, source_slug.replace("-", " ").title()))
-    line = comment.get("line_number")
-    anchor = f"line {line}" if line else "general note"
-    site_url = os.environ.get("PUBLIC_SITE_URL", "").rstrip("/")
-    subject = f"You were mentioned in a {title} comment · {anchor}"
-    html = f"""
-    <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#1A2424">
-      <h2 style="font-family:'Cormorant Garamond',serif;color:#0F2424">You were mentioned in a legal-review comment</h2>
-      <p><strong>Document:</strong> {title}</p>
-      <p><strong>From:</strong> {author.get('email', 'someone')} ({author.get('role')})</p>
-      <p><strong>Anchor:</strong> {anchor}</p>
-      <blockquote style="border-left:3px solid #C9A961;margin:16px 0;padding:8px 12px;background:#FAF7F0;color:#0F2424">
-        {(comment.get('body') or '').replace('<','&lt;').replace('>','&gt;')}
-      </blockquote>
-      <p style="color:#5C6B6B;font-size:14px">
-        Open the diff and reply at
-        <a href="{site_url}/counsel" style="color:#476B6B"><strong>{site_url or '/counsel'}/counsel</strong></a>.
-      </p>
-    </div>
-    """
-    text = (
-        f"You were mentioned in a comment on {title}.\n"
-        f"From: {author.get('email')} ({author.get('role')})\n"
-        f"Anchor: {anchor}\n\n"
-        f"{comment.get('body')}\n\n"
-        f"Open the diff at {site_url}/counsel\n"
-    )
-    try:
-        await send_email(
-            to=recipients,
-            subject=subject,
-            html=html,
-            text=text,
-            template_name="legal_comment_mention",
-            metadata={
-                "source_slug": source_slug,
-                "working_draft_id": wd.get("id"),
-                "comment_id": comment.get("id"),
-                "mentions": mentions,
-            },
+    # Partition by target role.
+    per_role: dict[str, list[dict]] = {"admin": [], "counsel": []}
+    for c in pending:
+        for m in (c.get("mentions") or []):
+            if m in per_role:
+                per_role[m].append(c)
+
+    # Look up users per role.
+    role_to_recipients: dict[str, list[str]] = {}
+    for role, mapped_role in (("admin", "admin"), ("counsel", "readonly_admin")):
+        if not per_role[role]:
+            continue
+        emails: list[str] = []
+        async for u in db.users.find({"role": mapped_role}, {"_id": 0, "email": 1}):
+            em = u.get("email")
+            if em and em not in emails:
+                emails.append(em)
+        if emails:
+            role_to_recipients[role] = emails
+
+    if not role_to_recipients:
+        return {"pending": len(pending), "sent": 0, "recipients": 0}
+
+    site_url = os.environ.get("PUBLIC_SITE_URL", "").rstrip("/") or ""
+    sent_count = 0
+    notified_ids: set[str] = set()
+
+    for role, recipients in role_to_recipients.items():
+        comments = per_role[role]
+        # Compose an HTML digest with a list per comment.
+        rows_html = []
+        for c in comments:
+            _, title = _SOURCE_TO_PUBLIC.get(
+                c.get("source_slug"),
+                (c.get("source_slug"), (c.get("source_slug") or "").replace("-", " ").title()),
+            )
+            anchor = f"line {c.get('line_number')}" if c.get("line_number") else "general note"
+            body_esc = (c.get("body") or "").replace("<", "&lt;").replace(">", "&gt;")
+            author = c.get("author_email") or "someone"
+            rows_html.append(f"""
+              <div style="border-left:3px solid #C9A961;margin:12px 0;padding:8px 12px;background:#FAF7F0">
+                <p style="margin:0;color:#0F2424"><strong>{title}</strong> · <em>{anchor}</em></p>
+                <p style="margin:4px 0;color:#5C6B6B;font-size:12px">from {author} · {c.get('created_at','')}</p>
+                <p style="margin:6px 0 0;color:#0F2424;white-space:pre-wrap">{body_esc}</p>
+              </div>
+            """)
+        subject = f"Legal review digest · {len(comments)} unresolved @{role} mention{'s' if len(comments) != 1 else ''}"
+        html = f"""
+        <div style="font-family:Georgia,serif;max-width:640px;margin:0 auto;color:#1A2424">
+          <h2 style="font-family:'Cormorant Garamond',serif;color:#0F2424">Legal review digest</h2>
+          <p>You have <strong>{len(comments)}</strong> unresolved mention{'s' if len(comments) != 1 else ''} across the legal review workflow.</p>
+          {''.join(rows_html)}
+          <p style="color:#5C6B6B;font-size:14px">
+            Reply, resolve, or reassign at
+            <a href="{site_url}/counsel" style="color:#476B6B"><strong>{site_url or ''}/counsel</strong></a>.
+          </p>
+          <p style="color:#5C6B6B;font-size:12px">
+            This is a once-daily digest. You won't get a fresh email for these mentions again — but any NEW @{role} mentions posted after this digest will appear tomorrow.
+          </p>
+        </div>
+        """
+        text = (
+            f"Legal review digest — {len(comments)} unresolved @{role} mention(s)\n"
+            + "\n\n".join(
+                f"• {_SOURCE_TO_PUBLIC.get(c.get('source_slug'), (c.get('source_slug'), c.get('source_slug')))[1]}"
+                f" · {'line ' + str(c.get('line_number')) if c.get('line_number') else 'general note'}\n"
+                f"  from {c.get('author_email')} · {c.get('created_at')}\n"
+                f"  {c.get('body','').strip()[:400]}"
+                for c in comments
+            )
+            + f"\n\nOpen at {site_url}/counsel\n"
         )
-    except Exception as exc:
-        logger.warning("legal.comment.mention.email: %s", exc)
+        try:
+            await send_email(
+                to=recipients,
+                subject=subject,
+                html=html,
+                text=text,
+                template_name="legal_mention_digest",
+                metadata={"role": role, "count": len(comments)},
+            )
+            sent_count += 1
+            for c in comments:
+                notified_ids.add(c["id"])
+        except Exception as exc:
+            logger.warning("legal.mention.digest send failed for %s: %s", role, exc)
+
+    if notified_ids:
+        now = now_iso()
+        await db.legal_working_draft_comments.update_many(
+            {"id": {"$in": list(notified_ids)}},
+            {"$set": {"mention_digest_sent_at": now}},
+        )
+    return {
+        "pending": len(pending),
+        "sent": sent_count,
+        "notified_comment_ids": list(notified_ids),
+        "recipients_by_role": {r: len(v) for r, v in role_to_recipients.items()},
+    }
+
+
+@router.post("/admin/mention-digest/send-now")
+async def manual_mention_digest(user: dict = Depends(require_roles("admin"))):
+    """Manual trigger for the daily @mention digest. Useful for testing
+    and for admins who want to flush the queue without waiting until the
+    next scheduler tick.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can trigger the digest.")
+    result = await _send_legal_mention_digests()
+    from database import db
+    await log_action(
+        db, user, "legal.mention_digest.manual",
+        target_type="legal", target_id="digest",
+        metadata=result,
+    )
+    return result
 
 
 @router.post("/working-drafts/{source_slug}/comments/{comment_id}/resolve")
