@@ -334,8 +334,8 @@ export default function CounselConsole() {
       const r = await api.get(`/legal/working-drafts/${sourceSlug}`);
       setDiffModal({
         slug: sourceSlug, title,
-        released: r.data.released_md || "",
-        working: r.data.content_md || "",
+        released: r.data.released_md_diff || r.data.released_md || "",
+        working: r.data.content_md_diff || r.data.content_md || "",
         wd: r.data,
       });
     } catch (e) {

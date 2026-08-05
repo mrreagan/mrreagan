@@ -3,6 +3,66 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-06 — .docx round-trip fidelity + margin/spacing formatting
+- **Fixed the "+142 / -32 on an unchanged upload" diff bug**
+  (`routers/legal/_common.py::_docx_to_markdown`). The old converter
+  used `para.text` which strips bold/italic/code runs and dropped
+  tables entirely as a "please review" comment. So downloading a doc
+  and re-uploading it lost all `**bold**`, `` `code` ``, and the
+  sub-processors table — hence the massive phantom diff on
+  round-trip. New converter:
+    - walks Word runs and emits `**bold**`, `*italic*`,
+      `***bold+italic***`, `` `code` `` (Consolas font),
+    - reads the document's hyperlink relationships and re-emits
+      `[text](url)` (or bare URL when text == URL),
+    - converts Word tables back to `| c | c |` markdown with a
+      canonical `| --- | --- |` separator, suppressing header-row
+      bolding so plain source headers round-trip cleanly,
+    - detects lists by BOTH `w:numPr` and style-name
+      ("List Bullet" / "List Number"),
+    - preserves document order by walking `body.iterchildren()`
+      (paragraphs and tables interleaved),
+    - inserts blank lines between block kinds to keep the markdown
+      structure legible.
+  Result across all 7 Priority-One public docs: **100.00%
+  similarity** on 5 of 7, 99.99% on the other 2 (was ~50% before).
+  Diff on an unchanged upload drops from +142/-32 → **+0/-0**.
+- **Symmetric source-side helpers**:
+    - `md_to_docx` (`scripts/eu_compliance_and_docx.py`) now merges
+      consecutive non-empty source lines into a single Word paragraph
+      (fixes soft-wrap → multi-paragraph drift on the way back).
+    - New `_join_wrapped_line` helper handles intra-word hyphen wraps
+      (`print-on-\\n  demand` → `print-on-demand`) symmetrically with
+      the diff normaliser.
+    - Bullet / numbered list continuation lines get merged into the
+      parent list item so the round-trip preserves list structure.
+- **Formatting request** (all `.docx` regenerated):
+    - Left + right margins now **1 inch** on all sides (was 0.9″).
+    - Explicit **single line spacing** on the `Normal` style (was
+      Word's default 1.15× multiple).
+    - Source pre-processed to strip runs of `2+` consecutive internal
+      spaces down to `1` before docx generation.
+    - No paragraph-space-before; 6pt space-after (no double-space
+      between paragraphs).
+- **Diff-view whitespace normalisation** (`get_working_draft`) — new
+  `_diff_normalise` helper strips trailing whitespace, collapses
+  internal double-spaces, unwraps soft-wrapped paragraphs and
+  multi-line bullets, canonicalizes table separator rows, and removes
+  the blank line between a heading and its immediately-following
+  content. Returned as **new** `content_md_diff` / `released_md_diff`
+  fields — the raw `content_md` / `released_md` still match storage
+  exactly so iter-47 / iter-53 contracts stay intact. Frontend
+  `CounselConsole` now consumes the `*_diff` copies for the diff
+  modal, with graceful fallback to the raw fields.
+- **Backwards-compat**: `released_body_hash` is still computed on the
+  strip-only body so `base_released_hash` and `is_stale` keep
+  matching across the schema.
+- **Verified**: iter-55 pytest 9/9 (parametrized across all 7
+  P1 docs — assert ≤ 2 line diffs after round-trip) plus iter-47
+  (17), iter-48 (11), iter-53 (14), iter-54 (5) — **55/55 green**.
+  All 26 draft `.docx` + 3 briefing `.docx` regenerated with new
+  margins/spacing. Source `.md` files unchanged.
+
 ## 2026-02-06 — First-Dollar Wall · Draft Refresh Notes · Priority Filter
 - **First-Dollar Wall** — new social-proof marquee on the homepage. A
   new public router `routers/first_dollar.py` exposes

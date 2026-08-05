@@ -197,10 +197,12 @@ _MID_DOC_DRAFT_BOILERPLATE_RE = re.compile(
     # `---`, and any blank lines that would otherwise collapse into an
     # empty section. Case-insensitive on "First draft"; the em-dash and
     # asterisks are literal so we don't over-strip legitimate italic text.
-    r"(?:^|\n)[ \t]*---[ \t]*\n"           # opening hr
-    r"[ \t]*\*first draft[^*\n]*\n"        # `*First draft — pending counsel ratification. Comments to`
-    r"[ \t]*[^*\n]*\*[ \t]*\n?"            # `legal@birthright.live.*`
-    r"(?:[ \t]*\n)*"                       # blank lines
+    r"(?:^|\n)"                            # start-of-line boundary
+    r"(?:[ \t]*---[ \t]*\n)?"              # optional opening hr (multi-line only)
+    r"[ \t]*\*first draft[^*\n]*"          # `*First draft — pending counsel ratification. Comments to`
+    r"(?:\n[ \t]*[^*\n]*)?"                # optional continuation line before closing `*`
+    r"[^*\n]*\*[ \t]*\n?"                  # closes with `legal@birthright.live.*`
+    r"(?:[ \t]*\n)*"                       # trailing blank lines
     r"(?:[ \t]*---[ \t]*\n?)?",            # optional closing hr (only if dangling)
     flags=re.IGNORECASE,
 )
@@ -259,62 +261,250 @@ async def _current_ratification(source_slug: str) -> Optional[dict]:
     )
 
 # ---- _docx_to_markdown (was L886-L947) ----
-def _docx_to_markdown(blob: bytes) -> str:
-    """Best-effort .docx → Markdown conversion for full-notice uploads.
+def _run_to_md(run) -> str:
+    """Convert one docx run to inline markdown, preserving **bold**,
+    *italic*, and `code` (Consolas font)."""
+    txt = run.text or ""
+    if not txt:
+        return ""
+    lead = txt[:len(txt) - len(txt.lstrip(" "))]
+    tail = txt[len(txt.rstrip(" ")):]
+    core = txt.strip(" ")
+    if not core:
+        return txt
+    is_code = bool(run.font and run.font.name and "consol" in (run.font.name or "").lower())
+    is_bold = bool(run.bold)
+    is_italic = bool(run.italic)
+    if is_code:
+        core = f"`{core}`"
+    if is_bold and is_italic:
+        core = f"***{core}***"
+    elif is_bold:
+        core = f"**{core}**"
+    elif is_italic:
+        core = f"*{core}*"
+    return f"{lead}{core}{tail}"
 
-    We only need enough fidelity to keep counsel's structure round-trippable:
-    heading levels, paragraphs, list items, and inline emphasis. Anything
-    fancier (tables, footnotes, images) is dropped with a comment marker so
-    the admin knows to inspect the source before ratifying.
+
+def _para_to_md(para, in_table_header: bool = False, hyperlinks: dict | None = None) -> str:
+    """Convert one Word paragraph to markdown, preserving inline emphasis
+    AND resolving hyperlink relationships in the parent doc.
+
+    - `in_table_header`: when True, `**bold**` emphasis is suppressed
+      (Word table headers are auto-bolded by md_to_docx, so preserving
+      the bold on round-trip would introduce diff noise).
+    - `hyperlinks`: mapping of relationship-id -> URL for the parent
+      document. Walked to re-emit `[text](url)` in place of hyperlink
+      runs.
+    """
+    from docx.oxml.ns import qn as _qn
+    parts: list[str] = []
+    # docx stores hyperlinks as <w:hyperlink r:id="..."> wrapping one
+    # or more <w:r> children. Walk element children so we can capture
+    # both plain runs and the URL wrapping.
+    for child in para._p.iterchildren():
+        tag = child.tag
+        if tag == _qn("w:hyperlink"):
+            # Collect inner runs' text (with emphasis).
+            from docx.text.run import Run as _Run
+            inner: list[str] = []
+            for r in child.iterchildren(_qn("w:r")):
+                run_obj = _Run(r, para)
+                seg = _run_to_md(run_obj) if not in_table_header else (run_obj.text or "")
+                if in_table_header:
+                    # Table headers: strip any emphasis markers.
+                    seg = seg
+                inner.append(seg)
+            text = "".join(inner)
+            rid = child.get(_qn("r:id"))
+            url = (hyperlinks or {}).get(rid) if rid else None
+            if url and text.strip():
+                # If the hyperlink text is literally the same as the URL
+                # (auto-linked bare URL — Word does this when md_to_docx
+                # sees `(https://…)` in source), emit the bare URL so
+                # the round-trip matches the source's `(url)` form.
+                if text.strip() == url.strip():
+                    parts.append(text)
+                else:
+                    parts.append(f"[{text}]({url})")
+            elif url:
+                parts.append(url)
+            else:
+                parts.append(text)
+        elif tag == _qn("w:r"):
+            from docx.text.run import Run as _Run
+            run_obj = _Run(child, para)
+            if in_table_header:
+                # Skip our own bold; keep the raw text.
+                parts.append(run_obj.text or "")
+            else:
+                parts.append(_run_to_md(run_obj))
+        # Ignore field/section/instrText markers.
+    return "".join(parts).rstrip()
+
+
+def _table_to_md(table, hyperlinks: dict | None = None) -> str:
+    """Convert a docx table to a markdown table (`| c | c |` with a
+    `| --- | --- |` separator row). Header row emphasis is stripped
+    so a round-trip doesn't add `**bold**` to plain source headers."""
+    rows_md: list[str] = []
+    for ri, row in enumerate(table.rows):
+        cells: list[str] = []
+        for cell in row.cells:
+            parts = [_para_to_md(p, in_table_header=(ri == 0), hyperlinks=hyperlinks)
+                     for p in cell.paragraphs]
+            parts = [p for p in parts if p]
+            cells.append(" <br> ".join(parts).replace("|", "\\|"))
+        rows_md.append("| " + " | ".join(cells) + " |")
+        if ri == 0:
+            rows_md.append("| " + " | ".join(["---"] * len(cells)) + " |")
+    return "\n".join(rows_md)
+
+
+def _docx_to_markdown(blob: bytes) -> str:
+    """Best-effort .docx → Markdown conversion that round-trips faithfully
+    enough for the diff view.
+
+    Preserved: heading levels (Word "Heading 1"..6, "Title"), bullet and
+    numbered lists (via numPr), blockquote paragraphs (italic + tan
+    colour rendered by `md_to_docx`), inline **bold** / *italic* /
+    `code` (Consolas), and tables (rendered back as `| c | c |`).
+
+    Dropped: inline images, footnotes, comments. A trailing HTML
+    comment lists what was dropped so the admin can inspect the source
+    before ratifying.
     """
     from io import BytesIO
     from docx import Document
+    from docx.oxml.ns import qn
 
     doc = Document(BytesIO(blob))
+
+    # Build a relationship-id -> URL map so `_para_to_md` can rewrite
+    # hyperlinks back into `[text](url)` form. Without this, all
+    # `[label](https://...)` links in the source .md would round-trip
+    # to bare `label` text (URL lost).
+    hyperlinks: dict = {}
+    try:
+        for rel_id, rel in doc.part.rels.items():
+            if rel.reltype.endswith("/hyperlink"):
+                hyperlinks[rel_id] = rel.target_ref
+    except Exception:
+        pass
+
+    # Walk paragraphs and tables in DOCUMENT ORDER so the markdown
+    # matches what the reader saw. `doc.element.body` yields <w:p> and
+    # <w:tbl> elements interleaved.
+    from docx.text.paragraph import Paragraph
+    from docx.table import Table
+
     out: list[str] = []
     dropped: list[str] = []
+    body = doc.element.body
+    prev_kind: str = "start"  # start | para | list | heading | table | blank
+    for child in body.iterchildren():
+        tag = child.tag
+        if tag == qn("w:p"):
+            para = Paragraph(child, doc)
+            md_text = _para_to_md(para, hyperlinks=hyperlinks)
+            style = (para.style.name if para.style else "") or ""
+            style_lc = style.lower()
 
-    for para in doc.paragraphs:
-        text = (para.text or "").strip()
-        style = (para.style.name if para.style else "") or ""
+            if not md_text.strip():
+                # Empty paragraph — record but don't double-blank.
+                if prev_kind != "blank":
+                    out.append("")
+                prev_kind = "blank"
+                continue
 
-        if not text:
-            out.append("")
-            continue
-
-        # Heading detection: "Heading 1".."Heading 6" (Word default) or "Title".
-        heading_level = 0
-        if style.lower().startswith("heading "):
+            # Blockquote marker used by md_to_docx: italic + tan RGB
+            # colour. If either the first run is italic AND the paragraph
+            # style is "Normal" AND indent is set, treat it as `> text`.
+            # Fallback heuristic: if every run is italic, render as a
+            # blockquote line (harmless if actually just emphasis).
+            all_italic = bool(para.runs) and all(r.italic for r in para.runs)
+            has_indent = False
             try:
-                heading_level = int(style.split()[-1])
-            except ValueError:
-                heading_level = 0
-        elif style.lower() == "title":
-            heading_level = 1
+                pf = para.paragraph_format
+                has_indent = pf.left_indent is not None and pf.left_indent > 0
+            except Exception:
+                pass
+            if all_italic and has_indent:
+                inner = md_text
+                for pair in ("***", "**", "*"):
+                    if inner.startswith(pair) and inner.endswith(pair):
+                        inner = inner[len(pair):-len(pair)]
+                        break
+                if prev_kind not in ("start", "blank"):
+                    out.append("")
+                out.append(f"> {inner}")
+                prev_kind = "para"
+                continue
 
-        if heading_level >= 1:
-            out.append(f"{'#' * min(heading_level, 6)} {text}")
-            continue
+            # Heading detection.
+            heading_level = 0
+            if style_lc.startswith("heading "):
+                try:
+                    heading_level = int(style.split()[-1])
+                except ValueError:
+                    heading_level = 0
+            elif style_lc == "title":
+                heading_level = 1
+            if heading_level >= 1:
+                plain = para.text.strip()
+                if prev_kind not in ("start", "blank"):
+                    out.append("")
+                out.append(f"{'#' * min(heading_level, 6)} {plain}")
+                prev_kind = "heading"
+                continue
 
-        # List detection: Word marks numbered/bulleted lists via numId in
-        # paragraph properties. Best-effort: fall back to plain paragraph.
-        try:
-            numpr = para._p.pPr.numPr if (para._p.pPr is not None) else None
-        except Exception:
-            numpr = None
-        if numpr is not None:
-            out.append(f"- {text}")
-            continue
+            # List detection — either via numPr override OR via style
+            # name ("List Bullet" / "List Number" / "List Paragraph").
+            try:
+                numpr = para._p.pPr.numPr if (para._p.pPr is not None) else None
+            except Exception:
+                numpr = None
+            is_bullet_style = "bullet" in style_lc or (
+                style_lc == "list paragraph" and numpr is not None and "number" not in style_lc
+            )
+            is_number_style = "number" in style_lc
+            if numpr is not None or is_bullet_style or is_number_style:
+                marker = "1." if is_number_style else "-"
+                # Blank line before a NEW list block, not between siblings.
+                if prev_kind not in ("list", "start", "blank"):
+                    out.append("")
+                out.append(f"{marker} {md_text}")
+                prev_kind = "list"
+                continue
 
-        out.append(text)
+            # Plain paragraph.
+            if prev_kind not in ("start", "blank"):
+                out.append("")
+            out.append(md_text)
+            prev_kind = "para"
+        elif tag == qn("w:tbl"):
+            table = Table(child, doc)
+            if prev_kind not in ("start", "blank"):
+                out.append("")
+            out.append(_table_to_md(table, hyperlinks=hyperlinks))
+            out.append("")
+            prev_kind = "blank"
+        # Other tags (sectPr, etc) are ignored.
 
-    # Flag unhandled content (tables, images) so admin knows to check.
-    if doc.tables:
-        dropped.append(f"{len(doc.tables)} table(s)")
     if doc.inline_shapes:
         dropped.append(f"{len(doc.inline_shapes)} inline image(s)")
 
-    md = "\n\n".join(line for line in out).replace("\n\n\n\n", "\n\n").strip() + "\n"
+    # Collapse consecutive blank lines to at most one, matching the
+    # source .md formatting convention.
+    cleaned: list[str] = []
+    prev_blank = False
+    for line in out:
+        is_blank = (line.strip() == "")
+        if is_blank and prev_blank:
+            continue
+        cleaned.append(line)
+        prev_blank = is_blank
+    md = "\n".join(cleaned).strip() + "\n"
     if dropped:
         md += (
             f"\n<!-- Uploaded .docx contained: {', '.join(dropped)}. "

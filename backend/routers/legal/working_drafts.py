@@ -239,19 +239,132 @@ async def get_working_draft(
     if not wd:
         raise HTTPException(status_code=404, detail="No open working draft for this slug.")
     released_md_raw = _released_md(source_slug)
-    # Strip the auto-injected "FIRST DRAFT — PENDING COUNSEL RATIFICATION"
-    # disclaimer + effective-date front-matter from BOTH sides before
-    # returning. These blocks are appended/rewritten by the DOCX-rebuild
-    # pipeline every release, so leaving them in the diff produces a huge
-    # spurious "+135 / -45" difference for what may only be a one-word
-    # counsel edit. body_hash is still computed on the stripped content.
-    released_md, _ = _strip_draft_disclaimer(released_md_raw)
-    working_md, _ = _strip_draft_disclaimer(wd.get("content_md") or "")
-    released_hash = _md_body_hash(released_md)
+    # Strip the auto-injected disclaimer from BOTH sides before returning.
+    # These blocks are rewritten by the DOCX-rebuild pipeline every
+    # release, so leaving them in the diff produces a huge spurious
+    # "+135 / -45" difference for what may only be a one-word counsel
+    # edit. body_hash is still computed on the stripped content so
+    # `is_stale` stays consistent with `base_released_hash` (which is
+    # written at draft-creation time on the strip-only content).
+    released_md_stripped, _ = _strip_draft_disclaimer(released_md_raw)
+    working_md_stripped, _ = _strip_draft_disclaimer(wd.get("content_md") or "")
+    released_hash = _md_body_hash(released_md_stripped)
+
+    # Cosmetic-whitespace + soft-wrap normalisation for the diff view
+    # only. Strips trailing whitespace per line, collapses runs of 2+
+    # internal spaces to 1, and — critically — UNWRAPS soft-wrapped
+    # paragraphs and multi-line bullets so hard-wrap column drift
+    # doesn't produce false-positive diff hunks. Source .md files on
+    # disk are untouched.
+    def _diff_normalise(md: str) -> str:
+        import re as _re
+        # Pass 1: rstrip + collapse internal double-spaces.
+        raw = [_re.sub(r" {2,}", " ", ln.rstrip()) for ln in md.splitlines()]
+
+        def _line_kind(ln: str) -> str:
+            s = ln.lstrip()
+            if not s: return "blank"
+            if s.startswith("#"): return "heading"
+            if s.startswith("|"): return "table"
+            if s.startswith("---"): return "hr"
+            if s.startswith("> "): return "blockquote"
+            if s.startswith("- ") or _re.match(r"^\d+\.\s", s): return "list"
+            return "para"
+
+        def _canon_table_sep(ln: str) -> str:
+            """Canonicalize a `| --- | --- |` separator row so 3-dash vs
+            20-dash cell width doesn't register as a diff."""
+            if not ln.strip().startswith("|"):
+                return ln
+            cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+            if cells and all(_re.fullmatch(r":?-+:?", c or "") for c in cells):
+                return "| " + " | ".join(["---"] * len(cells)) + " |"
+            return ln
+
+        def _join_wrapped(parts):
+            merged = parts[0]
+            for nxt in parts[1:]:
+                nxt_s = nxt.strip()
+                if not nxt_s: continue
+                # If merged ends with `-` and next starts lowercase, treat
+                # as an intra-word soft wrap and join without a space
+                # (`print-on-\n  demand` → `print-on-demand`). Otherwise
+                # keep the trailing char and space-separate.
+                if merged.endswith("-") and nxt_s and nxt_s[0].islower():
+                    merged = merged + nxt_s
+                else:
+                    merged = merged.rstrip() + " " + nxt_s
+            return merged
+
+        out: list[str] = []
+        i = 0
+        while i < len(raw):
+            k = _line_kind(raw[i])
+            if k == "blank":
+                out.append("")
+                i += 1
+                continue
+            # Collect a run of consecutive lines of the SAME kind (blank
+            # boundary OR kind change breaks the run).
+            if k == "list":
+                items, cur = [], []
+                while i < len(raw):
+                    lk = _line_kind(raw[i])
+                    if lk == "list":
+                        if cur:
+                            items.append(cur)
+                        cur = [raw[i].lstrip()]
+                        i += 1
+                    elif lk == "para" and cur:
+                        # Continuation of the current bullet.
+                        cur.append(raw[i])
+                        i += 1
+                    else:
+                        break
+                if cur:
+                    items.append(cur)
+                for it in items:
+                    out.append(_join_wrapped(it))
+            elif k == "para":
+                block = []
+                while i < len(raw) and _line_kind(raw[i]) == "para":
+                    block.append(raw[i]); i += 1
+                out.append(_join_wrapped(block))
+            elif k in ("heading", "hr", "blockquote"):
+                out.append(raw[i]); i += 1
+            elif k == "table":
+                while i < len(raw) and _line_kind(raw[i]) == "table":
+                    out.append(_canon_table_sep(raw[i])); i += 1
+            else:
+                out.append(raw[i]); i += 1
+
+        cleaned = _re.sub(r"\n{3,}", "\n\n", "\n".join(out))
+        # Remove the blank line between a heading and its immediately-
+        # following content — both sides should read as
+        # `## Heading\ncontent`, not `## Heading\n\ncontent`. Purely
+        # cosmetic drift from the docx round-trip.
+        cleaned = _re.sub(r"(?m)^(#{1,6} .+)\n\n(?=\S)", r"\1\n", cleaned)
+        # Also remove the blank line between a paragraph ending in `:`
+        # and a following bullet — source docs write these as a
+        # continuous list; the docx round-trip inserts a paragraph
+        # break. Same normalisation on both sides.
+        cleaned = _re.sub(r"(?m)^(.+:)\n\n(?=[-*] )", r"\1\n", cleaned)
+        return cleaned.strip() + "\n"
+
+    # Apply diff-view normalisation on separate display fields so the
+    # raw `content_md` / `released_md` still match storage exactly.
     return {
         **wd,
-        "content_md": working_md,   # send stripped copy to the diff view
-        "released_md": released_md,
+        # Raw stripped bodies — match storage; DiffModal now reads the
+        # `*_diff` copies below for cosmetic parity across sides.
+        "content_md": working_md_stripped,
+        "released_md": released_md_stripped,
+        # Normalised copies (paragraphs unwrapped, table separators
+        # canonicalized, heading-blank collapsed, intra-word hyphens
+        # rejoined) so the frontend diff view doesn't trip over
+        # cosmetic drift on identical uploads.
+        "content_md_diff": _diff_normalise(working_md_stripped),
+        "released_md_diff": _diff_normalise(released_md_stripped),
         "released_body_hash": released_hash,
         "is_stale": wd.get("base_released_hash") != released_hash,
     }

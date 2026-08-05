@@ -141,14 +141,59 @@ def _inline(paragraph, text):
                 r = paragraph.add_run(content); r.font.name = "Consolas"; r.font.size = Pt(10)
 
 
+def _join_wrapped_line(parts):
+    """Join a list of soft-wrapped source lines. If a line ends with `-`
+    and the next line starts lowercase, treat as intra-word wrap
+    (`print-on-` + `demand` → `print-on-demand`); otherwise
+    space-separate. Symmetric with _diff_normalise in
+    routers/legal/working_drafts.py."""
+    merged = parts[0]
+    for nxt in parts[1:]:
+        nxt_s = nxt.strip()
+        if not nxt_s:
+            continue
+        if merged.endswith("-") and nxt_s and nxt_s[0].islower():
+            merged = merged + nxt_s
+        else:
+            merged = merged.rstrip() + " " + nxt_s
+    return merged
+
+
 def md_to_docx(md_path: Path, docx_path: Path, doc_title: str = None):
+    from docx.enum.text import WD_LINE_SPACING
     doc = Document()
     for s in doc.sections:
-        s.top_margin = s.bottom_margin = Inches(0.8)
-        s.left_margin = s.right_margin = Inches(0.9)
-    style = doc.styles["Normal"]; style.font.name = "Calibri"; style.font.size = Pt(11)
+        # 1-inch margins on all four sides — matches Word's default
+        # letter layout and gives counsel a familiar reading width.
+        s.top_margin = s.bottom_margin = Inches(1.0)
+        s.left_margin = s.right_margin = Inches(1.0)
+    style = doc.styles["Normal"]
+    style.font.name = "Calibri"
+    style.font.size = Pt(11)
+    # Explicit single spacing on the Normal style (Word's default is
+    # `Multiple 1.15` which reads spongy on legal briefs). No paragraph
+    # spacing-before/after either — the .md structure carries the rhythm.
+    pf = style.paragraph_format
+    pf.line_spacing_rule = WD_LINE_SPACING.SINGLE
+    pf.space_before = Pt(0)
+    pf.space_after = Pt(6)   # small gap between paragraphs; no double-space
 
     text = md_path.read_text()
+    # Normalise cosmetic whitespace before parsing: collapse runs of two
+    # or more spaces (not at line start — indent-sensitive) down to one,
+    # and strip trailing whitespace from every line. Keeps the visible
+    # copy tighter and prevents the diff view from tripping over
+    # invisible cosmetic drift.
+    _norm_lines = []
+    for _ln in text.splitlines():
+        _stripped_r = _ln.rstrip()
+        # Preserve leading whitespace (indentation), collapse
+        # internal runs of >=2 spaces down to a single space.
+        _lead = _stripped_r[:len(_stripped_r) - len(_stripped_r.lstrip(" "))]
+        _rest = _stripped_r[len(_lead):]
+        _rest = re.sub(r" {2,}", " ", _rest)
+        _norm_lines.append(_lead + _rest)
+    text = "\n".join(_norm_lines)
     lines = text.splitlines()
     i = 0
     while i < len(lines):
@@ -210,25 +255,62 @@ def md_to_docx(md_path: Path, docx_path: Path, doc_title: str = None):
             doc.add_paragraph()
             continue
 
-        # Bullet
+        # Bullet — collect continuation lines (subsequent lines that
+        # start with 2+ spaces of indent) into the same list item so
+        # the .docx round-trip doesn't break the list.
         if strip.startswith("- "):
-            p = doc.add_paragraph(style="List Bullet")
-            _inline(p, strip[2:])
+            item_parts = [strip[2:]]
             i += 1
+            while i < len(lines):
+                nxt = lines[i]
+                if nxt.startswith("  ") and nxt.strip() and not nxt.strip().startswith("- "):
+                    item_parts.append(nxt.strip())
+                    i += 1
+                else:
+                    break
+            p = doc.add_paragraph(style="List Bullet")
+            _inline(p, _join_wrapped_line(item_parts))
             continue
 
-        # Numbered
+        # Numbered — same continuation handling.
         m = re.match(r"^(\d+)\.\s+(.*)$", strip)
         if m:
-            p = doc.add_paragraph(style="List Number")
-            _inline(p, m.group(2))
+            item_parts = [m.group(2)]
             i += 1
+            while i < len(lines):
+                nxt = lines[i]
+                if nxt.startswith("  ") and nxt.strip() and not re.match(r"^\d+\.\s+", nxt.strip()):
+                    item_parts.append(nxt.strip())
+                    i += 1
+                else:
+                    break
+            p = doc.add_paragraph(style="List Number")
+            _inline(p, _join_wrapped_line(item_parts))
             continue
 
-        # Plain paragraph
-        p = doc.add_paragraph()
-        _inline(p, strip)
+        # Plain paragraph — merge consecutive non-empty lines into ONE
+        # Word paragraph so soft-wrap columns in the source .md don't
+        # produce multi-paragraph docx (and, downstream, false-positive
+        # diff hunks on the round-trip).
+        para_parts = [strip]
         i += 1
+        while i < len(lines):
+            nxt = lines[i]
+            nxt_s = nxt.strip()
+            if not nxt_s:
+                break
+            # Any new block-opener kicks us out of the current paragraph.
+            if (nxt_s.startswith("#") or nxt_s.startswith("- ") or
+                nxt_s.startswith("|") or nxt_s.startswith("> ") or
+                nxt_s == "---" or re.match(r"^\d+\.\s+", nxt_s)):
+                break
+            para_parts.append(nxt_s)
+            i += 1
+        # Join with intra-word-hyphen awareness (symmetric with
+        # _diff_normalise in working_drafts.py).
+        merged = _join_wrapped_line(para_parts)
+        p = doc.add_paragraph()
+        _inline(p, merged)
 
     docx_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(docx_path))
