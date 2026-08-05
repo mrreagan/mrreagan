@@ -3,6 +3,38 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-06 — First-Dollar Wall · Draft Refresh Notes · Priority Filter
+- **First-Dollar Wall** — new social-proof marquee on the homepage. A
+  new public router `routers/first_dollar.py` exposes
+  `GET /api/first-dollar/recent?limit=1..50` returning each user's
+  earliest paid order redacted to first-name + last-initial + item
+  label + timestamp + amount. No email, no last name, no user_id, no
+  IP crosses the boundary. Component
+  `frontend/src/components/home/FirstDollarWall.jsx` renders it as an
+  auto-scrolling CSS marquee below the Hero, pauses on hover, respects
+  `prefers-reduced-motion`, and hides itself entirely when the backend
+  returns zero rows.
+- **Draft Refresh Notes** — each Counsel Console draft row now shows a
+  compact "Last release · v{version} · {date} · {ratified_by}"
+  callout with the release notes clipped to 3 lines when present.
+  Renders only when a ratification exists for the doc's source slug
+  so quiet drafts stay quiet. Reuses the existing
+  `GET /api/legal/ratifications` payload — no new endpoint.
+- **Priority Filter** — All / Priority One / Priority Two toggle at the
+  top of `/counsel`. Priority One contains all 7 public-facing
+  documents plus the compliance / incorporation / IP-protection /
+  governance foundations (mirrors the revised Legal Briefing §5).
+  Priority Two contains partner instruments, charters, and advisory
+  memos. Selection is persisted in `localStorage` so counsel's focus
+  survives a page reload. Briefing docs are always shown regardless
+  of filter.
+- **Verification**: iter-54 pytest 5/5 green (endpoint auth, seeded
+  first-purchase dedupe, PII redaction check, limit bounds); iter-47
+  + iter-48 + iter-53 regression 42/42 green; ESLint clean across
+  `CounselConsole.jsx`, `Home.jsx`, `FirstDollarWall.jsx`; live
+  screenshots confirm the marquee scrolls on Home and the priority
+  filter narrows the doc list on `/counsel`.
+
 ## 2026-02-06 — Counsel briefing streamline · Priority One/Two + `.md` off the hub
 - **Legal Briefing for Counsel** rewritten from scratch: 754 lines → 375
   lines (~50% shorter, source `.md`), and the `.docx` shrunk from 65 KB

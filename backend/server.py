@@ -49,6 +49,7 @@ from routers.chat_ws import router as chat_ws_router
 from routers.reviews import router as reviews_router
 from routers.governance import router as governance_router
 from routers.legal import router as legal_router
+from routers.first_dollar import router as first_dollar_router
 from routers.admin_settings import router as admin_settings_router
 from routers.audit import router as audit_router
 from routers.partners import router as partners_router, admin_router as partners_admin_router
@@ -143,6 +144,7 @@ api_router.include_router(chat_ws_router)
 api_router.include_router(reviews_router)
 api_router.include_router(governance_router)
 api_router.include_router(legal_router)
+api_router.include_router(first_dollar_router)
 api_router.include_router(admin_settings_router)
 api_router.include_router(audit_router)
 api_router.include_router(partner_prospects_router)

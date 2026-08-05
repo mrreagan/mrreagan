@@ -55,6 +55,29 @@ const CATEGORY_BLURB = {
   "Advisory memos": "Analytical memos and one-off legal opinions on specific business decisions.",
 };
 
+// Priority buckets mirror the Legal Briefing §5 (Priority One) and §6
+// (Priority Two). Slugs here are the `source_slug` values used across
+// working-draft and ratification endpoints. Docs without a source_slug
+// (the briefing itself) are always shown.
+const PRIORITY_ONE_SLUGS = new Set([
+  "01-terms-of-service",
+  "02-privacy-policy",
+  "03-cookie-notice",
+  "04-indemnification-hold-harmless",
+  "10-sliding-scale-scholarship-terms",
+  "14-community-standards",
+  "15-refund-returns-policy",
+  "11-board-officer-agreement",
+  "12-volunteer-agreement",
+  "13-ombudsman-charter",
+  "16-sales-tax-registration-plan",
+  "17-trademark-filings-plan",
+  "18-copyright-registration-strategy",
+  "19-data-processing-agreement-template",
+  "20-nonprofit-governance-bundle",
+  "21-charitable-solicitation-plan",
+]);
+
 export default function CounselConsole() {
   const { user, refreshUser } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -150,16 +173,36 @@ export default function CounselConsole() {
     return m;
   }, [pages]);
 
+  // Priority filter — `all` (default), `p1`, or `p2`. Persisted in
+  // localStorage so counsel's chosen focus survives a page reload.
+  const [priorityFilter, setPriorityFilter] = useState(() => {
+    try { return localStorage.getItem("counsel:priority-filter") || "all"; }
+    catch { return "all"; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("counsel:priority-filter", priorityFilter); }
+    catch { /* localStorage denied — fine */ }
+  }, [priorityFilter]);
+
+  const matchesPriority = (doc) => {
+    if (priorityFilter === "all") return true;
+    // Briefing docs (no source_slug) are always shown — they orient the
+    // review regardless of which priority is active.
+    if (!doc.source_slug) return true;
+    const isP1 = PRIORITY_ONE_SLUGS.has(doc.source_slug);
+    return priorityFilter === "p1" ? isP1 : !isP1;
+  };
+
   const grouped = useMemo(() => {
     const g = {};
-    docs.forEach((d) => {
+    docs.filter(matchesPriority).forEach((d) => {
       const cat = d.category || "Other";
       (g[cat] = g[cat] || []).push(d);
     });
     // Sort inside each category by display_name for a predictable list.
     Object.values(g).forEach((arr) => arr.sort((a, b) => a.display_name.localeCompare(b.display_name)));
     return g;
-  }, [docs]);
+  }, [docs, priorityFilter]);
 
   const setRowBusy = (key, k, v) => setBusy((b) => ({ ...b, [`${key}:${k}`]: v }));
 
@@ -369,6 +412,38 @@ export default function CounselConsole() {
             </p>
           </div>
         )}
+        <div className="mt-4 pt-4 border-t border-[#E5E1D8]" data-testid="counsel-priority-filter">
+          <p className="text-[11px] uppercase tracking-wider text-[#5C6B6B] font-semibold mb-2">
+            Focus by priority
+          </p>
+          <div className="flex flex-wrap gap-2 text-xs">
+            {[
+              { key: "all", label: "All" },
+              { key: "p1", label: "Priority One" },
+              { key: "p2", label: "Priority Two" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setPriorityFilter(f.key)}
+                className={`px-3 py-1.5 rounded-full border transition-colors ${
+                  priorityFilter === f.key
+                    ? "bg-[#0F2424] border-[#0F2424] text-[#FAF7F0] font-semibold"
+                    : "bg-white border-[#D6CFC2] text-[#0F2424] hover:border-[#476B6B]"
+                }`}
+                data-testid={`counsel-priority-filter-${f.key}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-[#5C6B6B] mt-2 leading-relaxed">
+            {priorityFilter === "p1"
+              ? "Showing the public docs plus compliance, incorporation, IP-protection, and governance foundations. Priority One in the Legal Briefing §5."
+              : priorityFilter === "p2"
+              ? "Showing partner instruments, charters, and advisory memos. Priority Two in the Legal Briefing §6."
+              : "Showing every draft. Switch to Priority One or Priority Two to focus a single-session review."}
+          </p>
+        </div>
       </div>
 
       {/* Render categories in the preferred order */}
@@ -593,6 +668,25 @@ function DocRow({
             <> · last edit by <strong className="text-[#0F2424]">{wd.last_edited_by_email || wd.created_by_email}</strong> · {new Date(wd.last_edited_at || wd.created_at).toLocaleDateString()}</>
           )}
         </p>
+        {rat && (rat.notes || rat.ratified_at) && (
+          <div
+            className="mt-2 rounded border border-[#DDEBDD] bg-[#F5FAF5] px-3 py-2 text-[11px] leading-relaxed"
+            data-testid={`counsel-row-${source}-last-release`}
+          >
+            <p className="text-[10px] uppercase tracking-wider text-[#1E4030] font-semibold">
+              Last release · v{rat.version}
+              {rat.ratified_at && (
+                <> · {new Date(rat.ratified_at).toLocaleDateString()}</>
+              )}
+              {rat.ratified_by && (
+                <> · <span className="text-[#0F2424]">{rat.ratified_by}</span></>
+              )}
+            </p>
+            {rat.notes && (
+              <p className="mt-1 text-[#0F2424] whitespace-pre-wrap break-words line-clamp-3">{rat.notes}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 lg:justify-end lg:min-w-[380px]">

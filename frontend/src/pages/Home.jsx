@@ -4,6 +4,7 @@ import api from "../lib/api";
 import { ArrowRight, Calendar, Users, Flame, Sparkles, Heart, ShoppingBag } from "lucide-react";
 import { NewsletterSignup } from "../components/Newsletter";
 import { TaxStatusPill, FeaturedCampaignCard } from "../components/campaigns/CampaignParts";
+import FirstDollarWall from "../components/home/FirstDollarWall";
 
 const HERO_BG = "https://static.prod-images.emergentagent.com/jobs/c61b4345-eef4-4783-a5af-85e8af10eaf3/images/10154eafef8a2623b8b4e86a0d0a8065334110989eba28a8c99077e78f19d1fa.png";
 const COMMUNITY_IMG_1 = "https://images.unsplash.com/photo-1634155938686-24a26c55d71a?w=1200";
@@ -328,6 +329,7 @@ export default function Home() {
   return (
     <div data-testid="home-page">
       <Hero />
+      <FirstDollarWall />
       <FounderCollectionTeaser items={founderItems} />
       <MissionStrip />
       <FeaturedWorkshops workshops={workshops} />
