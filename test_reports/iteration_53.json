@@ -1,0 +1,44 @@
+{
+  "summary": "Verified the P0 fix for the Counsel Console diff viewer (GET /api/legal/working-drafts/{source_slug} in /app/backend/routers/legal.py L1071-1099). Backend: 14/14 pytest tests pass — both `content_md` and `released_md` are returned with the leading 'FIRST DRAFT — PENDING COUNSEL RATIFICATION' / 'AI-GENERATED FIRST DRAFT' blockquote stripped, `released_body_hash` equals the hash of the STRIPPED released body (and differs from the raw-body hash), and `is_stale` is false immediately after a draft is created from the current release. Reproduced the exact user scenario: working draft = released body with ONE word changed -> diff is +1/-1 (would previously have been the whole 12-line disclaimer preamble + body). Frontend: logged in as admin@birthright.live, /counsel -> Diff button on 03-cookie-notice; the side-by-side and unified viewers both show '+1 added / -1 removed' and contain NO disclaimer text at the top of either column. Regressions confirmed green: draft creation via POST /api/legal/docs/{slug}/upload, GET /api/legal/working-drafts (list + comment_stats), POST/GET/DELETE working-draft line-anchored comments, GET /api/legal/docs-bundle.zip (valid ZIP, testzip OK), GET /api/legal/pages/cookie-notice. No console errors. Test working draft was discarded at teardown so the preview env is clean.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/legal/working-drafts/{source_slug}", "issue": "`_strip_draft_disclaimer` only peels the LEADING blockquote. 21 of the source .md files in /app/backend/legal_docs also carry a mid/footer boilerplate block ('---\\n*First draft — pending counsel ratification. Comments to legal@birthright.live.*\\n---', e.g. 03-cookie-notice.md lines 49-54) injected by scripts/generate_legal_drafts_v2.py. It is currently identical on both sides so it does not pollute the diff, but if the DOCX-rebuild/release pipeline ever rewrites that block the same class of false-positive hunk returns. Consider stripping it symmetrically too."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Counsel Console / DiffModal", "issues": ["Cosmetic: the per-line 'add comment' hover affordance contributes the literal text 'NEW COMMENT' to the diff body's text content in unified mode; harmless but noisy for text-based assertions.", "The cookie-consent banner (bottom right) overlaps the diff modal's footer area at 1920x1080; modal buttons remain clickable so it is cosmetic only."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter53_wd_diff_disclaimer.py",
+    "/app/backend/tests/_iter53_oneword.py",
+    "/app/backend/tests/_iter53_fe_seed.py",
+    "/app/test_reports/pytest/iter53_results.xml"
+  ],
+  "action_items": [
+    "No blocking action — the P0 diff-disclaimer fix is verified working on both sides of the diff.",
+    "OPTIONAL: strip the mid-document 'First draft — pending counsel ratification' boilerplate block symmetrically in _strip_draft_disclaimer (or a sibling helper) to future-proof the diff.",
+    "OPTIONAL: /app/backend/routers/legal.py is 2842 lines (>700 guideline) — split into legal/public, legal/working_drafts, legal/comments modules."
+  ],
+  "critical_code_review_comments": [
+    "get_working_draft correctly recomputes released_body_hash on the stripped body and compares it to wd['base_released_hash'], which _upsert_working_draft also computes on the stripped release (L991) — hashes are consistent on both write and read paths, so is_stale cannot false-positive from the disclaimer. Verified numerically.",
+    "The endpoint returns `**wd` from a projection that excludes _id, so no ObjectId leakage. Confirmed by assertion.",
+    "Note the endpoint returns the STRIPPED content_md; any future caller that saves this payload back as the draft body would silently drop the disclaimer from stored content. Today the release/download paths read wd['content_md'] from Mongo directly, so this is safe — but worth a docstring warning."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter53_wd_diff_disclaimer.py",
+    "/app/backend/tests/_iter53_oneword.py",
+    "/app/backend/tests/_iter53_fe_seed.py"
+  ],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "100% (diff modal smoke + one-word-edit evidence)"},
+  "seed_data_creation": "Temporarily created an open working draft for slug 03-cookie-notice via POST /api/legal/docs/03-cookie-notice/upload (twice: a divergent body, then released-body-with-one-word-change). Discarded afterwards — GET now returns 404, released .md untouched. One TEST_iter53 working-draft comment created and deleted.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@birthright.live / birthright2026 (works). counsel@birthright.live / counsel-review-2026 — counsel returns HTTP 200 (NOT 403) on GET /api/legal/working-drafts/{slug}, i.e. readonly_admin is on the require_roles('admin') allow-list as documented.",
+  "context_for_next_testing_agent": "Reusable regression suite: /app/backend/tests/test_iter53_wd_diff_disclaimer.py (module-scoped fixture creates+discards a working draft on 03-cookie-notice; safe to re-run repeatedly). Login response key is `access_token` (fallback `token`). There is NO POST /api/legal/working-drafts endpoint — drafts are created by POST /api/legal/docs/{source_slug}/upload with a multipart `file` field (.md/.docx). There is no 'birthright-hub' legal slug; use 03-cookie-notice or 01-terms-of-service. Frontend testids: counsel-row-{slug}-view-diff, diff-modal, diff-stat-added/removed, diff-mode-side/unified, diff-modal-close.",
+  "rca_of_the_issue": "Original defect: get_working_draft returned the raw released .md (which the DOCX-rebuild pipeline prefixes with a ~12-line '> **FIRST DRAFT — PENDING COUNSEL RATIFICATION**' blockquote) while the working draft body had that block absent/rewritten, so difflib in DiffModal flagged the entire preamble plus reflowed body as +/- hunks. Fix now runs BOTH sides through _strip_draft_disclaimer(...)[0] and recomputes released_body_hash on the stripped body, aligning it with the base_released_hash written at draft-creation time (L991). Verified: released raw = 79 lines, stripped = 67 lines; a one-word counsel edit now produces exactly +1/-1 in both the API payload and the UI."
+}

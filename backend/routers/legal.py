@@ -1080,10 +1080,19 @@ async def get_working_draft(
     wd = await _active_working_draft(source_slug)
     if not wd:
         raise HTTPException(status_code=404, detail="No open working draft for this slug.")
-    released_md = _released_md(source_slug)
-    released_hash = _md_body_hash(_strip_draft_disclaimer(released_md)[0])
+    released_md_raw = _released_md(source_slug)
+    # Strip the auto-injected "FIRST DRAFT — PENDING COUNSEL RATIFICATION"
+    # disclaimer + effective-date front-matter from BOTH sides before
+    # returning. These blocks are appended/rewritten by the DOCX-rebuild
+    # pipeline every release, so leaving them in the diff produces a huge
+    # spurious "+135 / -45" difference for what may only be a one-word
+    # counsel edit. body_hash is still computed on the stripped content.
+    released_md, _ = _strip_draft_disclaimer(released_md_raw)
+    working_md, _ = _strip_draft_disclaimer(wd.get("content_md") or "")
+    released_hash = _md_body_hash(released_md)
     return {
         **wd,
+        "content_md": working_md,   # send stripped copy to the diff view
         "released_md": released_md,
         "released_body_hash": released_hash,
         "is_stale": wd.get("base_released_hash") != released_hash,
