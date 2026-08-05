@@ -299,14 +299,14 @@ export default function AdminLegalRatifications() {
         <ArrowLeft size={14} strokeWidth={1.5} /> Admin Hub
       </Link>
 
-      <span className="label">Legal · Ratification &amp; Redlines</span>
+      <span className="label">Legal · Ratification</span>
       <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
         <ShieldCheck size={28} strokeWidth={1.2} /> Legal ratifications
       </h1>
       <div className="divider-flame" />
       <p className="text-sm text-[#5C6B6B] max-w-2xl">
         Each public doc shows its current ratification status. Click a
-        doc to see counsel redlines, add your own, or mark it ratified.
+        doc to see counsel comments, add your own, or mark it ratified.
       </p>
 
       <Link

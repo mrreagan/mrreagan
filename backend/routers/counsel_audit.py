@@ -153,6 +153,20 @@ class ReviewMarkPayload(BaseModel):
     notes: Optional[str] = None
 
 
+# Public rendered pages use short slugs; the checklist manifest keys
+# by the versioned prefix. Map short → manifest so a counsel visit to
+# `/api/legal/pages/terms` counts toward `01-terms-of-service`.
+_PUBLIC_SLUG_TO_MANIFEST = {
+    "terms": "01-terms-of-service",
+    "privacy": "02-privacy-policy",
+    "cookie-notice": "03-cookie-notice",
+    "indemnification": "04-indemnification-hold-harmless",
+    "scholarships": "10-sliding-scale-scholarship-terms",
+    "community-standards": "14-community-standards",
+    "refunds": "15-refund-returns-policy",
+}
+
+
 def _slug_from_activity_path(path: str) -> str | None:
     """Map any counsel-facing legal API URL back to its manifest slug.
 
@@ -180,11 +194,12 @@ def _slug_from_activity_path(path: str) -> str | None:
         return None
     seg = parts[2]
     if seg in ("drafts", "pages", "working-drafts", "comments", "history-timeline"):
-        return parts[3].split("?")[0]
+        slug = parts[3].split("?")[0]
+        # Public rendered-page slug (e.g. "terms") → manifest slug.
+        return _PUBLIC_SLUG_TO_MANIFEST.get(slug, slug)
     if seg == "docs":
-        # `/api/legal/docs/{slug}/upload` OR `/api/legal/docs/{slug}/comments`
-        # OR the raw `/api/legal/docs/{slug}` download.
-        return parts[3].split("?")[0]
+        slug = parts[3].split("?")[0]
+        return _PUBLIC_SLUG_TO_MANIFEST.get(slug, slug)
     return None
 
 

@@ -369,7 +369,7 @@ export default function CounselConsole() {
             className="btn-ghost text-xs inline-flex items-center gap-1"
             data-testid="counsel-dashboard-ratifications-link"
           >
-            Ratification & Redline Console →
+            Ratification Console →
           </Link>
           <Link
             to="/admin/counsel-activity"

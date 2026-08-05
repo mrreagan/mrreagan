@@ -3,6 +3,56 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-06 — Counsel Dashboard consolidation · redlines paused · activity-log fix
+- **Fixed the "auto-check doesn't flag counsel activity" bug**
+  (`routers/counsel_audit.py`). The path matcher only recognised
+  the LEGACY paths `/api/legal/drafts/{slug}` and
+  `/api/legal/docs/counsel-briefing`, so activity on the current
+  endpoints (`/working-drafts/*`, `/docs/*/upload|comments`,
+  `/comments/*`, `/history-timeline/*`, `/pages/*`) was silently
+  ignored. New `_slug_from_activity_path` helper maps every
+  current + legacy legal path back to its manifest slug, and a
+  `_PUBLIC_SLUG_TO_MANIFEST` alias handles the short public
+  slugs (`terms` → `01-terms-of-service`, etc). Both
+  `_visit_summary_for` and `review_status`'s aggregate loop use
+  the shared helper. Fix retroactively credits the 2,189 already-
+  logged rows — Terms of Service now shows 502 auto-visits.
+- **Rename: Counsel Console → Counsel Dashboard**
+  everywhere it's user-visible (`/counsel` page hero, layout
+  dropdown, admin-hub tile, briefing §7.1/§11, user guide).
+- **Merged standalone Review Checklist into the Dashboard.**
+  `CounselReviewChecklist` now accepts an `inline` prop and
+  renders as a `<section>` inside `/counsel`, showing the same
+  auto-visited + manual-toggle grid. The old
+  `/admin/counsel-review` route now `<Navigate>`-redirects to
+  `/counsel`.
+- **Nav links** added on the Dashboard (counsel + admin only):
+  "Ratification Console →" (points to
+  `/admin/legal/ratifications`) and "My Session Activity Log →"
+  (points to `/admin/counsel-activity`).
+- **"What triggers an email" note** rendered on the Dashboard
+  and documented in the user guide § 5. Enumerates: mark-ready
+  (inline), @mentions (real-time or daily digest), release,
+  rollback, redline round-trip. Explicitly notes that
+  downloads, individual comment posts, version-history views,
+  and Diff-modal opens do NOT email.
+- **Redline UI temporarily paused** on `/admin/legal/ratifications`:
+  `REDLINES_ENABLED = false` constant gates the "kind: redline"
+  selector, the quoted-text/replacement inputs, and the export /
+  import-roundtrip buttons. The composer still posts plain
+  comments; historic redlines continue to display. Copy updated
+  (label "Ratification" instead of "Ratification & Redlines";
+  "counsel comments" instead of "counsel redlines").
+- **User guide + briefing regenerated to `.docx`** with the new
+  workflow described end-to-end.
+- **Verified** (iter-56 testing_agent — 100% backend, 100%
+  frontend, 8/8 pytest, plus 14/14 alias-resolution smoke): live
+  `/api/counsel/review-status` now returns `auto_visited: true`
+  on `01-terms-of-service` with 502 historic visits; nav links
+  present; redline UI gated; old `/admin/counsel-review` URL
+  redirects to `/counsel`; comment posting still works; iter-47/
+  48/53/54/55 regression suites unaffected.
+
 ## 2026-02-06 — Four Priority-Two riders drafted · full `.docx`-only audit
 - **Drafted the four "to be drafted" Priority-Two riders** listed in
   the Counsel Review Plan. Each was authored as a fresh `.md` in
