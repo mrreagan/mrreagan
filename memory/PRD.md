@@ -15,6 +15,11 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 71 — Bulk Zip Download (Feb 05 2026)
+- **New endpoint `GET /api/legal/docs-bundle.zip?category=<opt>`**: streams a `.zip` of every legal doc (or a category subset). Files are grouped into folders named after their category so unzip produces a tidy `Briefing/…`, `Public-facing/…` layout. A `README.txt` inside the archive records generation timestamp, category filter, pulled-by user, and file count. Auth-gated via `require_roles("admin")` — counsel inherits access through the existing allow-list; anonymous returns 401. Bad category returns 404.
+- **Frontend**: `Download all N docs (.zip)` button in the intro card (canEdit only) and `.zip` button on every category header. Each shows `Zipping…` state while pending and toasts on success/failure.
+- **Verified**: full archive = 984 KB / 27 files (26 docs + README), Briefing filter = 166 KB / 5 files, anonymous → HTTP 401, bad category → HTTP 404. Screenshot confirms both intro-card and per-category buttons render for counsel.
+
 ### Iter 70 — Unified Legal Documents Hub (Feb 05 2026)
 - **Merged `/admin/legal-docs` into `/counsel`** — one hub, no redundant page. Old path 301-redirects via `Navigate to="/counsel"`. `AdminLegalDocs.jsx` deleted.
 - **`/counsel` is now PUBLIC** (no auth required). Anonymous visitors see every draft artefact grouped by category with download-only actions. Admin + counsel additionally see the full working-draft workflow (upload / diff / history / mark ready / release / discard) gated by `user.role`.

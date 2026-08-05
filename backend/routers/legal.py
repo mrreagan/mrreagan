@@ -451,6 +451,58 @@ async def download_legal_doc(key: str):
     )
 
 
+@router.get("/docs-bundle.zip")
+async def bulk_download_legal_docs(
+    category: Optional[str] = None,
+    user: dict = Depends(require_roles("admin")),
+):
+    """Zip up every legal doc (optionally filtered by category) and stream
+    it back. Admin + counsel (via require_roles allow-list) only — this
+    is bulk offline-archiving, not a general public bulk endpoint.
+    """
+    import io
+    import zipfile
+    from datetime import datetime, timezone
+    from starlette.responses import StreamingResponse
+
+    matches = [
+        (key, meta) for key, meta in LEGAL_DOC_INDEX.items()
+        if not category or meta.get("category") == category
+    ]
+    if not matches:
+        raise HTTPException(status_code=404, detail=f"No documents found for category '{category}'.")
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        # Group files under folders named after their category so unzip
+        # produces a tidy `Briefing/…`, `Public-facing/…` layout.
+        for key, meta in matches:
+            fp = LEGAL_DOC_DIR / meta["filename"]
+            if not fp.exists():
+                continue
+            folder = (meta.get("category") or "Other").replace("/", "-").strip()
+            zf.write(fp, arcname=f"{folder}/{meta['display_name']}")
+        # Include a small manifest.txt so archivers know when this was pulled.
+        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+        zf.writestr(
+            "README.txt",
+            f"Birthright Foundation legal-docs bundle\n"
+            f"Generated: {stamp} UTC\n"
+            f"Category filter: {category or '(all)'}\n"
+            f"Files: {len(matches)}\n"
+            f"Pulled by: {user.get('email')} ({user.get('role')})\n",
+        )
+    buf.seek(0)
+
+    fname_slug = (category or "all").lower().replace(" ", "-").replace("/", "-").strip("-")
+    filename = f"birthright-legal-docs-{fname_slug}-{datetime.now(timezone.utc).strftime('%Y%m%d')}.zip"
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/drafts/{slug}")
 async def public_draft(slug: str):
     """PUBLIC download of a first-draft legal document (no auth required).

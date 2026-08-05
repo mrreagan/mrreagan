@@ -26,7 +26,7 @@ import { Link } from "react-router-dom";
 import {
   ArrowLeft, Upload, Download, ShieldCheck, CheckCircle2,
   Clock, Send, Trash2, GitCompare, History, MessageCircle,
-  FileText, ChevronDown, ChevronUp,
+  FileText, ChevronDown, ChevronUp, Archive,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
@@ -96,7 +96,7 @@ export default function CounselConsole() {
       toast.error(e?.response?.data?.detail || "Could not load legal docs");
     }
   };
-  useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, [canEdit]);
+  useEffect(() => { loadAll(); }, [canEdit]);
 
   const wdBySlug = useMemo(() => {
     const m = {};
@@ -162,6 +162,32 @@ export default function CounselConsole() {
       toast.error(e?.response?.data?.detail || "Download failed");
     } finally {
       setRowBusy(doc.key, "dl", false);
+    }
+  };
+
+  const [bundleBusy, setBundleBusy] = useState(false);
+  const downloadBundle = async (category) => {
+    if (!canEdit) return;
+    setBundleBusy(true);
+    const key = category || "__all__";
+    setRowBusy(key, "bundle", true);
+    try {
+      const params = category ? { category } : {};
+      const r = await api.get("/legal/docs-bundle.zip", { params, responseType: "blob" });
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement("a");
+      const fname = category
+        ? `birthright-legal-${category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.zip`
+        : "birthright-legal-all.zip";
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(category ? `Downloaded ${category} bundle` : "Downloaded full archive");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Bundle download failed");
+    } finally {
+      setBundleBusy(false);
+      setRowBusy(key, "bundle", false);
     }
   };
 
@@ -289,6 +315,16 @@ export default function CounselConsole() {
         <p className="text-xs text-[#5C6B6B] mt-3">
           Accepted upload formats: <code className="text-[#0F2424]">.md</code>, <code className="text-[#0F2424]">.markdown</code>, <code className="text-[#0F2424]">.txt</code>, <code className="text-[#0F2424]">.docx</code>. Files up to 2 MB.
         </p>
+        {canEdit && (
+          <button
+            onClick={() => downloadBundle(null)}
+            disabled={bundleBusy}
+            className="btn-primary text-xs inline-flex items-center gap-1 mt-4"
+            data-testid="counsel-bundle-all"
+          >
+            <Archive size={12} /> {bundleBusy ? "Zipping…" : `Download all ${totalCount} docs (.zip)`}
+          </button>
+        )}
       </div>
 
       {/* Render categories in the preferred order */}
@@ -314,6 +350,7 @@ export default function CounselConsole() {
             onHistory={(slug, title) => setHistoryModal({ slug, title })}
             onRelease={(slug, title, wd) => setReleaseModal({ slug, title, wd })}
             onDiscard={discard}
+            onBundleDownload={downloadBundle}
           />
         ))}
         {/* Any categories not in the preferred order — append at the end. */}
@@ -338,6 +375,7 @@ export default function CounselConsole() {
             onHistory={(slug, title) => setHistoryModal({ slug, title })}
             onRelease={(slug, title, wd) => setReleaseModal({ slug, title, wd })}
             onDiscard={discard}
+            onBundleDownload={downloadBundle}
           />
         ))}
       </div>
@@ -392,24 +430,39 @@ function CategorySection({
   canEdit, isAdmin, isCounsel, busy,
   onDownload, onUpload, onDownloadWorking, onDiff,
   onMarkReady, onHistory, onRelease, onDiscard,
+  onBundleDownload,
 }) {
   const [open, setOpen] = useState(true);
+  const bundleKey = `${category}:bundle`;
   return (
     <section data-testid={`counsel-category-${slugify(category)}`}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between text-left group"
-        data-testid={`counsel-category-${slugify(category)}-toggle`}
-      >
-        <div>
-          <h2 className="font-serif text-2xl text-[#0F2424] group-hover:text-[#476B6B] transition-colors">
-            {category}
-            <span className="ml-2 text-sm text-[#5C6B6B] font-sans">· {docs.length}</span>
-          </h2>
-          {blurb && <p className="text-xs text-[#5C6B6B] mt-1 max-w-3xl">{blurb}</p>}
-        </div>
-        {open ? <ChevronUp size={20} strokeWidth={1.4} /> : <ChevronDown size={20} strokeWidth={1.4} />}
-      </button>
+      <div className="w-full flex items-center justify-between gap-3">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex-1 flex items-center justify-between text-left group"
+          data-testid={`counsel-category-${slugify(category)}-toggle`}
+        >
+          <div>
+            <h2 className="font-serif text-2xl text-[#0F2424] group-hover:text-[#476B6B] transition-colors">
+              {category}
+              <span className="ml-2 text-sm text-[#5C6B6B] font-sans">· {docs.length}</span>
+            </h2>
+            {blurb && <p className="text-xs text-[#5C6B6B] mt-1 max-w-3xl">{blurb}</p>}
+          </div>
+          {open ? <ChevronUp size={20} strokeWidth={1.4} /> : <ChevronDown size={20} strokeWidth={1.4} />}
+        </button>
+        {canEdit && (
+          <button
+            onClick={() => onBundleDownload(category)}
+            disabled={!!busy[bundleKey]}
+            className="btn-outline text-xs inline-flex items-center gap-1 shrink-0"
+            data-testid={`counsel-category-${slugify(category)}-bundle`}
+            title={`Download all ${docs.length} ${category} docs as a zip`}
+          >
+            <Archive size={12} /> {busy[bundleKey] ? "Zipping…" : ".zip"}
+          </button>
+        )}
+      </div>
       <div className="divider-flame my-3" />
       {open && (
         <div className="grid gap-3">
