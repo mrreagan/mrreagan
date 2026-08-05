@@ -504,6 +504,10 @@ PUBLIC_LEGAL_PAGES: dict[str, dict] = {
         "source_slug": "14-community-standards",
         "title": "Community Standards",
     },
+    "indemnification": {
+        "source_slug": "04-indemnification-hold-harmless",
+        "title": "Universal Indemnification & Hold-Harmless Agreement",
+    },
 }
 
 

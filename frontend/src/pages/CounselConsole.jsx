@@ -22,7 +22,7 @@ import { Link } from "react-router-dom";
 import {
   ArrowLeft, Upload, Download, ShieldCheck, CheckCircle2,
   Clock, MessageSquare, Send, Trash2, GitCompare, History,
-  MessageCircle,
+  MessageCircle, FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
@@ -39,6 +39,7 @@ export default function CounselConsole() {
   const [pages, setPages] = useState([]);
   const [ratifications, setRatifications] = useState([]);
   const [workingDrafts, setWorkingDrafts] = useState([]);
+  const [briefingDocs, setBriefingDocs] = useState([]);
   const [busy, setBusy] = useState({});
   const [releaseModal, setReleaseModal] = useState(null); // { slug, defaultVersion }
   const [diffModal, setDiffModal] = useState(null); // { slug, title, released, working, wd }
@@ -46,14 +47,19 @@ export default function CounselConsole() {
 
   const loadAll = async () => {
     try {
-      const [p, r, w] = await Promise.all([
+      const [p, r, w, d] = await Promise.all([
         api.get("/legal/pages"),
         api.get("/legal/ratifications"),
         api.get("/legal/working-drafts"),
+        api.get("/legal/docs"),
       ]);
       setPages(p.data || []);
       setRatifications(r.data || []);
       setWorkingDrafts(w.data || []);
+      // Briefing = counsel-orientation docs (Legal Briefing, Review Plan,
+      // User Guide). They live in the same /legal/docs index; filter by
+      // category. These are read-only reference material.
+      setBriefingDocs((d.data || []).filter((x) => x.category === "Briefing"));
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Could not load counsel console");
     }
@@ -66,6 +72,7 @@ export default function CounselConsole() {
     "terms": "01-terms-of-service",
     "privacy": "02-privacy-policy",
     "cookie-notice": "03-cookie-notice",
+    "indemnification": "04-indemnification-hold-harmless",
     "refunds": "15-refund-returns-policy",
     "scholarships": "10-sliding-scale-scholarship-terms",
     "community-standards": "14-community-standards",
@@ -231,7 +238,59 @@ export default function CounselConsole() {
         </p>
       </div>
 
-      <div className="grid gap-4 mt-8" data-testid="counsel-console-list">
+      {/* Briefing section — counsel-orientation docs, download-only */}
+      {briefingDocs.length > 0 && (
+        <div className="mt-10" data-testid="counsel-briefing-section">
+          <h2 className="font-serif text-xl text-[#0F2424] mb-1">Briefing</h2>
+          <p className="text-xs text-[#5C6B6B] mb-4">
+            Orientation material for counsel — how the review works, what&apos;s in scope, and where to spend time. Reference-only, no publication workflow.
+          </p>
+          <div className="grid gap-3">
+            {briefingDocs.map((doc) => (
+              <div
+                key={doc.key}
+                className="card p-4 flex items-center justify-between gap-3"
+                data-testid={`counsel-briefing-row-${doc.key}`}
+              >
+                <div className="min-w-0 flex items-center gap-3">
+                  <FileText size={16} strokeWidth={1.4} className="text-[#C9A961] shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[#0F2424] truncate">{doc.display_name}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
+                      {(doc.size_bytes / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const r = await api.get(`/legal/docs/${doc.key}`, { responseType: "blob" });
+                      const url = URL.createObjectURL(r.data);
+                      const a = document.createElement("a");
+                      a.href = url; a.download = doc.display_name;
+                      document.body.appendChild(a); a.click(); a.remove();
+                      URL.revokeObjectURL(url);
+                    } catch (e) {
+                      toast.error(e?.response?.data?.detail || "Download failed");
+                    }
+                  }}
+                  className="btn-primary text-xs inline-flex items-center gap-1 shrink-0"
+                  data-testid={`counsel-briefing-download-${doc.key}`}
+                >
+                  <Download size={12} /> Download
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <h2 className="font-serif text-xl text-[#0F2424] mt-10 mb-1">Public-facing documents</h2>
+      <p className="text-xs text-[#5C6B6B] mb-4">
+        These are the {pages.length} public legal notices on the site. Each supports the full working-draft → release workflow.
+      </p>
+
+      <div className="grid gap-4" data-testid="counsel-console-list">
         {pages.length === 0 && (
           <p className="text-sm text-[#5C6B6B]">No public legal pages configured yet.</p>
         )}

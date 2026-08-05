@@ -15,6 +15,11 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 69 — Briefing docs + 7th public doc on Counsel Console (Feb 05 2026)
+- **Added Indemnification & Hold-Harmless** as the 7th public-facing doc. Registered in `PUBLIC_LEGAL_PAGES` (source `04-indemnification-hold-harmless`) and mirrored in the frontend `SOURCE_SLUG` map — instantly picks up the full working-draft, upload, history, and release workflow.
+- **Briefing docs section** at the top of `/counsel`: pulls `category="Briefing"` entries from the existing `GET /api/legal/docs` (LEGAL_BRIEFING .docx + .md, Counsel Review Plan, Counsel User Guide) and renders each as a download-only card. Read-only reference material — no publication workflow.
+- **Verified**: `/api/legal/pages` now returns 7 entries · `/api/legal/docs` returns 4 briefing entries · screenshots confirm briefing section renders at top, all 7 public docs (including Indemnification) render below with History / Released / Upload buttons.
+
 ### Iter 68 — Mention Digest + CounselConsole Refactor (Feb 05 2026)
 - **Per-comment @mention email REMOVED** in favour of a once-daily digest.
 - **New scheduler job `legal_mention_digest`** (every 24h via APScheduler) collects every unresolved `@admin`/`@counsel` mention on OPEN working drafts and sends one email per role. Manual trigger endpoint `POST /api/legal/admin/mention-digest/send-now` (admin-only, 403 for counsel) for testing and inbox flushing.
