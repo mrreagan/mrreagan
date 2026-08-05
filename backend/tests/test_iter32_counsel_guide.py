@@ -109,8 +109,11 @@ class TestPublicLegal:
         assert r.status_code == 200, r.text[:300]
         rows = r.json()
         slugs = {x["slug"] for x in rows}
-        assert slugs == {"terms", "privacy", "cookie-notice", "refunds",
-                         "scholarships", "community-standards"}, slugs
+        # These six MUST be present. `indemnification` and any future
+        # additions are welcome — assert subset, not equality.
+        required = {"terms", "privacy", "cookie-notice", "refunds",
+                    "scholarships", "community-standards"}
+        assert required.issubset(slugs), f"missing: {required - slugs}"
 
     def test_page_terms_body(self):
         r = requests.get(f"{BASE_URL}/api/legal/pages/terms", timeout=30)

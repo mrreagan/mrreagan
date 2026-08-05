@@ -210,7 +210,12 @@ class TestWorkingDraftHappyPath:
         r = counsel.post(f"{BASE_URL}/api/legal/working-drafts/{SLUG}/release",
                          json={}, timeout=60)
         assert r.status_code == 403, f"{r.status_code} {r.text[:300]}"
-        assert "Only admin can release" in r.text
+        # As of iter-2026-02-06 the counsel deny-list lives in the middleware,
+        # so the 403 body carries `{readonly: true, detail: "…admin-only"}`
+        # instead of the old endpoint-level "Only admin can release" text.
+        body = r.json()
+        assert body.get("readonly") is True, body
+        assert "admin-only" in body.get("detail", "").lower()
 
     def test_07_admin_release_promotes_to_md(self, admin, mongo):
         prior = mongo.legal_doc_ratifications.count_documents({"source_slug": SLUG})

@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Callable
 
 from fastapi import Request
@@ -67,6 +68,43 @@ _ADMIN_ALLOWLIST_PREFIXES = (
     "/api/admin/settings/counsel/set-password",
 )
 
+# Counsel is allowed to WRITE most `/api/legal/*` — that's their whole job.
+# But release-level operations (mint/revoke ratifications, rebuild docx,
+# apply/import roundtrip, resolve public comments, release working drafts,
+# rollback to a prior version) must stay admin-only. Each pattern is matched
+# against `(method, path)` with a full-string regex so nothing under
+# /api/legal/working-drafts/{slug}/comments/... (WD comments — counsel-
+# writable) leaks into the public comments deny list at
+# /api/legal/comments/{slug}/{comment_id}/resolve.
+_LEGAL_COUNSEL_DENY_PATTERNS: tuple[tuple[frozenset, "re.Pattern[str]"], ...] = (
+    # Mint / revoke a ratification (release-level).
+    (frozenset({"POST"}),   re.compile(r"^/api/legal/ratifications/[^/]+/?$")),
+    (frozenset({"DELETE"}), re.compile(r"^/api/legal/ratifications/[^/]+/?$")),
+    # Rebuild the whole .docx bundle.
+    (frozenset({"POST"}),   re.compile(r"^/api/legal/rebuild-docx/?$")),
+    # Apply / import counsel's redline round-trip .docx into the working draft
+    # (mutates working-draft body, and apply-roundtrip touches release state).
+    (frozenset({"POST"}),   re.compile(r"^/api/legal/comments/[^/]+/(?:apply|import)-roundtrip/?$")),
+    # POST on the export endpoint (GET is fine — counsel downloads their own
+    # redline .docx; POST is reserved for admin/tooling).
+    (frozenset({"POST"}),   re.compile(r"^/api/legal/comments/[^/]+/export/?$")),
+    # Resolve a *public* comment (the WD-comment resolve route lives under
+    # /api/legal/working-drafts/…/comments/… so it's not matched).
+    (frozenset({"POST"}),   re.compile(r"^/api/legal/comments/[^/]+/[^/]+/resolve/?$")),
+    # Rollback to a prior ratification version.
+    (frozenset({"POST"}),   re.compile(r"^/api/legal/history/[^/]+/rollback/[^/]+/?$")),
+    # Release a working draft (also defended in-endpoint, but the middleware
+    # produces the canonical `{readonly: True}` payload the UI keys off of).
+    (frozenset({"POST"}),   re.compile(r"^/api/legal/working-drafts/[^/]+/release/?$")),
+)
+
+
+def _matches_legal_counsel_deny(method: str, path: str) -> bool:
+    for methods, pat in _LEGAL_COUNSEL_DENY_PATTERNS:
+        if method in methods and pat.match(path):
+            return True
+    return False
+
 
 class ReadonlyEnforcementMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):
@@ -74,6 +112,33 @@ class ReadonlyEnforcementMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         path = request.url.path
+        method = request.method
+
+        # Release-level `/api/legal/*` write? Counsel can NEVER do these —
+        # ratify, revoke, rebuild-docx, apply/import roundtrip, resolve
+        # public comment, rollback, release working draft. Non-counsel
+        # roles pass through (they hit the endpoint's own role gate).
+        if _matches_legal_counsel_deny(method, path):
+            role = _peek_role_from_request(request)
+            if role == READONLY_ROLE:
+                logger.info(
+                    "readonly_admin blocked from legal write %s %s (origin: %s)",
+                    method, path, request.headers.get("origin", "?"),
+                )
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        "detail": (
+                            "This legal-release operation is admin-only. "
+                            "Counsel can author drafts, comments, and "
+                            "roundtrips — but ratifying, rolling back, "
+                            "and releasing require a full admin."
+                        ),
+                        "readonly": True,
+                    },
+                )
+            # Not counsel → let the endpoint handle it.
+            return await call_next(request)
 
         # Not an /api/admin/* mutation → let it through (cart, checkout,
         # profile, orders, legal review, reviews, DMs, …).

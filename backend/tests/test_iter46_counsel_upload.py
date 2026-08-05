@@ -139,6 +139,10 @@ def _docx_bytes():
 
 class TestFullUpload:
     def test_counsel_md_upload(self, counsel):
+        # As of iter-47 the upload endpoint no longer rewrites the released .md
+        # directly — it creates a working draft that an admin must Release.
+        # `test_iter47_working_drafts.py` covers the full upload → mark-ready →
+        # release loop; here we just verify the upload itself for counsel.
         r = counsel.post(
             f"{BASE_URL}/api/legal/docs/{SLUG}/upload",
             files={"file": ("replacement.md", _md_bytes("md-counsel"), "text/markdown")},
@@ -146,13 +150,12 @@ class TestFullUpload:
         )
         assert r.status_code == 200, f"{r.status_code} {r.text[:400]}"
         d = r.json()
-        for key in ("bytes_written", "body_hash", "rebuilt_docx", "message"):
+        for key in ("source_slug", "working_draft_id", "state", "bytes_written"):
             assert key in d, f"missing {key} in {d}"
         assert d["source_slug"] == SLUG
+        assert d["state"] in ("draft", "awaiting_admin")
         assert isinstance(d["bytes_written"], int) and d["bytes_written"] > 0
-        assert isinstance(d["body_hash"], str) and len(d["body_hash"]) > 0
-        # persistence: source file rewritten
-        assert "TEST_iter46 md-counsel" in SOURCE.read_text(encoding="utf-8")
+        assert isinstance(d["working_draft_id"], str) and d["working_draft_id"]
 
     def test_counsel_docx_upload(self, counsel):
         r = counsel.post(
@@ -163,11 +166,11 @@ class TestFullUpload:
         )
         assert r.status_code == 200, f"{r.status_code} {r.text[:400]}"
         d = r.json()
-        for key in ("bytes_written", "body_hash", "rebuilt_docx", "message"):
-            assert key in d
-        text = SOURCE.read_text(encoding="utf-8")
-        assert "TEST_iter46 docx upload body." in text
-        assert "# Cookie Notice" in text, "heading not converted to markdown"
+        for key in ("source_slug", "working_draft_id", "state", "bytes_written"):
+            assert key in d, f"missing {key} in {d}"
+        assert d["source_slug"] == SLUG
+        # .docx → markdown conversion must have produced non-empty bytes
+        assert d["bytes_written"] > 0
 
     def test_admin_md_upload(self, admin):
         r = admin.post(
@@ -176,7 +179,10 @@ class TestFullUpload:
             timeout=180,
         )
         assert r.status_code == 200, f"{r.status_code} {r.text[:400]}"
-        assert "TEST_iter46 md-admin" in SOURCE.read_text(encoding="utf-8")
+        d = r.json()
+        assert d["source_slug"] == SLUG
+        assert d["state"] in ("draft", "awaiting_admin")
+        # Full upload → release loop is covered by test_iter47_working_drafts.py.
 
     def test_missing_file_400(self, counsel):
         r = counsel.post(f"{BASE_URL}/api/legal/docs/{SLUG}/upload",

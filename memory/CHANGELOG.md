@@ -3,6 +3,46 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-06 — Counsel middleware: `/api/legal/*` deny-list for release ops
+- Extended `ReadonlyEnforcementMiddleware` (`utils/readonly_admin.py`)
+  with a new `_LEGAL_COUNSEL_DENY_PATTERNS` list of `(method, regex)`
+  pairs. Counsel (role `readonly_admin`) attempting any of the
+  release-level ops below now gets HTTP 403 `{readonly: true, detail:
+  "…admin-only"}` from the middleware — the same shape the UI already
+  keys off of for `/api/admin/*` denies:
+    - `POST /api/legal/ratifications/{slug}` (mint version)
+    - `DELETE /api/legal/ratifications/{slug}` (revoke)
+    - `POST /api/legal/rebuild-docx`
+    - `POST /api/legal/comments/{slug}/apply-roundtrip`
+    - `POST /api/legal/comments/{slug}/import-roundtrip`
+    - `POST /api/legal/comments/{slug}/export` (GET still allowed)
+    - `POST /api/legal/comments/{slug}/{comment_id}/resolve`
+      (public-comment resolve; WD-comment resolve at
+      `/api/legal/working-drafts/…/comments/…/resolve` deliberately
+      NOT matched — counsel can still resolve their own WD threads).
+    - `POST /api/legal/history/{slug}/rollback/{ratification_id}`
+    - `POST /api/legal/working-drafts/{slug}/release`
+  Non-counsel roles pass through untouched — every route's own
+  `require_roles('admin')` still runs behind the middleware.
+- **Test tidy-up** to match documented iter-47 semantics:
+    - `test_iter46_counsel_upload.py` — the 3 upload happy-path tests
+      now assert working-draft-first response shape (`working_draft_id`,
+      `state`) instead of the pre-iter-47 immediate-.md-rewrite shape.
+      The full upload → mark-ready → release loop is covered by
+      `test_iter47_working_drafts.py`.
+    - `test_iter47_working_drafts.py::test_06_counsel_cannot_release`
+      now asserts the middleware `{readonly: true}` body shape
+      instead of the endpoint-level "Only admin can release" text
+      (the middleware returns 403 before the endpoint executes).
+    - `test_iter32_counsel_guide.py::test_pages_six_slugs` — asserts
+      the six required slugs are a SUBSET of `/api/legal/pages` rather
+      than strict equality, so adding `indemnification` (already live)
+      or future public pages doesn't break the test.
+- **Verification**: 120/120 counsel + legal pytest tests green (iter-32,
+  33, 34, 35, 36, 36b, 38, 46, 47, 48, 53). Live curl confirmed:
+  counsel gets 403 `readonly=true` on all 4 sensitive release ops;
+  admin gets 200 on the same ops.
+
 ## 2026-02-06 — Legal router split + mark-ready email fanout fix
 - **Router split**: `routers/legal.py` (2,882 lines, 41 endpoints)
   reorganized into a package `routers/legal/` with:
