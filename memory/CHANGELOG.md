@@ -3,6 +3,46 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-06 — Counsel briefing streamline · Priority One/Two + `.md` off the hub
+- **Legal Briefing for Counsel** rewritten from scratch: 754 lines → 375
+  lines (~50% shorter, source `.md`), and the `.docx` shrunk from 65 KB
+  to 48 KB. Removed the per-clause "recommended operative language"
+  bloat (23 documents × 4–8 bullet clauses) in favour of one-line
+  summaries per document. Also dropped the glossary block that spelled
+  out GDPR/HIPAA/W-9/JWT/DPA/POD/SCC/IDTA/etc — counsel already knows
+  those. Kept every substantive callout: entity/tax decision points,
+  data footprint, audit trail carve-out, EU/UK compliance frame, IP
+  landscape, financial controls, AI considerations, URL map, read-only
+  counsel credentials.
+- **Priority One / Priority Two** language replaces "Essential /
+  Optional" and the old numbered ranked list. Priority One is a single
+  bucket containing all seven public-facing documents **plus** the
+  compliance, incorporation, IP-protection, and governance instruments
+  that need to land before real counterparties can sign. Priority Two
+  holds partner instruments and advisory memos.
+- **Counsel Review Plan** rewritten similarly: 403 lines → 134 lines
+  (~66% shorter). Per-subsection minute budgets (5 min for §1, 10 min
+  for §2, etc) were removed — those read as micromanaging counsel's
+  billing. Kept the doc-level time estimates as scoping numbers.
+- **Counsel User Guide** rewritten: 175 lines → 114 lines. Removed the
+  "**push these to admin (they cost billable time)**" nudges, the "the
+  cheapest workflow for you" framing, and the §4 "What Only YOU Should
+  Do (Do Not Push to Admin)" list. Kept the paper-path / platform-path
+  option pairs for every function. Renamed "Fast Path" → "Paper" and
+  "Platform Path" → "Platform" for tone parity.
+- **`.md` file removed from the counsel-facing hub.** The download
+  index in `routers/legal/_common.py::_build_index()` no longer surfaces
+  `LEGAL_BRIEFING_FOR_COUNSEL.md`; the source `.md` still lives on disk
+  as engineering's authoring artefact but does not appear in
+  `GET /api/legal/docs`. Only `.docx` is exposed to counsel. Docs count
+  dropped from 26 → 25 as a result.
+- **Manifest display names** for the two counsel-scoping docs updated:
+  "Segmented Effort & Time Budget" → "Priority One & Priority Two";
+  "Minimise Billable Time" → dropped (title now "Counsel User Guide").
+- **Counsel Console category blurb** updated for the Briefing group:
+  "how the review works, what's in scope, and where to spend time" →
+  "the Legal Briefing and the priority-scoped review plan".
+
 ## 2026-02-06 — Counsel middleware: `/api/legal/*` deny-list for release ops
 - Extended `ReadonlyEnforcementMiddleware` (`utils/readonly_admin.py`)
   with a new `_LEGAL_COUNSEL_DENY_PATTERNS` list of `(method, regex)`

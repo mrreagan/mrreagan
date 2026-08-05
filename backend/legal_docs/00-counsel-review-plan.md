@@ -1,402 +1,134 @@
-> **FIRST DRAFT — COUNSEL REVIEW PLAN**
->
-> This is Birthright Foundation's proposed review plan for outside
-> counsel. It segments every legal instrument into **Essential**
-> (must review and ratify before any binding use) and **Optional**
-> (nice-to-have polish; can be signed off later or in batch).
->
-> Time estimates assume a competent generalist attorney reading
-> the current first drafts (which are already in accepted standard
-> boilerplate). They are budgeting numbers, not commitments.
->
-> Version: February 2026 · Birthright Foundation (birthright.live)
+# Counsel Review Plan — Priority One & Priority Two
 
+_Birthright Foundation · February 2026 · birthright.live_
 
-# Counsel Review Plan — Segmented Effort & Time Budget
+This is a scoping companion to the Legal Briefing. It lists every draft
+instrument Birthright asks counsel to review, grouped by priority and
+with a doc-level time estimate for engagement scoping. It is not a
+prescription of how counsel should spend their time — it is Birthright's
+attempt to make the ask legible in one page.
+
+Draft `.docx` for every listed instrument is available in the Counsel
+Console at `https://birthright.live/counsel`.
+
+---
 
 ## Summary
 
-| Segment                                     | Time (min) | Hours |
-|---------------------------------------------|-----------:|------:|
-| **Essential — Section A** (public + revenue) |        635 |  10.6 |
-| **Essential — Section B** (governance)       |        320 |   5.3 |
-| **Essential subtotal**                       |    **955** |**15.9** |
-| **Optional — Section C** (partner niches)    |        200 |   3.3 |
-| **Optional — Section D** (internal plans)    |        170 |   2.8 |
-| **Optional subtotal**                        |    **370** |**6.2** |
-| **Grand total (all 22 instruments)**         |  **1,325** |**22.1** |
+| Bucket | Doc-level time (min) | Hours |
+|---|---:|---:|
+| **Priority One** — public + compliance + IP + governance foundations | 1,020 | 17.0 |
+| **Priority Two** — partner instruments, charters, and internal plans | 480 | 8.0 |
+| **Grand total** | **1,500** | **25.0** |
 
-Reading assumption: 22 documents, average ~3–4 pages each, plus one
-"Nonprofit Governance Bundle" doc that is really five sub-instruments
-budgeted separately. The ISTV memo is an advisory memo, not a
-contract — it is included for context only.
-
-**Recommended sequencing**
-
-1. **Ratify Section A first** (10.6 hrs) — every public-facing +
-   revenue-adjacent document. Nothing user-hits or partner-hits
-   without a Section A ratification.
-2. **Ratify Section B next** (5.3 hrs) — governance bundle. Needed
-   before board seats are filled and before D&O policy binds.
-3. **Ratify Section C in batches** as those partner types onboard.
-4. **Section D is planning material** — can be sanity-checked with
-   the compliance vendor rather than counsel.
+Reading assumption: a US generalist with 501(c)(3) experience. Splitting
+across privacy and IP specialists is at counsel's discretion.
 
 ---
 
-## Section A — Essential · Public-Facing & Revenue (635 min · 10.6 hrs)
+## Priority One — public + compliance + IP + governance foundations
 
-The five documents any real user or partner actually reads or signs.
-Ratifying these unblocks the entire consumer-facing product.
+Everything that has to land before the platform can operate cleanly
+with real counterparties. Public documents, entity/tax posture,
+IP protection, and the governance instruments the 1023 filing needs
+are all in this bucket.
 
-### A1 · Terms of Service (`01-terms-of-service`)
-Standard 16-section consumer terms. AI clause, arbitration jurisdiction,
-sliding-scale, and print-partner data sharing are the non-standard bits.
+### The seven public-facing documents
 
-| Subsection                        | Time | Rationale |
-|-----------------------------------|-----:|-----------|
-| §§1–4 Acceptance / eligibility    |    5 | Boilerplate |
-| §5 Products / workshops / AI wallet |    15 | Confirm merchant + POD flow-through language |
-| §6 Conduct                        |    5 | Standard |
-| §7 UGC licence                    |   10 | Confirm sublicensable scope |
-| §8 AI features                    |   10 | Non-standard — human-in-loop wording |
-| §9 Payments                       |    5 | Stripe scoping |
-| §§10–13 Termination / warranty / liability / indemnity |   15 | Standard limitation-of-liability, confirm $ cap |
-| §14 Governing law                 |    5 | Confirm NC choice |
-| §§15–16 Change control / contact  |    5 | Standard |
-| **Total**                         | **75** ||
+| # | Instrument | Draft slug | Est. |
+|---|---|---|---:|
+| P1-a | Terms of Service | `01-terms-of-service` | 75 |
+| P1-b | Privacy Policy | `02-privacy-policy` | 85 |
+| P1-c | Cookie & Tracking Notice | `03-cookie-notice` | 25 |
+| P1-d | Universal Indemnification & Hold-Harmless | `04-indemnification-hold-harmless` | 60 |
+| P1-e | Sliding-Scale & Scholarship Terms | `10-sliding-scale-scholarship-terms` | 15 |
+| P1-f | Content Moderation & Community Standards | `14-community-standards` | 40 |
+| P1-g | Refund & Returns Policy | `15-refund-returns-policy` | 45 |
+| | **Subtotal — public** | | **345** |
 
-### A2 · Privacy Policy (`02-privacy-policy`)
-CCPA + GDPR-lite. The lawful-bases + subprocessor list is where
-attention is due.
+### Compliance, incorporation, IP, and governance (non-document)
 
-| Subsection                     | Time |
-|--------------------------------|-----:|
-| §§1–3 Data + purposes + bases   |   20 |
-| §4 Subprocessor list            |   15 |
-| §5 Retention schedule           |   10 |
-| §6 Rights + DSAR                |   15 |
-| §7 Security                     |   10 |
-| §§8–10 Children / AI / changes  |   10 |
-| §11 Contact + DPO reference     |    5 |
-| **Total**                       | **85** |
+These are planning documents and governance instruments — many will be
+handed to a compliance vendor (Harbor Compliance, Labyrinth, or similar)
+for filings, but counsel's review of the plan itself is Priority One.
 
-### A3 · Cookie & Tracking Notice (`03-cookie-notice`)
-Short. Focus on the third-party provider table and consent mechanics.
+| # | Work item | Draft slug (if any) | Est. |
+|---|---|---|---:|
+| P1-h | Entity formation + tax status | — (advisory) | 90 |
+| P1-i | Sales-Tax Registration Plan | `16-sales-tax-registration-plan` | 40 |
+| P1-j | Trademark Filings Plan | `17-trademark-filings-plan` | 35 |
+| P1-k | Copyright Registration Strategy | `18-copyright-registration-strategy` | 35 |
+| P1-l | Data Processing Agreement Template | `19-data-processing-agreement-template` | 70 |
+| P1-m | Nonprofit Governance Bundle (Articles, Bylaws, COI, Whistleblower, Retention) | `20-nonprofit-governance-bundle` | 55 |
+| P1-n | State Charitable Solicitation Plan | `21-charitable-solicitation-plan` | 45 |
+| P1-o | Board Member / Officer Agreement + D&O | `11-board-officer-agreement` | 70 |
+| P1-p | Ombudsman Charter | `13-ombudsman-charter` | 30 |
+| P1-q | Foundation Working-Group Volunteer Agreement | `12-volunteer-agreement` | 40 |
+| P1-r | Data Processing Agreement Template — subprocessor riders (Printful, Lulu) | derived from P1-l | 70 |
+| P1-s | Counsel Terms of Access | new — text in Legal Briefing §7.1 / draft P2-i | 10 |
+| | **Subtotal — compliance / IP / governance** | | **675** |
 
-| Subsection            | Time |
-|-----------------------|-----:|
-| Categories + controls |   10 |
-| Third-party table     |   10 |
-| Retention             |    5 |
-| **Total**             | **25** |
-
-### A4 · Universal Indemnification / Hold-Harmless (`04-indemnification-hold-harmless`)
-Signed by every workshop participant + partner. This is a real waiver — read carefully.
-
-| Subsection                    | Time |
-|-------------------------------|-----:|
-| §§1–2 Voluntary + no-advice   |   10 |
-| §3 Hold-harmless scope         |   15 |
-| §4 Indemnity by user           |   10 |
-| §§5–8 Data / conduct / version / law |   10 |
-| Enforceability under NC law    |   15 |
-| **Total**                     | **60** |
-
-### A5 · Refund & Returns Policy (`15-refund-returns-policy`)
-Consumer-facing. EU withdrawal + POD-vs-stock rules are the risk points.
-
-| Subsection                       | Time |
-|----------------------------------|-----:|
-| Products (POD vs stock)          |   15 |
-| Workshops                        |   10 |
-| Subscriptions                    |    5 |
-| AI wallet + sponsorships         |    5 |
-| EU/UK withdrawal                 |   10 |
-| **Total**                        | **45** |
-
-### A6 · Facilitator Services Agreement + IP Assignment (`05-facilitator-services-agreement`)
-Revenue-critical + IC classification.
-
-| Subsection                       | Time |
-|----------------------------------|-----:|
-| §1 IC relationship               |   10 |
-| §§2–3 Services + fees            |   15 |
-| §4 Standards of care             |   10 |
-| §5 IP (BF licence + assignment)  |   25 |
-| §6 Confidentiality               |    5 |
-| §§7–11 Term / indemnity / non-solicit / law |   25 |
-| **Total**                        | **90** |
-
-### A7 · Artist Consignment Agreement (`06-artist-consignment-agreement`)
-Title + 20% Foundation gift are custom terms.
-
-| Subsection                          | Time |
-|-------------------------------------|-----:|
-| §§1–3 Relationship + list + pricing |   20 |
-| §§4–5 Fulfilment + returns          |   10 |
-| §6 IP + publicity                   |   15 |
-| §§7–10 Payouts / term / indemnity / law |   25 |
-| **Total**                           | **70** |
-
-### A8 · Vendor Supplier / Dropship Agreement (`07-vendor-supplier-agreement`)
-Product-liability + insurance clause needs local counsel eye.
-
-| Subsection                          | Time |
-|-------------------------------------|-----:|
-| §§1–4 Relationship + listings + prices + fulfilment |   30 |
-| §5 Warranty + returns               |   15 |
-| §6 IP                               |   10 |
-| §§7–10 Payouts / indemnity / insurance / law |   30 |
-| **Total**                           | **85** |
-
-### A9 · Community Partner Referral Agreement (`08-community-partner-referral-agreement`)
-Straightforward marketing standards + attribution.
-
-| Subsection                | Time |
-|---------------------------|-----:|
-| §§1–5 IC / referral / comp / marketing |   30 |
-| §§6–9 Term / IP / indemnity / law      |   20 |
-| **Total**                 | **50** |
-
-### A10 · Sponsorship Agreement / Recognition Consent (`09-sponsorship-agreement`)
-Tax-status disclosure + recognition licence.
-
-| Subsection                     | Time |
-|--------------------------------|-----:|
-| Pledge + tax status (§§1–2)    |   15 |
-| Recognition + logo licence (§§3–4) |   15 |
-| Non-endorsement + refunds (§§5–6) |   10 |
-| Contingency + confidentiality (§§7–8) |   10 |
-| **Total**                      | **50** |
-
-**Section A subtotal: 635 minutes (10 hours 35 minutes)**
+**Priority One total: 1,020 minutes (17.0 hours).**
 
 ---
 
-## Section B — Essential · Governance (320 min · 5.3 hrs)
+## Priority Two — partner instruments, charters, and internal plans
 
-Needed before the Board seats fill and before D&O binds. Also needed to
-support the 501(c)(3) submission.
+Formalize the money flows and role relationships that already exist in
+production, plus the advisory memos. Can proceed in parallel with
+Priority One as counsel's bandwidth allows; individual items can also
+be batched when the corresponding counterparty is ready to sign.
 
-### B1 · Board Member / Officer Agreement + D&O (`11-board-officer-agreement`)
-
-| Subsection                     | Time |
-|--------------------------------|-----:|
-| §§1–3 Role / term / fiduciary   |   15 |
-| §4 Conflicts (link to policy)   |   10 |
-| §5 Confidentiality              |   10 |
-| §§6–7 Compensation / time       |    5 |
-| §8 Indemnification + D&O terms  |   20 |
-| §§9–10 Removal + law            |   10 |
-| **Total**                      | **70** |
-
-### B2 · Volunteer Agreement (`12-volunteer-agreement`)
-
-| Subsection             | Time |
-|------------------------|-----:|
-| Scope + IP + confidentiality |   20 |
-| Safety + insurance     |   10 |
-| Data / law             |   10 |
-| **Total**              | **40** |
-
-### B3 · Ombudsman Charter (`13-ombudsman-charter`)
-
-| Subsection             | Time |
-|------------------------|-----:|
-| IOA standards + scope  |   10 |
-| Confidentiality        |   10 |
-| Independence + records |   10 |
-| **Total**              | **30** |
-
-### B4 · Community Standards / Content Moderation Policy (`14-community-standards`)
-
-| Subsection             | Time |
-|------------------------|-----:|
-| Prohibited content     |   10 |
-| Handle-with-care       |    5 |
-| Enforcement ladder     |   10 |
-| Reporting + appeals    |   10 |
-| DSA scope check        |    5 |
-| **Total**              | **40** |
-
-### B5 · Sliding-Scale & Scholarship Terms (`10-sliding-scale-scholarship-terms`)
-
-| Subsection            | Time |
-|-----------------------|-----:|
-| Tier definitions      |    5 |
-| Scholarship + refunds |   10 |
-| **Total**             | **15** |
-
-### B6 · Data Processing Agreement Template (`19-data-processing-agreement-template`)
-GDPR Art. 28 template. Read once — reused per subprocessor.
-
-| Subsection                       | Time |
-|----------------------------------|-----:|
-| §§1–4 Scope / subprocessors / security |   20 |
-| §5 Breach                        |   10 |
-| §§6–8 DSAR / transfers / audit    |   15 |
-| §§9–11 Return / liability / law   |   10 |
-| Annexes 1 + 2                    |   15 |
-| **Total**                        | **70** |
-
-### B7 · Nonprofit Governance Bundle (`20-nonprofit-governance-bundle`)
-Five sub-instruments. Break them out:
-
-| Sub-doc                        | Time |
-|--------------------------------|-----:|
-| A · Articles of Incorporation  |   15 |
-| B · Bylaws                     |   20 |
-| C · Conflict-of-Interest       |   10 |
-| D · Whistleblower              |    5 |
-| E · Records Retention          |    5 |
-| **Total**                      | **55** |
-
-**Section B subtotal: 320 minutes (5 hours 20 minutes)**
+| # | Instrument | Draft slug | Est. |
+|---|---|---|---:|
+| P2-a | Facilitator Services Agreement + IP Assignment | `05-facilitator-services-agreement` | 90 |
+| P2-b | Artist Consignment / Gallery Partner Agreement | `06-artist-consignment-agreement` | 70 |
+| P2-c | Vendor Supplier / Dropship Agreement (7C's Farmstead first) | `07-vendor-supplier-agreement` | 85 |
+| P2-d | Community Partner Referral Agreement | `08-community-partner-referral-agreement` | 50 |
+| P2-e | Sponsorship Agreement + Sponsor Recognition Consent | `09-sponsorship-agreement` | 50 |
+| P2-f | Research Collaborator Honoraria Rider | to be drafted | 45 |
+| P2-g | Founding Partner Uplift Rider | to be drafted | 30 |
+| P2-h | Facilitator Curriculum Licence Rider | to be drafted | 30 |
+| P2-i | AI-Generated Content Policy | to be drafted | 25 |
+| P2-j | ISTV Contract — Business-Value & Risk Memo | `22-istv-contract-analysis-memo` | 15 |
+| | **Priority Two total** | | **480** |
 
 ---
 
-## Section C — Optional · Partner Niches (200 min · 3.3 hrs)
+## Assumptions
 
-None of these blocks a launch. Batch-review when the corresponding
-partner type onboards.
-
-### C1 · Sponsor Recognition Consent (already batched into A10 — no extra time)
-### C2 · Steward Volunteer Agreement (already covered by B2 — no extra time)
-### C3 · Research Collaborator Honoraria Rider — **to be drafted** — 45
-Standalone honoraria payment terms + IP licence for research artifacts.
-
-### C4 · Founding Partner Uplift Rider — **to be drafted** — 30
-Documents the 5% margin uplift for 5 years granted to founding vendors.
-
-### C5 · Print-Partner Sub-DPA (Printful) — 40
-Adapt DPA template to Printful's data-processing terms.
-
-### C6 · Print-Partner Sub-DPA (Lulu) — 30
-Adapt DPA template to Lulu.
-
-### C7 · Facilitator Curriculum Licence Rider — **to be drafted** — 30
-For facilitators licensing outside-created curricula into the platform.
-
-### C8 · AI-Generated Content Policy — **to be drafted** — 25
-Human-authorship documentation for any AI-composited works we do
-attempt to register.
-
-**Section C subtotal: 200 minutes (3 hours 20 minutes)**
-
----
-
-## Section D — Optional · Internal Compliance Plans (170 min · 2.8 hrs)
-
-These are planning documents, not binding contracts. Ideal for
-sign-off by a compliance vendor (Harbor Compliance, Labyrinth, or
-Foundation Group), not counsel.
-
-### D1 · Sales-Tax Registration Plan (`16-sales-tax-registration-plan`)
-| Sub | Time |
-|-----|-----:|
-| Nexus + monitoring | 20 |
-| Product taxability | 10 |
-| Marketplace facilitator | 10 |
-| **Total** | **40** |
-
-### D2 · Trademark Filings Plan (`17-trademark-filings-plan`)
-| Sub | Time |
-|-----|-----:|
-| Marks + classes | 15 |
-| Filing basis + watch service | 10 |
-| International + notice | 10 |
-| **Total** | **35** |
-
-### D3 · Copyright Registration Strategy (`18-copyright-registration-strategy`)
-| Sub | Time |
-|-----|-----:|
-| Assets + cadence | 15 |
-| AI exclusion | 10 |
-| Assignments | 10 |
-| **Total** | **35** |
-
-### D4 · State Charitable Solicitation Registration Plan (`21-charitable-solicitation-plan`)
-| Sub | Time |
-|-----|-----:|
-| NC + phase 2 states | 20 |
-| Required disclosures | 15 |
-| Vendor + renewals | 10 |
-| **Total** | **45** |
-
-### D5 · ISTV Contract Analysis Memo (`22-istv-contract-analysis-memo`)
-Advisory memo — read only if the ISTV contract is being actively
-negotiated. Otherwise archive.
-
-| Section | Time |
-|---------|-----:|
-| Scan for signature | 15 |
-
-**Section D subtotal: 170 minutes (2 hours 50 minutes)**
-
----
-
-## Assumptions & Notes
-
-- Times assume the reviewing attorney is a **US generalist with
-  501(c)(3) experience**. Specialist review (privacy specialist,
-  IP specialist) would fold in additional time — budget +25% if
-  splitting across two attorneys.
-- Times **do not include drafting time** for the four missing
-  documents flagged in Section C ("to be drafted"). Budget a
-  further **3 hours** if drafting from scratch is included.
-- Times **do not include** meeting time to discuss changes with
-  the Foundation. Budget **1 hour** per section for a wrap
-  meeting (4 sections × 1 hr = 4 hrs).
-- **Total realistic budget for full ratification** including
-  drafting-gap fills and wrap meetings: **~29 hours** of
-  attorney time.
-
----
-
-*First draft — counsel review plan. Comments to legal@birthright.live.*
+- Reading estimates are doc-level, not prescriptive. Counsel allocates
+  time as counsel sees fit.
+- Estimates exclude drafting the four **to-be-drafted** riders in
+  Priority Two (P2-f/g/h/i) and any wrap-up discussions with the
+  Foundation.
+- All drafts already carry an EU/UK compliance addendum (see below);
+  the addendum itself does not require separate review time.
 
 ---
 
 ## EU / UK Compliance Addendum
 
-This document was drafted with EU / UK regulatory alignment in mind. Where
-this document conflicts with mandatory rights of an EU or UK resident, the
-mandatory local rules prevail. In particular:
+All draft agreements were prepared with EU/UK regulatory alignment in
+mind. Mandatory local rights prevail where they conflict.
 
-- **GDPR (EU) 2016/679 and UK GDPR** apply to processing of personal data
-  of individuals in the EEA and UK. Where Birthright is the controller,
-  the lawful bases relied on are: (i) contract necessity, (ii) legitimate
-  interests (balanced by opt-out), (iii) consent (marketing and non-
-  essential cookies), and (iv) legal obligation.
-- **ePrivacy Directive (2002/58/EC as amended)** applies to cookies and
-  similar tracking. Non-essential cookies require prior opt-in consent.
-- **EU Consumer Rights Directive (2011/83/EU)** — EU/UK consumers have
-  a 14-day right of withdrawal on distance sales of goods and most
-  digital services. Where a workshop or digital product has been fully
-  performed with the consumer's prior consent, the right may be lost.
-- **Digital Services Act (Regulation 2022/2065)** applies to online
-  intermediaries offering services in the EU; Birthright's community
-  features (posts, DMs, disputes) fall within scope. A single point of
-  contact is designated at eu-contact@birthright.live.
-- **EU AI Act (Regulation 2024/1689)** applies to providers and deployers
-  of AI systems affecting EU users. Birthright's AI features (Help
-  Assistant, image generation, image captioning) are labeled as AI-
-  assisted and are not used for automated decisions with legal effect.
-- **Data transfers out of the EEA/UK/CH** rely on the EU Standard
-  Contractual Clauses (2021/914) and the UK International Data Transfer
-  Addendum, with a transfer-impact assessment on file for each sub-
-  processor.
-- **Data Protection Officer (DPO)** — Birthright will designate a DPO
-  once threshold criteria under GDPR Art. 37 are met. Contact:
-  dpo@birthright.live.
-- **DSAR window** — subject access, rectification, erasure, portability,
-  and objection requests are responded to within **30 days** (extendable
-  by 60 days for complex requests) at privacy@birthright.live.
-- **Supervisory authority** — EU/UK residents may lodge a complaint with
-  their local supervisory authority; a list is available at
-  https://edpb.europa.eu/about-edpb/about-edpb/members_en (EU) and
-  https://ico.org.uk (UK).
-- **VAT** — Where Birthright's EU B2C digital-service or goods sales
-  cross applicable thresholds, VAT registration (One-Stop-Shop or
-  country-by-country) will be completed.
+- **GDPR / UK-GDPR.** Lawful bases mapped: contract necessity,
+  legitimate interests (opt-out), consent (marketing / non-essential
+  cookies), legal obligation.
+- **ePrivacy.** Non-essential cookies require prior opt-in consent.
+- **Consumer Rights Directive (2011/83/EU).** 14-day right of withdrawal
+  on distance sales of goods and most digital services (may be lost
+  where a workshop or digital product is fully performed with prior
+  consent).
+- **Digital Services Act (Reg. 2022/2065).** Community features fall
+  in scope; single point of contact: `eu-contact@birthright.live`.
+- **EU AI Act (Reg. 2024/1689).** AI features are labelled AI-assisted
+  and are not used for automated decisions with legal effect.
+- **International transfers.** EU SCCs (2021/914) + UK IDTA per
+  sub-processor, with a transfer-impact assessment on file.
+- **DPO.** `dpo@birthright.live` will be designated once GDPR Art. 37
+  thresholds are met.
+- **DSAR window.** 30 days (extendable 60 for complex requests) at
+  `privacy@birthright.live`.
+- **VAT.** One-Stop-Shop or country-by-country registration will be
+  completed once thresholds are crossed.

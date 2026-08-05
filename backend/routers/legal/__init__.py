@@ -34,6 +34,7 @@ from ._common import (  # noqa: F401  (public API surface)
     _email_working_draft_ready,
     _email_roundtrip_summary,
     _send_legal_mention_digests,
+    _send_realtime_mention_emails,
     _parse_mentions,
     _summarise_wd_change_log,
     _build_redline_docx,

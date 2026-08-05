@@ -25,8 +25,10 @@ LEGAL_DOC_DIR = Path(__file__).resolve().parent.parent.parent / "legal_docs"
 # ---- _build_index (was L31-L69) ----
 def _build_index():
     """Assemble the download index — the counsel briefing + every generated
-    draft `.docx` in /app/backend/legal_docs/. .docx is the standard output
-    format for this project."""
+    draft `.docx` in /app/backend/legal_docs/. Only `.docx` files are exposed
+    to counsel; source `.md` files live on disk as an engineering-side
+    authoring artefact and are not surfaced in the download hub.
+    """
     idx = {
         "counsel-briefing-docx": {
             "filename": "LEGAL_BRIEFING_FOR_COUNSEL.docx",
@@ -34,13 +36,6 @@ def _build_index():
             "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "category": "Briefing",
             "source_slug": None,   # not in the working-draft manifest
-        },
-        "counsel-briefing-md": {
-            "filename": "LEGAL_BRIEFING_FOR_COUNSEL.md",
-            "display_name": "Legal Briefing for Counsel (source).md",
-            "content_type": "text/markdown; charset=utf-8",
-            "category": "Briefing",
-            "source_slug": None,
         },
     }
     # Auto-discover drafts by manifest slug — .docx preferred, .md fallback.
@@ -525,6 +520,99 @@ def _parse_mentions(body: str) -> list[str]:
             found.append(role)
     return found
 
+
+# Mapping @mention role -> User.role in the DB. `@admin` = admins;
+# `@counsel` = the counsel readonly_admin account(s).
+_MENTION_ROLE_TO_DB_ROLE = {"admin": "admin", "counsel": "readonly_admin"}
+
+
+async def _send_realtime_mention_emails(comment: dict) -> list[str]:
+    """Immediate email dispatch for @mentions to users who opted into
+    `realtime` mention notifications. Called from create_wd_comment.
+
+    Returns the roles that were successfully notified this way so the
+    caller can flag `mention_digest_sent_at` and skip them in the
+    daily digest. Never raises — email failures degrade to next-day
+    digest coverage.
+    """
+    from database import db
+    from utils.mailer import send_email
+
+    mentions = comment.get("mentions") or []
+    if not mentions:
+        return []
+
+    _, title = _SOURCE_TO_PUBLIC.get(
+        comment.get("source_slug"),
+        (comment.get("source_slug"),
+         (comment.get("source_slug") or "").replace("-", " ").title()),
+    )
+    anchor = (
+        f"line {comment.get('line_number')}"
+        if comment.get("line_number") else "general note"
+    )
+    body_esc = (comment.get("body") or "").replace("<", "&lt;").replace(">", "&gt;")
+    author = comment.get("author_email") or "someone"
+    site_url = os.environ.get("PUBLIC_SITE_URL", "").rstrip("/") or ""
+
+    successfully_notified: list[str] = []
+    for role in mentions:
+        db_role = _MENTION_ROLE_TO_DB_ROLE.get(role)
+        if not db_role:
+            continue
+        recipients: list[str] = []
+        async for u in db.users.find(
+            {"role": db_role, "mention_email_frequency": "realtime"},
+            {"_id": 0, "email": 1},
+        ):
+            em = u.get("email")
+            if em and em not in recipients:
+                recipients.append(em)
+        if not recipients:
+            continue
+
+        subject = f"@{role} mention · {title} · from {author}"
+        html = f"""
+        <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#1A2424">
+          <h2 style="font-family:'Cormorant Garamond',serif;color:#0F2424">You were mentioned in a legal review comment</h2>
+          <p><strong>Document:</strong> {title} · <em>{anchor}</em></p>
+          <p style="color:#5C6B6B;font-size:12px">from {author} · {comment.get('created_at','')}</p>
+          <div style="border-left:3px solid #C9A961;margin:12px 0;padding:8px 12px;background:#FAF7F0;white-space:pre-wrap;color:#0F2424">{body_esc}</div>
+          <p style="color:#5C6B6B;font-size:14px">
+            Reply, resolve, or reassign at
+            <a href="{site_url}/counsel" style="color:#476B6B"><strong>{site_url or ''}/counsel</strong></a>.
+          </p>
+          <p style="color:#5C6B6B;font-size:12px">
+            You get this immediately because your mention-email preference is
+            set to <strong>real time</strong>. Switch to <em>daily digest</em>
+            in your profile if you'd prefer one summary per day.
+          </p>
+        </div>
+        """
+        text = (
+            f"You were mentioned in a legal review comment · {title} · {anchor}\n"
+            f"from {author} · {comment.get('created_at','')}\n\n"
+            f"{(comment.get('body') or '').strip()[:1000]}\n\n"
+            f"Open at {site_url}/counsel\n"
+        )
+        try:
+            await send_email(
+                to=recipients,
+                subject=subject,
+                html=html,
+                text=text,
+                template_name="legal_mention_realtime",
+                metadata={
+                    "role": role,
+                    "comment_id": comment.get("id"),
+                    "source_slug": comment.get("source_slug"),
+                },
+            )
+            successfully_notified.append(role)
+        except Exception as exc:
+            logger.warning("legal.mention.realtime send failed for %s: %s", role, exc)
+    return successfully_notified
+
 # ---- _send_legal_mention_digests (was L1585-L1739) ----
 async def _send_legal_mention_digests() -> dict:
     """Daily digest job — one email per role summarising every unresolved
@@ -577,13 +665,19 @@ async def _send_legal_mention_digests() -> dict:
             if m in per_role:
                 per_role[m].append(c)
 
-    # Look up users per role.
+    # Look up users per role. EXCLUDE users on `realtime` mention email
+    # frequency — they got their email at post time; the digest is
+    # explicitly the once-daily rollup for the `daily` cohort.
     role_to_recipients: dict[str, list[str]] = {}
     for role, mapped_role in (("admin", "admin"), ("counsel", "readonly_admin")):
         if not per_role[role]:
             continue
         emails: list[str] = []
-        async for u in db.users.find({"role": mapped_role}, {"_id": 0, "email": 1}):
+        async for u in db.users.find(
+            {"role": mapped_role,
+             "mention_email_frequency": {"$ne": "realtime"}},
+            {"_id": 0, "email": 1},
+        ):
             em = u.get("email")
             if em and em not in emails:
                 emails.append(em)
@@ -597,8 +691,12 @@ async def _send_legal_mention_digests() -> dict:
     sent_count = 0
     # Track (comment_id → set of roles successfully notified this run) so
     # a partial-failure across roles doesn't silently drop the still-pending
-    # role.
-    role_success_by_comment: dict[str, set[str]] = {}
+    # role. Seed with any roles that were already delivered via realtime
+    # dispatch at post-time so the fully-notified check treats them as done.
+    role_success_by_comment: dict[str, set[str]] = {
+        c["id"]: set(c.get("mention_realtime_notified_roles") or [])
+        for c in pending
+    }
 
     for role, recipients in role_to_recipients.items():
         comments = per_role[role]

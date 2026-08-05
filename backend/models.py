@@ -44,6 +44,9 @@ class UserProfile(BaseModel):
     credentials: Optional[str] = None
     governance_member: bool = False
     is_ombudsman: bool = False
+    # `daily` = batched into the once-daily @mention digest (default);
+    # `realtime` = individual email as soon as a comment mentions you.
+    mention_email_frequency: str = "daily"
     created_at: str
 
 
@@ -54,6 +57,7 @@ class UserUpdate(BaseModel):
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
     credentials: Optional[str] = None
+    mention_email_frequency: Optional[str] = None
 
 
 # ============ WORKSHOPS ============

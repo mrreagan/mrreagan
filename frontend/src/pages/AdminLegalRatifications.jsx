@@ -137,6 +137,27 @@ export default function AdminLegalRatifications() {
     }
   };
 
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyBody, setReplyBody] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
+  const postReply = async (parentId) => {
+    if (!sourceSlug) return;
+    const body = replyBody.trim();
+    if (!body) { toast.error("Reply body required"); return; }
+    setReplyBusy(true);
+    try {
+      await api.post(`/legal/comments/${sourceSlug}`, {
+        body, kind: "comment", parent_id: parentId,
+      });
+      const c = await api.get(`/legal/comments/${sourceSlug}`);
+      setComments((old) => ({ ...old, [sourceSlug]: c.data || [] }));
+      setReplyingTo(null);
+      setReplyBody("");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Reply failed");
+    } finally { setReplyBusy(false); }
+  };
+
   const resolve = async (id) => {
     if (!sourceSlug) return;
     try {
@@ -524,30 +545,84 @@ export default function AdminLegalRatifications() {
                   {openComments.length === 0 && (
                     <li className="text-xs text-[#5C6B6B]">No comments yet.</li>
                   )}
-                  {openComments.map((c) => (
-                    <li key={c.id} className={`border-l-2 pl-3 ${c.resolved ? "border-[#2E5C46] opacity-60" : "border-[#C9A961]"}`} data-testid={`legal-comment-${c.id}`}>
-                      <p className="text-[10px] uppercase tracking-wider text-[#476B6B] font-semibold">
-                        {c.kind}
-                        {c.section ? ` · ${c.section}` : ""}
-                        {c.resolved ? " · resolved" : ""}
-                      </p>
-                      {c.quoted_text && (
-                        <p className="text-xs italic text-[#5C6B6B] mt-1">&ldquo;{c.quoted_text}&rdquo;</p>
-                      )}
-                      {c.suggested_replacement && (
-                        <p className="text-xs text-[#1E4030] mt-1">→ {c.suggested_replacement}</p>
-                      )}
-                      <p className="text-sm text-[#0F2424] mt-1">{c.body}</p>
-                      <p className="text-[10px] text-[#5C6B6B] mt-1">
-                        {c.author_email} · {new Date(c.created_at).toLocaleString()}
-                      </p>
-                      {isAdmin && !c.resolved && (
-                        <button onClick={() => resolve(c.id)} className="text-[10px] text-[#2E5C46] hover:underline inline-flex items-center gap-1 mt-1" data-testid={`legal-comment-resolve-${c.id}`}>
-                          <Check size={10} /> Mark resolved
-                        </button>
-                      )}
-                    </li>
-                  ))}
+                  {openComments.filter((c) => !c.parent_id).map((c) => {
+                    const replies = openComments.filter((r) => r.parent_id === c.id);
+                    return (
+                      <li key={c.id} className={`border-l-2 pl-3 ${c.resolved ? "border-[#2E5C46] opacity-60" : "border-[#C9A961]"}`} data-testid={`legal-comment-${c.id}`}>
+                        <p className="text-[10px] uppercase tracking-wider text-[#476B6B] font-semibold">
+                          {c.kind}
+                          {c.section ? ` · ${c.section}` : ""}
+                          {c.resolved ? " · resolved" : ""}
+                        </p>
+                        {c.quoted_text && (
+                          <p className="text-xs italic text-[#5C6B6B] mt-1">&ldquo;{c.quoted_text}&rdquo;</p>
+                        )}
+                        {c.suggested_replacement && (
+                          <p className="text-xs text-[#1E4030] mt-1">→ {c.suggested_replacement}</p>
+                        )}
+                        <p className="text-sm text-[#0F2424] mt-1">{c.body}</p>
+                        <p className="text-[10px] text-[#5C6B6B] mt-1">
+                          {c.author_email} · {new Date(c.created_at).toLocaleString()}
+                        </p>
+                        <div className="mt-1 flex gap-3">
+                          <button
+                            onClick={() => { setReplyingTo(c.id); setReplyBody(""); }}
+                            className="text-[10px] text-[#476B6B] hover:underline"
+                            data-testid={`legal-comment-reply-${c.id}`}
+                          >
+                            Reply
+                          </button>
+                          {isAdmin && !c.resolved && (
+                            <button onClick={() => resolve(c.id)} className="text-[10px] text-[#2E5C46] hover:underline inline-flex items-center gap-1" data-testid={`legal-comment-resolve-${c.id}`}>
+                              <Check size={10} /> Mark resolved
+                            </button>
+                          )}
+                        </div>
+
+                        {replies.length > 0 && (
+                          <ul className="mt-2 ml-3 pl-3 border-l border-[#E5E1D8] space-y-2">
+                            {replies.map((r) => (
+                              <li key={r.id} className="text-xs" data-testid={`legal-comment-reply-item-${r.id}`}>
+                                <p className="text-[#0F2424]">{r.body}</p>
+                                <p className="text-[10px] text-[#5C6B6B] mt-0.5">
+                                  {r.author_email} · {new Date(r.created_at).toLocaleString()}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        {replyingTo === c.id && (
+                          <div className="mt-2 ml-3 pl-3 border-l border-[#C9A961]" data-testid={`legal-comment-reply-form-${c.id}`}>
+                            <textarea
+                              value={replyBody}
+                              onChange={(e) => setReplyBody(e.target.value)}
+                              placeholder="Write a reply…"
+                              className="input input-bordered w-full text-sm min-h-[54px]"
+                              data-testid={`legal-comment-reply-textarea-${c.id}`}
+                            />
+                            <div className="mt-1 flex gap-2">
+                              <button
+                                onClick={() => postReply(c.id)}
+                                disabled={replyBusy || !replyBody.trim()}
+                                className="btn-primary text-xs"
+                                data-testid={`legal-comment-reply-submit-${c.id}`}
+                              >
+                                {replyBusy ? "Posting…" : "Reply"}
+                              </button>
+                              <button
+                                onClick={() => { setReplyingTo(null); setReplyBody(""); }}
+                                className="btn-ghost text-xs"
+                                data-testid={`legal-comment-reply-cancel-${c.id}`}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
 

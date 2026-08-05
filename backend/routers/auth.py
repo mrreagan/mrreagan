@@ -139,6 +139,9 @@ async def me(user: dict = Depends(get_current_user)):
 @router.put("/me", response_model=UserProfile)
 async def update_me(updates: UserUpdate, user: dict = Depends(get_current_user)):
     update_data = updates.model_dump(exclude_none=True)
+    freq = update_data.get("mention_email_frequency")
+    if freq is not None and freq not in ("daily", "realtime"):
+        raise HTTPException(status_code=400, detail="mention_email_frequency must be 'daily' or 'realtime'")
     if update_data:
         await db.users.update_one({"id": user["id"]}, {"$set": update_data})
     return await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})

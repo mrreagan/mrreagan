@@ -24,6 +24,7 @@ from ._common import (
     _upsert_working_draft,
     _parse_mentions,
     _send_legal_mention_digests,
+    _send_realtime_mention_emails,
     _SOURCE_TO_PUBLIC,
     _build_redline_docx,
     _extract_paragraph_text,
@@ -121,6 +122,11 @@ async def create_wd_comment(
         # this mention has been included in a digest email so we don't
         # notify twice for the same mention.
         "mention_digest_sent_at": None,
+        # Roles whose realtime-preference users were emailed immediately
+        # (fire-and-forget from below). The daily digest job seeds its
+        # per-comment "already notified" set from this list so realtime
+        # roles don't also get counted in the batch.
+        "mention_realtime_notified_roles": [],
         "author_id": user["id"],
         "author_email": user.get("email"),
         "author_role": user.get("role"),
@@ -130,9 +136,27 @@ async def create_wd_comment(
         "resolved_by_email": None,
     }
     await db.legal_working_draft_comments.insert_one(dict(doc))
-    # Per-comment mention email intentionally removed — mentions now
-    # roll up into a once-daily digest to prevent inbox flooding.
-    # See _send_legal_mention_digests scheduler job.
+
+    # Fire the realtime @mention emails inline (fast; per-role query on
+    # users where mention_email_frequency='realtime'). If ALL mentioned
+    # roles were successfully notified in realtime, mark the comment
+    # `mention_digest_sent_at=now` so the daily digest skips it entirely.
+    # If some roles only have daily-preference users, those still get
+    # the digest tomorrow — no double-notification either way.
+    if mentions:
+        try:
+            realtime_roles = await _send_realtime_mention_emails(doc)
+        except Exception as exc:
+            logger.warning("legal.mention.realtime dispatch raised: %s", exc)
+            realtime_roles = []
+        if realtime_roles:
+            updates: dict = {"mention_realtime_notified_roles": realtime_roles}
+            if set(realtime_roles) >= set(mentions):
+                updates["mention_digest_sent_at"] = now_iso()
+            await db.legal_working_draft_comments.update_one(
+                {"id": doc["id"]}, {"$set": updates},
+            )
+            doc.update(updates)
     return doc
 
 # ---- manual_mention_digest (was L1742-L1757) ----
@@ -248,7 +272,17 @@ async def add_comment(
     request: Request,
     user: dict = Depends(require_roles("admin")),
 ):
-    """Add a redline comment (or a general note) on a legal doc."""
+    """Add a redline comment (or a reply to one) on a legal doc.
+
+    Payload:
+      body                  (str, required)
+      section               (str, optional)
+      kind                  (comment | redline)
+      quoted_text           (str, optional)
+      suggested_replacement (str, optional)
+      parent_id             (str, optional) — if replying to another comment
+                            in the same source doc; enables threading.
+    """
     from database import db
     fp = LEGAL_DOC_DIR / f"{source_slug}.md"
     if not fp.exists():
@@ -256,12 +290,21 @@ async def add_comment(
     body = (payload.get("body") or "").strip()
     if not body:
         raise HTTPException(status_code=400, detail="body required")
+    parent_id = (payload.get("parent_id") or "").strip() or None
+    if parent_id:
+        parent = await db.legal_doc_comments.find_one(
+            {"id": parent_id, "source_slug": source_slug},
+            {"_id": 0, "id": 1},
+        )
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent comment not found on this doc.")
     rec = {
         "id": gen_id(),
         "source_slug": source_slug,
         "section": (payload.get("section") or "").strip() or None,
         "quoted_text": (payload.get("quoted_text") or "").strip() or None,
         "suggested_replacement": (payload.get("suggested_replacement") or "").strip() or None,
+        "parent_id": parent_id,
         "body": body,
         "kind": payload.get("kind") or "comment",   # comment | redline | resolved
         "resolved": False,
@@ -276,7 +319,7 @@ async def add_comment(
     await log_action(
         db, user, "legal.doc.comment.add",
         target_type="legal_doc", target_id=source_slug,
-        metadata={"kind": rec["kind"], "section": rec["section"]},
+        metadata={"kind": rec["kind"], "section": rec["section"], "parent_id": parent_id},
     )
     rec.pop("_id", None)
     return rec

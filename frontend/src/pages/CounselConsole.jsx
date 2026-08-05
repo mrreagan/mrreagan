@@ -46,7 +46,7 @@ const CATEGORY_ORDER = [
   "Advisory memos",
 ];
 const CATEGORY_BLURB = {
-  "Briefing": "Orientation material for counsel — how the review works, what's in scope, and where to spend time.",
+  "Briefing": "Orientation material — the Legal Briefing and the priority-scoped review plan.",
   "Public-facing": "Notices rendered on the public site under /legal/*. Full working-draft workflow available.",
   "Partner agreements": "Contracts for facilitators, artists, vendors, community partners, and sponsors.",
   "Governance": "Board, officer, volunteer, ombudsman, and nonprofit governance instruments.",
@@ -56,10 +56,25 @@ const CATEGORY_BLURB = {
 };
 
 export default function CounselConsole() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const isAdmin = user?.role === "admin";
   const isCounsel = user?.role === "readonly_admin";
   const canEdit = isAdmin || isCounsel;
+  const mentionFrequency = user?.mention_email_frequency || "daily";
+  const [freqBusy, setFreqBusy] = useState(false);
+  const setMentionFrequency = async (next) => {
+    if (next === mentionFrequency) return;
+    setFreqBusy(true);
+    try {
+      await api.put("/auth/me", { mention_email_frequency: next });
+      await refreshUser();
+      toast.success(next === "realtime"
+        ? "You'll now get each @mention as a live email."
+        : "You'll now get one daily digest of @mentions.");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Could not update preference");
+    } finally { setFreqBusy(false); }
+  };
 
   const [docs, setDocs] = useState([]);
   const [pages, setPages] = useState([]);
@@ -324,6 +339,35 @@ export default function CounselConsole() {
           >
             <Archive size={12} /> {bundleBusy ? "Zipping…" : `Download all ${totalCount} docs (.zip)`}
           </button>
+        )}
+        {canEdit && (
+          <div className="mt-4 pt-4 border-t border-[#E5E1D8]" data-testid="counsel-mention-freq">
+            <p className="text-[11px] uppercase tracking-wider text-[#5C6B6B] font-semibold mb-2">
+              @mention emails
+            </p>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {["daily", "realtime"].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setMentionFrequency(f)}
+                  disabled={freqBusy}
+                  className={`px-3 py-1.5 rounded-full border transition-colors ${
+                    mentionFrequency === f
+                      ? "bg-[#0F2424] border-[#0F2424] text-[#FAF7F0] font-semibold"
+                      : "bg-white border-[#D6CFC2] text-[#0F2424] hover:border-[#476B6B]"
+                  }`}
+                  data-testid={`counsel-mention-freq-${f}`}
+                >
+                  {f === "daily" ? "Daily digest" : "Real-time"}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-[#5C6B6B] mt-2 leading-relaxed">
+              {mentionFrequency === "realtime"
+                ? "You'll get a live email each time someone @-mentions your role. Great for active review sprints."
+                : "You'll get one summary email per day of unresolved @mentions. Good for keeping the inbox calm."}
+            </p>
+          </div>
         )}
       </div>
 
