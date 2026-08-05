@@ -38,12 +38,14 @@ def _build_index():
             "display_name": "Legal Briefing for Counsel (birthright.live).docx",
             "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "category": "Briefing",
+            "source_slug": None,   # not in the working-draft manifest
         },
         "counsel-briefing-md": {
             "filename": "LEGAL_BRIEFING_FOR_COUNSEL.md",
             "display_name": "Legal Briefing for Counsel (source).md",
             "content_type": "text/markdown; charset=utf-8",
             "category": "Briefing",
+            "source_slug": None,
         },
     }
     # Auto-discover drafts by manifest slug — .docx preferred, .md fallback.
@@ -62,6 +64,7 @@ def _build_index():
                 "display_name": f"{d['display_name']}.docx",
                 "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 "category": d.get("category", "Draft"),
+                "source_slug": slug,   # for /working-drafts endpoints
             }
     return idx
 
@@ -408,11 +411,13 @@ async def list_signatures(
 # ============ COUNSEL-FACING STATIC LEGAL DOCS ============
 
 @router.get("/docs")
-async def list_legal_docs(user: dict = Depends(require_roles("admin"))):
-    """List the static legal documents an admin can download.
+async def list_legal_docs():
+    """List the static legal documents anyone can download.
 
-    Kept admin-only because these docs (currently the counsel briefing) can
-    contain internal notes not meant for public consumption.
+    Public — the /counsel console lets any visitor download the current
+    draft artefacts (briefing, public-facing policies, partner agreements,
+    etc.). Admin + counsel additionally see the full working-draft
+    workflow gated in the UI.
     """
     out = []
     for key, meta in LEGAL_DOC_INDEX.items():
@@ -423,6 +428,7 @@ async def list_legal_docs(user: dict = Depends(require_roles("admin"))):
             "key": key,
             "display_name": meta["display_name"],
             "category": meta.get("category", "Draft"),
+            "source_slug": meta.get("source_slug"),
             "size_bytes": fp.stat().st_size,
             "download_url": f"/api/legal/docs/{key}",
         })
@@ -430,8 +436,8 @@ async def list_legal_docs(user: dict = Depends(require_roles("admin"))):
 
 
 @router.get("/docs/{key}")
-async def download_legal_doc(key: str, user: dict = Depends(require_roles("admin"))):
-    """Stream the requested legal document as a download. Admin-only."""
+async def download_legal_doc(key: str):
+    """Stream the requested legal document as a download. Public."""
     meta = LEGAL_DOC_INDEX.get(key)
     if not meta:
         raise HTTPException(status_code=404, detail="Unknown legal document")

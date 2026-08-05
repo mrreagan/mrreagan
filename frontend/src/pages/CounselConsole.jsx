@@ -1,28 +1,32 @@
 /**
- * CounselConsole — filtered admin console for counsel (and admin).
+ * CounselConsole — the single legal-documents hub for the whole platform.
  *
- * Route: /counsel
+ * Route: /counsel (public — no auth required for downloads)
  *
- * The public site keeps rendering the RELEASED .md until an admin
- * explicitly promotes the working draft via "Release as v{N}".
+ * What it does:
+ *   - Anyone can download every legal draft artefact (briefing, public-
+ *     facing policies, partner agreements, governance, compliance, IP,
+ *     advisory memos) organised by the same categories as the admin site.
+ *   - Admin + counsel (`readonly_admin`) additionally see the full
+ *     working-draft workflow per doc: upload replacements, download the
+ *     working draft, view diff, add inline comments, mark ready, and
+ *     admin can release / discard / roll back.
+ *   - `/admin/legal-docs` now redirects here — one hub, no redundant page.
  *
- * Counsel can:
- *   - Download the released .docx
- *   - Upload a full replacement (.md or .docx) → creates/updates a working draft
- *   - Download the current working draft as .docx (for offline editing)
- *   - Mark the working draft "Ready for admin review"
- *   - Jump into the deep redline editor at /admin/legal/ratifications
- *
- * Admin can do everything counsel can, plus:
- *   - Release the working draft (auto-bumps minor version; override in modal)
- *   - Discard the working draft
+ * Data flow:
+ *   - `GET /api/legal/docs` → every draft artefact with {key, display_name,
+ *     category, source_slug (nullable), size_bytes, download_url}.
+ *   - `GET /api/legal/pages` → public-facing subset used to link to the
+ *     rendered /legal/{slug} page.
+ *   - `GET /api/legal/ratifications` + `GET /api/legal/working-drafts`
+ *     drive the release badge and workflow badges.
  */
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft, Upload, Download, ShieldCheck, CheckCircle2,
-  Clock, MessageSquare, Send, Trash2, GitCompare, History,
-  MessageCircle, FileText,
+  Clock, Send, Trash2, GitCompare, History, MessageCircle,
+  FileText, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
@@ -31,64 +35,78 @@ import { ReleaseModal } from "../components/counsel/ReleaseModal";
 import { DiffModal } from "../components/counsel/DiffModal";
 import { HistoryModal } from "../components/counsel/HistoryModal";
 
+// Preferred category ordering — mirrors the admin /admin/legal-docs view.
+const CATEGORY_ORDER = [
+  "Briefing",
+  "Public-facing",
+  "Partner agreements",
+  "Governance",
+  "Internal / Compliance",
+  "Internal / IP",
+  "Advisory memos",
+];
+const CATEGORY_BLURB = {
+  "Briefing": "Orientation material for counsel — how the review works, what's in scope, and where to spend time.",
+  "Public-facing": "Notices rendered on the public site under /legal/*. Full working-draft workflow available.",
+  "Partner agreements": "Contracts for facilitators, artists, vendors, community partners, and sponsors.",
+  "Governance": "Board, officer, volunteer, ombudsman, and nonprofit governance instruments.",
+  "Internal / Compliance": "Tax, charitable solicitation, and other regulatory playbooks.",
+  "Internal / IP": "Trademark and copyright strategy documents.",
+  "Advisory memos": "Analytical memos and one-off legal opinions on specific business decisions.",
+};
+
 export default function CounselConsole() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const isCounsel = user?.role === "readonly_admin";
+  const canEdit = isAdmin || isCounsel;
 
+  const [docs, setDocs] = useState([]);
   const [pages, setPages] = useState([]);
   const [ratifications, setRatifications] = useState([]);
   const [workingDrafts, setWorkingDrafts] = useState([]);
-  const [briefingDocs, setBriefingDocs] = useState([]);
   const [busy, setBusy] = useState({});
-  const [releaseModal, setReleaseModal] = useState(null); // { slug, defaultVersion }
-  const [diffModal, setDiffModal] = useState(null); // { slug, title, released, working, wd }
-  const [historyModal, setHistoryModal] = useState(null); // { slug, title }
+  const [releaseModal, setReleaseModal] = useState(null);
+  const [diffModal, setDiffModal] = useState(null);
+  const [historyModal, setHistoryModal] = useState(null);
 
   const loadAll = async () => {
     try {
-      const [p, r, w, d] = await Promise.all([
-        api.get("/legal/pages"),
-        api.get("/legal/ratifications"),
-        api.get("/legal/working-drafts"),
+      // /docs and /pages are public; ratifications + working-drafts
+      // are role-gated. Guard against 403 so the anonymous experience
+      // still renders every download.
+      const [d, p] = await Promise.all([
         api.get("/legal/docs"),
+        api.get("/legal/pages"),
       ]);
+      setDocs(d.data || []);
       setPages(p.data || []);
-      setRatifications(r.data || []);
-      setWorkingDrafts(w.data || []);
-      // Briefing = counsel-orientation docs (Legal Briefing, Review Plan,
-      // User Guide). They live in the same /legal/docs index; filter by
-      // category. These are read-only reference material.
-      setBriefingDocs((d.data || []).filter((x) => x.category === "Briefing"));
+      if (canEdit) {
+        const [r, w] = await Promise.all([
+          api.get("/legal/ratifications"),
+          api.get("/legal/working-drafts"),
+        ]);
+        setRatifications(r.data || []);
+        setWorkingDrafts(w.data || []);
+      } else {
+        setRatifications([]);
+        setWorkingDrafts([]);
+      }
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Could not load counsel console");
+      toast.error(e?.response?.data?.detail || "Could not load legal docs");
     }
   };
+  useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, [canEdit]);
 
-  useEffect(() => { loadAll(); }, []);
-
-  // Public slug → source_slug map (mirrors PUBLIC_LEGAL_PAGES in the backend)
-  const SOURCE_SLUG = {
-    "terms": "01-terms-of-service",
-    "privacy": "02-privacy-policy",
-    "cookie-notice": "03-cookie-notice",
-    "indemnification": "04-indemnification-hold-harmless",
-    "refunds": "15-refund-returns-policy",
-    "scholarships": "10-sliding-scale-scholarship-terms",
-    "community-standards": "14-community-standards",
-  };
-
-  // Index working drafts by source_slug for quick lookup
   const wdBySlug = useMemo(() => {
     const m = {};
-    (workingDrafts || []).forEach((w) => { m[w.source_slug] = w; });
+    workingDrafts.forEach((w) => { m[w.source_slug] = w; });
     return m;
   }, [workingDrafts]);
 
-  // Latest ratification per source_slug
-  const ratifiedBySlug = useMemo(() => {
+  const ratBySlug = useMemo(() => {
     const m = {};
-    (ratifications || []).forEach((r) => {
+    ratifications.forEach((r) => {
       if (!m[r.source_slug] || r.ratified_at > m[r.source_slug].ratified_at) {
         m[r.source_slug] = r;
       }
@@ -96,39 +114,71 @@ export default function CounselConsole() {
     return m;
   }, [ratifications]);
 
-  const setRowBusy = (slug, k, v) => setBusy((b) => ({ ...b, [`${slug}:${k}`]: v }));
+  const publicSlugBySource = useMemo(() => {
+    const m = {};
+    // Reverse the backend's SOURCE → PUBLIC map. `/legal/pages` returns
+    // {slug: <public>, title, ratified_source} where the public slug maps
+    // 1:1 to a source slug we already know from the doc list.
+    const KNOWN = {
+      "01-terms-of-service": "terms",
+      "02-privacy-policy": "privacy",
+      "03-cookie-notice": "cookie-notice",
+      "04-indemnification-hold-harmless": "indemnification",
+      "10-sliding-scale-scholarship-terms": "scholarships",
+      "14-community-standards": "community-standards",
+      "15-refund-returns-policy": "refunds",
+    };
+    pages.forEach((p) => {
+      const source = Object.entries(KNOWN).find(([, pub]) => pub === p.slug)?.[0];
+      if (source) m[source] = p.slug;
+    });
+    return m;
+  }, [pages]);
 
-  // -------- actions --------
-  const uploadFullReplacement = async (sourceSlug, file) => {
-    if (!file) return;
-    if (!window.confirm(`Upload ${file.name} as the working version for this notice? The public site will still show the released version until an admin releases the working draft.`)) return;
-    setRowBusy(sourceSlug, "upload", true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const r = await api.post(`/legal/docs/${sourceSlug}/upload`, fd);
-      toast.success(`Working draft updated · ${r.data.bytes_written} bytes · state ${r.data.state}`);
-      await loadAll();
-    } catch (e) {
-      toast.error(e?.response?.data?.detail || "Upload failed");
-    } finally {
-      setRowBusy(sourceSlug, "upload", false);
-    }
-  };
+  const grouped = useMemo(() => {
+    const g = {};
+    docs.forEach((d) => {
+      const cat = d.category || "Other";
+      (g[cat] = g[cat] || []).push(d);
+    });
+    // Sort inside each category by display_name for a predictable list.
+    Object.values(g).forEach((arr) => arr.sort((a, b) => a.display_name.localeCompare(b.display_name)));
+    return g;
+  }, [docs]);
 
-  const downloadReleased = async (sourceSlug, title) => {
-    setRowBusy(sourceSlug, "dl-released", true);
+  const setRowBusy = (key, k, v) => setBusy((b) => ({ ...b, [`${key}:${k}`]: v }));
+
+  // ---------- actions ----------
+  const downloadDoc = async (doc) => {
+    setRowBusy(doc.key, "dl", true);
     try {
-      const r = await api.get(`/legal/drafts/${sourceSlug}`, { responseType: "blob" });
+      const r = await api.get(`/legal/docs/${doc.key}`, { responseType: "blob" });
       const url = URL.createObjectURL(r.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `${title || sourceSlug}.released.docx`;
+      a.href = url; a.download = doc.display_name;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Download failed");
     } finally {
-      setRowBusy(sourceSlug, "dl-released", false);
+      setRowBusy(doc.key, "dl", false);
+    }
+  };
+
+  const uploadReplacement = async (sourceSlug, file, title) => {
+    if (!file) return;
+    if (!window.confirm(`Upload ${file.name} as the working version for "${title}"? The public site will still show the released version until an admin releases the working draft.`)) return;
+    setRowBusy(sourceSlug, "upload", true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await api.post(`/legal/docs/${sourceSlug}/upload`, fd);
+      toast.success(`Working draft updated · ${r.data.bytes_written} bytes`);
+      await loadAll();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Upload failed");
+    } finally {
+      setRowBusy(sourceSlug, "upload", false);
     }
   };
 
@@ -149,12 +199,12 @@ export default function CounselConsole() {
   };
 
   const markReady = async (sourceSlug) => {
-    if (!window.confirm("Mark this working draft ready for admin review? Editing after this will move it back to Draft. Admins will be notified by email.")) return;
+    if (!window.confirm("Mark this working draft ready for admin review? Editing after this will move it back to Draft. Admins receive a daily digest of unresolved mentions.")) return;
     setRowBusy(sourceSlug, "ready", true);
     try {
       const r = await api.post(`/legal/working-drafts/${sourceSlug}/mark-ready`);
-      const emailNote = r.data.email_scheduled ? " · admins notified" : " (already ready — no email)";
-      toast.success(`Marked ready for admin${emailNote}`);
+      const note = r.data.email_scheduled ? " · admins queued for next digest" : "";
+      toast.success(`Marked ready for admin${note}`);
       await loadAll();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Mark-ready failed");
@@ -167,9 +217,7 @@ export default function CounselConsole() {
     setRowBusy(sourceSlug, "release", true);
     try {
       const r = await api.post(`/legal/working-drafts/${sourceSlug}/release`, {
-        version,
-        notes,
-        ratified_by: user?.email,
+        version, notes, ratified_by: user?.email,
       });
       toast.success(`Released as v${r.data.released_as_version}`);
       setReleaseModal(null);
@@ -201,8 +249,7 @@ export default function CounselConsole() {
     try {
       const r = await api.get(`/legal/working-drafts/${sourceSlug}`);
       setDiffModal({
-        slug: sourceSlug,
-        title,
+        slug: sourceSlug, title,
         released: r.data.released_md || "",
         working: r.data.content_md || "",
         wd: r.data,
@@ -214,266 +261,96 @@ export default function CounselConsole() {
     }
   };
 
+  const totalCount = docs.length;
+
   return (
     <div className="container-page py-12" data-testid="counsel-console-page">
       <div className="mb-6">
-        <Link to={isAdmin ? "/admin" : "/dashboard"} className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B]">
-          <ArrowLeft size={14} strokeWidth={1.5} /> {isAdmin ? "Admin Hub" : "Dashboard"}
+        <Link to={isAdmin ? "/admin" : "/"} className="inline-flex items-center gap-1 text-sm text-[#5C6B6B] hover:text-[#476B6B]">
+          <ArrowLeft size={14} strokeWidth={1.5} /> {isAdmin ? "Admin Hub" : "Home"}
         </Link>
       </div>
 
-      <span className="label">Legal · Counsel Console</span>
+      <span className="label">Legal · Documents Hub</span>
       <h1 className="editorial-h1 mt-2 flex items-center gap-3">
-        <ShieldCheck size={28} strokeWidth={1.2} /> Counsel Console
+        <ShieldCheck size={28} strokeWidth={1.2} /> Legal documents
       </h1>
       <div className="divider-flame" />
 
       <div className="card p-5 max-w-3xl bg-[#FAF7F0]">
         <p className="text-sm text-[#0F2424] leading-relaxed">
-          <strong>The workflow.</strong> Download the released doc, edit offline, upload the full replacement (or upload a changes-only .docx via <Link to="/admin/legal/ratifications" className="underline text-[#476B6B]">the redline editor</Link>). Every upload becomes a <strong>working version</strong> — the public site keeps showing the released version untouched. When you&apos;re ready, click <em>Mark ready for admin</em>. An admin releases it as a new version — that&apos;s the only step that changes what the public sees.
+          <strong>{totalCount}</strong> draft artefact{totalCount === 1 ? "" : "s"} across <strong>{Object.keys(grouped).length}</strong> categor{Object.keys(grouped).length === 1 ? "y" : "ies"}. Anyone can download the drafts.
+          {canEdit ? (
+            <> As {isAdmin ? "admin" : "counsel"} you also get the full working-draft workflow: upload replacements, diff, add inline comments, and {isAdmin ? "release / roll back" : "mark ready for admin"}.</>
+          ) : (
+            <> Log in as admin or counsel for the full editing workflow.</>
+          )}
         </p>
-        <p className="text-xs text-[#5C6B6B] mt-3 leading-relaxed">
-          Accepted formats: <code>.md</code>, <code>.markdown</code>, <code>.txt</code>, <code>.docx</code>. Files up to 2 MB.
-          {isCounsel && " Counsel accounts can create, edit, mark-ready, upload, and download. Release is admin-only."}
+        <p className="text-xs text-[#5C6B6B] mt-3">
+          Accepted upload formats: <code className="text-[#0F2424]">.md</code>, <code className="text-[#0F2424]">.markdown</code>, <code className="text-[#0F2424]">.txt</code>, <code className="text-[#0F2424]">.docx</code>. Files up to 2 MB.
         </p>
       </div>
 
-      {/* Briefing section — counsel-orientation docs, download-only */}
-      {briefingDocs.length > 0 && (
-        <div className="mt-10" data-testid="counsel-briefing-section">
-          <h2 className="font-serif text-xl text-[#0F2424] mb-1">Briefing</h2>
-          <p className="text-xs text-[#5C6B6B] mb-4">
-            Orientation material for counsel — how the review works, what&apos;s in scope, and where to spend time. Reference-only, no publication workflow.
-          </p>
-          <div className="grid gap-3">
-            {briefingDocs.map((doc) => (
-              <div
-                key={doc.key}
-                className="card p-4 flex items-center justify-between gap-3"
-                data-testid={`counsel-briefing-row-${doc.key}`}
-              >
-                <div className="min-w-0 flex items-center gap-3">
-                  <FileText size={16} strokeWidth={1.4} className="text-[#C9A961] shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#0F2424] truncate">{doc.display_name}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
-                      {(doc.size_bytes / 1024).toFixed(1)} KB
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      const r = await api.get(`/legal/docs/${doc.key}`, { responseType: "blob" });
-                      const url = URL.createObjectURL(r.data);
-                      const a = document.createElement("a");
-                      a.href = url; a.download = doc.display_name;
-                      document.body.appendChild(a); a.click(); a.remove();
-                      URL.revokeObjectURL(url);
-                    } catch (e) {
-                      toast.error(e?.response?.data?.detail || "Download failed");
-                    }
-                  }}
-                  className="btn-primary text-xs inline-flex items-center gap-1 shrink-0"
-                  data-testid={`counsel-briefing-download-${doc.key}`}
-                >
-                  <Download size={12} /> Download
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Render categories in the preferred order */}
+      <div className="mt-8 space-y-10" data-testid="counsel-console-categories">
+        {CATEGORY_ORDER.filter((cat) => grouped[cat]?.length).map((cat) => (
+          <CategorySection
+            key={cat}
+            category={cat}
+            blurb={CATEGORY_BLURB[cat] || ""}
+            docs={grouped[cat]}
+            wdBySlug={wdBySlug}
+            ratBySlug={ratBySlug}
+            publicSlugBySource={publicSlugBySource}
+            canEdit={canEdit}
+            isAdmin={isAdmin}
+            isCounsel={isCounsel}
+            busy={busy}
+            onDownload={downloadDoc}
+            onUpload={uploadReplacement}
+            onDownloadWorking={downloadWorking}
+            onDiff={openDiff}
+            onMarkReady={markReady}
+            onHistory={(slug, title) => setHistoryModal({ slug, title })}
+            onRelease={(slug, title, wd) => setReleaseModal({ slug, title, wd })}
+            onDiscard={discard}
+          />
+        ))}
+        {/* Any categories not in the preferred order — append at the end. */}
+        {Object.keys(grouped).filter((c) => !CATEGORY_ORDER.includes(c)).map((cat) => (
+          <CategorySection
+            key={cat}
+            category={cat}
+            blurb=""
+            docs={grouped[cat]}
+            wdBySlug={wdBySlug}
+            ratBySlug={ratBySlug}
+            publicSlugBySource={publicSlugBySource}
+            canEdit={canEdit}
+            isAdmin={isAdmin}
+            isCounsel={isCounsel}
+            busy={busy}
+            onDownload={downloadDoc}
+            onUpload={uploadReplacement}
+            onDownloadWorking={downloadWorking}
+            onDiff={openDiff}
+            onMarkReady={markReady}
+            onHistory={(slug, title) => setHistoryModal({ slug, title })}
+            onRelease={(slug, title, wd) => setReleaseModal({ slug, title, wd })}
+            onDiscard={discard}
+          />
+        ))}
+      </div>
+
+      {canEdit && (
+        <p className="text-xs text-[#5C6B6B] mt-8 max-w-3xl">
+          Need the fine-grained redline / comment workflow?
+          <Link to="/admin/legal/ratifications" className="underline text-[#476B6B] ml-1" data-testid="counsel-console-redline-link">
+            Open the redline editor →
+          </Link>
+        </p>
       )}
 
-      <h2 className="font-serif text-xl text-[#0F2424] mt-10 mb-1">Public-facing documents</h2>
-      <p className="text-xs text-[#5C6B6B] mb-4">
-        These are the {pages.length} public legal notices on the site. Each supports the full working-draft → release workflow.
-      </p>
-
-      <div className="grid gap-4" data-testid="counsel-console-list">
-        {pages.length === 0 && (
-          <p className="text-sm text-[#5C6B6B]">No public legal pages configured yet.</p>
-        )}
-        {pages.map((p) => {
-          const sourceSlug = SOURCE_SLUG[p.slug] || p.slug;
-          const wd = wdBySlug[sourceSlug];
-          const rat = ratifiedBySlug[sourceSlug];
-          return (
-            <div
-              key={p.slug}
-              className="card p-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
-              data-testid={`counsel-row-${sourceSlug}`}
-            >
-              {/* Left — title + status */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h3 className="font-serif text-xl text-[#0F2424]">{p.title}</h3>
-                  {rat ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider bg-[#EAF3EA] text-[#1E4030] rounded-full px-2 py-0.5 font-semibold" data-testid={`counsel-row-${sourceSlug}-released-badge`}>
-                      <CheckCircle2 size={11} /> Released v{rat.version}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider bg-[#FFF6E3] text-[#7A5A1A] rounded-full px-2 py-0.5 font-semibold">
-                      Draft only
-                    </span>
-                  )}
-                  {wd && (
-                    <span
-                      className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 font-semibold ${wd.state === "awaiting_admin" ? "bg-[#E3EEF9] text-[#264D6B]" : "bg-[#FFF6E3] text-[#7A5A1A]"}`}
-                      data-testid={`counsel-row-${sourceSlug}-wd-badge`}
-                    >
-                      <Clock size={11} /> {wd.state === "awaiting_admin" ? "Awaiting admin" : "Working draft"}
-                    </span>
-                  )}
-                  {wd?.comment_stats?.total > 0 && (
-                    <span
-                      className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 font-semibold ${wd.comment_stats.open > 0 ? "bg-[#F5E6D6] text-[#7A4A1A]" : "bg-[#EAF3EA] text-[#1E4030]"}`}
-                      data-testid={`counsel-row-${sourceSlug}-comments-badge`}
-                    >
-                      <MessageCircle size={11} /> {wd.comment_stats.open} open · {wd.comment_stats.total} total
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-[#5C6B6B] mt-1">
-                  <Link to={`/legal/${p.slug}`} className="hover:text-[#476B6B]">/legal/{p.slug}</Link>
-                  {wd && (
-                    <>
-                      {" · "}
-                      last edit by <strong className="text-[#0F2424]">{wd.last_edited_by_email || wd.created_by_email}</strong>
-                      {" ("}{wd.last_edited_by_role}{") "}
-                      {new Date(wd.last_edited_at || wd.created_at).toLocaleString()}
-                    </>
-                  )}
-                </p>
-                {wd?.change_log?.length > 0 && (
-                  <details className="mt-3" data-testid={`counsel-row-${sourceSlug}-log`}>
-                    <summary className="text-xs uppercase tracking-wider text-[#476B6B] cursor-pointer inline-flex items-center gap-1">
-                      <MessageSquare size={11} /> Change log · {wd.change_log.length}
-                    </summary>
-                    <ul className="mt-2 space-y-1 text-xs text-[#5C6B6B] pl-4 border-l border-[#E5E1D8]">
-                      {wd.change_log.slice(-6).reverse().map((e, i) => (
-                        <li key={i}>
-                          <span className="text-[#0F2424]">{e.action}</span>
-                          {" · "}
-                          {e.by_email} ({e.by_role})
-                          {" · "}
-                          {new Date(e.at).toLocaleString()}
-                          {e.note && <div className="text-[#5C6B6B]">{e.note}</div>}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </div>
-
-              {/* Right — actions */}
-              <div className="flex flex-wrap gap-2 lg:justify-end lg:min-w-[380px]">
-                <button
-                  onClick={() => setHistoryModal({ slug: sourceSlug, title: p.title })}
-                  className="btn-outline text-xs inline-flex items-center gap-1"
-                  data-testid={`counsel-row-${sourceSlug}-history-btn`}
-                >
-                  <History size={12} /> History
-                </button>
-
-                <button
-                  onClick={() => downloadReleased(sourceSlug, p.title)}
-                  disabled={!!busy[`${sourceSlug}:dl-released`]}
-                  className="btn-outline text-xs inline-flex items-center gap-1"
-                  data-testid={`counsel-row-${sourceSlug}-download-released`}
-                >
-                  <Download size={12} /> Released (.docx)
-                </button>
-
-                {wd && (
-                  <button
-                    onClick={() => openDiff(sourceSlug, p.title)}
-                    disabled={!!busy[`${sourceSlug}:diff`]}
-                    className="btn-outline text-xs inline-flex items-center gap-1"
-                    data-testid={`counsel-row-${sourceSlug}-view-diff`}
-                  >
-                    <GitCompare size={12} /> View diff
-                  </button>
-                )}
-
-                {wd && (
-                  <button
-                    onClick={() => downloadWorking(sourceSlug, p.title)}
-                    disabled={!!busy[`${sourceSlug}:dl-working`]}
-                    className="btn-outline text-xs inline-flex items-center gap-1"
-                    data-testid={`counsel-row-${sourceSlug}-download-working`}
-                  >
-                    <Download size={12} /> Working (.docx)
-                  </button>
-                )}
-
-                <label
-                  className={`btn-primary text-xs inline-flex items-center gap-1 cursor-pointer ${busy[`${sourceSlug}:upload`] ? "opacity-60 pointer-events-none" : ""}`}
-                  data-testid={`counsel-row-${sourceSlug}-upload-btn`}
-                >
-                  <Upload size={12} />
-                  {busy[`${sourceSlug}:upload`] ? "Uploading…" : "Upload replacement"}
-                  <input
-                    type="file"
-                    accept=".md,.markdown,.txt,.docx"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      // Reset the input immediately so re-selecting the same
-                      // file fires change again — otherwise browsers dedupe.
-                      e.target.value = "";
-                      if (f) uploadFullReplacement(sourceSlug, f);
-                    }}
-                    data-testid={`counsel-row-${sourceSlug}-upload-input`}
-                    disabled={!!busy[`${sourceSlug}:upload`]}
-                  />
-                </label>
-
-                {wd?.state === "draft" && (
-                  <button
-                    onClick={() => markReady(sourceSlug)}
-                    disabled={!!busy[`${sourceSlug}:ready`]}
-                    className="btn-outline text-xs inline-flex items-center gap-1 text-[#264D6B] border-[#264D6B]"
-                    data-testid={`counsel-row-${sourceSlug}-mark-ready`}
-                  >
-                    <Send size={12} /> Mark ready for admin
-                  </button>
-                )}
-
-                {isAdmin && wd && (
-                  <>
-                    <button
-                      onClick={() => setReleaseModal({ slug: sourceSlug, title: p.title, wd })}
-                      disabled={!!busy[`${sourceSlug}:release`]}
-                      className="btn-primary text-xs inline-flex items-center gap-1 bg-[#1E4030]"
-                      data-testid={`counsel-row-${sourceSlug}-release-btn`}
-                    >
-                      <ShieldCheck size={12} /> Release
-                    </button>
-                    <button
-                      onClick={() => discard(sourceSlug)}
-                      disabled={!!busy[`${sourceSlug}:discard`]}
-                      className="btn-outline text-xs inline-flex items-center gap-1 text-[#9E3C3C] border-[#9E3C3C]"
-                      data-testid={`counsel-row-${sourceSlug}-discard-btn`}
-                    >
-                      <Trash2 size={12} /> Discard
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <p className="text-xs text-[#5C6B6B] mt-8 max-w-3xl">
-        Need the fine-grained redline / comment workflow?
-        <Link to="/admin/legal/ratifications" className="underline text-[#476B6B] ml-1" data-testid="counsel-console-redline-link">
-          Open the redline editor →
-        </Link>
-      </p>
-
-      {/* Release modal — admin only */}
       {releaseModal && isAdmin && (
         <ReleaseModal
           data={releaseModal}
@@ -484,7 +361,6 @@ export default function CounselConsole() {
         />
       )}
 
-      {/* Diff modal — anyone with counsel-console access */}
       {diffModal && (
         <DiffModal
           data={diffModal}
@@ -497,7 +373,6 @@ export default function CounselConsole() {
         />
       )}
 
-      {/* Release history modal — anyone with counsel-console access */}
       {historyModal && (
         <HistoryModal
           data={historyModal}
@@ -510,3 +385,214 @@ export default function CounselConsole() {
   );
 }
 
+// ---------- Category section ----------
+function CategorySection({
+  category, blurb, docs,
+  wdBySlug, ratBySlug, publicSlugBySource,
+  canEdit, isAdmin, isCounsel, busy,
+  onDownload, onUpload, onDownloadWorking, onDiff,
+  onMarkReady, onHistory, onRelease, onDiscard,
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section data-testid={`counsel-category-${slugify(category)}`}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between text-left group"
+        data-testid={`counsel-category-${slugify(category)}-toggle`}
+      >
+        <div>
+          <h2 className="font-serif text-2xl text-[#0F2424] group-hover:text-[#476B6B] transition-colors">
+            {category}
+            <span className="ml-2 text-sm text-[#5C6B6B] font-sans">· {docs.length}</span>
+          </h2>
+          {blurb && <p className="text-xs text-[#5C6B6B] mt-1 max-w-3xl">{blurb}</p>}
+        </div>
+        {open ? <ChevronUp size={20} strokeWidth={1.4} /> : <ChevronDown size={20} strokeWidth={1.4} />}
+      </button>
+      <div className="divider-flame my-3" />
+      {open && (
+        <div className="grid gap-3">
+          {docs.map((doc) => (
+            <DocRow
+              key={doc.key}
+              doc={doc}
+              wd={doc.source_slug ? wdBySlug[doc.source_slug] : null}
+              rat={doc.source_slug ? ratBySlug[doc.source_slug] : null}
+              publicSlug={doc.source_slug ? publicSlugBySource[doc.source_slug] : null}
+              canEdit={canEdit}
+              isAdmin={isAdmin}
+              isCounsel={isCounsel}
+              busy={busy}
+              onDownload={onDownload}
+              onUpload={onUpload}
+              onDownloadWorking={onDownloadWorking}
+              onDiff={onDiff}
+              onMarkReady={onMarkReady}
+              onHistory={onHistory}
+              onRelease={onRelease}
+              onDiscard={onDiscard}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function slugify(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+// ---------- Single doc row ----------
+function DocRow({
+  doc, wd, rat, publicSlug,
+  canEdit, isAdmin, isCounsel, busy,
+  onDownload, onUpload, onDownloadWorking, onDiff,
+  onMarkReady, onHistory, onRelease, onDiscard,
+}) {
+  const source = doc.source_slug;
+  const canWorkflow = !!source && canEdit;   // /counsel-briefing-docx and /counsel-briefing-md have no source_slug
+  return (
+    <div
+      className="card p-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3"
+      data-testid={`counsel-row-${source || doc.key}`}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <FileText size={14} strokeWidth={1.4} className="text-[#C9A961] shrink-0" />
+          <h3 className="font-serif text-base text-[#0F2424] break-words">{doc.display_name}</h3>
+          {rat && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider bg-[#EAF3EA] text-[#1E4030] rounded-full px-2 py-0.5 font-semibold"
+              data-testid={`counsel-row-${source}-released-badge`}
+            >
+              <CheckCircle2 size={11} /> v{rat.version}
+            </span>
+          )}
+          {wd && (
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 font-semibold ${wd.state === "awaiting_admin" ? "bg-[#E3EEF9] text-[#264D6B]" : "bg-[#FFF6E3] text-[#7A5A1A]"}`}
+              data-testid={`counsel-row-${source}-wd-badge`}
+            >
+              <Clock size={11} /> {wd.state === "awaiting_admin" ? "Awaiting admin" : "Working draft"}
+            </span>
+          )}
+          {wd?.comment_stats?.total > 0 && (
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 font-semibold ${wd.comment_stats.open > 0 ? "bg-[#F5E6D6] text-[#7A4A1A]" : "bg-[#EAF3EA] text-[#1E4030]"}`}
+              data-testid={`counsel-row-${source}-comments-badge`}
+            >
+              <MessageCircle size={11} /> {wd.comment_stats.open} open · {wd.comment_stats.total} total
+            </span>
+          )}
+        </div>
+        <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B] mt-1">
+          {(doc.size_bytes / 1024).toFixed(1)} KB
+          {publicSlug && (
+            <> · <Link to={`/legal/${publicSlug}`} className="hover:text-[#476B6B]">/legal/{publicSlug}</Link></>
+          )}
+          {wd && (
+            <> · last edit by <strong className="text-[#0F2424]">{wd.last_edited_by_email || wd.created_by_email}</strong> · {new Date(wd.last_edited_at || wd.created_at).toLocaleDateString()}</>
+          )}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 lg:justify-end lg:min-w-[380px]">
+        <button
+          onClick={() => onDownload(doc)}
+          disabled={!!busy[`${doc.key}:dl`]}
+          className="btn-outline text-xs inline-flex items-center gap-1"
+          data-testid={`counsel-row-${source || doc.key}-download`}
+        >
+          <Download size={12} /> Download
+        </button>
+
+        {canWorkflow && wd && (
+          <>
+            <button
+              onClick={() => onDiff(source, doc.display_name)}
+              disabled={!!busy[`${source}:diff`]}
+              className="btn-outline text-xs inline-flex items-center gap-1"
+              data-testid={`counsel-row-${source}-view-diff`}
+            >
+              <GitCompare size={12} /> Diff
+            </button>
+            <button
+              onClick={() => onDownloadWorking(source, doc.display_name)}
+              disabled={!!busy[`${source}:dl-working`]}
+              className="btn-outline text-xs inline-flex items-center gap-1"
+              data-testid={`counsel-row-${source}-download-working`}
+            >
+              <Download size={12} /> Working
+            </button>
+          </>
+        )}
+
+        {canWorkflow && (
+          <button
+            onClick={() => onHistory(source, doc.display_name)}
+            className="btn-outline text-xs inline-flex items-center gap-1"
+            data-testid={`counsel-row-${source}-history-btn`}
+          >
+            <History size={12} /> History
+          </button>
+        )}
+
+        {canWorkflow && (
+          <label
+            className={`btn-primary text-xs inline-flex items-center gap-1 cursor-pointer ${busy[`${source}:upload`] ? "opacity-60 pointer-events-none" : ""}`}
+            data-testid={`counsel-row-${source}-upload-btn`}
+          >
+            <Upload size={12} />
+            {busy[`${source}:upload`] ? "Uploading…" : "Upload"}
+            <input
+              type="file"
+              accept=".md,.markdown,.txt,.docx"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) onUpload(source, f, doc.display_name);
+              }}
+              data-testid={`counsel-row-${source}-upload-input`}
+              disabled={!!busy[`${source}:upload`]}
+            />
+          </label>
+        )}
+
+        {canWorkflow && wd?.state === "draft" && (
+          <button
+            onClick={() => onMarkReady(source)}
+            disabled={!!busy[`${source}:ready`]}
+            className="btn-outline text-xs inline-flex items-center gap-1 text-[#264D6B] border-[#264D6B]"
+            data-testid={`counsel-row-${source}-mark-ready`}
+          >
+            <Send size={12} /> Mark ready
+          </button>
+        )}
+
+        {isAdmin && wd && (
+          <>
+            <button
+              onClick={() => onRelease(source, doc.display_name, wd)}
+              disabled={!!busy[`${source}:release`]}
+              className="btn-primary text-xs inline-flex items-center gap-1 bg-[#1E4030]"
+              data-testid={`counsel-row-${source}-release-btn`}
+            >
+              <ShieldCheck size={12} /> Release
+            </button>
+            <button
+              onClick={() => onDiscard(source)}
+              disabled={!!busy[`${source}:discard`]}
+              className="btn-outline text-xs inline-flex items-center gap-1 text-[#9E3C3C] border-[#9E3C3C]"
+              data-testid={`counsel-row-${source}-discard-btn`}
+            >
+              <Trash2 size={12} /> Discard
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

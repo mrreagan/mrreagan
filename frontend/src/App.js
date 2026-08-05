@@ -44,7 +44,6 @@ import AdminHub from "./pages/AdminHub";
 import AdminUsers from "./pages/AdminUsers";
 import AdminProducts from "./pages/AdminProducts";
 import AdminImageQueue from "./pages/AdminImageQueue";
-import AdminLegalDocs from "./pages/AdminLegalDocs";
 import AdminLegalRatifications from "./pages/AdminLegalRatifications";
 import CounselConsole from "./pages/CounselConsole";
 import AdminCounselSettings from "./pages/AdminCounselSettings";
@@ -351,11 +350,7 @@ function AppRoutes() {
       />
       <Route
         path="/admin/legal-docs"
-        element={
-          <ProtectedRoute roles={ADMIN_ROLES}>
-            <AdminLegalDocs />
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/counsel" replace />}
       />
       <Route
         path="/admin/legal/ratifications"
@@ -366,14 +361,7 @@ function AppRoutes() {
         }
       />
       <Route path="/counsel/set-password" element={<CounselSetPasswordPage />} />
-      <Route
-        path="/counsel"
-        element={
-          <ProtectedRoute roles={ADMIN_ROLES}>
-            <CounselConsole />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/counsel" element={<CounselConsole />} />
       <Route
         path="/admin/settings/counsel"
         element={

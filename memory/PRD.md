@@ -15,6 +15,14 @@ React + FastAPI + MongoDB platform for the Birthright Foundation — attachment-
 - Generous whitespace, gold hairline rules, sacred-but-secular tone
 
 ## What's Been Implemented (recent — Feb 2026)
+### Iter 70 — Unified Legal Documents Hub (Feb 05 2026)
+- **Merged `/admin/legal-docs` into `/counsel`** — one hub, no redundant page. Old path 301-redirects via `Navigate to="/counsel"`. `AdminLegalDocs.jsx` deleted.
+- **`/counsel` is now PUBLIC** (no auth required). Anonymous visitors see every draft artefact grouped by category with download-only actions. Admin + counsel additionally see the full working-draft workflow (upload / diff / history / mark ready / release / discard) gated by `user.role`.
+- **All 26 docs surfaced** across 7 categories mirroring the admin site's organisation: Briefing (4), Public-facing (7), Partner agreements (5), Governance (5), Internal / Compliance (2), Internal / IP (2), Advisory memos (1). Categories rendered in a preferred order with a short blurb each and collapsible headers.
+- **Backend**: `GET /api/legal/docs` and `GET /api/legal/docs/{key}` are now public (were admin-only). Response includes `source_slug` (nullable — non-manifest briefing extras skip the workflow).
+- **Frontend**: rewrote `pages/CounselConsole.jsx` (539 lines) with `CategorySection` + `DocRow` primitives. Every workflow control is gated on `canEdit = isAdmin || isCounsel`; release / discard additionally gated on `isAdmin`. Anonymous downloads confirmed via curl (61 KB briefing streamed with no auth header).
+- **Verified**: anonymous view shows 26 docs / 7 categories / 0 workflow buttons. Counsel view shows 24 upload + 24 history + 0 release buttons (the 2 non-manifest briefing entries have no source_slug so they stay download-only for everyone).
+
 ### Iter 69 — Briefing docs + 7th public doc on Counsel Console (Feb 05 2026)
 - **Added Indemnification & Hold-Harmless** as the 7th public-facing doc. Registered in `PUBLIC_LEGAL_PAGES` (source `04-indemnification-hold-harmless`) and mirrored in the frontend `SOURCE_SLUG` map — instantly picks up the full working-draft, upload, history, and release workflow.
 - **Briefing docs section** at the top of `/counsel`: pulls `category="Briefing"` entries from the existing `GET /api/legal/docs` (LEGAL_BRIEFING .docx + .md, Counsel Review Plan, Counsel User Guide) and renders each as a download-only card. Read-only reference material — no publication workflow.
