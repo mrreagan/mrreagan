@@ -21,7 +21,7 @@ Console download hub. Priorities are laid out in §5.
 Console; the Executive Director does every platform click. Full workflow, per-function
 fast-path, and the read-only review account are in `00a-counsel-user-guide.docx`.
 
-**Point of contact.** James Reagan, Executive Director — `mr.reagan@gmail.com`.
+**Point of contact.** Amanda Reagan, Executive Director — `mr.reagan@gmail.com`.
 
 ---
 
@@ -367,7 +367,7 @@ checklist, activity log, change log), and how to hand work back to Birthright.
 
 | Role | Person | Email |
 |---|---|---|
-| Executive Director / point of contact | James Reagan | `mr.reagan@gmail.com` |
+| Executive Director / point of contact | Amanda Reagan | `mr.reagan@gmail.com` |
 | Public contact address | Birthright team | `hello@birthright.live` |
 | Legal work inbox | Counsel review | `legal@birthright.live` |
 | Data protection (when applicable) | DPO placeholder | `dpo@birthright.live` |

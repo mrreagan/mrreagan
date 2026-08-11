@@ -2,7 +2,7 @@
 
 Goal: every visitor-facing image on birthright.live should have a short, factual
 description stored alongside it, so the help assistant can answer questions
-like "what's in James Reagan's profile photo?" without ever bothering the
+like "what's in Amanda Reagan's profile photo?" without ever bothering the
 admin to type a caption.
 
 This module does it lazily:

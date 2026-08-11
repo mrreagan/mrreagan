@@ -7,7 +7,7 @@
 > as tentative.
 >
 > Version: February 2026 · Birthright Foundation (birthright.live) ·
-> Executive Director: James Reagan · Contact: legal@birthright.live
+> Executive Director: Amanda Reagan · Contact: legal@birthright.live
 
 
 # Sliding-Scale & Scholarship Terms

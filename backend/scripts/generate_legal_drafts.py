@@ -24,7 +24,7 @@ DISCLAIMER_TOP = """> ⚠️ **AI-GENERATED FIRST DRAFT — NOT LEGAL ADVICE**
 > state of incorporation, and ratify before any use.
 >
 > Version: February 2026 · Generated for: Birthright Foundation
-> (birthright.live) · Executive Director: James Reagan
+> (birthright.live) · Executive Director: Amanda Reagan
 """
 
 DISCLAIMER_BOTTOM = """

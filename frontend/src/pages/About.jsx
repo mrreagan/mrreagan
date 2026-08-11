@@ -44,7 +44,7 @@ export default function About() {
                 <p className="font-serif text-lg text-[#1A2424] leading-relaxed">
                   &ldquo;Indeed.&rdquo;
                 </p>
-                <footer className="text-xs text-[#5C6B6B] mt-2">— James Reagan, 2026</footer>
+                <footer className="text-xs text-[#5C6B6B] mt-2">— Amanda Reagan, 2026</footer>
               </blockquote>
             </div>
             <div className="card p-7 !bg-[#476B6B] !border-[#476B6B] text-white">

@@ -1,7 +1,7 @@
 """Admin endpoints for managing image captions across collections.
 
 Captions are surfaced to the AI help assistant via `utils/help_context.py` so
-that visitor questions about photos ("what's in James Reagan's lap?", "what
+that visitor questions about photos ("what's in Amanda Reagan's lap?", "what
 does the founder collection patch look like?") can be answered confidently
 from authored human descriptions.
 

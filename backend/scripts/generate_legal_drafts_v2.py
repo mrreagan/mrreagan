@@ -33,7 +33,7 @@ DISCLAIMER_TOP = """> **FIRST DRAFT — PENDING COUNSEL RATIFICATION**
 > as tentative.
 >
 > Version: February 2026 · Birthright Foundation (birthright.live) ·
-> Executive Director: James Reagan · Contact: legal@birthright.live
+> Executive Director: Amanda Reagan · Contact: legal@birthright.live
 """
 
 DISCLAIMER_BOTTOM = """

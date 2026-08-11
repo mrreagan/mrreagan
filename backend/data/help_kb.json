@@ -518,12 +518,12 @@
         "who runs birthright",
         "who leads birthright",
         "who's in charge",
-        "who is james",
-        "who is james reagan",
+        "who is amanda",
+        "who is amanda reagan",
         "executive director of birthright",
-        "tell me about james"
+        "tell me about amanda"
       ],
-      "answer": "James Reagan is the executive director of the Birthright Foundation \u2014 he leads operations and partnerships and is a long-time advocate of attachment-informed community work. He's currently the foundation's only standing officer; the /lead page also shows three placeholder bios illustrating the seats the foundation is actively building toward.",
+      "answer": "Amanda Reagan is the executive director of the Birthright Foundation \u2014 she leads operations and partnerships and is a long-time advocate of attachment-informed community work. She's currently the foundation's only standing officer; the /lead page also shows three placeholder bios illustrating the seats the foundation is actively building toward.",
       "follow_up_label": "Want me to take you to the leadership page?"
     },
     {
@@ -551,7 +551,7 @@
         "tell me about the leadership",
         "who are the officers"
       ],
-      "answer": "James Reagan is the current executive director and the foundation's standing officer. The /lead page also shows three placeholder bios (Board Chair, Director of Community Stewardship, Research Advisor) that illustrate the seats the foundation is actively building toward \u2014 those positions aren't filled yet. As the board fills out, real bios replace the placeholders.",
+      "answer": "Amanda Reagan is the current executive director and the foundation's standing officer. The /lead page also shows three placeholder bios (Board Chair, Director of Community Stewardship, Research Advisor) that illustrate the seats the foundation is actively building toward \u2014 those positions aren't filled yet. As the board fills out, real bios replace the placeholders.",
       "follow_up_label": "Want me to take you to the leadership page?"
     },
     {

@@ -136,11 +136,27 @@ async def repair_known_broken_images(db) -> int:
 
 
 async def ensure_governing_member_images(db) -> int:
-    """Idempotently self-heal portraits for specific governing members so the
-    canonical image lives in our own static assets, not on third-party CDNs
-    that can rot. Currently fixes: James Reagan."""
+    """Idempotently self-heal portraits + names for specific governing
+    members so the canonical image lives in our own static assets, not on
+    third-party CDNs that can rot. Also handles the Feb 2026 James Reagan
+    -> Amanda Reagan Executive Director substitution (rename existing row
+    if found)."""
+    # Feb 2026: Executive Director change. Rename any legacy row from
+    # 'James Reagan' -> 'Amanda Reagan' before applying image fixes.
+    legacy = await db.governing_members.find_one({"name": "James Reagan"}, {"id": 1, "_id": 0})
+    if legacy:
+        await db.governing_members.update_one(
+            {"id": legacy["id"]},
+            {"$set": {
+                "name": "Amanda Reagan",
+                "bio": "Amanda leads the foundation's operations and partnerships. A long-time advocate of attachment-informed community work.",
+                "image_url": "/api/static/people/amanda-reagan.jpg",
+            }},
+        )
+        logger.info("governing member: renamed 'James Reagan' -> 'Amanda Reagan' (Feb 2026 ED substitution)")
+
     fixes = {
-        "James Reagan": "/api/static/people/james-reagan.jpg",
+        "Amanda Reagan": "/api/static/people/amanda-reagan.jpg",
     }
     count = 0
     for name, target in fixes.items():
