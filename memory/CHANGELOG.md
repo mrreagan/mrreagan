@@ -3,6 +3,29 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-12 — Executive Director change · Growth model simulator
+- **Amanda Reagan succeeds James Reagan as Executive Director** across all
+  29 legal docs (.md + regenerated .docx), governing_members collection
+  (with idempotent rename self-heal in `runtime_seed`), help KB, About
+  page attribution, image-caption agent comments, and both legal-doc
+  generation script templates. New portrait at
+  `/api/static/people/amanda-reagan.jpg`. Two flagged items left
+  intentionally unchanged per user: `mr.reagan@gmail.com` (contact
+  address) and the legacy `james-reagan.jpg` file on disk.
+- **NEW: Facilitator network growth simulator** at `/admin/growth-model`
+  (admin-only). Interactive 240-month projection with 40+ live sliders
+  across: workshop economics, tier×curriculum foundation-take matrix
+  matching published birthright.live pricing (Monthly 40/50, Annual 35/45,
+  2-year 30/40 IP/own), subscription tiers ($99/$999/$1799), cohort-tiered
+  retention (Y1 35%, Y2 15%, Y3+ 8%), new-facilitator fill ramp,
+  conversion decay, geographic reach model (metros + couples-per-metro),
+  demand mix (referral share, multi-attendance), leakage (CAC, refunds),
+  and cross-role revenue. Backend `POST /api/admin/growth-model/simulate`
+  returns yearly rollup + cumulative. Sim runs in <50ms, debounced 250ms
+  on slider drag. Files: `backend/routers/growth_model.py`,
+  `frontend/src/pages/AdminGrowthModel.jsx`, linked from Admin Hub under
+  "Commerce & Payouts."
+
 ## 2026-02-06 — Counsel Dashboard consolidation · redlines paused · activity-log fix
 - **Fixed the "auto-check doesn't flag counsel activity" bug**
   (`routers/counsel_audit.py`). The path matcher only recognised

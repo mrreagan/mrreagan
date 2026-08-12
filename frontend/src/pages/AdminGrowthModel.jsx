@@ -11,25 +11,48 @@ const DEFAULTS = {
   participant_to_applicant_pct: 3,
   applicant_to_active_pct: 50,
   training_lag_months: 3,
-  annual_attrition_pct: 10,
+  // Cohort-tiered attrition
+  attrition_year1_pct: 35,
+  attrition_year2_pct: 15,
+  attrition_year3plus_pct: 8,
+  // New-facilitator ramp
+  fill_ramp_start_pct: 30,
+  fill_ramp_months: 9,
+  // Conversion decay
+  conversion_annual_decay_pct: 10,
+  // Workshop curriculum mix
   pct_workshops_using_ip: 80,
-  // Foundation take % by (tier × workshop type) — matches published pricing
+  // Foundation take % by (tier × workshop type)
   foundation_take_monthly_ip_pct: 40,
   foundation_take_monthly_own_pct: 50,
   foundation_take_annual_ip_pct: 35,
   foundation_take_annual_own_pct: 45,
   foundation_take_two_year_ip_pct: 30,
   foundation_take_two_year_own_pct: 40,
+  // Subscription prices
   sub_monthly_price: 99,
   sub_annual_price: 999,
   sub_two_year_price: 1799,
+  // Subscription mix
   new_mix_monthly_pct: 85,
   new_mix_annual_pct: 10,
   new_mix_two_year_pct: 5,
   tenured_mix_monthly_pct: 15,
   tenured_mix_annual_pct: 60,
   tenured_mix_two_year_pct: 25,
-  market_ceiling_couples_per_year: 500000,
+  // Geographic reach
+  initial_serviced_metros: 3,
+  new_metros_per_year: 5,
+  couples_per_metro_per_year: 5000,
+  // Costs & leakage
+  foundation_marketing_cost_per_participant: 15,
+  pct_participants_from_referral: 30,
+  refund_chargeback_pct: 5,
+  // Demand mix
+  avg_workshops_per_participant: 1.0,
+  // Cross-role revenue
+  cross_role_revenue_per_tenured_fac_per_year: 500,
+  cross_role_tenure_months: 24,
 };
 
 const fmtInt = (n) => Math.round(n).toLocaleString();
@@ -248,18 +271,92 @@ export default function AdminGrowthModel() {
               onChange={update("training_lag_months")}
               hint="Time from participation to first hosted workshop."
               testid="slider-lag" />
-            <Slider label="Annual attrition" unit="%"
-              value={params.annual_attrition_pct} min={0} max={40} step={1}
-              onChange={update("annual_attrition_pct")}
-              testid="slider-attrition" />
+            <Slider label="Conversion decay / year" unit="%"
+              value={params.conversion_annual_decay_pct} min={0} max={50} step={1}
+              onChange={update("conversion_annual_decay_pct")}
+              hint="Applicant rate declines as the movement matures past early adopters."
+              testid="slider-conv-decay" />
 
-            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Market saturation</p>
-            <Slider label="Addressable couples / year"
-              value={params.market_ceiling_couples_per_year}
-              min={10000} max={5000000} step={10000}
-              onChange={update("market_ceiling_couples_per_year")}
-              hint="Fill rate degrades as network demand exceeds this ceiling."
-              testid="slider-ceiling" />
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">
+              Retention (annual attrition %)
+            </p>
+            <Slider label="Year 1" unit="%"
+              value={params.attrition_year1_pct} min={0} max={80} step={1}
+              onChange={update("attrition_year1_pct")}
+              hint="New facilitators drop out fastest."
+              testid="slider-attr-y1" />
+            <Slider label="Year 2" unit="%"
+              value={params.attrition_year2_pct} min={0} max={50} step={1}
+              onChange={update("attrition_year2_pct")}
+              testid="slider-attr-y2" />
+            <Slider label="Year 3+" unit="%"
+              value={params.attrition_year3plus_pct} min={0} max={30} step={1}
+              onChange={update("attrition_year3plus_pct")}
+              hint="Tenured hosts are much stickier."
+              testid="slider-attr-y3" />
+
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">New-facilitator ramp</p>
+            <Slider label="Starting fill rate" unit="%"
+              value={params.fill_ramp_start_pct} min={0} max={100} step={5}
+              onChange={update("fill_ramp_start_pct")}
+              hint="How full a new facilitator's first workshops are."
+              testid="slider-ramp-start" />
+            <Slider label="Ramp to full over" unit=" mo"
+              value={params.fill_ramp_months} min={0} max={36} step={1}
+              onChange={update("fill_ramp_months")}
+              testid="slider-ramp-months" />
+
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Geographic reach</p>
+            <Slider label="Initial serviced metros"
+              value={params.initial_serviced_metros} min={1} max={50} step={1}
+              onChange={update("initial_serviced_metros")}
+              hint="Metros where seed facilitators operate at launch."
+              testid="slider-metros-init" />
+            <Slider label="New metros / year"
+              value={params.new_metros_per_year} min={0} max={50} step={0.5}
+              onChange={update("new_metros_per_year")}
+              hint="Pace at which new metros come online."
+              testid="slider-metros-new" />
+            <Slider label="Couples / metro / year"
+              value={params.couples_per_metro_per_year} min={100} max={30000} step={100}
+              onChange={update("couples_per_metro_per_year")}
+              hint="Annual demand a fully-covered metro can supply."
+              testid="slider-metros-couples" />
+
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Demand mix</p>
+            <Slider label="Referral share" unit="%"
+              value={params.pct_participants_from_referral} min={0} max={100} step={5}
+              onChange={update("pct_participants_from_referral")}
+              hint="Participants from word-of-mouth (skip paid CAC)."
+              testid="slider-referral" />
+            <Slider label="Avg workshops / participant"
+              value={params.avg_workshops_per_participant} min={1} max={3} step={0.1}
+              onChange={update("avg_workshops_per_participant")}
+              hint="Multi-attendance uplift (returning couples)."
+              testid="slider-multi-attend" />
+
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Costs & leakage</p>
+            <Slider label="Marketing / cold participant" unit=" $"
+              value={params.foundation_marketing_cost_per_participant} min={0} max={200} step={5}
+              onChange={update("foundation_marketing_cost_per_participant")}
+              hint="Foundation-borne brand marketing CAC per unique cold participant."
+              testid="slider-cac" />
+            <Slider label="Refund / chargeback rate" unit="%"
+              value={params.refund_chargeback_pct} min={0} max={30} step={0.5}
+              onChange={update("refund_chargeback_pct")}
+              testid="slider-refund" />
+
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Cross-role revenue</p>
+            <Slider label="$/tenured fac / year" unit=" $"
+              value={params.cross_role_revenue_per_tenured_fac_per_year} min={0} max={5000} step={50}
+              onChange={update("cross_role_revenue_per_tenured_fac_per_year")}
+              hint="Trainer, curriculum author, retreat leader income to foundation."
+              testid="slider-cross-role-rev" />
+            <Slider label="Cross-role tenure gate" unit=" mo"
+              value={params.cross_role_tenure_months} min={6} max={60} step={3}
+              onChange={update("cross_role_tenure_months")}
+              hint="Minimum tenure before a facilitator qualifies."
+              testid="slider-cross-role-gate" />
 
             <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Subscription tiers</p>
             <Slider label="Monthly plan" unit=" $/mo"
@@ -324,13 +421,13 @@ export default function AdminGrowthModel() {
                 <KPI icon={Users} label={`Participants (cumulative)`}
                   value={fmtInt(data.cumulative.participants)}
                   testid="kpi-participants" />
-                <KPI icon={DollarSign} label={`Workshop revenue (cum.)`}
-                  value={fmtUSD(data.cumulative.workshop_gross)}
-                  testid="kpi-workshop-gross" />
-                <KPI icon={DollarSign} label={`Foundation total (cum.)`}
-                  value={fmtUSD(data.cumulative.foundation_total)}
+                <KPI icon={DollarSign} label={`Workshop revenue net`}
+                  value={fmtUSD(data.cumulative.workshop_net)}
+                  testid="kpi-workshop-net" />
+                <KPI icon={DollarSign} label={`Foundation NET (cum.)`}
+                  value={fmtUSD(data.cumulative.foundation_net)}
                   accent
-                  testid="kpi-foundation-total" />
+                  testid="kpi-foundation-net" />
               </div>
 
               <div className="card p-4">
@@ -347,13 +444,17 @@ export default function AdminGrowthModel() {
                       <th className="py-2 px-2 text-right">Active EOY</th>
                       <th className="py-2 px-2 text-right">Workshops</th>
                       <th className="py-2 px-2 text-right">Participants</th>
-                      <th className="py-2 px-2 text-right">Workshop $</th>
-                      <th className="py-2 px-2 text-right">Facilitator $</th>
+                      <th className="py-2 px-2 text-right">Wkshp net $</th>
+                      <th className="py-2 px-2 text-right text-[#8B9494]">Refunds</th>
+                      <th className="py-2 px-2 text-right">Fac $</th>
                       <th className="py-2 px-2 text-right">Fnd wkshp $</th>
-                      <th className="py-2 px-2 text-right">Subscription $</th>
+                      <th className="py-2 px-2 text-right">Subs $</th>
+                      <th className="py-2 px-2 text-right">Cross-role $</th>
+                      <th className="py-2 px-2 text-right text-red-700">Mktg −</th>
                       <th className="py-2 px-2 text-right font-medium text-[#1A2424]">
-                        Foundation total
+                        Fnd NET
                       </th>
+                      <th className="py-2 px-2 text-right text-[#8B9494]">Ceiling</th>
                       <th className="py-2 px-2 text-right">Fill</th>
                     </tr>
                   </thead>
@@ -365,7 +466,10 @@ export default function AdminGrowthModel() {
                         <td className="py-1.5 px-2 text-right tabular-nums">{fmtInt(y.active_eoy)}</td>
                         <td className="py-1.5 px-2 text-right tabular-nums">{fmtInt(y.workshops)}</td>
                         <td className="py-1.5 px-2 text-right tabular-nums">{fmtInt(y.participants)}</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums">{fmtUSD(y.workshop_gross)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{fmtUSD(y.workshop_net)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums text-[#8B9494]">
+                          {fmtUSD(y.refunds)}
+                        </td>
                         <td className="py-1.5 px-2 text-right tabular-nums text-[#5C6B6B]">
                           {fmtUSD(y.facilitator_earnings)}
                         </td>
@@ -375,8 +479,17 @@ export default function AdminGrowthModel() {
                         <td className="py-1.5 px-2 text-right tabular-nums">
                           {fmtUSD(y.subscription_revenue)}
                         </td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">
+                          {fmtUSD(y.cross_role_revenue)}
+                        </td>
+                        <td className="py-1.5 px-2 text-right tabular-nums text-red-700">
+                          −{fmtUSD(y.foundation_marketing_cost)}
+                        </td>
                         <td className="py-1.5 px-2 text-right tabular-nums font-medium text-[#1A2424]">
-                          {fmtUSD(y.foundation_total)}
+                          {fmtUSD(y.foundation_net)}
+                        </td>
+                        <td className="py-1.5 px-2 text-right tabular-nums text-[#8B9494]">
+                          {fmtInt(y.market_ceiling)}
                         </td>
                         <td className="py-1.5 px-2 text-right tabular-nums text-[#8B9494]">
                           {(y.fill_rate * 100).toFixed(0)}%
@@ -386,10 +499,10 @@ export default function AdminGrowthModel() {
                   </tbody>
                 </table>
                 <p className="text-[10px] text-[#8B9494] mt-3 leading-relaxed">
-                  Fill = average per-workshop capacity used across the year. Falls below 100%
-                  when the network's annual demand exceeds the addressable-market ceiling.
-                  Cumulative totals in the KPI row use every simulated year, not just the
-                  years shown here.
+                  <b>Workshop net</b> = gross minus refunds. <b>Fill</b> = ramp-up × geographic
+                  saturation (avg over the year). <b>Ceiling</b> = addressable couples/year
+                  from serviced metros. <b>Fnd NET</b> = workshop share + subs + cross-role
+                  − marketing. Cumulative KPIs use every simulated year.
                 </p>
               </div>
             </>
