@@ -12,13 +12,18 @@ The simulation is pure Python, deterministic, and runs in <50ms even for a
 """
 from __future__ import annotations
 
+import copy
+import re
+import uuid
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from auth_utils import require_roles
+from database import db
 
 router = APIRouter(prefix="/admin/growth-model", tags=["growth-model"])
 
@@ -391,3 +396,194 @@ def _simulate(p: GrowthParams) -> GrowthResponse:
 @router.post("/simulate", response_model=GrowthResponse)
 async def simulate(params: GrowthParams, _user=Depends(require_roles("admin"))):
     return _simulate(params)
+
+
+# ---------- Scenarios (Mongo-backed) ----------
+
+# Palette for scenario chart lines (Birthright brand colours)
+_SCENARIO_COLORS = ["#476B6B", "#C9A961", "#8B5A3C", "#1A2424", "#7A8B8B", "#A3826A"]
+
+def _slugify(name: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    return s or "scenario"
+
+
+class ScenarioIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    description: Optional[str] = Field(None, max_length=500)
+    params: GrowthParams
+
+
+class Scenario(BaseModel):
+    id: str
+    slug: str
+    name: str
+    description: Optional[str] = None
+    color: str
+    params: GrowthParams
+    created_at: str
+    created_by_email: Optional[str] = None
+
+
+@router.get("/scenarios", response_model=List[Scenario])
+async def list_scenarios(_user=Depends(require_roles("admin"))):
+    rows = await db.growth_scenarios.find({}, {"_id": 0}).sort("created_at", 1).to_list(200)
+    return rows
+
+
+@router.post("/scenarios", response_model=Scenario)
+async def save_scenario(payload: ScenarioIn, user=Depends(require_roles("admin"))):
+    existing_count = await db.growth_scenarios.count_documents({})
+    color = _SCENARIO_COLORS[existing_count % len(_SCENARIO_COLORS)]
+    slug_base = _slugify(payload.name)
+    # ensure unique slug
+    slug = slug_base
+    n = 1
+    while await db.growth_scenarios.find_one({"slug": slug}):
+        n += 1
+        slug = f"{slug_base}-{n}"
+    doc = Scenario(
+        id=str(uuid.uuid4()),
+        slug=slug,
+        name=payload.name.strip(),
+        description=(payload.description or None),
+        color=color,
+        params=payload.params,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        created_by_email=user.get("email"),
+    )
+    await db.growth_scenarios.insert_one(doc.model_dump())
+    return doc
+
+
+@router.delete("/scenarios/{scenario_id}")
+async def delete_scenario(scenario_id: str, _user=Depends(require_roles("admin"))):
+    result = await db.growth_scenarios.delete_one({"id": scenario_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+    return {"deleted": scenario_id}
+
+
+# ---------- Sensitivity analysis ----------
+
+# Which parameters to sweep in the tornado view, and how much to vary each
+# (relative %). Ordered by expected impact; the front-end just renders in
+# whatever order the backend returns after sorting by |delta|.
+_SENSITIVITY_LEVERS: list[tuple[str, str]] = [
+    ("participant_to_applicant_pct",             "Participants → applicants"),
+    ("applicant_to_active_pct",                  "Applicants → active"),
+    ("attrition_year1_pct",                      "Year-1 attrition"),
+    ("attrition_year3plus_pct",                  "Year-3+ attrition"),
+    ("workshops_per_facilitator_per_year",       "Workshops / facilitator / yr"),
+    ("couples_per_workshop",                     "Couples per workshop"),
+    ("price_per_couple",                         "Price per couple"),
+    ("new_metros_per_year",                      "New metros / year"),
+    ("couples_per_metro_per_year",               "Couples / metro / year"),
+    ("initial_serviced_metros",                  "Initial metros"),
+    ("pct_workshops_using_ip",                   "Birthright IP mix"),
+    ("conversion_annual_decay_pct",              "Conversion decay"),
+    ("foundation_marketing_cost_per_participant","Marketing CAC"),
+    ("refund_chargeback_pct",                    "Refund rate"),
+    ("cross_role_revenue_per_tenured_fac_per_year", "Cross-role $/tenured/yr"),
+    ("fill_ramp_start_pct",                      "Ramp starting fill %"),
+]
+
+
+class SensitivityRequest(BaseModel):
+    params: GrowthParams
+    delta_pct: float = Field(20.0, ge=1, le=100, description="± percentage to vary each lever")
+
+
+class SensitivityRow(BaseModel):
+    param: str
+    label: str
+    base_value: float
+    low_value: float
+    high_value: float
+    base_net: float
+    low_net: float
+    high_net: float
+    delta_low: float
+    delta_high: float
+    delta_range: float
+
+
+class SensitivityResponse(BaseModel):
+    base_net: float
+    delta_pct: float
+    rows: List[SensitivityRow]
+
+
+def _adjust(base_value: float, factor: float, lower_bound: float = 0.0,
+            upper_bound: Optional[float] = None) -> float:
+    val = base_value * factor
+    if val < lower_bound:
+        val = lower_bound
+    if upper_bound is not None and val > upper_bound:
+        val = upper_bound
+    return val
+
+
+@router.post("/sensitivity", response_model=SensitivityResponse)
+async def sensitivity(req: SensitivityRequest, _user=Depends(require_roles("admin"))):
+    base = _simulate(req.params)
+    base_net = base.cumulative["foundation_net"]
+
+    factor_up = 1 + req.delta_pct / 100.0
+    factor_dn = 1 - req.delta_pct / 100.0
+
+    # Upper caps for % fields to keep them in [0,100]
+    pct_fields = {
+        "participant_to_applicant_pct",
+        "applicant_to_active_pct",
+        "attrition_year1_pct",
+        "attrition_year3plus_pct",
+        "pct_workshops_using_ip",
+        "conversion_annual_decay_pct",
+        "refund_chargeback_pct",
+        "fill_ramp_start_pct",
+    }
+
+    rows: list[SensitivityRow] = []
+    base_dict = req.params.model_dump()
+    for key, label in _SENSITIVITY_LEVERS:
+        base_val = base_dict.get(key)
+        if base_val is None or base_val == 0:
+            # Skip if not set or zero (delta would be trivially 0)
+            continue
+
+        upper = 100.0 if key in pct_fields else None
+        high_val = _adjust(base_val, factor_up, lower_bound=0, upper_bound=upper)
+        low_val = _adjust(base_val, factor_dn, lower_bound=0, upper_bound=upper)
+
+        # Snap integer-typed fields to ints
+        if key in ("workshops_per_facilitator_per_year", "couples_per_workshop",
+                   "initial_serviced_metros", "couples_per_metro_per_year",
+                   "fill_ramp_months", "cross_role_tenure_months",
+                   "training_lag_months"):
+            high_val = round(high_val)
+            low_val = round(low_val)
+
+        high_params = copy.deepcopy(req.params)
+        setattr(high_params, key, high_val)
+        low_params = copy.deepcopy(req.params)
+        setattr(low_params, key, low_val)
+
+        high_net = _simulate(high_params).cumulative["foundation_net"]
+        low_net = _simulate(low_params).cumulative["foundation_net"]
+
+        rows.append(SensitivityRow(
+            param=key, label=label,
+            base_value=float(base_val),
+            low_value=float(low_val),
+            high_value=float(high_val),
+            base_net=base_net,
+            low_net=low_net,
+            high_net=high_net,
+            delta_low=low_net - base_net,
+            delta_high=high_net - base_net,
+            delta_range=abs(high_net - low_net),
+        ))
+
+    rows.sort(key=lambda r: r.delta_range, reverse=True)
+    return SensitivityResponse(base_net=base_net, delta_pct=req.delta_pct, rows=rows)

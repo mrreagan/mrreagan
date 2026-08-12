@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import api from "../lib/api";
-import { TrendingUp, Users, DollarSign, RefreshCw } from "lucide-react";
+import {
+  TrendingUp, Users, DollarSign, RefreshCw, Bookmark, Download,
+  Activity, Plus, X, GitCompare,
+} from "lucide-react";
 
 const DEFAULTS = {
   years: 20,
@@ -89,14 +92,18 @@ function Slider({ label, hint, unit, value, min, max, step, onChange, testid }) 
   );
 }
 
-function GrowthChart({ years }) {
-  if (!years || years.length === 0) return null;
+function GrowthChart({ series }) {
+  // series: [{ years, color, name }]
+  if (!series || series.length === 0 || !series[0].years) return null;
   const w = 640, h = 220, padL = 60, padR = 20, padT = 20, padB = 30;
   const innerW = w - padL - padR, innerH = h - padT - padB;
-  const maxFac = Math.max(...years.map((y) => y.active_eoy), 1);
-  const xs = (i) => padL + (innerW * i) / Math.max(years.length - 1, 1);
+  const maxLen = Math.max(...series.map((s) => s.years.length));
+  const maxFac = Math.max(
+    ...series.flatMap((s) => s.years.map((y) => y.active_eoy)),
+    1
+  );
+  const xs = (i) => padL + (innerW * i) / Math.max(maxLen - 1, 1);
   const yf = (v) => padT + innerH - (innerH * v) / maxFac;
-  const facPath = years.map((y, i) => `${i === 0 ? "M" : "L"}${xs(i)},${yf(y.active_eoy)}`).join(" ");
   const yTicks = 4;
   const tickVals = Array.from({ length: yTicks + 1 }, (_, i) => (maxFac * i) / yTicks);
   return (
@@ -110,20 +117,37 @@ function GrowthChart({ years }) {
           </text>
         </g>
       ))}
-      {years.map((y, i) =>
+      {series[0].years.map((y, i) =>
         i % 2 === 0 ? (
           <text key={i} x={xs(i)} y={h - padB + 12} textAnchor="middle" fontSize="9" fill="#8B9494">
             Y{y.year}
           </text>
         ) : null
       )}
-      <path d={facPath} fill="none" stroke="#476B6B" strokeWidth="2" />
-      {years.map((y, i) => (
-        <circle key={i} cx={xs(i)} cy={yf(y.active_eoy)} r="2.5" fill="#C9A961" />
-      ))}
+      {series.map((s, si) => {
+        const d = s.years.map((y, i) =>
+          `${i === 0 ? "M" : "L"}${xs(i)},${yf(y.active_eoy)}`
+        ).join(" ");
+        return (
+          <g key={si}>
+            <path d={d} fill="none" stroke={s.color} strokeWidth={si === 0 ? 2 : 1.75}
+              strokeDasharray={si === 0 ? "0" : "3 3"} opacity={si === 0 ? 1 : 0.85} />
+          </g>
+        );
+      })}
       <text x={padL} y={padT - 6} fontSize="10" fill="#5C6B6B">
         Active facilitators (end of year)
       </text>
+      {/* Legend */}
+      <g transform={`translate(${w - padR - 140}, ${padT + 4})`}>
+        {series.map((s, i) => (
+          <g key={i} transform={`translate(0, ${i * 14})`}>
+            <line x1={0} x2={16} y1={4} y2={4} stroke={s.color} strokeWidth={i === 0 ? 2 : 1.75}
+              strokeDasharray={i === 0 ? "0" : "3 3"} />
+            <text x={22} y={7} fontSize="10" fill="#1A2424">{s.name}</text>
+          </g>
+        ))}
+      </g>
     </svg>
   );
 }
@@ -133,6 +157,19 @@ export default function AdminGrowthModel() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
+
+  // Saved scenarios (Mongo-backed)
+  const [scenarios, setScenarios] = useState([]);
+  const [selectedScenarioIds, setSelectedScenarioIds] = useState([]);
+  const [scenarioResults, setScenarioResults] = useState({}); // { id: yearsArray }
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveDesc, setSaveDesc] = useState("");
+
+  // Sensitivity analysis
+  const [sensitivity, setSensitivity] = useState(null);
+  const [sensitivityLoading, setSensitivityLoading] = useState(false);
+  const [showSensitivity, setShowSensitivity] = useState(false);
 
   const run = useCallback(
     async (p) => {
@@ -150,11 +187,40 @@ export default function AdminGrowthModel() {
     []
   );
 
+  const loadScenarios = useCallback(async () => {
+    try {
+      const r = await api.get("/admin/growth-model/scenarios");
+      setScenarios(r.data || []);
+    } catch (e) {
+      // non-fatal
+    }
+  }, []);
+
+  useEffect(() => { loadScenarios(); }, [loadScenarios]);
+
   // Debounced re-run on slider change
   useEffect(() => {
     const t = setTimeout(() => run(params), 250);
     return () => clearTimeout(t);
   }, [params, run]);
+
+  // Re-simulate selected scenarios whenever selection changes
+  useEffect(() => {
+    async function runAll() {
+      const results = {};
+      for (const id of selectedScenarioIds) {
+        const sc = scenarios.find((s) => s.id === id);
+        if (!sc) continue;
+        try {
+          const r = await api.post("/admin/growth-model/simulate", sc.params);
+          results[id] = r.data.years;
+        } catch (e) { /* skip */ }
+      }
+      setScenarioResults(results);
+    }
+    if (selectedScenarioIds.length > 0) runAll();
+    else setScenarioResults({});
+  }, [selectedScenarioIds, scenarios]);
 
   const update = (key) => (v) => setParams((p) => ({ ...p, [key]: v }));
 
@@ -165,6 +231,96 @@ export default function AdminGrowthModel() {
     const marks = [1, 2, 3, 4, 5, 7, 10, 12, 15, 17, 20];
     return data.years.filter((y) => marks.includes(y.year));
   }, [data]);
+
+  const chartSeries = useMemo(() => {
+    if (!data) return [];
+    const base = [{ years: data.years, color: "#476B6B", name: "Current" }];
+    const overlays = selectedScenarioIds
+      .map((id) => {
+        const sc = scenarios.find((s) => s.id === id);
+        const yrs = scenarioResults[id];
+        if (!sc || !yrs) return null;
+        return { years: yrs, color: sc.color, name: sc.name };
+      })
+      .filter(Boolean);
+    return [...base, ...overlays];
+  }, [data, selectedScenarioIds, scenarios, scenarioResults]);
+
+  const saveScenario = async () => {
+    if (!saveName.trim()) return;
+    try {
+      const r = await api.post("/admin/growth-model/scenarios", {
+        name: saveName.trim(),
+        description: saveDesc.trim() || null,
+        params,
+      });
+      setScenarios((prev) => [...prev, r.data]);
+      setShowSaveDialog(false);
+      setSaveName(""); setSaveDesc("");
+    } catch (e) {
+      alert(e?.response?.data?.detail || "Could not save scenario");
+    }
+  };
+
+  const deleteScenario = async (id) => {
+    if (!window.confirm("Delete this scenario?")) return;
+    try {
+      await api.delete(`/admin/growth-model/scenarios/${id}`);
+      setScenarios((prev) => prev.filter((s) => s.id !== id));
+      setSelectedScenarioIds((prev) => prev.filter((x) => x !== id));
+    } catch (e) { /* noop */ }
+  };
+
+  const loadScenarioParams = (id) => {
+    const sc = scenarios.find((s) => s.id === id);
+    if (sc) setParams({ ...DEFAULTS, ...sc.params });
+  };
+
+  const toggleCompare = (id) => {
+    setSelectedScenarioIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const exportCsv = () => {
+    if (!data) return;
+    const cols = [
+      "year", "active_eoy", "workshops", "participants",
+      "workshop_gross", "refunds", "workshop_net", "facilitator_earnings",
+      "foundation_workshop_share", "subscription_revenue", "cross_role_revenue",
+      "foundation_marketing_cost", "foundation_gross", "foundation_net",
+      "fill_rate", "market_ceiling",
+    ];
+    const header = cols.join(",");
+    const rows = data.years.map((y) =>
+      cols.map((c) => {
+        const v = y[c];
+        return typeof v === "number" ? v.toFixed(2) : v;
+      }).join(",")
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `growth-model-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
+
+  const runSensitivity = async () => {
+    setSensitivityLoading(true);
+    setShowSensitivity(true);
+    try {
+      const r = await api.post("/admin/growth-model/sensitivity",
+        { params, delta_pct: 20 });
+      setSensitivity(r.data);
+    } catch (e) {
+      alert(e?.response?.data?.detail || "Sensitivity run failed");
+    } finally {
+      setSensitivityLoading(false);
+    }
+  };
 
   return (
     <div className="container-page py-10" data-testid="admin-growth-model">
@@ -430,13 +586,151 @@ export default function AdminGrowthModel() {
                   testid="kpi-foundation-net" />
               </div>
 
+              {/* Scenarios panel */}
+              <div className="card p-4" data-testid="scenarios-panel">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Bookmark size={16} strokeWidth={1.5} className="text-[#476B6B]" />
+                    <h3 className="font-serif text-base">Saved scenarios</h3>
+                    <span className="text-xs text-[#8B9494]">
+                      ({scenarios.length}) · check to overlay on chart
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSaveDialog(true)}
+                    className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#476B6B] text-white hover:bg-[#365555]"
+                    data-testid="save-scenario-btn"
+                  >
+                    <Plus size={12} strokeWidth={2} /> Save current
+                  </button>
+                </div>
+                {scenarios.length === 0 ? (
+                  <p className="text-xs text-[#8B9494] italic">
+                    No scenarios saved yet. Save the current parameters as a named
+                    scenario (e.g. &quot;Conservative&quot;, &quot;Base&quot;, &quot;Aggressive&quot;) to compare
+                    them side-by-side on the chart.
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {scenarios.map((s) => (
+                      <li key={s.id}
+                        className="flex items-center gap-2 text-xs"
+                        data-testid={`scenario-row-${s.slug}`}>
+                        <input
+                          type="checkbox"
+                          checked={selectedScenarioIds.includes(s.id)}
+                          onChange={() => toggleCompare(s.id)}
+                          className="accent-[#476B6B]"
+                          data-testid={`scenario-toggle-${s.slug}`}
+                        />
+                        <span
+                          className="inline-block w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ background: s.color }}
+                        />
+                        <span className="font-medium text-[#1A2424]">{s.name}</span>
+                        {s.description && (
+                          <span className="text-[#8B9494] truncate max-w-[200px]"
+                            title={s.description}>
+                            — {s.description}
+                          </span>
+                        )}
+                        <span className="ml-auto flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => loadScenarioParams(s.id)}
+                            className="text-[#476B6B] hover:underline"
+                            data-testid={`scenario-load-${s.slug}`}
+                          >
+                            Load
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteScenario(s.id)}
+                            className="text-[#8B5A3C] hover:text-red-700"
+                            data-testid={`scenario-delete-${s.slug}`}
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {showSaveDialog && (
+                  <div className="mt-3 p-3 rounded bg-[#FAF8F5] border border-[#E5E1D8]"
+                    data-testid="save-scenario-dialog">
+                    <input
+                      type="text"
+                      placeholder="Scenario name (e.g. Base, Conservative)"
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      className="w-full text-sm px-3 py-1.5 rounded border border-[#E5E1D8] bg-white mb-2"
+                      autoFocus
+                      data-testid="scenario-name-input"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Optional one-line description"
+                      value={saveDesc}
+                      onChange={(e) => setSaveDesc(e.target.value)}
+                      className="w-full text-xs px-3 py-1.5 rounded border border-[#E5E1D8] bg-white mb-2"
+                      data-testid="scenario-desc-input"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button type="button"
+                        onClick={() => { setShowSaveDialog(false); setSaveName(""); setSaveDesc(""); }}
+                        className="text-xs px-3 py-1 text-[#5C6B6B] hover:underline">
+                        Cancel
+                      </button>
+                      <button type="button"
+                        onClick={saveScenario}
+                        disabled={!saveName.trim()}
+                        className="text-xs px-3 py-1 rounded-full bg-[#476B6B] text-white disabled:opacity-50"
+                        data-testid="scenario-save-confirm">
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="card p-4">
-                <h3 className="font-serif text-base mb-3">Facilitator network trajectory</h3>
-                <GrowthChart years={data.years} />
+                <h3 className="font-serif text-base mb-3">
+                  Facilitator network trajectory
+                  {selectedScenarioIds.length > 0 && (
+                    <span className="ml-2 text-xs text-[#8B9494]">
+                      · {selectedScenarioIds.length + 1} series
+                    </span>
+                  )}
+                </h3>
+                <GrowthChart series={chartSeries} />
               </div>
 
               <div className="card p-4 overflow-x-auto" data-testid="growth-model-table">
-                <h3 className="font-serif text-base mb-3">Yearly projection</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-serif text-base">Yearly projection</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={exportCsv}
+                      className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-[#E5E1D8] text-[#476B6B] hover:bg-[#FAF8F5]"
+                      data-testid="csv-export-btn"
+                    >
+                      <Download size={12} strokeWidth={1.5} /> Export CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={runSensitivity}
+                      disabled={sensitivityLoading}
+                      className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#C9A961] text-[#1A2424] hover:bg-[#B89852] disabled:opacity-50"
+                      data-testid="sensitivity-btn"
+                    >
+                      <Activity size={12} strokeWidth={1.5} />
+                      {sensitivityLoading ? "Running…" : "Run sensitivity"}
+                    </button>
+                  </div>
+                </div>
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-left text-[#5C6B6B] border-b border-[#E5E1D8]">
@@ -505,6 +799,49 @@ export default function AdminGrowthModel() {
                   − marketing. Cumulative KPIs use every simulated year.
                 </p>
               </div>
+
+              {/* Sensitivity view (tornado chart) */}
+              {showSensitivity && (
+                <div className="card p-4" data-testid="sensitivity-view">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Activity size={16} strokeWidth={1.5} className="text-[#C9A961]" />
+                      <h3 className="font-serif text-base">
+                        Sensitivity — Foundation NET
+                      </h3>
+                      {sensitivity && (
+                        <span className="text-xs text-[#8B9494]">
+                          base ${(sensitivity.base_net / 1e6).toFixed(1)}M ·
+                          {" "}±{sensitivity.delta_pct}%
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowSensitivity(false)}
+                      className="text-xs text-[#8B9494] hover:text-[#1A2424]"
+                      data-testid="sensitivity-close"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {sensitivityLoading ? (
+                    <p className="text-xs text-[#5C6B6B]" data-testid="sensitivity-loading">
+                      Running 32 simulations (2 per lever)…
+                    </p>
+                  ) : sensitivity ? (
+                    <>
+                      <TornadoChart rows={sensitivity.rows} baseNet={sensitivity.base_net} />
+                      <p className="text-[10px] text-[#8B9494] mt-3 leading-relaxed">
+                        Each bar shows the change in 20-year cumulative Foundation NET when
+                        that lever is dialled −20% (left) or +20% (right) from your current
+                        setting. Ordered by total range. Focus attention on the top 3-4
+                        levers when planning.
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              )}
             </>
           )}
 
@@ -534,5 +871,63 @@ function KPI({ icon: Icon, label, value, accent, testid }) {
         {value}
       </p>
     </div>
+  );
+}
+
+function TornadoChart({ rows, baseNet }) {
+  if (!rows || rows.length === 0) return <p className="text-xs text-[#8B9494]">No data.</p>;
+  const maxAbs = Math.max(
+    ...rows.flatMap((r) => [Math.abs(r.delta_low), Math.abs(r.delta_high)]),
+    1
+  );
+  const rowH = 24;
+  const labelArea = 240;
+  const barMax = 200;
+  const midX = labelArea + barMax;   // axis at right edge of neg-bar area
+  const chartH = rows.length * rowH + 30;
+  const w = midX + barMax + 90;
+  return (
+    <svg viewBox={`0 0 ${w} ${chartH}`} className="w-full"
+      style={{ minHeight: chartH }} data-testid="tornado-chart">
+      <line x1={midX} x2={midX} y1={5} y2={chartH - 5} stroke="#1A2424" strokeWidth="1" />
+      {rows.map((r, i) => {
+        const y = 15 + i * rowH;
+        const lowW = (Math.abs(r.delta_low) / maxAbs) * barMax;
+        const highW = (Math.abs(r.delta_high) / maxAbs) * barMax;
+        const lowLeft = midX - lowW;
+        const highLeft = midX;
+        const lowColor = r.delta_low < 0 ? "#8B5A3C" : "#476B6B";
+        const highColor = r.delta_high < 0 ? "#8B5A3C" : "#476B6B";
+        const fmt = (v) => {
+          const av = Math.abs(v);
+          if (av >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+          if (av >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+          if (av >= 1e3) return `${(v / 1e3).toFixed(0)}k`;
+          return `${v.toFixed(0)}`;
+        };
+        return (
+          <g key={r.param} data-testid={`tornado-row-${r.param}`}>
+            <text x={labelArea - 8} y={y + 4} textAnchor="end"
+              fontSize="10" fill="#1A2424">{r.label}</text>
+            <rect x={lowLeft} y={y - 7} width={lowW} height={14}
+              fill={lowColor} opacity="0.75" />
+            <rect x={highLeft} y={y - 7} width={highW} height={14}
+              fill={highColor} opacity="0.75" />
+            <text x={lowLeft - 4} y={y + 4} textAnchor="end"
+              fontSize="9" fill="#8B5A3C">
+              {r.delta_low < 0 ? "-" : "+"}${fmt(r.delta_low)}
+            </text>
+            <text x={highLeft + highW + 4} y={y + 4} textAnchor="start"
+              fontSize="9" fill="#1A2424">
+              {r.delta_high < 0 ? "-" : "+"}${fmt(r.delta_high)}
+            </text>
+          </g>
+        );
+      })}
+      <text x={midX - barMax / 2} y={chartH - 2} textAnchor="middle"
+        fontSize="9" fill="#8B9494">−20% direction</text>
+      <text x={midX + barMax / 2} y={chartH - 2} textAnchor="middle"
+        fontSize="9" fill="#8B9494">+20% direction</text>
+    </svg>
   );
 }
