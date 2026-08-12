@@ -4,7 +4,7 @@ import {
   ShoppingBag, Store, Sparkles, Image as ImageIcon, Microscope, Calendar,
   Users, UserPlus, Briefcase, FileText, Wallet, DollarSign,
   RotateCcw, Mail, Bot, BarChart3, Scale, Shield, ShieldCheck, Server, FlaskConical,
-  KeyRound,
+  KeyRound, TrendingUp,
   ArrowRight,
 } from "lucide-react";
 
@@ -50,6 +50,7 @@ const SECTIONS = [
       { to: "/admin/subscriptions", icon: Wallet, label: "Subscriptions", desc: "Sponsorship recurring billing, member tiers, churn." },
       { to: "/admin/campaigns", icon: DollarSign, label: "Sponsor campaigns", desc: "Target-specific sponsorship drives + pledge review. Pledge-only until 501(c)(3) status is granted." },
       { to: "/admin/reports", icon: BarChart3, label: "Financial reports", desc: "Revenue, POD margin, top categories, donor cohorts." },
+      { to: "/admin/growth-model", icon: TrendingUp, label: "Growth model simulator", desc: "20-year peer-led facilitator network projection: workshops, participants, subscription + workshop revenue splits. Every slider re-runs the sim live." },
     ],
   },
   {

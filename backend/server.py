@@ -130,6 +130,7 @@ from routers.printful import router as printful_router
 from routers.lulu import router as lulu_router
 from routers.gather import router as gather_router, admin_router as gather_admin_router
 from routers.gallery import router as gallery_router
+from routers.growth_model import router as growth_model_router
 
 api_router.include_router(auth_router)
 api_router.include_router(password_reset_router)
@@ -145,6 +146,7 @@ api_router.include_router(reviews_router)
 api_router.include_router(governance_router)
 api_router.include_router(legal_router)
 api_router.include_router(first_dollar_router)
+api_router.include_router(growth_model_router)
 api_router.include_router(admin_settings_router)
 api_router.include_router(audit_router)
 api_router.include_router(partner_prospects_router)

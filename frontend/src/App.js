@@ -87,6 +87,7 @@ import AdminPartners from "./pages/AdminPartners";
 import AdminPayouts from "./pages/AdminPayouts";
 import AdminSubscriptions from "./pages/AdminSubscriptions";
 import AdminReports from "./pages/AdminReports";
+import AdminGrowthModel from "./pages/AdminGrowthModel";
 import MyReports from "./pages/MyReports";
 import VendorProducts from "./pages/VendorProducts";
 import AdminVendorProducts from "./pages/AdminVendorProducts";
@@ -499,6 +500,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={ADMIN_ROLES}>
             <AdminReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/growth-model"
+        element={
+          <ProtectedRoute roles={ADMIN_ROLES}>
+            <AdminGrowthModel />
           </ProtectedRoute>
         }
       />
