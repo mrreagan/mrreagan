@@ -29,6 +29,10 @@ class GrowthParams(BaseModel):
 
     couples_per_workshop: int = Field(8, ge=1, le=50)
     price_per_couple: float = Field(285.0, ge=0)
+    workshops_per_facilitator_per_year: float = Field(
+        12.0, ge=1, le=52,
+        description="How many workshops each active facilitator hosts per year",
+    )
 
     participant_to_applicant_pct: float = Field(3.0, ge=0, le=100)   # % of participants who apply
     applicant_to_active_pct: float = Field(50.0, ge=0, le=100)       # % of applicants who complete training
@@ -158,10 +162,11 @@ def _simulate(p: GrowthParams) -> GrowthResponse:
         tenure_hist[0] += activating
 
         active = sum(tenure_hist.values())
-        workshops = active
+        workshops_per_fac_this_month = p.workshops_per_facilitator_per_year / 12.0
+        workshops = active * workshops_per_fac_this_month
 
         # Demand-side saturation
-        annualized_demand = active * 12 * p.couples_per_workshop
+        annualized_demand = active * p.workshops_per_facilitator_per_year * p.couples_per_workshop
         if p.market_ceiling_couples_per_year and p.market_ceiling_couples_per_year > 0:
             ceiling = p.market_ceiling_couples_per_year
             if annualized_demand <= ceiling:
@@ -174,8 +179,9 @@ def _simulate(p: GrowthParams) -> GrowthResponse:
 
         effective_couples = p.couples_per_workshop * fill_rate
         participants = workshops * effective_couples * 2
-        gross_per_facilitator = effective_couples * p.price_per_couple
-        workshop_gross = workshops * gross_per_facilitator
+        gross_per_workshop = effective_couples * p.price_per_couple
+        gross_per_facilitator = gross_per_workshop * workshops_per_fac_this_month
+        workshop_gross = active * gross_per_facilitator
 
         # Split workshop revenue: for each tenure bucket, blend by tier mix
         foundation_workshop = 0.0

@@ -7,6 +7,7 @@ const DEFAULTS = {
   starting_facilitators: 1,
   couples_per_workshop: 8,
   price_per_couple: 285,
+  workshops_per_facilitator_per_year: 12,
   participant_to_applicant_pct: 3,
   applicant_to_active_pct: 50,
   training_lag_months: 3,
@@ -185,6 +186,11 @@ export default function AdminGrowthModel() {
             <Slider label="Couples per workshop" value={params.couples_per_workshop}
               min={1} max={30} step={1} onChange={update("couples_per_workshop")}
               testid="slider-couples" />
+            <Slider label="Workshops per facilitator / year"
+              value={params.workshops_per_facilitator_per_year} min={1} max={52} step={1}
+              onChange={update("workshops_per_facilitator_per_year")}
+              hint="Default 12 = one per month. Bump higher for weekly or biweekly hosts."
+              testid="slider-workshops-per-year" />
             <Slider label="Price per couple" unit=" $" value={params.price_per_couple}
               min={0} max={1000} step={5} onChange={update("price_per_couple")}
               testid="slider-price" />
