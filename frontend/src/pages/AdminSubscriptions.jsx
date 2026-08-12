@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, X, AlertTriangle, Filter } from "lucide-react";
 import api from "../lib/api";
+import Explainer from "../components/Explainer";
 
 const STATUS_PILLS = {
   active:     { label: "Active",     cls: "bg-[#E8F0EA] text-[#2E5C46]" },
@@ -57,7 +58,7 @@ export default function AdminSubscriptions() {
   return (
     <div className="container-page py-12" data-testid="admin-subscriptions-page">
       <span className="label">Admin · Subscriptions</span>
-      <h1 className="editorial-h1 mt-2">Partner subscriptions</h1>
+      <h1 className="editorial-h1 mt-2">Partner subscriptions <Explainer id="subs.page" size={16} /></h1>
       <div className="divider-flame" />
 
       <div className="flex flex-wrap gap-3 items-end mt-2" data-testid="admin-sub-filters">

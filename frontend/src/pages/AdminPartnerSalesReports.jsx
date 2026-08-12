@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import api from "../lib/api";
 import { CheckCircle2, AlertCircle, RefreshCw, X, ExternalLink } from "lucide-react";
+import Explainer from "../components/Explainer";
 
 const STATUSES = ["submitted", "approved", "disputed", "revised"];
 const STATUS_COLOR = {
@@ -44,7 +45,7 @@ export default function AdminPartnerSalesReports() {
   return (
     <div className="container-page py-12" data-testid="admin-partner-sales-reports">
       <span className="label">Admin</span>
-      <h1 className="editorial-h1 mt-2">Partner off-site sales reports</h1>
+      <h1 className="editorial-h1 mt-2">Partner off-site sales reports <Explainer id="psales.page" size={16} /></h1>
       <p className="text-sm text-[#5C6B6B] mt-2 max-w-2xl">
         Reconcile self-reported off-site revenue from vendor and community partners. Approving credits the partner at their locked off-site rev-share rate.
       </p>

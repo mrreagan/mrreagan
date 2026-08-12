@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Mail, CheckCircle2, XCircle, AlertCircle, ShieldCheck, Send, RefreshCw } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
+import Explainer from "../components/Explainer";
 
 export default function AdminEmailOps() {
   const { user } = useAuth();
@@ -69,7 +70,7 @@ export default function AdminEmailOps() {
     <div className="container-page py-12" data-testid="admin-email-ops-page">
       <span className="label">Admin · Email Operations</span>
       <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
-        <Mail size={26} strokeWidth={1.2} /> Email cutover console
+        <Mail size={26} strokeWidth={1.2} /> Email cutover console <Explainer id="emailops.page" size={16} />
       </h1>
       <div className="divider-flame" />
       <p className="text-base text-[#5C6B6B] max-w-2xl">
@@ -106,7 +107,7 @@ export default function AdminEmailOps() {
       {/* Readiness checklist */}
       <section className="card p-6 mt-6 max-w-3xl" data-testid="email-readiness-section">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-serif text-xl">Readiness checklist</h2>
+          <h2 className="font-serif text-xl">Readiness checklist <Explainer id="emailops.readiness" size={13} /></h2>
           <button onClick={refresh} disabled={loading} className="btn-outline text-sm inline-flex items-center gap-2" data-testid="email-refresh-btn">
             <RefreshCw size={14} strokeWidth={1.6} className={loading ? "animate-spin" : ""} />
             Refresh
@@ -174,7 +175,7 @@ export default function AdminEmailOps() {
 
       {/* Recent log */}
       <section className="card p-6 mt-6 max-w-3xl" data-testid="email-log-section">
-        <h2 className="font-serif text-xl">Most recent emails</h2>
+        <h2 className="font-serif text-xl">Most recent emails <Explainer id="emailops.recent" size={13} /></h2>
         {log.length === 0 ? (
           <p className="text-sm text-[#5C6B6B] mt-2">No emails yet.</p>
         ) : (
@@ -199,7 +200,7 @@ export default function AdminEmailOps() {
 
       {/* Cutover checklist */}
       <section className="card p-6 mt-6 max-w-3xl bg-[#FAF8F5]" data-testid="email-cutover-checklist">
-        <h2 className="font-serif text-xl">Cutover checklist</h2>
+        <h2 className="font-serif text-xl">Cutover checklist <Explainer id="emailops.cutover" size={13} /></h2>
         <ol className="mt-3 text-sm text-[#5C6B6B] space-y-2 list-decimal list-inside leading-relaxed">
           <li>Get a Resend API key. Set <code className="text-[#476B6B]">RESEND_API_KEY=re_xxx</code> in <code className="text-[#476B6B]">backend/.env</code>.</li>
           <li>In Resend dashboard, verify the sender domain (add SPF/DKIM/DMARC DNS records). Domain row must show green.</li>

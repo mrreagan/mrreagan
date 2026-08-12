@@ -4,6 +4,7 @@ import {
   TrendingUp, Users, DollarSign, RefreshCw, Bookmark, Download,
   Activity, Plus, X, GitCompare,
 } from "lucide-react";
+import Explainer from "../components/Explainer";
 
 const DEFAULTS = {
   years: 20,
@@ -329,6 +330,7 @@ export default function AdminGrowthModel() {
         <h1 className="font-serif text-4xl mt-1 flex items-center gap-3">
           <TrendingUp size={28} strokeWidth={1.5} className="text-[#476B6B]" />
           Facilitator network growth model
+          <Explainer id="growth.page" size={16} />
         </h1>
         <p className="text-sm text-[#5C6B6B] mt-2 max-w-prose">
           Interactive projection of how the peer-led workshop network could scale.
@@ -354,14 +356,18 @@ export default function AdminGrowthModel() {
           </div>
 
           <div className="space-y-1">
-            <p className="label text-[#C9A961] text-[10px] mb-2">Simulation</p>
+            <p className="label text-[#C9A961] text-[10px] mb-2">
+              Simulation <Explainer id="growth.group.simulation" size={10} />
+            </p>
             <Slider label="Horizon" unit=" yrs" value={params.years} min={1} max={30}
               step={1} onChange={update("years")} testid="slider-years" />
             <Slider label="Seed facilitators" value={params.starting_facilitators}
               min={1} max={20} step={1} onChange={update("starting_facilitators")}
               testid="slider-seed" />
 
-            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Workshop economics</p>
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">
+              Workshop economics <Explainer id="growth.group.workshop_econ" size={10} />
+            </p>
             <Slider label="Couples per workshop" value={params.couples_per_workshop}
               min={1} max={30} step={1} onChange={update("couples_per_workshop")}
               testid="slider-couples" />
@@ -380,7 +386,7 @@ export default function AdminGrowthModel() {
               testid="slider-ip-mix" />
 
             <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">
-              Foundation take by tier × type (%)
+              Foundation take by tier × type (%) <Explainer id="growth.group.take_matrix" size={10} />
             </p>
             <div className="text-[10px] text-[#8B9494] mb-2 leading-tight">
               Facilitator keeps 100% − take. Published rates: monthly 40/50,
@@ -411,7 +417,7 @@ export default function AdminGrowthModel() {
               onChange={update("foundation_take_two_year_own_pct")}
               testid="slider-take-2yr-own" />
 
-            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Growth loop</p>
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Growth loop <Explainer id="growth.group.growth_loop" size={10} /></p>
             <Slider label="Participants → applicants" unit="%"
               value={params.participant_to_applicant_pct} min={0} max={20} step={0.5}
               onChange={update("participant_to_applicant_pct")}
@@ -434,7 +440,7 @@ export default function AdminGrowthModel() {
               testid="slider-conv-decay" />
 
             <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">
-              Retention (annual attrition %)
+              Retention (annual attrition %) <Explainer id="growth.group.retention" size={10} />
             </p>
             <Slider label="Year 1" unit="%"
               value={params.attrition_year1_pct} min={0} max={80} step={1}
@@ -451,7 +457,7 @@ export default function AdminGrowthModel() {
               hint="Tenured hosts are much stickier."
               testid="slider-attr-y3" />
 
-            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">New-facilitator ramp</p>
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">New-facilitator ramp <Explainer id="growth.group.ramp" size={10} /></p>
             <Slider label="Starting fill rate" unit="%"
               value={params.fill_ramp_start_pct} min={0} max={100} step={5}
               onChange={update("fill_ramp_start_pct")}
@@ -462,7 +468,7 @@ export default function AdminGrowthModel() {
               onChange={update("fill_ramp_months")}
               testid="slider-ramp-months" />
 
-            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Geographic reach</p>
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Geographic reach <Explainer id="growth.group.geography" size={10} /></p>
             <Slider label="Initial serviced metros"
               value={params.initial_serviced_metros} min={1} max={50} step={1}
               onChange={update("initial_serviced_metros")}
@@ -479,7 +485,7 @@ export default function AdminGrowthModel() {
               hint="Annual demand a fully-covered metro can supply."
               testid="slider-metros-couples" />
 
-            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Demand mix</p>
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Demand mix <Explainer id="growth.group.demand_mix" size={10} /></p>
             <Slider label="Referral share" unit="%"
               value={params.pct_participants_from_referral} min={0} max={100} step={5}
               onChange={update("pct_participants_from_referral")}
@@ -491,7 +497,7 @@ export default function AdminGrowthModel() {
               hint="Multi-attendance uplift (returning couples)."
               testid="slider-multi-attend" />
 
-            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Costs & leakage</p>
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Costs & leakage <Explainer id="growth.group.costs" size={10} /></p>
             <Slider label="Marketing / cold participant" unit=" $"
               value={params.foundation_marketing_cost_per_participant} min={0} max={200} step={5}
               onChange={update("foundation_marketing_cost_per_participant")}
@@ -502,7 +508,7 @@ export default function AdminGrowthModel() {
               onChange={update("refund_chargeback_pct")}
               testid="slider-refund" />
 
-            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Cross-role revenue</p>
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Cross-role revenue <Explainer id="growth.group.cross_role" size={10} /></p>
             <Slider label="$/tenured fac / year" unit=" $"
               value={params.cross_role_revenue_per_tenured_fac_per_year} min={0} max={5000} step={50}
               onChange={update("cross_role_revenue_per_tenured_fac_per_year")}
@@ -514,7 +520,7 @@ export default function AdminGrowthModel() {
               hint="Minimum tenure before a facilitator qualifies."
               testid="slider-cross-role-gate" />
 
-            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Subscription tiers</p>
+            <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">Subscription tiers <Explainer id="growth.group.sub_tiers" size={10} /></p>
             <Slider label="Monthly plan" unit=" $/mo"
               value={params.sub_monthly_price} min={0} max={300} step={1}
               onChange={update("sub_monthly_price")} testid="slider-sub-monthly" />
@@ -526,7 +532,7 @@ export default function AdminGrowthModel() {
               onChange={update("sub_two_year_price")} testid="slider-sub-2yr" />
 
             <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">
-              New facilitator mix (&lt;1yr tenure)
+              New facilitator mix (&lt;1yr tenure) <Explainer id="growth.group.new_mix" size={10} />
             </p>
             <Slider label="Monthly" unit="%"
               value={params.new_mix_monthly_pct} min={0} max={100} step={5}
@@ -542,7 +548,7 @@ export default function AdminGrowthModel() {
               testid="slider-new-2yr" />
 
             <p className="label text-[#C9A961] text-[10px] mt-4 mb-2">
-              Tenured mix (≥1yr)
+              Tenured mix (≥1yr) <Explainer id="growth.group.tenured_mix" size={10} />
             </p>
             <Slider label="Monthly" unit="%"
               value={params.tenured_mix_monthly_pct} min={0} max={100} step={5}
@@ -572,15 +578,19 @@ export default function AdminGrowthModel() {
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="growth-model-kpis">
                 <KPI icon={Users} label={`Active by Y${params.years}`}
+                  explainerId="growth.kpi.active"
                   value={fmtInt(data.years[data.years.length - 1].active_eoy)}
                   testid="kpi-active" />
                 <KPI icon={Users} label={`Participants (cumulative)`}
+                  explainerId="growth.kpi.participants"
                   value={fmtInt(data.cumulative.participants)}
                   testid="kpi-participants" />
                 <KPI icon={DollarSign} label={`Workshop revenue net`}
+                  explainerId="growth.kpi.workshop_net"
                   value={fmtUSD(data.cumulative.workshop_net)}
                   testid="kpi-workshop-net" />
                 <KPI icon={DollarSign} label={`Foundation NET (cum.)`}
+                  explainerId="growth.kpi.foundation_net"
                   value={fmtUSD(data.cumulative.foundation_net)}
                   accent
                   testid="kpi-foundation-net" />
@@ -591,7 +601,7 @@ export default function AdminGrowthModel() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Bookmark size={16} strokeWidth={1.5} className="text-[#476B6B]" />
-                    <h3 className="font-serif text-base">Saved scenarios</h3>
+                    <h3 className="font-serif text-base">Saved scenarios <Explainer id="growth.scenarios" size={13} /></h3>
                     <span className="text-xs text-[#8B9494]">
                       ({scenarios.length}) · check to overlay on chart
                     </span>
@@ -698,6 +708,7 @@ export default function AdminGrowthModel() {
               <div className="card p-4">
                 <h3 className="font-serif text-base mb-3">
                   Facilitator network trajectory
+                  <Explainer id="growth.chart" size={13} className="ml-2" />
                   {selectedScenarioIds.length > 0 && (
                     <span className="ml-2 text-xs text-[#8B9494]">
                       · {selectedScenarioIds.length + 1} series
@@ -734,22 +745,22 @@ export default function AdminGrowthModel() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-left text-[#5C6B6B] border-b border-[#E5E1D8]">
-                      <th className="py-2 pr-3">Year</th>
-                      <th className="py-2 px-2 text-right">Active EOY</th>
-                      <th className="py-2 px-2 text-right">Workshops</th>
-                      <th className="py-2 px-2 text-right">Participants</th>
-                      <th className="py-2 px-2 text-right">Wkshp net $</th>
-                      <th className="py-2 px-2 text-right text-[#8B9494]">Refunds</th>
-                      <th className="py-2 px-2 text-right">Fac $</th>
-                      <th className="py-2 px-2 text-right">Fnd wkshp $</th>
-                      <th className="py-2 px-2 text-right">Subs $</th>
-                      <th className="py-2 px-2 text-right">Cross-role $</th>
-                      <th className="py-2 px-2 text-right text-red-700">Mktg −</th>
+                      <th className="py-2 pr-3">Year <Explainer id="growth.col.year" size={10} /></th>
+                      <th className="py-2 px-2 text-right">Active EOY <Explainer id="growth.col.active_eoy" size={10} /></th>
+                      <th className="py-2 px-2 text-right">Workshops <Explainer id="growth.col.workshops" size={10} /></th>
+                      <th className="py-2 px-2 text-right">Participants <Explainer id="growth.col.participants" size={10} /></th>
+                      <th className="py-2 px-2 text-right">Wkshp net $ <Explainer id="growth.col.wkshp_net" size={10} /></th>
+                      <th className="py-2 px-2 text-right text-[#8B9494]">Refunds <Explainer id="growth.col.refunds" size={10} /></th>
+                      <th className="py-2 px-2 text-right">Fac $ <Explainer id="growth.col.fac_earnings" size={10} /></th>
+                      <th className="py-2 px-2 text-right">Fnd wkshp $ <Explainer id="growth.col.fnd_wkshp" size={10} /></th>
+                      <th className="py-2 px-2 text-right">Subs $ <Explainer id="growth.col.subs" size={10} /></th>
+                      <th className="py-2 px-2 text-right">Cross-role $ <Explainer id="growth.col.cross_role" size={10} /></th>
+                      <th className="py-2 px-2 text-right text-red-700">Mktg − <Explainer id="growth.col.mktg" size={10} /></th>
                       <th className="py-2 px-2 text-right font-medium text-[#1A2424]">
-                        Fnd NET
+                        Fnd NET <Explainer id="growth.col.fnd_net" size={10} />
                       </th>
-                      <th className="py-2 px-2 text-right text-[#8B9494]">Ceiling</th>
-                      <th className="py-2 px-2 text-right">Fill</th>
+                      <th className="py-2 px-2 text-right text-[#8B9494]">Ceiling <Explainer id="growth.col.ceiling" size={10} /></th>
+                      <th className="py-2 px-2 text-right">Fill <Explainer id="growth.col.fill" size={10} /></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -807,7 +818,7 @@ export default function AdminGrowthModel() {
                     <div className="flex items-center gap-2">
                       <Activity size={16} strokeWidth={1.5} className="text-[#C9A961]" />
                       <h3 className="font-serif text-base">
-                        Sensitivity — Foundation NET
+                        Sensitivity — Foundation NET <Explainer id="growth.sensitivity" size={13} />
                       </h3>
                       {sensitivity && (
                         <span className="text-xs text-[#8B9494]">
@@ -856,7 +867,7 @@ export default function AdminGrowthModel() {
   );
 }
 
-function KPI({ icon: Icon, label, value, accent, testid }) {
+function KPI({ icon: Icon, label, value, accent, testid, explainerId }) {
   return (
     <div className={`card p-3 ${accent ? "!bg-[#476B6B] !border-[#476B6B]" : ""}`}
       data-testid={testid}>
@@ -866,6 +877,7 @@ function KPI({ icon: Icon, label, value, accent, testid }) {
         <p className={`text-[10px] uppercase tracking-wider ${accent ? "text-white/70" : "text-[#8B9494]"}`}>
           {label}
         </p>
+        {explainerId && <Explainer id={explainerId} size={11} dark={accent} />}
       </div>
       <p className={`font-serif text-lg tabular-nums ${accent ? "text-white" : "text-[#1A2424]"}`}>
         {value}

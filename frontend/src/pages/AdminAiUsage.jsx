@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BarChart3, Calendar, Sparkles } from "lucide-react";
 import api from "../lib/api";
+import Explainer from "../components/Explainer";
 
 function fmtUSD(n, { precision = 2 } = {}) {
   const v = Number(n || 0);
@@ -31,7 +32,7 @@ export default function AdminAiUsage() {
     <div className="container-page py-12" data-testid="admin-ai-usage-page">
       <span className="label">Admin · AI Usage</span>
       <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
-        <BarChart3 size={26} strokeWidth={1.2} /> AI usage report
+        <BarChart3 size={26} strokeWidth={1.2} /> AI usage report <Explainer id="aiuse.page" size={16} />
       </h1>
       <div className="divider-flame" />
 
@@ -43,9 +44,9 @@ export default function AdminAiUsage() {
             <p className="label">Foundation-wide spend</p>
           </div>
           <div className="grid grid-cols-3 gap-4">
-            <WindowStat label="Today"        data={data.windows.today} testid="window-today" />
-            <WindowStat label="Last 7 days"  data={data.windows.week}  testid="window-week" />
-            <WindowStat label="Last 30 days" data={data.windows.month} testid="window-month" />
+            <WindowStat label="Today"        explainerId="aiuse.window.today" data={data.windows.today} testid="window-today" />
+            <WindowStat label="Last 7 days"  explainerId="aiuse.window.week"  data={data.windows.week}  testid="window-week" />
+            <WindowStat label="Last 30 days" explainerId="aiuse.window.month" data={data.windows.month} testid="window-month" />
           </div>
           <p className="text-[10px] text-[#5C6B6B] italic mt-3">
             Includes the Foundation markup. The Foundation keeps {((1 - 1/1.5) * 100).toFixed(0)}% of each $ shown above.
@@ -70,9 +71,9 @@ export default function AdminAiUsage() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-6">
-        <StatCard label={`Total events · ${days}d`} value={data.total_events} testid="total-events" />
-        <StatCard label={`Total cost · ${days}d`} value={fmtUSD(data.total_cost_usd)} testid="total-cost" />
-        <StatCard label="Active wallets" value={(data.wallets || []).length} testid="wallets-count" />
+        <StatCard label={`Total events · ${days}d`} explainerId="aiuse.total_events" value={data.total_events} testid="total-events" />
+        <StatCard label={`Total cost · ${days}d`} explainerId="aiuse.total_cost" value={fmtUSD(data.total_cost_usd)} testid="total-cost" />
+        <StatCard label="Active wallets" explainerId="aiuse.wallets" value={(data.wallets || []).length} testid="wallets-count" />
       </div>
 
       <h2 className="font-serif text-xl mb-2 mt-4 inline-flex items-center gap-2">
@@ -141,22 +142,24 @@ export default function AdminAiUsage() {
   );
 }
 
-function StatCard({ label, value, testid }) {
+function StatCard({ label, value, testid, explainerId }) {
   return (
     <div className="card p-5" data-testid={testid}>
-      <p className="label">{label}</p>
+      <p className="label">{label} {explainerId && <Explainer id={explainerId} size={10} />}</p>
       <p className="font-serif text-3xl mt-2">{value}</p>
     </div>
   );
 }
 
-function WindowStat({ label, data, testid }) {
+function WindowStat({ label, data, testid, explainerId }) {
   const cost = Number(data?.cost_usd || 0);
   const events = Number(data?.events || 0);
   const precision = cost < 1 ? 4 : 2;
   return (
     <div data-testid={testid}>
-      <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">{label}</p>
+      <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
+        {label} {explainerId && <Explainer id={explainerId} size={10} />}
+      </p>
       <p className="font-serif text-3xl mt-1">${cost.toFixed(precision)}</p>
       <p className="text-[11px] text-[#5C6B6B] mt-0.5">{events} {events === 1 ? "AI call" : "AI calls"}</p>
     </div>

@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, RefreshCw, Filter } from "lucide-react";
 import api from "../lib/api";
 import { toast } from "sonner";
+import Explainer from "../components/Explainer";
 
 const CATEGORIES = ["auth", "security", "signing", "payment", "admin_trace", "admin_action", "account"];
 
@@ -69,7 +70,7 @@ export default function AdminUserActivity() {
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
           <span className="label">Admin · Audit</span>
-          <h1 className="editorial-h1 mt-1">User Activity & Admin Trace</h1>
+          <h1 className="editorial-h1 mt-1">User Activity & Admin Trace <Explainer id="activity.page" size={16} /></h1>
         </div>
         <button onClick={load} className="btn-outline text-xs inline-flex items-center gap-1" data-testid="refresh-btn">
           <RefreshCw size={12} strokeWidth={1.5} /> Refresh
@@ -88,15 +89,15 @@ export default function AdminUserActivity() {
       {summary && (
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="card p-4">
-            <p className="label !mt-0">Last 30 days · events</p>
+            <p className="label !mt-0">Last 30 days · events <Explainer id="activity.total_events_30d" size={10} /></p>
             <p className="font-serif text-3xl text-[#0F2424] mt-1">{summary.total_events.toLocaleString()}</p>
           </div>
           <div className="card p-4">
-            <p className="label !mt-0">Users active (30d)</p>
+            <p className="label !mt-0">Users active (30d) <Explainer id="activity.users_active_30d" size={10} /></p>
             <p className="font-serif text-3xl text-[#0F2424] mt-1">{summary.per_user.length}</p>
           </div>
           <div className="card p-4">
-            <p className="label !mt-0">Top event type (30d)</p>
+            <p className="label !mt-0">Top event type (30d) <Explainer id="activity.top_event_type" size={10} /></p>
             <p className="font-serif text-lg text-[#0F2424] mt-1 truncate">
               {summary.top_events[0]?.event_type || "—"}
             </p>

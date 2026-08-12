@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../lib/api";
 import { BarChart3, DollarSign, TrendingUp, Briefcase, Calendar, ShoppingBag } from "lucide-react";
+import Explainer from "../components/Explainer";
 
 function fmtUSD(n) {
   return `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -22,29 +23,29 @@ export default function AdminReports() {
   return (
     <div className="container-page py-12" data-testid="admin-reports-page">
       <span className="label">Admin</span>
-      <h1 className="editorial-h1 mt-2">Foundation reports</h1>
+      <h1 className="editorial-h1 mt-2">Foundation reports <Explainer id="reports.page" size={16} /></h1>
       <div className="divider-flame" />
 
       <section data-testid="admin-engagement">
         <h2 className="font-serif text-xl inline-flex items-center gap-2"><BarChart3 size={16} strokeWidth={1.5} /> Engagement</h2>
         <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Stat label="Users" value={engagement.users} />
-          <Stat label="Workshops" value={engagement.workshops} />
-          <Stat label="Products" value={engagement.products} />
-          <Stat label="Reviews" value={engagement.reviews} />
-          <Stat label="Active partners" value={engagement.partners_active} />
-          <Stat label="Active subs" value={engagement.active_subscriptions} />
-          <Stat label="Discussions" value={engagement.discussions} />
-          <Stat label="New regs (30d)" value={engagement.new_registrations_30d} />
-          <Stat label="New signups (30d)" value={engagement.new_signups_30d} />
+          <Stat label="Users" value={engagement.users} explainerId="reports.engagement.users" />
+          <Stat label="Workshops" value={engagement.workshops} explainerId="reports.engagement.workshops" />
+          <Stat label="Products" value={engagement.products} explainerId="reports.engagement.products" />
+          <Stat label="Reviews" value={engagement.reviews} explainerId="reports.engagement.reviews" />
+          <Stat label="Active partners" value={engagement.partners_active} explainerId="reports.engagement.partners_active" />
+          <Stat label="Active subs" value={engagement.active_subscriptions} explainerId="reports.engagement.subs" />
+          <Stat label="Discussions" value={engagement.discussions} explainerId="reports.engagement.discussions" />
+          <Stat label="New regs (30d)" value={engagement.new_registrations_30d} explainerId="reports.engagement.new_regs_30" />
+          <Stat label="New signups (30d)" value={engagement.new_signups_30d} explainerId="reports.engagement.new_signups_30" />
         </div>
       </section>
 
       <section className="mt-12" data-testid="admin-revenue">
         <h2 className="font-serif text-xl inline-flex items-center gap-2"><DollarSign size={16} strokeWidth={1.5} /> Revenue</h2>
         <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-          <BigStat label="Workshops"     icon={Calendar}    revenue={revenue.workshops.revenue}     count={revenue.workshops.count} />
-          <BigStat label="Shop"          icon={ShoppingBag} revenue={revenue.shop.revenue}           count={revenue.shop.count} />
+          <BigStat label="Workshops"     icon={Calendar}    revenue={revenue.workshops.revenue}     count={revenue.workshops.count} explainerId="reports.rev.workshops" />
+          <BigStat label="Shop"          icon={ShoppingBag} revenue={revenue.shop.revenue}           count={revenue.shop.count} explainerId="reports.rev.shop" />
           <BigStat label="Subscriptions" icon={Briefcase}   revenue={revenue.subscriptions.revenue}  count={revenue.subscriptions.count} />
           <BigStat label="Sponsorship"   icon={TrendingUp}  revenue={revenue.sponsorship.revenue}    count={revenue.sponsorship.count} />
           <BigStat label="Donations"     icon={TrendingUp}  revenue={revenue.donations.revenue}      count={revenue.donations.count} />
@@ -112,21 +113,26 @@ export default function AdminReports() {
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, explainerId }) {
   return (
     <div className="card p-4">
       <p className="font-serif text-2xl">{value}</p>
-      <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">{label}</p>
+      <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
+        {label} {explainerId && <Explainer id={explainerId} size={10} />}
+      </p>
     </div>
   );
 }
 
-function BigStat({ label, icon: Icon, revenue, count }) {
+function BigStat({ label, icon: Icon, revenue, count, explainerId }) {
   return (
     <div className="card p-5" data-testid={`revenue-${label.toLowerCase()}`}>
       <Icon size={14} strokeWidth={1.5} className="text-[#C9A961]" />
       <p className="font-serif text-2xl mt-2">{fmtUSD(revenue)}</p>
-      <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">{label} · {count} transaction{count === 1 ? "" : "s"}</p>
+      <p className="text-[10px] uppercase tracking-wider text-[#5C6B6B]">
+        {label} · {count} transaction{count === 1 ? "" : "s"}
+        {explainerId && <Explainer id={explainerId} size={10} className="ml-1" />}
+      </p>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, AlertTriangle, Send, X } from "lucide-react";
 import api from "../lib/api";
+import Explainer from "../components/Explainer";
 
 const fmt = (n) => `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -58,7 +59,7 @@ export default function AdminArtistPayouts() {
   return (
     <div className="container-page py-12" data-testid="admin-artist-payouts-page">
       <span className="label">Admin · disbursement console</span>
-      <h1 className="editorial-h1 mt-2">Artist patronage payouts</h1>
+      <h1 className="editorial-h1 mt-2">Artist patronage payouts <Explainer id="payouts.page" size={16} /></h1>
 
       <div className="divider-flame" />
 
@@ -96,15 +97,15 @@ export default function AdminArtistPayouts() {
       {data && (
         <div className="grid sm:grid-cols-3 gap-3 mt-6">
           <div className="card p-4">
-            <p className="label">Pending</p>
+            <p className="label">Pending <Explainer id="payouts.pending" size={10} /></p>
             <p className="font-serif text-2xl mt-1">{fmt(data.total_pending)}</p>
           </div>
           <div className="card p-4">
-            <p className="label">Paid lifetime</p>
+            <p className="label">Paid lifetime <Explainer id="payouts.paid" size={10} /></p>
             <p className="font-serif text-2xl mt-1">{fmt(data.total_paid)}</p>
           </div>
           <div className="card p-4">
-            <p className="label">Rows in view</p>
+            <p className="label">Rows in view <Explainer id="payouts.count" size={10} /></p>
             <p className="font-serif text-2xl mt-1">{data.count}</p>
           </div>
         </div>
@@ -115,10 +116,10 @@ export default function AdminArtistPayouts() {
         <div className="card p-4 mt-6 border-l-2 border-[#476B6B]" data-testid="bulk-pay-result">
           <p className="label text-[#476B6B]">Last bulk run</p>
           <div className="grid sm:grid-cols-4 gap-3 mt-2 text-sm">
-            <div><dt className="label">Attempted</dt><dd className="font-serif text-lg">{bulkResult.attempted}</dd></div>
-            <div><dt className="label">Paid</dt><dd className="font-serif text-lg text-[#2E5C46]">{bulkResult.paid}</dd></div>
-            <div><dt className="label">Skipped</dt><dd className="font-serif text-lg text-[#C9A961]">{bulkResult.skipped}</dd></div>
-            <div><dt className="label">Failed</dt><dd className="font-serif text-lg text-[#9E3C3C]">{bulkResult.failed}</dd></div>
+            <div><dt className="label">Attempted <Explainer id="payouts.bulk.attempted" size={9} /></dt><dd className="font-serif text-lg">{bulkResult.attempted}</dd></div>
+            <div><dt className="label">Paid <Explainer id="payouts.bulk.paid" size={9} /></dt><dd className="font-serif text-lg text-[#2E5C46]">{bulkResult.paid}</dd></div>
+            <div><dt className="label">Skipped <Explainer id="payouts.bulk.skipped" size={9} /></dt><dd className="font-serif text-lg text-[#C9A961]">{bulkResult.skipped}</dd></div>
+            <div><dt className="label">Failed <Explainer id="payouts.bulk.failed" size={9} /></dt><dd className="font-serif text-lg text-[#9E3C3C]">{bulkResult.failed}</dd></div>
           </div>
         </div>
       )}

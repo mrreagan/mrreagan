@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { RotateCcw, AlertTriangle, X, Search } from "lucide-react";
 import api from "../lib/api";
+import Explainer from "../components/Explainer";
 
 export default function AdminRefunds() {
   const [cascades, setCascades] = useState([]);
@@ -74,26 +75,28 @@ export default function AdminRefunds() {
     <div className="container-page py-12" data-testid="admin-refunds-page">
       <span className="label">Admin · Refunds & Clawbacks</span>
       <h1 className="editorial-h1 mt-2 inline-flex items-center gap-3">
-        <RotateCcw size={28} strokeWidth={1.2} /> Refund cascades
+        <RotateCcw size={28} strokeWidth={1.2} /> Refund cascades <Explainer id="refunds.page" size={16} />
       </h1>
       <div className="divider-flame" />
 
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div className="flex gap-2" data-testid="refund-tabs">
           {[
-            { v: "cascades",  label: `Cascades (${cascades.length})` },
-            { v: "clawbacks", label: `Pending clawbacks (${clawbacks.filter((c) => c.status === "pending_recovery").length})` },
+            { v: "cascades",  label: `Cascades (${cascades.length})`, hint: "refunds.cascades" },
+            { v: "clawbacks", label: `Pending clawbacks (${clawbacks.filter((c) => c.status === "pending_recovery").length})`, hint: "refunds.clawbacks_pending" },
           ].map((t) => (
-            <button
-              key={t.v}
-              onClick={() => setTab(t.v)}
-              className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-medium border transition ${
-                tab === t.v ? "bg-[#476B6B] text-white border-[#476B6B]" : "bg-white border-[#E5E1D8] hover:border-[#476B6B]"
-              }`}
-              data-testid={`refund-tab-${t.v}`}
-            >
-              {t.label}
-            </button>
+            <div key={t.v} className="inline-flex items-center gap-1">
+              <button
+                onClick={() => setTab(t.v)}
+                className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-medium border transition ${
+                  tab === t.v ? "bg-[#476B6B] text-white border-[#476B6B]" : "bg-white border-[#E5E1D8] hover:border-[#476B6B]"
+                }`}
+                data-testid={`refund-tab-${t.v}`}
+              >
+                {t.label}
+              </button>
+              <Explainer id={t.hint} size={11} />
+            </div>
           ))}
         </div>
         <button onClick={() => setRefundOpen(true)} className="btn-primary text-xs" data-testid="open-refund-modal">

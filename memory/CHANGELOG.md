@@ -3,6 +3,21 @@
 Day- and time-stamped record of releases and hotfixes. New entries go at the
 TOP. Use UTC; localize only when a release is timed to a specific timezone.
 
+## 2026-02-12 — Board-facing explainers across every admin report
+- **NEW: `<Explainer />` component + central copy store** — inline info
+  icons on every metric, KPI, table column, section header, chart, and
+  panel across 9 admin analytical pages. Hover (desktop) or click (mobile)
+  reveals a dark popover with three sections: What it shows, How it's
+  calculated (skipped when purely descriptive), and Why the board cares.
+  Copy lives in `frontend/src/data/explainers.js` (~90 entries) so
+  Amanda/counsel can edit board-facing wording without touching component
+  code. Pages wired: Growth Model (34 explainers — KPIs, 15 section
+  headers, 14 table columns, chart, scenarios, sensitivity), Foundation
+  Reports (engagement stats, revenue lines), Admin Dashboard (8 top-level
+  stats), AI Usage (window rollups + KPIs), Artist Payouts (pending/paid
+  + bulk-run counters), Subscriptions, User Activity, Partner Sales
+  Reports, Refunds & Clawbacks (tab-level), and Email Ops.
+
 ## 2026-02-12 — Executive Director change · Growth model simulator
 - **Amanda Reagan succeeds James Reagan as Executive Director** across all
   29 legal docs (.md + regenerated .docx), governing_members collection

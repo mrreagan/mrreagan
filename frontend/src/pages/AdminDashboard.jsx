@@ -3,14 +3,17 @@ import api from "../lib/api";
 import { Link } from "react-router-dom";
 import { Users, Calendar, ShoppingBag, DollarSign, Heart, Mail, Gem, Camera, Scale, Briefcase, BarChart3, Wallet, Store, UserPlus, ExternalLink, Sparkles, Shield, RotateCcw, Microscope, Bot, FlaskConical, Server, FileText } from "lucide-react";
 import { toast } from "sonner";
+import Explainer from "../components/Explainer";
 
 // ---------- Stat card ----------
-function StatCard({ icon: Icon, value, label }) {
+function StatCard({ icon: Icon, value, label, explainerId }) {
   return (
     <div className="card p-5">
       <Icon size={18} strokeWidth={1.5} className="text-[#C9A961]" />
       <p className="font-serif text-3xl text-[#1A2424] mt-3">{value}</p>
-      <p className="label mt-1">{label}</p>
+      <p className="label mt-1">
+        {label} {explainerId && <Explainer id={explainerId} size={10} />}
+      </p>
     </div>
   );
 }
@@ -19,21 +22,21 @@ function StatCard({ icon: Icon, value, label }) {
 function StatsGrid({ stats }) {
   const items = useMemo(
     () => [
-      { label: "Users", value: stats.users_count, icon: Users },
-      { label: "Workshops", value: stats.workshops_count, icon: Calendar },
-      { label: "Registrations", value: stats.registrations_count, icon: Heart },
-      { label: "Orders", value: stats.orders_count, icon: ShoppingBag },
-      { label: "Products", value: stats.products_count, icon: ShoppingBag },
-      { label: "Newsletter", value: stats.newsletter_count, icon: Mail },
-      { label: "Sponsors", value: stats.sponsors_count, icon: Gem },
-      { label: "Revenue", value: `$${(stats.total_revenue || 0).toFixed(0)}`, icon: DollarSign },
+      { label: "Users", value: stats.users_count, icon: Users, explainerId: "dash.stats.users" },
+      { label: "Workshops", value: stats.workshops_count, icon: Calendar, explainerId: "dash.stats.workshops" },
+      { label: "Registrations", value: stats.registrations_count, icon: Heart, explainerId: "dash.stats.regs" },
+      { label: "Orders", value: stats.orders_count, icon: ShoppingBag, explainerId: "dash.stats.orders" },
+      { label: "Products", value: stats.products_count, icon: ShoppingBag, explainerId: "dash.stats.products" },
+      { label: "Newsletter", value: stats.newsletter_count, icon: Mail, explainerId: "dash.stats.newsletter" },
+      { label: "Sponsors", value: stats.sponsors_count, icon: Gem, explainerId: "dash.stats.sponsors" },
+      { label: "Revenue", value: `$${(stats.total_revenue || 0).toFixed(0)}`, icon: DollarSign, explainerId: "dash.stats.revenue" },
     ],
     [stats]
   );
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8" data-testid="admin-stats">
       {items.map((s) => (
-        <StatCard key={s.label} icon={s.icon} value={s.value} label={s.label} />
+        <StatCard key={s.label} icon={s.icon} value={s.value} label={s.label} explainerId={s.explainerId} />
       ))}
     </div>
   );
