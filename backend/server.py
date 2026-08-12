@@ -291,7 +291,7 @@ async def startup_event() -> None:
     except Exception as e:
         logger.error(f"Seeding error: {e}")
     try:
-        from runtime_seed import ensure_catalog_seeded, repair_known_broken_images, backfill_partner_economy_fields, ensure_foundation_roles_seeded, ensure_sample_partners_seeded, ensure_sample_research_artifacts, ensure_agreement_v2_published, ensure_founder_collection_seeded, ensure_governing_member_images
+        from runtime_seed import ensure_catalog_seeded, repair_known_broken_images, backfill_partner_economy_fields, ensure_foundation_roles_seeded, ensure_sample_partners_seeded, ensure_sample_research_artifacts, ensure_agreement_v2_published, ensure_founder_collection_seeded, ensure_governing_member_images, ensure_growth_scenarios_seeded
         await ensure_catalog_seeded(db)
         await ensure_founder_collection_seeded(db)
         await ensure_governing_member_images(db)
@@ -301,6 +301,7 @@ async def startup_event() -> None:
         await ensure_sample_partners_seeded(db)
         await ensure_sample_research_artifacts(db)
         await ensure_agreement_v2_published(db)
+        await ensure_growth_scenarios_seeded(db)
     except Exception as e:
         logger.error(f"Runtime seed/repair error: {e}")
     try:

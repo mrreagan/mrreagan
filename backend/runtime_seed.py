@@ -712,3 +712,96 @@ async def ensure_agreement_v2_published(db) -> bool:
     await db.indemnification_versions.insert_one(dict(v2))
     logger.info("Published indemnification agreement v2.0 as active")
     return True
+
+
+# ---------------------------------------------------------------------------
+# Growth-model scenarios (idempotent seed of Conservative / Moderate / Aggressive)
+# ---------------------------------------------------------------------------
+async def ensure_growth_scenarios_seeded(db) -> int:
+    """Seed the three canonical growth-model scenarios so every environment
+    (preview + production) has the same starting comparison set on the
+    admin growth-model dashboard.
+
+    Idempotent: only inserts scenarios whose slug isn't already present.
+    Existing user-created scenarios are never touched.
+    """
+    import uuid
+
+    canonical = [
+        {
+            "slug": "conservative",
+            "name": "Conservative",
+            "description": "Slower recruiting, higher attrition, modest geographic reach — still sustainable growth",
+            "color": "#476B6B",
+            "params": {
+                "participant_to_applicant_pct": 2.5,
+                "applicant_to_active_pct": 45,
+                "attrition_year1_pct": 40,
+                "attrition_year2_pct": 18,
+                "attrition_year3plus_pct": 10,
+                "fill_ramp_start_pct": 25,
+                "fill_ramp_months": 12,
+                "conversion_annual_decay_pct": 12,
+                "workshops_per_facilitator_per_year": 10,
+                "initial_serviced_metros": 2,
+                "new_metros_per_year": 3,
+                "couples_per_metro_per_year": 4000,
+                "pct_participants_from_referral": 20,
+                "foundation_marketing_cost_per_participant": 25,
+                "refund_chargeback_pct": 8,
+                "cross_role_revenue_per_tenured_fac_per_year": 250,
+            },
+        },
+        {
+            "slug": "moderate",
+            "name": "Moderate",
+            "description": "Base plan matching published pricing and typical peer-education growth rates",
+            "color": "#C9A961",
+            "params": {},
+        },
+        {
+            "slug": "aggressive",
+            "name": "Aggressive",
+            "description": "Everything works: strong recruiting, low attrition, fast metro expansion, high referral share",
+            "color": "#8B5A3C",
+            "params": {
+                "participant_to_applicant_pct": 3.5,
+                "applicant_to_active_pct": 55,
+                "attrition_year1_pct": 28,
+                "attrition_year2_pct": 12,
+                "attrition_year3plus_pct": 6,
+                "fill_ramp_start_pct": 40,
+                "fill_ramp_months": 6,
+                "conversion_annual_decay_pct": 8,
+                "workshops_per_facilitator_per_year": 13,
+                "initial_serviced_metros": 4,
+                "new_metros_per_year": 8,
+                "couples_per_metro_per_year": 6500,
+                "pct_participants_from_referral": 45,
+                "foundation_marketing_cost_per_participant": 10,
+                "refund_chargeback_pct": 3,
+                "avg_workshops_per_participant": 1.1,
+                "cross_role_revenue_per_tenured_fac_per_year": 750,
+            },
+        },
+    ]
+
+    inserted = 0
+    for s in canonical:
+        if await db.growth_scenarios.find_one({"slug": s["slug"]}):
+            continue
+        doc = {
+            "id": str(uuid.uuid4()),
+            "slug": s["slug"],
+            "name": s["name"],
+            "description": s["description"],
+            "color": s["color"],
+            "params": s["params"],
+            "created_at": now_iso(),
+            "created_by_email": None,  # seeded, not user-created
+        }
+        await db.growth_scenarios.insert_one(doc)
+        inserted += 1
+        logger.info(f"growth scenario seeded: {s['name']}")
+    return inserted
+
